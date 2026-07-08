@@ -110,9 +110,11 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const [taxaPadraoEmpresa, setTaxaPadraoEmpresa] = useState<number>(0);
   const [percentualRepasseEmpresa, setPercentualRepasseEmpresa] = useState<number>(50);
   const [tipoContratoEmpresa, setTipoContratoEmpresa] = useState<string>('horas');
+  // Requerimentos descontados em tempo real (busca quando snapshot está vazio)
+  const [requerimentosDescontadosReal, setRequerimentosDescontadosReal] = useState<RequerimentoDescontadoData[] | null>(null);
 
-  // Determina se o contrato é do tipo ticket
-  const isTicket = tipoContratoEmpresa === 'tickets' || tipoContratoEmpresa === 'ticket';
+  // Determina se o contrato é do tipo ticket (inclui 'ambos' pois exibe visão de tickets no Book)
+  const isTicket = tipoContratoEmpresa === 'tickets' || tipoContratoEmpresa === 'ticket' || tipoContratoEmpresa === 'ambos';
 
   /**
    * Formata valor da tabela de banco de horas baseado no tipo de contrato
@@ -660,6 +662,94 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     buscarBancoHorasTrimestre();
   }, [empresaId, mes, ano, data.banco_horas_trimestre]);
 
+  // Buscar requerimentos descontados em tempo real quando snapshot está vazio
+  useEffect(() => {
+    // Se o snapshot já tem dados, não precisa buscar
+    if (data.requerimentos_descontados && data.requerimentos_descontados.length > 0) {
+      setRequerimentosDescontadosReal(null); // usar snapshot
+      return;
+    }
+
+    // Sem dados no snapshot: buscar em tempo real
+    const buscarRequerimentosReal = async () => {
+      if (!empresaId || !mes || !ano) return;
+
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const mesCobranca = `${String(mes).padStart(2, '0')}/${ano}`;
+
+        const { data: requerimentos } = await supabase
+          .from('requerimentos')
+          .select('*')
+          .eq('cliente_id', empresaId)
+          .eq('mes_cobranca', mesCobranca)
+          .eq('tipo_cobranca', 'Banco de Horas')
+          .in('status', ['enviado_faturamento', 'faturado', 'concluido'])
+          .order('data_envio_faturamento', { ascending: false });
+
+        if (requerimentos && requerimentos.length > 0) {
+          const formatados: RequerimentoDescontadoData[] = requerimentos.map(req => {
+            // Converter horas para formato HH:MM
+            let horasFuncional = 0;
+            let horasTecnico = 0;
+
+            if (req.horas_funcional) {
+              const val = req.horas_funcional as string | number;
+              if (typeof val === 'string' && val.includes(':')) {
+                const [h, m] = val.split(':').map(Number);
+                horasFuncional = h + (m / 60);
+              } else {
+                horasFuncional = Number(val) || 0;
+              }
+            }
+            if (req.horas_tecnico) {
+              const val = req.horas_tecnico as string | number;
+              if (typeof val === 'string' && val.includes(':')) {
+                const [h, m] = val.split(':').map(Number);
+                horasTecnico = h + (m / 60);
+              } else {
+                horasTecnico = Number(val) || 0;
+              }
+            }
+
+            const totalDecimal = horasFuncional + horasTecnico;
+            const totalH = Math.floor(totalDecimal);
+            const totalM = Math.round((totalDecimal - totalH) * 60);
+            const totalFormatado = totalDecimal > 0
+              ? `${String(totalH).padStart(2, '0')}:${String(totalM).padStart(2, '0')}`
+              : '00:00';
+
+            return {
+              id: req.id,
+              numero_chamado: req.chamado || '--',
+              cliente: req.cliente_id || '--',
+              modulo: req.modulo || '--',
+              tipo_cobranca: req.tipo_cobranca || '--',
+              horas_funcional: req.horas_funcional?.toString() || '00:00',
+              horas_tecnica: req.horas_tecnico?.toString() || '00:00',
+              total_horas: totalFormatado,
+              tickets: 0,
+              data_envio: req.data_envio_faturamento || null,
+              data_aprovacao: req.data_aprovacao || null,
+              valor_total: (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0),
+              periodo_cobranca: req.mes_cobranca || mesCobranca
+            };
+          });
+
+          console.log('✅ Requerimentos descontados encontrados em tempo real:', formatados.length);
+          setRequerimentosDescontadosReal(formatados);
+        } else {
+          setRequerimentosDescontadosReal([]);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar requerimentos em tempo real:', error);
+        setRequerimentosDescontadosReal([]);
+      }
+    };
+
+    buscarRequerimentosReal();
+  }, [empresaId, mes, ano, data.requerimentos_descontados]);
+
   // Função para buscar requerimentos de um mês específico
   const buscarRequerimentosMes = async (mes: string, ano: string) => {
     if (!empresaId) return;
@@ -791,26 +881,197 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const totalHorasRequerimentos = calcularTotalHorasRequerimentos();
   const consumoTotal = calcularConsumoTotal();
 
+  // Lista de requerimentos descontados: usar tempo real quando snapshot está vazio
+  const requerimentosDescontados = (data.requerimentos_descontados && data.requerimentos_descontados.length > 0)
+    ? data.requerimentos_descontados
+    : (requerimentosDescontadosReal || []);
+
+  // Construir dados do gráfico: SEMPRE mostra os 6 meses ANTERIORES ao mês do book (inclusive).
+  // Ex: Book de Junho/2026 → JAN, FEV, MAR, ABR, MAI, JUN
+  // Fonte principal: banco_horas_calculos (valores do fechamento oficial).
+  // Fallback: snapshot historico_consumo quando banco_horas_calculos não tem o mês.
+  const MESES_NOMES_GRAFICO = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+
+  // Estado para armazenar dados de consumo dos 6 meses (buscados de banco_horas_calculos)
+  const [dadosGrafico6Meses, setDadosGrafico6Meses] = useState<any[] | null>(null);
+
+  // Buscar dados de banco_horas_calculos para os 6 meses do gráfico
+  useEffect(() => {
+    const buscarDados6Meses = async () => {
+      if (!empresaId || !mes || !ano) return;
+
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+
+        // Calcular os 6 meses esperados
+        const meses6: { mesNum: number; anoNum: number; nome: string }[] = [];
+        for (let i = 5; i >= 0; i--) {
+          let m = mes - i;
+          let a = ano;
+          while (m <= 0) { m += 12; a -= 1; }
+          meses6.push({ mesNum: m, anoNum: a, nome: MESES_NOMES_GRAFICO[m - 1] });
+        }
+
+        // Buscar todos os registros de banco_horas_calculos para essa empresa nos 6 meses
+        const promessas = meses6.map(async ({ mesNum, anoNum }) => {
+          const { data: bancoData } = await supabase
+            .from('banco_horas_calculos')
+            .select('mes, ano, consumo_horas, requerimentos_horas, consumo_tickets, requerimentos_tickets')
+            .eq('empresa_id', empresaId)
+            .eq('mes', mesNum)
+            .eq('ano', anoNum)
+            .maybeSingle();
+          return { mesNum, anoNum, dados: bancoData };
+        });
+
+        const resultados = await Promise.all(promessas);
+
+        // Construir dados do gráfico
+        const dadosGrafico = meses6.map(({ mesNum, anoNum, nome }, index) => {
+          const resultado = resultados.find(r => r.mesNum === mesNum && r.anoNum === anoNum);
+
+          if (resultado?.dados) {
+            if (isTicket) {
+              return {
+                mes: nome,
+                horas: String(resultado.dados.consumo_tickets || 0),
+                valor_numerico: resultado.dados.consumo_tickets || 0,
+                requerimentos_horas: String(resultado.dados.requerimentos_tickets || 0),
+                requerimentos_valor_numerico: resultado.dados.requerimentos_tickets || 0
+              };
+            }
+            // Tipo horas
+            const consumoHoras = String(resultado.dados.consumo_horas || '00:00:00');
+            const partesConsumo = consumoHoras.split(':');
+            const hConsumo = parseInt(partesConsumo[0]) || 0;
+            const mConsumo = parseInt(partesConsumo[1]) || 0;
+            const valorNumericoConsumo = hConsumo + (mConsumo / 60);
+
+            const reqHoras = String(resultado.dados.requerimentos_horas || '00:00:00');
+            const partesReq = reqHoras.split(':');
+            const hReq = parseInt(partesReq[0]) || 0;
+            const mReq = parseInt(partesReq[1]) || 0;
+            const valorNumericoReq = hReq + (mReq / 60);
+
+            return {
+              mes: nome,
+              horas: formatarHorasSemSegundos(consumoHoras),
+              valor_numerico: Math.round(valorNumericoConsumo * 100) / 100,
+              requerimentos_horas: formatarHorasSemSegundos(reqHoras),
+              requerimentos_valor_numerico: Math.round(valorNumericoReq * 100) / 100
+            };
+          }
+
+          // Fallback: usar snapshot por posição
+          const historicoSnapshot = data.historico_consumo || [];
+          const snapshotItem = historicoSnapshot.find(item => item.mes === nome)
+            || historicoSnapshot[index];
+          if (snapshotItem) {
+            return { ...snapshotItem, mes: nome };
+          }
+
+          return {
+            mes: nome,
+            horas: '00:00',
+            valor_numerico: 0,
+            requerimentos_horas: '00:00',
+            requerimentos_valor_numerico: 0
+          };
+        });
+
+        setDadosGrafico6Meses(dadosGrafico);
+      } catch (error) {
+        console.error('❌ Erro ao buscar dados de 6 meses para gráfico:', error);
+      }
+    };
+
+    buscarDados6Meses();
+  }, [empresaId, mes, ano, isTicket]);
+
+  // Dados do gráfico: usar dados buscados dos 6 meses, ou fallback para snapshot
+  const dadosGrafico = dadosGrafico6Meses || data.historico_consumo || [];
+
+  // Encontrar os dados do banco de horas do mês ATUAL do book
+  const mesBancoAtual = bancoHorasTrimestre.length > 0
+    ? bancoHorasTrimestre.find(item => item.mes === mes && item.ano === ano)?.dados
+    : null;
+  // Fallback para o último mês não-futuro disponível
+  const ultimoMesBanco = mesBancoAtual || (bancoHorasTrimestre.length > 0 
+    ? bancoHorasTrimestre.filter(item => {
+        if (!mes || !ano) return true;
+        return (item.ano < ano) || (item.ano === ano && item.mes <= mes);
+      }).pop()?.dados
+    : null);
+  
+  const ticketsConsumoReal = isTicket && ultimoMesBanco 
+    ? (ultimoMesBanco.consumo_tickets || 0) 
+    : null;
+  const ticketsRequerimentosReal = isTicket && ultimoMesBanco 
+    ? (ultimoMesBanco.requerimentos_tickets || 0) 
+    : null;
+  const ticketsConsumoTotalReal = isTicket && ultimoMesBanco 
+    ? (ultimoMesBanco.consumo_total_tickets || 0) 
+    : null;
+  const ticketsBaselineReal = isTicket && ultimoMesBanco 
+    ? (ultimoMesBanco.baseline_tickets || 0) 
+    : null;
+
+  // Para tipo horas: usar dados do banco_horas_calculos do mês atual para os cards
+  // Garante consistência entre cards, gráfico e tabela Banco de Horas
+  const horasConsumoReal = !isTicket && ultimoMesBanco && ultimoMesBanco.consumo_horas
+    ? formatarHorasSemSegundos(ultimoMesBanco.consumo_horas)
+    : null;
+  const horasRequerimentosReal = !isTicket && ultimoMesBanco && ultimoMesBanco.requerimentos_horas
+    ? formatarHorasSemSegundos(ultimoMesBanco.requerimentos_horas)
+    : null;
+  const horasConsumoTotalReal = !isTicket && ultimoMesBanco && ultimoMesBanco.consumo_total_horas
+    ? formatarHorasSemSegundos(ultimoMesBanco.consumo_total_horas)
+    : null;
+
   // Calcular variação percentual em relação ao mês anterior
   const calcularVariacaoMesAnterior = (): { percentual: number; tipo: 'aumento' | 'queda' | 'igual' } => {
-    const historico = data.historico_consumo;
+    const historico = dadosGrafico;
     if (!historico || historico.length < 2) {
       return { percentual: 0, tipo: 'igual' };
     }
 
-    // Último elemento = mês atual, penúltimo = mês anterior
-    const mesAtual = historico[historico.length - 1];
-    const mesAnterior = historico[historico.length - 2];
+    // Encontrar o índice do mês atual do book no histórico
+    const mesNomeAtual = MESES_NOMES_GRAFICO[(mes || 1) - 1];
+    let indexMesAtual = historico.findIndex(item => item.mes === mesNomeAtual);
+    
+    // Se não encontrar pelo nome do mês, usar o último com dados (valor_numerico > 0 ou horas != '00:00')
+    if (indexMesAtual === -1) {
+      // Fallback: último elemento
+      indexMesAtual = historico.length - 1;
+    }
 
-    const minutosAtual = parseHorasParaMinutos(mesAtual?.horas || '00:00');
-    const minutosAnterior = parseHorasParaMinutos(mesAnterior?.horas || '00:00');
+    // Verificar se há mês anterior no histórico
+    if (indexMesAtual < 1) {
+      return { percentual: 0, tipo: 'igual' };
+    }
 
-    if (minutosAnterior === 0) {
-      if (minutosAtual === 0) return { percentual: 0, tipo: 'igual' };
+    const mesAtual = historico[indexMesAtual];
+    const mesAnterior = historico[indexMesAtual - 1];
+
+    let valorAtual: number;
+    let valorAnterior: number;
+
+    if (isTicket) {
+      // Para tickets: usar valor_numerico diretamente
+      valorAtual = mesAtual?.valor_numerico || 0;
+      valorAnterior = mesAnterior?.valor_numerico || 0;
+    } else {
+      // Para horas: converter HH:MM para minutos
+      valorAtual = parseHorasParaMinutos(mesAtual?.horas || '00:00');
+      valorAnterior = parseHorasParaMinutos(mesAnterior?.horas || '00:00');
+    }
+
+    if (valorAnterior === 0) {
+      if (valorAtual === 0) return { percentual: 0, tipo: 'igual' };
       return { percentual: 100, tipo: 'aumento' };
     }
 
-    const variacao = ((minutosAtual - minutosAnterior) / minutosAnterior) * 100;
+    const variacao = ((valorAtual - valorAnterior) / valorAnterior) * 100;
     const percentualArredondado = Math.abs(Math.round(variacao));
 
     if (variacao > 0) return { percentual: percentualArredondado, tipo: 'aumento' };
@@ -843,7 +1104,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{isTicket ? data.total_geral : consumoTotal}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? (ticketsConsumoTotalReal !== null ? ticketsConsumoTotalReal : data.total_geral) : (horasConsumoTotalReal || consumoTotal)}</div>
             <div className="text-xs text-gray-600 mt-2">
               {isTicket ? 'Chamados + Requerimentos' : t('books.bookContent.consumptionPlusRequirements')}
             </div>
@@ -861,7 +1122,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{isTicket ? data.total_geral : (formatarHorasSemSegundos(data.horas_consumo) || '00:00')}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? (ticketsConsumoReal !== null ? ticketsConsumoReal : data.total_geral) : (horasConsumoReal || formatarHorasSemSegundos(data.horas_consumo) || '00:00')}</div>
             <div className={`text-xs mt-2 ${variacaoConsumo.tipo === 'aumento' ? 'text-green-600' : variacaoConsumo.tipo === 'queda' ? 'text-red-600' : 'text-gray-600'}`}>
               {variacaoConsumo.tipo === 'aumento' && t('books.bookContent.increaseVsPrevious', { percent: variacaoConsumo.percentual })}
               {variacaoConsumo.tipo === 'queda' && t('books.bookContent.decreaseVsPrevious', { percent: variacaoConsumo.percentual })}
@@ -881,9 +1142,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{isTicket ? (data.requerimentos_descontados?.length || 0) : totalHorasRequerimentos}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? (ticketsRequerimentosReal !== null ? ticketsRequerimentosReal : (requerimentosDescontados?.length || 0)) : (horasRequerimentosReal || totalHorasRequerimentos)}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {t('books.bookContent.requirementsCount', { count: data.requerimentos_descontados?.length || 0 })}
+              {t('books.bookContent.requirementsCount', { count: requerimentosDescontados?.length || 0 })}
             </div>
           </CardContent>
         </Card>
@@ -901,7 +1162,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <CardContent>
             <div className="text-3xl font-bold text-black">
               {isTicket 
-                ? (bancoHorasTrimestre.length > 0 ? (bancoHorasTrimestre[0]?.dados?.baseline_tickets || 0) : 0)
+                ? (ticketsBaselineReal !== null ? ticketsBaselineReal : (bancoHorasTrimestre.length > 0 ? (bancoHorasTrimestre[0]?.dados?.baseline_tickets || 0) : 0))
                 : (formatarHorasSemSegundos(data.baseline_apl) || '00:00')
               }
             </div>
@@ -955,7 +1216,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{isTicket ? Math.round(parseHorasParaMinutos(data.solicitacao) / 60) : (formatarHorasSemSegundos(data.solicitacao) || '00:00')}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? (ticketsConsumoReal !== null ? ticketsConsumoReal : Math.round(parseHorasParaMinutos(data.solicitacao) / 60)) : (formatarHorasSemSegundos(data.solicitacao) || '00:00')}</div>
             <div className="text-xs text-gray-600 mt-2">
               {t('books.bookContent.percentOfTotal', { percent: data.percentual_solicitacao || 0 })}
             </div>
@@ -974,7 +1235,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <CardContent className="pt-2">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart 
-                data={data.historico_consumo.map(d => ({ ...d, mes: translateMonthAbbrev(d.mes) }))}
+                data={dadosGrafico.map(d => ({ ...d, mes: translateMonthAbbrev(d.mes) }))}
                 margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -1021,12 +1282,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     position: 'top',
                     content: (props: any) => {
                       const { x, y, value, index } = props;
-                      const horasFormatadas = data.historico_consumo[index]?.horas || '';
+                      const horasFormatadas = dadosGrafico[index]?.horas || '';
                       
                       let displayValue: string;
                       if (isTicket) {
                         // Para tickets, mostrar valor numérico inteiro
-                        displayValue = String(data.historico_consumo[index]?.valor_numerico || 0);
+                        displayValue = String(dadosGrafico[index]?.valor_numerico || 0);
                       } else {
                         // Remover segundos se existir
                         displayValue = horasFormatadas.split(':').length === 3 
@@ -1035,7 +1296,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                       }
                       
                       // Ajustar posição para primeiro e último ponto
-                      const totalPontos = data.historico_consumo.length;
+                      const totalPontos = dadosGrafico.length;
                       let textAnchor: 'start' | 'middle' | 'end' = 'middle';
                       let xOffset = 0;
                       let yOffset = -10;
@@ -1088,12 +1349,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     position: 'bottom',
                     content: (props: any) => {
                       const { x, y, index } = props;
-                      const horasFormatadas = data.historico_consumo[index]?.requerimentos_horas || '00:00';
+                      const horasFormatadas = dadosGrafico[index]?.requerimentos_horas || '00:00';
                       
                       let displayValue: string;
                       if (isTicket) {
                         // Para tickets, mostrar valor numérico inteiro
-                        const val = data.historico_consumo[index]?.requerimentos_valor_numerico || 0;
+                        const val = dadosGrafico[index]?.requerimentos_valor_numerico || 0;
                         if (val === 0) return null;
                         displayValue = String(val);
                       } else {
@@ -1107,7 +1368,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                       }
                       
                       // Ajustar posição para primeiro e último ponto (igual à linha azul)
-                      const totalPontos = data.historico_consumo.length;
+                      const totalPontos = dadosGrafico.length;
                       let textAnchor: 'start' | 'middle' | 'end' = 'middle';
                       let xOffset = 0;
                       let yOffset = 15;
@@ -1163,10 +1424,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {data.requerimentos_descontados && data.requerimentos_descontados.length > 0 ? (
+            {requerimentosDescontados && requerimentosDescontados.length > 0 ? (
               <>
                 <div className="space-y-2">
-                  {data.requerimentos_descontados.slice(0, 6).map((req) => (
+                  {requerimentosDescontados.slice(0, 6).map((req) => (
                     <div 
                       key={req.id} 
                       className="p-2 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
@@ -1196,10 +1457,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   ))}
                 </div>
                 
-                {data.requerimentos_descontados.length > 6 && (
+                {requerimentosDescontados.length > 6 && (
                   <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-center">
                     <p className="text-xs text-blue-700">
-                      {t('books.bookContent.additionalRequirements', { count: data.requerimentos_descontados.length - 6 })}
+                      {t('books.bookContent.additionalRequirements', { count: requerimentosDescontados.length - 6 })}
                     </p>
                   </div>
                 )}
@@ -1211,12 +1472,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               </div>
             )}
             
-            {data.requerimentos_descontados && data.requerimentos_descontados.length > 0 && (
+            {requerimentosDescontados && requerimentosDescontados.length > 0 && (
               <div className="pt-2 border-t mt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-blue-600">{t('books.bookContent.totalRequirements')}</span>
                   <span className="text-lg font-bold text-blue-600">
-                    {data.requerimentos_descontados.length}
+                    {requerimentosDescontados.length}
                   </span>
                 </div>
               </div>

@@ -66,33 +66,48 @@ class BooksDataCollectorService {
           dataReferencia
         });
 
-        // @ts-ignore - Função get_baseline_vigente existe no banco mas tipos não foram regenerados
-        const { data: baselineVigente, error: baselineError } = await (supabase as any)
-          .rpc('get_baseline_vigente', {
-            p_empresa_id: empresaId,
-            p_data: dataReferencia
-          });
+        // Para tipo tickets ou ambos: usar baseline de TICKETS (contagem)
+        // Para tipo horas: usar baseline de HORAS (tempo)
+        if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+          // Buscar baseline de tickets
+          // @ts-ignore
+          const { data: baselineVigente, error: baselineError } = await (supabase as any)
+            .rpc('get_baseline_vigente', {
+              p_empresa_id: empresaId,
+              p_data: dataReferencia
+            });
 
-        if (!baselineError && baselineVigente && baselineVigente.length > 0) {
-          const baseline = baselineVigente[0];
-          
-          console.log('✅ [booksDataCollector] Baseline vigente encontrado:', {
-            baseline_horas: baseline.baseline_horas,
-            data_inicio: baseline.data_inicio,
-            data_fim: baseline.data_fim,
-            is_vigente: baseline.is_vigente
-          });
-
-          if (baseline.baseline_horas !== null && baseline.baseline_horas !== undefined) {
-            baselineHoras = Number(baseline.baseline_horas);
+          if (!baselineError && baselineVigente && baselineVigente.length > 0) {
+            const baseline = baselineVigente[0];
+            if (baseline.baseline_tickets !== null && baseline.baseline_tickets !== undefined) {
+              baselineHoras = Number(baseline.baseline_tickets);
+            }
           }
-        } else {
-          console.warn('⚠️ [booksDataCollector] Baseline vigente não encontrado via RPC, usando fallback da tabela empresas_clientes:', {
-            error: baselineError?.message
-          });
           
-          // Fallback: usar campo legado baseline_horas_mensal da tabela empresas_clientes
-          if (empresa.baseline_horas_mensal) {
+          // Fallback: usar campo legado baseline_tickets_mensal
+          if (baselineHoras === 0 && empresa.baseline_tickets_mensal) {
+            baselineHoras = Number(empresa.baseline_tickets_mensal) || 0;
+          }
+
+          console.log('📊 [booksDataCollector] Baseline TICKETS para cálculo:', { baselineTickets: baselineHoras });
+        } else {
+          // Buscar baseline de horas
+          // @ts-ignore
+          const { data: baselineVigente, error: baselineError } = await (supabase as any)
+            .rpc('get_baseline_vigente', {
+              p_empresa_id: empresaId,
+              p_data: dataReferencia
+            });
+
+          if (!baselineError && baselineVigente && baselineVigente.length > 0) {
+            const baseline = baselineVigente[0];
+            if (baseline.baseline_horas !== null && baseline.baseline_horas !== undefined) {
+              baselineHoras = Number(baseline.baseline_horas);
+            }
+          }
+          
+          // Fallback: usar campo legado baseline_horas_mensal
+          if (baselineHoras === 0 && empresa.baseline_horas_mensal) {
             if (typeof empresa.baseline_horas_mensal === 'string') {
               const parts = empresa.baseline_horas_mensal.split(':');
               if (parts.length >= 2) {
@@ -104,12 +119,16 @@ class BooksDataCollectorService {
               baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
             }
           }
+
+          console.log('📊 [booksDataCollector] Baseline HORAS para cálculo:', { baselineHoras });
         }
       } catch (error) {
         console.error('❌ [booksDataCollector] Erro ao buscar baseline vigente:', error);
         
-        // Fallback: usar campo legado baseline_horas_mensal da tabela empresas_clientes
-        if (empresa.baseline_horas_mensal) {
+        // Fallback baseado no tipo de contrato
+        if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+          baselineHoras = Number(empresa.baseline_tickets_mensal) || 0;
+        } else if (empresa.baseline_horas_mensal) {
           if (typeof empresa.baseline_horas_mensal === 'string') {
             const parts = empresa.baseline_horas_mensal.split(':');
             if (parts.length >= 2) {
@@ -122,8 +141,6 @@ class BooksDataCollectorService {
           }
         }
       }
-      
-      console.log('📊 [booksDataCollector] Baseline final para cálculo:', { baselineHoras });
 
       console.log('✅ Empresa encontrada:', {
         nome: empresa.nome_completo,
@@ -1422,8 +1439,9 @@ class BooksDataCollectorService {
     const proximoMesInicio = new Date(ano, mes, 1);
 
     // Buscar dados baseado no tipo de contrato
-    if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
-      // Buscar de apontamentos_aranda (horas)
+    if (tipoContrato === 'horas') {
+      // Buscar de apontamentos_aranda (horas) - APENAS para tipo_contrato = 'horas'
+      // Para tipo 'ambos', exibimos apenas a visão de tickets no Book
       // IMPORTANTE: Usa nome_completo da tabela empresas_clientes para buscar em org_us_final
       // FILTROS CORRETOS: org_us_final, data_atividade, ativi_interna, tipo_chamado, item_configuracao, cod_resolucao
       console.log('🔍 Buscando apontamentos_aranda com nome_completo:', empresaNomeCompleto);
@@ -1660,7 +1678,27 @@ class BooksDataCollectorService {
         .ilike('organizacao', `%${nomeParaBuscaTickets}%`)
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFimMes.toISOString())
-        .eq('status', 'Closed');
+        .eq('status', 'Closed')
+        .neq('item_configuracao', '000000 - PROJETOS APL')
+        .in('cod_resolucao', [
+          'Alocação - T&M','Alocação T&M','Alocação - T&M (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
+          'AMS SAP','AMS SAP (Banco=S |SLA=S)','AMS SAP (Banco=S| SLA=S)',
+          'Aplicação de Nota / Licença - Contratados','Aplicação de Nota / Licença (Banco=S |SLA=N)',
+          'Consultoria','Consultoria (Banco=S |SLA=S)','Consultoria (Banco=S| SLA=S)',
+          'Consultoria - Banco de Dados','Consultoria - Banco de Dados (Banco=S |SLA=S)','Consultoria - Banco de Dados (Banco=S| SLA=S)',
+          'Consultoria - Nota Publicada','Consultoria - Nota Publicada (Banco=S |SLA=S)','Consultoria - Nota Publicada (Banco=S| SLA=S)',
+          'Consultoria - Solução Paliativa','Consultoria - Solução Paliativa (Banco=S |SLA=S)','Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+          'Dúvida','Dúvida (Banco=S |SLA=N)',
+          'Erro de classificação na abertura','Erro de classificação na abertura (Banco=S |SLA=N)','Erro de classificação na abertura (Banco=S| SLA=N)',
+          'Erro de programa especifico (SEM SLA)','Erro de programa especifico (Banco=S |SLA=N)','Erro de programa especifico (Banco=S| SLA=N)',
+          'Levantamento de Versão / Orçamento','Levantamento de Versão / Orçamento (Banco=S |SLA=N)','Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+          'Monitoramento DBA','Monitoramento DBA (Banco=S |SLA=N)',
+          'Nota Publicada','Nota Publicada (Banco=S |SLA=N)',
+          'Parametrização / Cadastro','Parametrização / Cadastro (Banco=S |SLA=N)',
+          'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=S)','Parametrização / Funcionalidade (Banco=S |SLA=N)',
+          'Validação de Arquivo','Validação de Arquivo (Banco=S |SLA=N)','Validação de Arquivo (Banco=S| SLA=N)'
+        ])
+        .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%');
 
       console.log('🎫 [gerarDadosConsumo] Tickets encontrados:', {
         quantidade: ticketsFechados?.length || 0,
@@ -1673,8 +1711,8 @@ class BooksDataCollectorService {
       });
 
       if (ticketsFechados && ticketsFechados.length > 0) {
-        if (tipoContrato === 'tickets') {
-          // Para tipo ticket: cada chamado conta como 1 ticket
+        if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+          // Para tipo ticket ou ambos: cada chamado conta como 1 ticket
           const ticketsIncidente = ticketsFechados.filter(t => t.cod_tipo === 'Incidente').length;
           const ticketsSolicitacao = ticketsFechados.length - ticketsIncidente;
 
@@ -1683,7 +1721,7 @@ class BooksDataCollectorService {
           horasSolicitacao += ticketsSolicitacao;
           totalRegistros += ticketsFechados.length;
         } else {
-          // Para tipo ambos: calcular horas normalmente
+          // Para tipo horas: calcular horas normalmente
           const horasTickets = ticketsFechados.reduce((sum, t) => {
             const dias = Number(t.tempo_gasto_dias) || 0;
             const horas = Number(t.tempo_gasto_horas) || 0;
@@ -1782,7 +1820,8 @@ class BooksDataCollectorService {
     const historicoRequerimentos = await this.calcularHistoricoRequerimentos(
       empresaId,
       mes,
-      ano
+      ano,
+      tipoContrato
     );
 
     // Mesclar histórico de consumo com histórico de requerimentos
@@ -1820,10 +1859,10 @@ class BooksDataCollectorService {
     const taxaHoraExcedente = await this.buscarTaxaHoraExcedente(empresaId, mes, ano);
 
     return {
-      horas_consumo: tipoContrato === 'tickets' ? String(Math.round(horasTotal)) : this.formatarHoras(horasTotal),
-      baseline_apl: tipoContrato === 'tickets' ? String(Math.round(baselineHoras)) : this.formatarHoras(baselineHoras),
-      incidente: horasIncidente > 0 ? (tipoContrato === 'tickets' ? String(Math.round(horasIncidente)) : this.formatarHoras(horasIncidente)) : '--',
-      solicitacao: tipoContrato === 'tickets' ? String(Math.round(horasSolicitacao)) : this.formatarHoras(horasSolicitacao),
+      horas_consumo: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasTotal)) : this.formatarHoras(horasTotal),
+      baseline_apl: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(baselineHoras)) : this.formatarHoras(baselineHoras),
+      incidente: horasIncidente > 0 ? ((tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasIncidente)) : this.formatarHoras(horasIncidente)) : '--',
+      solicitacao: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasSolicitacao)) : this.formatarHoras(horasSolicitacao),
       percentual_consumido: percentualConsumido,
       percentual_incidente: percentualIncidente,
       percentual_solicitacao: percentualSolicitacao,
@@ -2607,7 +2646,8 @@ class BooksDataCollectorService {
       let horasMes = 0;
 
       // Buscar de apontamentos_aranda se necessário
-      if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
+      // Para tipo 'ambos', exibimos apenas a visão de tickets no Book
+      if (tipoContrato === 'horas') {
         console.log(`🔍 Buscando histórico apontamentos_aranda (${MESES_NOMES[mes - 1]}/${ano}) com nome_completo:`, empresaNomeCompleto);
         
         const { data: apontamentosHoras } = await supabase
@@ -2709,18 +2749,38 @@ class BooksDataCollectorService {
         
         const { data: ticketsFechados } = await supabase
           .from('apontamentos_tickets_aranda')
-          .select('tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos')
+          .select('tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos, cod_tipo')
           .ilike('organizacao', `%${nomeParaBuscaTickets}%`)
           .gte('data_fechamento', dataInicio.toISOString())
           .lte('data_fechamento', dataFimMes.toISOString())
-          .eq('status', 'Closed');
+          .eq('status', 'Closed')
+          .neq('item_configuracao', '000000 - PROJETOS APL')
+          .in('cod_resolucao', [
+            'Alocação - T&M','Alocação T&M','Alocação - T&M (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
+            'AMS SAP','AMS SAP (Banco=S |SLA=S)','AMS SAP (Banco=S| SLA=S)',
+            'Aplicação de Nota / Licença - Contratados','Aplicação de Nota / Licença (Banco=S |SLA=N)',
+            'Consultoria','Consultoria (Banco=S |SLA=S)','Consultoria (Banco=S| SLA=S)',
+            'Consultoria - Banco de Dados','Consultoria - Banco de Dados (Banco=S |SLA=S)','Consultoria - Banco de Dados (Banco=S| SLA=S)',
+            'Consultoria - Nota Publicada','Consultoria - Nota Publicada (Banco=S |SLA=S)','Consultoria - Nota Publicada (Banco=S| SLA=S)',
+            'Consultoria - Solução Paliativa','Consultoria - Solução Paliativa (Banco=S |SLA=S)','Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+            'Dúvida','Dúvida (Banco=S |SLA=N)',
+            'Erro de classificação na abertura','Erro de classificação na abertura (Banco=S |SLA=N)','Erro de classificação na abertura (Banco=S| SLA=N)',
+            'Erro de programa especifico (SEM SLA)','Erro de programa especifico (Banco=S |SLA=N)','Erro de programa especifico (Banco=S| SLA=N)',
+            'Levantamento de Versão / Orçamento','Levantamento de Versão / Orçamento (Banco=S |SLA=N)','Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+            'Monitoramento DBA','Monitoramento DBA (Banco=S |SLA=N)',
+            'Nota Publicada','Nota Publicada (Banco=S |SLA=N)',
+            'Parametrização / Cadastro','Parametrização / Cadastro (Banco=S |SLA=N)',
+            'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=S)','Parametrização / Funcionalidade (Banco=S |SLA=N)',
+            'Validação de Arquivo','Validação de Arquivo (Banco=S |SLA=N)','Validação de Arquivo (Banco=S| SLA=N)'
+          ])
+          .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%');
 
         if (ticketsFechados) {
-          if (tipoContrato === 'tickets') {
-            // Para tipo ticket: cada chamado conta como 1 ticket
+          if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+            // Para tipo ticket ou ambos: cada chamado conta como 1 ticket
             horasMes += ticketsFechados.length;
           } else {
-            // Para tipo ambos: somar horas normalmente
+            // Para tipo horas: somar horas normalmente
             const horasTickets = ticketsFechados.reduce((sum, t) => {
               const dias = Number(t.tempo_gasto_dias) || 0;
               const horas = Number(t.tempo_gasto_horas) || 0;
@@ -2736,8 +2796,8 @@ class BooksDataCollectorService {
 
       resultado.push({
         mes: MESES_NOMES[mes - 1],
-        horas: tipoContrato === 'tickets' ? String(Math.round(horasMes)) : this.formatarHoras(horasMes),
-        valor_numerico: tipoContrato === 'tickets' ? Math.round(horasMes) : Math.round(horasMes * 100) / 100
+        horas: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasMes)) : this.formatarHoras(horasMes),
+        valor_numerico: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? Math.round(horasMes) : Math.round(horasMes * 100) / 100
       });
     }
 
@@ -2760,7 +2820,8 @@ class BooksDataCollectorService {
   private async calcularHistoricoRequerimentos(
     empresaId: string,
     mesAtual: number,
-    anoAtual: number
+    anoAtual: number,
+    tipoContrato: 'horas' | 'tickets' | 'ambos' | null = null
   ) {
     const MESES_NOMES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 
                          'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
@@ -2785,35 +2846,46 @@ class BooksDataCollectorService {
       // Buscar diretamente por cliente_id - APENAS BANCO DE HORAS
       const { data: requerimentos } = await supabase
         .from('requerimentos')
-        .select('horas_funcional, horas_tecnico')
+        .select('horas_funcional, horas_tecnico, quantidade_tickets')
         .eq('cliente_id', empresaId)
         .eq('mes_cobranca', mesCobranca)
         .eq('tipo_cobranca', 'Banco de Horas')
         .in('status', ['enviado_faturamento', 'faturado', 'concluido']);
 
-      let horasMes = 0;
+      let valorMes = 0;
 
       if (requerimentos && requerimentos.length > 0) {
-        horasMes = requerimentos.reduce((sum, req) => {
-          const horasFuncional = Number(req.horas_funcional) || 0;
-          const horasTecnico = Number(req.horas_tecnico) || 0;
-          return sum + horasFuncional + horasTecnico;
-        }, 0);
-        
-        console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${horasMes.toFixed(2)}h`);
+        if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+          // Para tipo ticket ou ambos: contar quantidade de tickets dos requerimentos
+          valorMes = requerimentos.reduce((sum, req) => {
+            return sum + (Number(req.quantidade_tickets) || 0);
+          }, 0);
+          
+          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes} tickets`);
+        } else {
+          // Para tipo horas: somar horas normalmente
+          valorMes = requerimentos.reduce((sum, req) => {
+            const horasFuncional = Number(req.horas_funcional) || 0;
+            const horasTecnico = Number(req.horas_tecnico) || 0;
+            return sum + horasFuncional + horasTecnico;
+          }, 0);
+          
+          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes.toFixed(2)}h`);
+        }
       } else {
         console.log(`⚠️ ${MESES_NOMES[mes - 1]}/${ano}: Nenhum requerimento encontrado (buscou ${mesCobranca})`);
       }
 
       resultado.push({
         mes: MESES_NOMES[mes - 1],
-        requerimentos_horas: this.formatarHoras(horasMes),
-        requerimentos_valor_numerico: Math.round(horasMes * 100) / 100
+        requerimentos_horas: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(valorMes)) : this.formatarHoras(valorMes),
+        requerimentos_valor_numerico: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? Math.round(valorMes) : Math.round(valorMes * 100) / 100
       });
     }
 
     console.log('📈 Histórico de requerimentos calculado:', {
       empresaId,
+      tipoContrato,
       meses: resultado.length,
       dados: resultado
     });
