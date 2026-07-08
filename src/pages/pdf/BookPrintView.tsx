@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -31,11 +31,22 @@ import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganograma
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   
   // Remover prefixo "book-" se existir
   const id = rawId?.startsWith('book-') ? rawId.substring(5) : rawId;
+
+  // CRÍTICO: Configurar idioma baseado no query parameter antes de renderizar
+  // Isso garante que quando o Puppeteer abre a página, o idioma correto é usado
+  useEffect(() => {
+    const lang = searchParams.get('lang');
+    if (lang && lang !== i18n.language) {
+      console.log('🌐 BookPrintView - Configurando idioma da URL:', lang);
+      i18n.changeLanguage(lang);
+    }
+  }, [searchParams, i18n]);
   
   // Debug: Log do ID recebido
   useEffect(() => {
@@ -45,7 +56,8 @@ export default function BookPrintView() {
       removeuPrefixo: rawId !== id
     });
     console.log('🔍 URL completa:', window.location.href);
-  }, [rawId, id]);
+    console.log('🌐 Idioma atual:', i18n.language);
+  }, [rawId, id, i18n.language]);
   
   const { bookData, isLoading, error, refetch } = useBookData(id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(bookData?.empresa_id || null);

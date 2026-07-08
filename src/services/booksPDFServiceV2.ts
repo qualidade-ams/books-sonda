@@ -17,10 +17,14 @@ class BooksPDFServiceV2 {
    */
   async gerarPDF(bookId: string): Promise<Blob> {
     try {
-      // URL da rota dedicada de impressão
-      const printUrl = `${window.location.origin}/pdf/book/${bookId}`;
+      // Detectar idioma atual do usuário para passar ao Puppeteer
+      const currentLang = localStorage.getItem('books-snd-language') || 'pt-BR';
+      
+      // URL da rota dedicada de impressão com idioma como query parameter
+      const printUrl = `${window.location.origin}/pdf/book/${bookId}?lang=${encodeURIComponent(currentLang)}`;
       
       console.log('📄 Gerando PDF da rota:', printUrl);
+      console.log('🌐 Idioma enviado para PDF:', currentLang);
 
       // Gerar PDF via Puppeteer usando a URL dedicada
       const blob = await puppeteerPDFService.gerarPDFDeURL({
@@ -79,7 +83,8 @@ class BooksPDFServiceV2 {
    * Abre rota de impressão em nova aba (para debug)
    */
   abrirRotaImpressao(bookId: string): void {
-    const printUrl = `${window.location.origin}/pdf/book/${bookId}`;
+    const currentLang = localStorage.getItem('books-snd-language') || 'pt-BR';
+    const printUrl = `${window.location.origin}/pdf/book/${bookId}?lang=${encodeURIComponent(currentLang)}`;
     window.open(printUrl, '_blank');
   }
 }

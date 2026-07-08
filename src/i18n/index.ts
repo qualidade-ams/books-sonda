@@ -29,10 +29,13 @@ i18n
       escapeValue: false, // React já faz sanitização
     },
     detection: {
-      // Ordem de detecção: localStorage > navegador
-      order: ['localStorage', 'navigator'],
+      // Ordem de detecção: querystring > localStorage > navegador
+      // querystring é necessário para o Puppeteer receber o idioma correto na URL
+      order: ['querystring', 'localStorage', 'navigator'],
       // Chave usada no localStorage
       lookupLocalStorage: 'books-snd-language',
+      // Chave usada no querystring (?lang=pt-BR)
+      lookupQuerystring: 'lang',
       // Cachear a detecção
       caches: ['localStorage'],
     },
