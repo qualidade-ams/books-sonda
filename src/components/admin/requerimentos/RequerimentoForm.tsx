@@ -1502,6 +1502,7 @@ export function RequerimentoForm({
                           placeholder="Selecione mês e ano (opcional)"
                           format="MM/YYYY"
                           allowFuture={true}
+                          confirmDifferentPeriod={true}
                         />
                       </FormControl>
                       <FormMessage />
