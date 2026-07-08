@@ -618,6 +618,7 @@ export function TipoCobrancaBloco({
               placeholder={t('reqForm.billingMonthYearPlaceholder')}
               format="MM/YYYY"
               allowFuture={true}
+              confirmDifferentPeriod={true}
             />
           </div>
 
