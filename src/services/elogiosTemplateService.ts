@@ -154,12 +154,16 @@ export class ElogiosTemplateService {
         return resultado;
       }
 
-      // Contar elogios por prestador
+      // Contar elogios por prestador (incluindo elogios compartilhados com múltiplos nomes)
       const contagemPorPrestador: Record<string, number> = {};
       elogiosMes.forEach((elogio: any) => {
-        const prestador = elogio.pesquisa?.prestador || 'Sem nome';
-        if (prestador !== 'Sem nome') {
-          contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+        const prestadorRaw = elogio.pesquisa?.prestador || 'Sem nome';
+        if (prestadorRaw !== 'Sem nome') {
+          // Separar múltiplos colaboradores (elogios compartilhados vêm com nomes separados por vírgula)
+          const colaboradores = prestadorRaw.split(',').map((nome: string) => nome.trim()).filter((nome: string) => nome.length > 0);
+          for (const colaborador of colaboradores) {
+            contagemPorPrestador[colaborador] = (contagemPorPrestador[colaborador] || 0) + 1;
+          }
         }
       });
 
@@ -602,19 +606,66 @@ export class ElogiosTemplateService {
     }
 
     /**
-     * Gera HTML dos elogios organizados em blocos de 8 cards (2 linhas de 4)
-     * Cards com tamanho fixo, fontes Roboto específicas, texto justificado e centralizado.
-     * Elogios ordenados alfabeticamente pelo nome do colaborador.
-     * Blocos de 1500x1080.
+     * Consolida elogios duplicados: mesmo colaborador, mesmo cliente e mesma descrição.
+     * Unifica os chamados em uma lista separada por vírgula e retorna um único registro por grupo.
      */
+    private consolidarElogiosDuplicados(elogios: ElogioCompleto[]): ElogioCompleto[] {
+      const grupoMap = new Map<string, { elogio: ElogioCompleto; chamados: string[] }>();
+
+      for (const elogio of elogios) {
+        const prestador = (elogio.pesquisa?.prestador || '').trim().toLowerCase();
+        const cliente = (elogio.pesquisa?.cliente || '').trim().toLowerCase();
+        const descricao = (elogio.pesquisa?.comentario_pesquisa || elogio.pesquisa?.resposta || '').trim().toLowerCase();
+
+        // Chave de agrupamento: prestador + cliente + descrição
+        const chave = `${prestador}||${cliente}||${descricao}`;
+
+        if (grupoMap.has(chave)) {
+          const grupo = grupoMap.get(chave)!;
+          const chamado = elogio.pesquisa?.nro_caso?.trim();
+          if (chamado && !grupo.chamados.includes(chamado)) {
+            grupo.chamados.push(chamado);
+          }
+        } else {
+          const chamado = elogio.pesquisa?.nro_caso?.trim();
+          grupoMap.set(chave, {
+            elogio: elogio,
+            chamados: chamado ? [chamado] : []
+          });
+        }
+      }
+
+      // Retornar elogios consolidados com chamados agrupados
+      const resultado: ElogioCompleto[] = [];
+      for (const { elogio, chamados } of grupoMap.values()) {
+        // Adicionar campo auxiliar com chamados consolidados
+        const elogioConsolidado = { ...elogio } as any;
+        elogioConsolidado._chamadosConsolidados = chamados.join(', ');
+        resultado.push(elogioConsolidado);
+      }
+
+      const totalOriginal = elogios.length;
+      const totalConsolidado = resultado.length;
+      if (totalOriginal !== totalConsolidado) {
+        console.log(`📧 Elogios consolidados: ${totalOriginal} → ${totalConsolidado} (${totalOriginal - totalConsolidado} duplicados unificados)`);
+      }
+
+      return resultado;
+    }
+
     /**
-       * Gera HTML dos elogios organizados em blocos de 8 cards (2 linhas de até 4)
-       * Cards com tamanho fixo, nomes alinhados no topo, grid centralizado quando < 8 cards.
-       * Elogios ordenados alfabeticamente. Blocos de 1500x1080.
-       */
+     * Gera HTML dos elogios organizados em blocos de 8 cards (2 linhas de até 4)
+     * Cards com tamanho fixo, nomes alinhados no topo, grid centralizado quando < 8 cards.
+     * Elogios ordenados alfabeticamente. Blocos de 1500x1080.
+     */
       private async gerarHtmlElogios(elogios: ElogioCompleto[], mesNomeAno?: string): Promise<string> {
+        // ===== UNIFICAÇÃO DE ELOGIOS DUPLICADOS =====
+        // Quando houver mais de um elogio para o mesmo colaborador, mesmo cliente
+        // e mesma descrição (comentário), consolidar em um único card com todos os chamados.
+        const elogiosConsolidados = this.consolidarElogiosDuplicados(elogios);
+
         // Ordenar elogios alfabeticamente pelo nome do colaborador
-        const elogiosOrdenados = [...elogios].sort((a, b) => {
+        const elogiosOrdenados = [...elogiosConsolidados].sort((a, b) => {
           const nomeA = (a.pesquisa?.prestador || 'Z').toLowerCase();
           const nomeB = (b.pesquisa?.prestador || 'Z').toLowerCase();
           return nomeA.localeCompare(nomeB, 'pt-BR');
@@ -666,7 +717,7 @@ export class ElogiosTemplateService {
     <![endif]-->
     <div style="width:1500px;max-width:1500px;margin:0;overflow:hidden;">
     <table width="1500" cellpadding="0" cellspacing="0" border="0"
-      style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0;background-image:url('${bgImage}');background-repeat:no-repeat;background-position:center center;background-size:cover;">
+      style="border-collapse:collapse;width:1500px;max-width:1500px;min-height:1080px;margin:0;background-image:url('${bgImage}');background-repeat:no-repeat;background-position:center center;background-size:cover;">
       <!-- HEADER DO BLOCO -->
       <tr>
         <td align="top" style="padding:0px 20px 10px 20px;vertical-align:top;">
@@ -684,13 +735,10 @@ export class ElogiosTemplateService {
             // Calcular largura total da linha para centralizar
             const linhaWidth = count * (cardWidth + cardGap);
 
-            html += `
-          <table width="${linhaWidth}" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 auto 10px auto;">
-            <tr>`;
-
+            // Pré-processar dados de cada elogio da linha
+            const dadosLinha: Array<{nome: string; mensagem: string; cliente: string; empresa: string; chamado: string}> = [];
             for (const elogio of linha) {
               const nomeRaw = (elogio.pesquisa?.prestador || 'Colaborador').toUpperCase();
-              // Separar nomes por quebra de linha quando há vírgula
               const nome = nomeRaw.includes(',') ? nomeRaw.split(',').map(n => n.trim()).join('<br>') : nomeRaw;
               const mensagemRaw = elogio.pesquisa?.comentario_pesquisa || elogio.pesquisa?.resposta || '';
               const mensagem = this.capitalizarPrimeiraLetra(mensagemRaw);
@@ -699,25 +747,40 @@ export class ElogiosTemplateService {
               const nomeEmpresaOriginal = elogio.pesquisa?.empresa || 'N/A';
               const empresaAbreviado = await this.obterNomeAbreviadoEmpresa(nomeEmpresaOriginal);
               const empresa = empresaAbreviado.toUpperCase();
-              const chamado = elogio.pesquisa?.nro_caso || '';
+              const chamado = (elogio as any)._chamadosConsolidados || elogio.pesquisa?.nro_caso || '';
+              dadosLinha.push({ nome, mensagem, cliente, empresa, chamado });
+            }
+
+            html += `
+          <table width="${linhaWidth}" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;border-spacing:8px 0;margin:0 auto 10px auto;">
+            <!-- Linha do conteúdo (texto do elogio) - cresce conforme necessário -->
+            <tr>`;
+
+            for (const dados of dadosLinha) {
+              html += `
+              <td width="${cardWidth}" bgcolor="#efefef" valign="top" style="padding:18px 18px 10px 18px;border-radius:20px 20px 0 0;background-color:#efefef;word-break:break-word;">
+                <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;word-break:break-word;">${dados.nome}</div>
+                <div style="color:#000;font-weight:400;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;word-break:break-word;">${dados.mensagem}</div>
+              </td>`;
+            }
+
+            html += `
+            </tr>
+            <!-- Linha do rodapé (Cliente/Empresa/Chamado) - sempre no fundo -->
+            <tr>`;
+
+            for (const dados of dadosLinha) {
+              // Linha do chamado: só exibir se houver chamado válido (não vazio e diferente de "0")
+              const chamadoValido = dados.chamado && dados.chamado !== '0';
+              const chamadoHtml = chamadoValido
+                ? `<div style="color:#1f5df5;font-weight:700;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;"><span style="font-weight:700;">${dados.chamado.includes(',') ? 'Chamados:' : 'Chamado:'}</span> ${dados.chamado}</div>`
+                : '';
 
               html += `
-              <td width="${cardWidth}" valign="top" style="padding:8px;">
-                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;border-radius:20px;width:${cardWidth}px;max-width:${cardWidth}px;height:270px;overflow:hidden;">
-                  <tr>
-                    <td valign="top" style="padding:18px 18px 0 18px;height:190px;overflow:hidden;word-break:break-word;">
-                      <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;word-break:break-word;overflow:hidden;">${nome}</div>
-                      <div style="color:#000;font-weight:400;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;word-break:break-word;overflow:hidden;">${mensagem}</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td valign="bottom" style="padding:0 18px 14px 18px;">
-                      <div style="color:#000;font-weight:900;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Cliente:</span> ${cliente}</div>
-                      <div style="color:#000;font-weight:900;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Empresa:</span> ${empresa}</div>
-                      <div style="color:#1f5df5;font-weight:700;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;">${chamado ? `<span style="font-weight:700;">Chamado:</span> ${chamado}` : '&nbsp;'}</div>
-                    </td>
-                  </tr>
-                </table>
+              <td width="${cardWidth}" bgcolor="#efefef" valign="bottom" style="padding:0 18px 14px 18px;border-radius:0 0 20px 20px;background-color:#efefef;word-break:break-word;">
+                <div style="color:#000;font-weight:900;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Cliente:</span> ${dados.cliente}</div>
+                <div style="color:#000;font-weight:900;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Empresa:</span> ${dados.empresa}</div>
+                ${chamadoHtml}
               </td>`;
             }
 

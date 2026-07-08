@@ -672,7 +672,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             name="especialistas_ids"
             render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>{t('lancarPesquisas.form.consultants')}</FormLabel>
+                <FormLabel>{t('lancarPesquisas.form.consultants')}{isPesquisaManual && ' *'}</FormLabel>
+                <FormMessage />
                 <FormControl>
                   <MultiSelectEspecialistas
                     value={field.value || []}
