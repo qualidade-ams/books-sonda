@@ -758,7 +758,7 @@ export class ElogiosTemplateService {
 
             for (const dados of dadosLinha) {
               html += `
-              <td width="${cardWidth}" bgcolor="#efefef" valign="top" style="padding:18px 18px 10px 18px;border-radius:20px 20px 0 0;background-color:#efefef;word-break:break-word;">
+              <td width="${cardWidth}" bgcolor="#efefef" valign="top" style="padding:18px 18px 10px 18px;border-radius:20px 20px 0 0;background-color:#efefef;word-break:break-word;min-height:230px;height:230px;">
                 <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;word-break:break-word;">${dados.nome}</div>
                 <div style="color:#000;font-weight:400;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;word-break:break-word;">${dados.mensagem}</div>
               </td>`;
