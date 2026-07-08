@@ -111,7 +111,7 @@ export const PesquisaFormSchemaBase = z.object({
   cliente_id: z.string().uuid().optional().nullable()
 });
 
-// Schema para pesquisas manuais (comentário e resposta obrigatórios)
+// Schema para pesquisas manuais (comentário, resposta e consultores obrigatórios)
 export const PesquisaFormSchemaManual = PesquisaFormSchemaBase.extend({
   comentario_pesquisa: z.string()
     .min(1, 'Comentário é obrigatório para pesquisas manuais')
@@ -119,7 +119,19 @@ export const PesquisaFormSchemaManual = PesquisaFormSchemaBase.extend({
   
   resposta: z.string()
     .min(1, 'Resposta é obrigatória')
-    .max(5000, 'Resposta deve ter no máximo 5000 caracteres')
+    .max(5000, 'Resposta deve ter no máximo 5000 caracteres'),
+  
+  especialistas_ids: z.array(
+    z.string().refine(
+      (val) => {
+        if (val.startsWith('manual_')) return true;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(val);
+      },
+      { message: 'ID de especialista inválido' }
+    )
+  )
+    .min(1, 'Selecione pelo menos um consultor')
 });
 
 // Schema principal - usa o base por padrão (para compatibilidade)
