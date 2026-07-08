@@ -9,7 +9,7 @@ import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Especialista } from '@/types/especialistas';
 
-// Função para buscar especialistas ativos (substituindo a do admin-client)
+// Função para buscar especialistas ativos e manuais (substituindo a do admin-client)
 async function buscarEspecialistasAtivos(): Promise<Especialista[]> {
   const { data, error } = await supabase
     .from('especialistas')
@@ -22,7 +22,7 @@ async function buscarEspecialistasAtivos(): Promise<Especialista[]> {
       departamento,
       cargo
     `)
-    .eq('status', 'ativo')
+    .in('status', ['ativo', 'manual'])
     .order('nome', { ascending: true })
     .limit(1000);
 
