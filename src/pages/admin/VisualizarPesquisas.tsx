@@ -55,6 +55,7 @@ import { useCategorias, useGruposPorCategoria, useGrupoPorCategoria } from '@/ho
 import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
 import { useEspecialistasIdsPesquisa, useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -124,6 +125,9 @@ function VisualizarPesquisas() {
   
   // Estado para busca de categoria
   const [searchCategoria, setSearchCategoria] = useState('');
+  
+  // Estado para consultores manuais (adicionados via MultiSelect)
+  const [consultoresManuaisEdicao, setConsultoresManuaisEdicao] = useState<Array<{value: string; label: string}>>([]);
 
   // Hooks para dados de seleção
   const { empresas } = useEmpresas();
@@ -308,6 +312,63 @@ function VisualizarPesquisas() {
     if (!pesquisaEditando) return;
     
     try {
+      // Separar IDs do banco de dados e IDs manuais
+      const todosIds = dadosEdicao.especialistas_ids || [];
+      const idsDb = todosIds.filter(id => !id.startsWith('manual_'));
+      const idsManuais = todosIds.filter(id => id.startsWith('manual_'));
+
+      // Criar consultores manuais na tabela especialistas e obter UUIDs reais
+      const idsNovosCriados: string[] = [];
+      if (idsManuais.length > 0) {
+        for (const idManual of idsManuais) {
+          const consultorManual = consultoresManuaisEdicao.find(c => c.value === idManual);
+          if (consultorManual) {
+            // Verificar se já existe um especialista com esse nome
+            const { data: existente } = await supabase
+              .from('especialistas')
+              .select('id')
+              .ilike('nome', consultorManual.label.trim())
+              .limit(1);
+
+            if (existente && existente.length > 0) {
+              // Já existe, usar o ID existente
+              idsNovosCriados.push(existente[0].id);
+              console.log(`✅ Especialista "${consultorManual.label}" já existe, usando ID: ${existente[0].id}`);
+            } else {
+              // Criar novo especialista no banco com status 'manual'
+              // (não aparece na interface de gestão de especialistas, mas é encontrado ao reabrir edição)
+              const { data: novoEspecialista, error: errorCriar } = await supabase
+                .from('especialistas')
+                .insert({ nome: consultorManual.label.trim(), status: 'manual' })
+                .select('id')
+                .single();
+
+              if (errorCriar || !novoEspecialista) {
+                console.error(`❌ Erro ao criar especialista "${consultorManual.label}":`, errorCriar);
+              } else {
+                idsNovosCriados.push(novoEspecialista.id);
+                console.log(`✅ Especialista "${consultorManual.label}" criado com ID: ${novoEspecialista.id}`);
+              }
+            }
+          }
+        }
+      }
+
+      // Todos os IDs reais (existentes + recém-criados)
+      const todosIdsReais = [...idsDb, ...idsNovosCriados];
+
+      // Construir campo prestador com nomes de todos os especialistas
+      let prestadorAtualizado: string | null = null;
+      if (todosIdsReais.length > 0) {
+        const { data: especialistas } = await supabase
+          .from('especialistas')
+          .select('nome')
+          .in('id', todosIdsReais);
+        if (especialistas && especialistas.length > 0) {
+          prestadorAtualizado = especialistas.map(e => e.nome).filter(Boolean).join(', ');
+        }
+      }
+
       await atualizarPesquisaMutation.mutateAsync({
         id: pesquisaEditando.id,
         dados: {
@@ -323,7 +384,10 @@ function VisualizarPesquisas() {
           resposta: dadosEdicao.resposta || null,
           data_resposta: dadosEdicao.data_resposta ? new Date(dadosEdicao.data_resposta) : null,
           observacao: dadosEdicao.observacao || null,
-          especialistas_ids: dadosEdicao.especialistas_ids || []
+          // Enviar todos os UUIDs reais (existentes + recém-criados)
+          especialistas_ids: todosIdsReais,
+          // Atualizar campo prestador com todos os nomes
+          ...(prestadorAtualizado ? { prestador: prestadorAtualizado } : {})
         }
       });
       
@@ -331,6 +395,7 @@ function VisualizarPesquisas() {
       
       setModalEditarAberto(false);
       setPesquisaEditando(null);
+      setConsultoresManuaisEdicao([]);
       
       // Refetch para atualizar a lista
       refetch();
@@ -1022,6 +1087,7 @@ function VisualizarPesquisas() {
                     <MultiSelectEspecialistas
                       value={dadosEdicao.especialistas_ids}
                       onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, especialistas_ids: value }))}
+                      onConsultoresManuaisChange={(consultores) => setConsultoresManuaisEdicao(consultores)}
                       placeholder="Selecione os consultores..."
                       className="focus:ring-sonda-blue focus:border-sonda-blue"
                     />
