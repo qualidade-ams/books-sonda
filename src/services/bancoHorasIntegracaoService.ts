@@ -156,14 +156,71 @@ export class BancoHorasIntegracaoService {
         observacao: 'Usando apenas um nome para otimizar performance'
       });
 
-      // Query única otimizada
+      // Lista de códigos de resolução válidos para consumo de banco de tickets
+      const codigosResolucaoValidos = [
+        'Alocação - T&M',
+        'Alocação T&M',
+        'Alocação - T&M (Banco=S |SLA=N)',
+        'Alocação - T&M (Banco=S| SLA=N)',
+        'AMS SAP',
+        'AMS SAP (Banco=S |SLA=S)',
+        'AMS SAP (Banco=S| SLA=S)',
+        'Aplicação de Nota / Licença - Contratados',
+        'Aplicação de Nota / Licença (Banco=S |SLA=N)',
+        'Consultoria',
+        'Consultoria (Banco=S |SLA=S)',
+        'Consultoria (Banco=S| SLA=S)',
+        'Consultoria - Banco de Dados',
+        'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+        'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria - Nota Publicada',
+        'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+        'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria - Solução Paliativa',
+        'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+        'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+        'Dúvida',
+        'Dúvida (Banco=S |SLA=N)',
+        'Erro de classificação na abertura',
+        'Erro de classificação na abertura (Banco=S |SLA=N)',
+        'Erro de classificação na abertura (Banco=S| SLA=N)',
+        'Erro de programa especifico (SEM SLA)',
+        'Erro de programa especifico (Banco=S |SLA=N)',
+        'Erro de programa especifico (Banco=S| SLA=N)',
+        'Levantamento de Versão / Orçamento',
+        'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+        'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+        'Monitoramento DBA',
+        'Monitoramento DBA (Banco=S |SLA=N)',
+        'Nota Publicada',
+        'Nota Publicada (Banco=S |SLA=N)',
+        'Parametrização / Cadastro',
+        'Parametrização / Cadastro (Banco=S |SLA=N)',
+        'Parametrização / Funcionalidade',
+        'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+        'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+        'Validação de Arquivo',
+        'Validação de Arquivo (Banco=S |SLA=N)',
+        'Validação de Arquivo (Banco=S| SLA=N)'
+      ];
+
+      // Query com filtros completos para consumo de tickets:
+      // 1. organizacao = nome da empresa (LIKE)
+      // 2. status = 'Closed'
+      // 3. data_fechamento dentro do período
+      // 4. nome_grupo contém padrões AMS válidos
+      // 5. item_configuracao != '000000 - PROJETOS APL' (excluir projetos)
+      // 6. cod_resolucao IN (lista de códigos válidos para banco)
       const { data: tickets, error: ticketsError } = await supabase
         .from('apontamentos_tickets_aranda' as any)
-        .select('nro_solicitacao, status, organizacao, data_fechamento')
+        .select('nro_solicitacao, status, organizacao, data_fechamento, nome_grupo, item_configuracao, cod_resolucao')
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
         .eq('status', 'Closed')
         .ilike('organizacao', `%${nomeParaBusca}%`)
+        .neq('item_configuracao', '000000 - PROJETOS APL')
+        .in('cod_resolucao', codigosResolucaoValidos)
+        .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%')
         .limit(5000) as any; // Limite de segurança para evitar timeout
 
       if (ticketsError) {
@@ -184,13 +241,18 @@ export class BancoHorasIntegracaoService {
           organizacao: nomeAbreviado || nomeCompleto,
           data_fechamento_inicio: dataInicio.toISOString(),
           data_fechamento_fim: dataFim.toISOString(),
-          status: 'Closed'
+          status: 'Closed',
+          nome_grupo: ['%AMS APL%', '%AMS - APL%', '%AMS - ATENDIMENTO%', '%AMS T&M%'],
+          item_configuracao_excluido: '000000 - PROJETOS APL',
+          cod_resolucao: `${codigosResolucaoValidos.length} códigos válidos`
         },
         tickets: tickets?.slice(0, 5).map((t: any) => ({
           nro_solicitacao: t.nro_solicitacao,
           organizacao: t.organizacao,
           status: t.status,
-          data_fechamento: t.data_fechamento
+          data_fechamento: t.data_fechamento,
+          nome_grupo: t.nome_grupo,
+          cod_resolucao: t.cod_resolucao
         })) // Mostrar apenas primeiros 5 para debug
       });
 
