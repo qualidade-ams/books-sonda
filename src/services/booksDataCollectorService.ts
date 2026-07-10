@@ -38,7 +38,7 @@ class BooksDataCollectorService {
       // Buscar informações da empresa
       const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, dia_inicio_apuracao, dia_fim_apuracao')
+        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, baseline_tickets_mensal, dia_inicio_apuracao, dia_fim_apuracao')
         .eq('id', empresaId)
         .single();
 
@@ -56,6 +56,13 @@ class BooksDataCollectorService {
       // Isso garante que o baseline correto da época seja usado, não o campo legado da tabela empresas_clientes
       let baselineHoras = 0;
       
+      // Determinar tipo de contrato antes de buscar baseline
+      const tipoContrato = (empresa.tipo_contrato === 'horas' || 
+                            empresa.tipo_contrato === 'tickets' || 
+                            empresa.tipo_contrato === 'ambos') 
+        ? empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos'
+        : null;
+
       try {
         const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
         
@@ -63,7 +70,8 @@ class BooksDataCollectorService {
           empresaId,
           mes,
           ano,
-          dataReferencia
+          dataReferencia,
+          tipoContrato
         });
 
         // Para tipo tickets ou ambos: usar baseline de TICKETS (contagem)
@@ -167,11 +175,7 @@ class BooksDataCollectorService {
       );
 
       // Buscar apontamentos baseado no tipo de contrato
-      const tipoContratoValido = (empresa.tipo_contrato === 'horas' || 
-                                   empresa.tipo_contrato === 'tickets' || 
-                                   empresa.tipo_contrato === 'ambos') 
-        ? empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos'
-        : null;
+      // (tipoContrato já declarado acima para buscar baseline)
 
       // Periodicidade customizada (ex: Samarco 15 a 14)
       const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
@@ -187,7 +191,7 @@ class BooksDataCollectorService {
         empresa.nome_abreviado,
         mes,
         ano,
-        tipoContratoValido,
+        tipoContrato,
         diaInicioApuracao,
         diaFimApuracao
       );
@@ -209,7 +213,7 @@ class BooksDataCollectorService {
           apontamentosTickets,
           ticketsAbertos,
           ticketsFechados,
-          tipoContratoValido,
+          tipoContrato,
           empresa.nome_completo,
           mes,
           ano
@@ -230,7 +234,7 @@ class BooksDataCollectorService {
           empresa.nome_abreviado,
           mes,
           ano,
-          tipoContratoValido,
+          tipoContrato,
           baselineHoras
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano)
@@ -629,8 +633,20 @@ class BooksDataCollectorService {
 
       const totalIncidentes = (ticketsFechados || []).length;
 
-      // Contar violados a partir dos incidentes fechados (mesma base de dados)
-      const totalViolados = (ticketsFechados || []).filter(t => t.tds_cumprido === 'TDS Vencido').length;
+      // Contar violados APENAS com cod_resolucao elegível
+      const codResolucaoElegiveisMedia = [
+        'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
+        'Consultoria', 'Consultoria (Banco=S |SLA=S)', 'Consultoria (Banco=S| SLA=S)',
+        'Consultoria - Banco de Dados', 'Consultoria - Banco de Dados (Banco=S |SLA=S)', 'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria – Banco de Dados', 'Consultoria – Banco de Dados (Banco=S |SLA=S)', 'Consultoria – Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria - Nota Publicada', 'Consultoria - Nota Publicada (Banco=S |SLA=S)', 'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria – Nota Publicada', 'Consultoria – Nota Publicada (Banco=S |SLA=S)', 'Consultoria – Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria - Solução Paliativa', 'Consultoria - Solução Paliativa (Banco=S |SLA=S)', 'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+        'Consultoria – Solução Paliativa', 'Consultoria – Solução Paliativa (Banco=S |SLA=S)', 'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
+      ];
+      const totalViolados = (ticketsFechados || []).filter(t => 
+        t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveisMedia.includes(t.cod_resolucao)
+      ).length;
 
       // Calcular SLA do mês
       const slaMes = totalIncidentes > 0
@@ -1132,15 +1148,30 @@ class BooksDataCollectorService {
 
     // INCIDENTES ELEGÍVEIS: Incidentes com cod_resolucao específicos para elegibilidade
     const codResolucaoElegiveis = [
+      'AMS SAP',
+      'AMS SAP (Banco=S |SLA=S)',
+      'AMS SAP (Banco=S| SLA=S)',
       'Consultoria',
       'Consultoria (Banco=S |SLA=S)',
       'Consultoria (Banco=S| SLA=S)',
-      'Consultoria – Solução Paliativa',
-      'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
+      'Consultoria - Banco de Dados',
+      'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+      'Consultoria - Banco de Dados (Banco=S| SLA=S)',
       'Consultoria – Banco de Dados',
       'Consultoria – Banco de Dados (Banco=S |SLA=S)',
+      'Consultoria – Banco de Dados (Banco=S| SLA=S)',
+      'Consultoria - Nota Publicada',
+      'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+      'Consultoria - Nota Publicada (Banco=S| SLA=S)',
       'Consultoria – Nota Publicada',
       'Consultoria – Nota Publicada (Banco=S |SLA=S)',
+      'Consultoria – Nota Publicada (Banco=S| SLA=S)',
+      'Consultoria - Solução Paliativa',
+      'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+      'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+      'Consultoria – Solução Paliativa',
+      'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
+      'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
     ];
     
     const incidentesElegiveis = (ticketsFechados || []).filter(t => 
@@ -1209,7 +1240,8 @@ class BooksDataCollectorService {
     let mensagemVioladosNaoElegiveis = '';
 
     if (incidentes > 0) {
-      slaPercentual = Math.round(((incidentes - violados) / incidentes) * 100);
+      // SLA usa apenas violados com cod_resolucao elegível
+      slaPercentual = Math.round(((incidentes - violadosElegiveis) / incidentes) * 100);
       
       // Verificar se é elegível para avaliação (baseado em incidentes com cod_resolucao específicos)
       if (incidentesElegiveis < quantidadeMinimaIncidentes) {
@@ -1251,6 +1283,7 @@ class BooksDataCollectorService {
 
     // Histórico de SLA (últimos 6 meses: mês atual + 5 anteriores)
     const historicoSLA = await this.calcularSLAHistorico(
+      empresaId,
       empresaNomeCompleto,
       mes,
       ano,
@@ -1258,9 +1291,9 @@ class BooksDataCollectorService {
       quantidadeMinimaIncidentes
     );
 
-    // Detalhes dos chamados violados (top 10)
+    // Detalhes dos chamados violados (top 10) - APENAS com cod_resolucao elegível
     const chamadosViolados = incidentesFechadosArray
-      .filter(t => t.tds_cumprido === 'TDS Vencido')
+      .filter(t => t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao))
       .slice(0, 10)
       .map(t => ({
       id_chamado: t.nro_solicitacao,
@@ -1279,7 +1312,7 @@ class BooksDataCollectorService {
       status: status,
       fechados: fechados,
       incidentes: incidentes,
-      violados: violados,
+      violados: violadosElegiveis, // Apenas violados com cod_resolucao elegível
       sla_historico: historicoSLA,
       chamados_violados: chamadosViolados,
       sla_elegivel: slaElegivel,
@@ -1495,8 +1528,8 @@ class BooksDataCollectorService {
           'Parametrização / Cadastro',
           'Parametrização / Cadastro (Banco=S |SLA=N)',
           'Parametrização / Funcionalidade',
-          'Parametrização / Funcionalidade (Banco=S |SLA=S)',
           'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+          'Parametrização / Funcionalidade (Banco=S| SLA=N)',
           'Validação de Arquivo',
           'Validação de Arquivo (Banco=S |SLA=N)',
           'Validação de Arquivo (Banco=S| SLA=N)',
@@ -1695,7 +1728,7 @@ class BooksDataCollectorService {
           'Monitoramento DBA','Monitoramento DBA (Banco=S |SLA=N)',
           'Nota Publicada','Nota Publicada (Banco=S |SLA=N)',
           'Parametrização / Cadastro','Parametrização / Cadastro (Banco=S |SLA=N)',
-          'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=S)','Parametrização / Funcionalidade (Banco=S |SLA=N)',
+          'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=N)','Parametrização / Funcionalidade (Banco=S| SLA=N)',
           'Validação de Arquivo','Validação de Arquivo (Banco=S |SLA=N)','Validação de Arquivo (Banco=S| SLA=N)'
         ])
         .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%');
@@ -2475,19 +2508,24 @@ class BooksDataCollectorService {
   }
 
   /**
-   * Calcula histórico de SLA dos últimos 5 meses (mês atual + 4 anteriores)
-   * Busca dados reais de apontamentos_tickets_aranda
+   * Calcula histórico de SLA dos últimos 6 meses (mês atual + 5 anteriores)
+   * ESTRATÉGIA DE SNAPSHOT:
+   * - Para meses que já possuem book gerado/enviado: usa o SLA do snapshot (dados_sla)
+   * - Para o mês atual (sendo gerado agora): calcula em tempo real
+   * Isso garante consistência — dados de meses fechados não mudam retroativamente
    * REGRA: SLA = (Incidentes - Violados) / Incidentes * 100
    */
   private async calcularSLAHistorico(
+    empresaId: string,
     empresaNomeCompleto: string,
     mesAtual: number,
     anoAtual: number,
     metaSLA: number,
     quantidadeMinimaIncidentes: number
   ) {
-    console.log('📊 Calculando histórico de SLA (6 meses)...', {
+    console.log('📊 Calculando histórico de SLA (6 meses - com snapshot)...', {
       empresa: empresaNomeCompleto,
+      empresaId,
       mesAtual,
       anoAtual,
       quantidadeMinimaIncidentes
@@ -2496,18 +2534,74 @@ class BooksDataCollectorService {
     const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
                          'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 
-    const resultado = [];
-
-    // Calcular para os últimos 6 meses (mês atual + 5 anteriores)
+    // 1. Buscar books anteriores desta empresa para usar como snapshot
+    const mesesParaBuscar: string[] = [];
+    const mesesInfo: { mes: number; ano: number }[] = [];
+    
     for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
-      
       while (mes <= 0) {
         mes += 12;
         ano -= 1;
       }
+      mesesInfo.push({ mes, ano });
+    }
 
+    // Buscar todos os books existentes desta empresa para os meses do histórico
+    // Excluir o mês atual que está sendo gerado agora (mesAtual/anoAtual)
+    const { data: booksAnteriores } = await (supabase as any)
+      .from('books')
+      .select('mes, ano, dados_sla')
+      .eq('empresa_id', empresaId)
+      .in('status', ['gerado', 'enviado']);
+
+    // Montar mapa de snapshots: chave "mes/ano" → dados SLA
+    const snapshotMap = new Map<string, { percentual: number; status: 'no_prazo' | 'vencido'; elegivel: boolean }>();
+    if (booksAnteriores) {
+      for (const book of booksAnteriores) {
+        // Não usar snapshot do mês que está sendo gerado agora
+        if (book.mes === mesAtual && book.ano === anoAtual) continue;
+        
+        const dadosSla = book.dados_sla as any;
+        if (dadosSla && dadosSla.sla_percentual !== undefined) {
+          const chave = `${book.mes}/${book.ano}`;
+          snapshotMap.set(chave, {
+            percentual: Number(dadosSla.sla_percentual) || 0,
+            status: dadosSla.status || 'no_prazo',
+            elegivel: dadosSla.sla_elegivel !== false
+          });
+        }
+      }
+    }
+
+    console.log('📸 Snapshots encontrados:', {
+      total: snapshotMap.size,
+      meses: Array.from(snapshotMap.keys())
+    });
+
+    const resultado = [];
+
+    // 2. Para cada mês, usar snapshot se existir, senão calcular em tempo real
+    for (const { mes, ano } of mesesInfo) {
+      const chave = `${mes}/${ano}`;
+      
+      // Verificar se há snapshot para este mês
+      if (snapshotMap.has(chave)) {
+        const snapshot = snapshotMap.get(chave)!;
+        console.log(`📸 ${MESES_NOMES[mes - 1]}/${ano}: Usando SNAPSHOT (${snapshot.percentual}%)`);
+        resultado.push({
+          mes: MESES_NOMES[mes - 1],
+          percentual: snapshot.percentual,
+          status: snapshot.status,
+          elegivel: snapshot.elegivel
+        });
+        continue;
+      }
+
+      // Sem snapshot — calcular em tempo real
+      console.log(`🔄 ${MESES_NOMES[mes - 1]}/${ano}: Calculando em TEMPO REAL`);
+      
       const dataInicio = new Date(ano, mes - 1, 1);
       const proximoMesInicio = new Date(ano, mes, 1);
 
@@ -2529,26 +2623,42 @@ class BooksDataCollectorService {
 
       // Contar incidentes elegíveis (com cod_resolucao específicos)
       const codResolucaoElegiveis = [
+        'AMS SAP',
+        'AMS SAP (Banco=S |SLA=S)',
+        'AMS SAP (Banco=S| SLA=S)',
         'Consultoria',
         'Consultoria (Banco=S |SLA=S)',
         'Consultoria (Banco=S| SLA=S)',
-        'Consultoria – Solução Paliativa',
-        'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
+        'Consultoria - Banco de Dados',
+        'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+        'Consultoria - Banco de Dados (Banco=S| SLA=S)',
         'Consultoria – Banco de Dados',
         'Consultoria – Banco de Dados (Banco=S |SLA=S)',
+        'Consultoria – Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria - Nota Publicada',
+        'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+        'Consultoria - Nota Publicada (Banco=S| SLA=S)',
         'Consultoria – Nota Publicada',
         'Consultoria – Nota Publicada (Banco=S |SLA=S)',
+        'Consultoria – Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria - Solução Paliativa',
+        'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+        'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+        'Consultoria – Solução Paliativa',
+        'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
+        'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
       ];
       
       const incidentesElegiveis = incidentesFechados.filter(t => 
         codResolucaoElegiveis.includes(t.cod_resolucao)
       ).length;
 
-      // Contar violados a partir dos incidentes fechados no mês (mesma base de dados)
-      // Isso garante que violados nunca exceda o total de incidentes
-      const totalViolados = incidentesFechados.filter(t => t.tds_cumprido === 'TDS Vencido').length;
+      // Contar violados a partir dos incidentes fechados no mês - APENAS com cod_resolucao elegível
+      const totalViolados = incidentesFechados.filter(t => 
+        t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao)
+      ).length;
 
-      // Calcular percentual de SLA: (Incidentes - Violados) / Incidentes * 100
+      // Calcular percentual de SLA: (Incidentes - Violados Elegíveis) / Incidentes * 100
       let percentual = 0;
       let status: 'no_prazo' | 'vencido' = 'no_prazo';
       let elegivel = true;
@@ -2571,7 +2681,7 @@ class BooksDataCollectorService {
         elegivel = false; // Sem incidentes = não elegível
       }
 
-      console.log(`📈 ${MESES_NOMES[mes - 1]}/${ano}:`, {
+      console.log(`📈 ${MESES_NOMES[mes - 1]}/${ano} (tempo real):`, {
         incidentes: totalIncidentes,
         incidentesElegiveis,
         violados: totalViolados,
@@ -2698,8 +2808,8 @@ class BooksDataCollectorService {
             'Parametrização / Cadastro',
             'Parametrização / Cadastro (Banco=S |SLA=N)',
             'Parametrização / Funcionalidade',
-            'Parametrização / Funcionalidade (Banco=S |SLA=S)',
             'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+            'Parametrização / Funcionalidade (Banco=S| SLA=N)',
             'Validação de Arquivo',
             'Validação de Arquivo (Banco=S |SLA=N)',
             'Validação de Arquivo (Banco=S| SLA=N)',
@@ -2770,7 +2880,7 @@ class BooksDataCollectorService {
             'Monitoramento DBA','Monitoramento DBA (Banco=S |SLA=N)',
             'Nota Publicada','Nota Publicada (Banco=S |SLA=N)',
             'Parametrização / Cadastro','Parametrização / Cadastro (Banco=S |SLA=N)',
-            'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=S)','Parametrização / Funcionalidade (Banco=S |SLA=N)',
+            'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=N)','Parametrização / Funcionalidade (Banco=S| SLA=N)',
             'Validação de Arquivo','Validação de Arquivo (Banco=S |SLA=N)','Validação de Arquivo (Banco=S| SLA=N)'
           ])
           .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%');

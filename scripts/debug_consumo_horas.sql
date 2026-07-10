@@ -70,6 +70,7 @@ WHERE org_us_final ILIKE '%RAINBOW%' -- SUBSTITUIR pelo nome da empresa
     'Parametrização / Cadastro (Banco=S |SLA=N)',
     'Parametrização / Funcionalidade',
     'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+    'Parametrização / Funcionalidade (Banco=S| SLA=N)',
     'Validação de Arquivo',
     'Validação de Arquivo (Banco=S| SLA=N)'
   )
@@ -129,6 +130,7 @@ WHERE org_us_final ILIKE '%RAINBOW%' -- SUBSTITUIR pelo nome da empresa
     'Parametrização / Cadastro (Banco=S |SLA=N)',
     'Parametrização / Funcionalidade',
     'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+    'Parametrização / Funcionalidade (Banco=S| SLA=N)',
     'Validação de Arquivo',
     'Validação de Arquivo (Banco=S |SLA=N)',
     'Validação de Arquivo (Banco=S| SLA=N)'

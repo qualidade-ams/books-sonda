@@ -942,8 +942,8 @@ export class BancoHorasQuarentenaService {
         'Parametrização / Cadastro',
         'Parametrização / Cadastro (Banco=S |SLA=N)',
         'Parametrização / Funcionalidade',
-        'Parametrização / Funcionalidade (Banco=S |SLA=S)',
         'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+        'Parametrização / Funcionalidade (Banco=S| SLA=N)',
         'Validação de Arquivo',
         'Validação de Arquivo (Banco=S |SLA=N)',
         'Validação de Arquivo (Banco=S| SLA=N)'
@@ -1043,8 +1043,8 @@ export class BancoHorasQuarentenaService {
         'Nota Publicada', 'Nota Publicada (Banco=S |SLA=N)', 'Nota Publicada (Banco=S| SLA=N)',
         'Parametrização / Cadastro', 'Parametrização / Cadastro (Banco=S |SLA=N)',
         'Parametrização / Funcionalidade',
-        'Parametrização / Funcionalidade (Banco=S |SLA=S)',
         'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+        'Parametrização / Funcionalidade (Banco=S| SLA=N)',
         'Validação de Arquivo',
         'Validação de Arquivo (Banco=S |SLA=N)', 'Validação de Arquivo (Banco=S| SLA=N)'
       ];
