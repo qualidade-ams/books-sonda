@@ -41,7 +41,7 @@ const CODIGOS_RESOLUCAO_VALIDOS = [
   'Monitoramento DBA', 'Monitoramento DBA (Banco=S |SLA=S)', 'Monitoramento DBA (Banco=S |SLA=N)',
   'Nota Publicada', 'Nota Publicada (Banco=S |SLA=N)', 'Nota Publicada (Banco=S| SLA=N)',
   'Parametrização / Cadastro', 'Parametrização / Cadastro (Banco=S |SLA=N)',
-  'Parametrização / Funcionalidade', 'Parametrização / Funcionalidade (Banco=S |SLA=S)', 'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+  'Parametrização / Funcionalidade', 'Parametrização / Funcionalidade (Banco=S |SLA=N)', 'Parametrização / Funcionalidade (Banco=S| SLA=N)',
   'Validação de Arquivo', 'Validação de Arquivo (Banco=S |SLA=N)', 'Validação de Arquivo (Banco=S| SLA=N)',
 ];
 
@@ -71,10 +71,13 @@ async function calcularConsumoHoras(
   const dataInicio = new Date(ano, mes - 1, 1).toISOString();
   const dataFim    = new Date(ano, mes, 0, 23, 59, 59, 999).toISOString();
 
-  const { data, error } = await supabase
+  // Quebrando a chain para evitar "Type instantiation is excessively deep"
+  let query = supabase
     .from('apontamentos_aranda' as any)
-    .select('tempo_gasto_horas, tempo_gasto_minutos, data_atividade, data_sistema')
-    .ilike('org_us_final', nomeCompleto)  // match exato case-insensitive (sem %)
+    .select('tempo_gasto_horas, tempo_gasto_minutos, data_atividade, data_sistema') as any;
+
+  query = query
+    .ilike('org_us_final', nomeCompleto)
     .eq('ativi_interna', 'Não')
     .neq('item_configuracao', '000000 - PROJETOS APL')
     .in('tipo_chamado', ['IM', 'RF', 'PM'])
@@ -82,7 +85,9 @@ async function calcularConsumoHoras(
     .gte('data_atividade', dataInicio)
     .lte('data_atividade', dataFim)
     .in('cod_resolucao', CODIGOS_RESOLUCAO_VALIDOS)
-    .limit(10000) as any;
+    .limit(10000);
+
+  const { data, error } = await query;
 
   if (error || !data) return 0;
 
@@ -106,11 +111,11 @@ async function calcularConsumoHoras(
 
 async function fetchConsumoHorasFechados(mes: number, ano: number): Promise<ConsumoHorasEmpresa[]> {
   // 1. Fechamentos do período
-  const { data: fechamentos, error: errFechamentos } = await supabase
-    .from('banco_horas_fechamentos')
+  const { data: fechamentos, error: errFechamentos } = await (supabase
+    .from('banco_horas_fechamentos' as any)
     .select('empresa_id, mes, ano, fechado_em, snapshot_consumo_tickets')
     .eq('mes', mes)
-    .eq('ano', ano);
+    .eq('ano', ano) as any);
 
   if (errFechamentos) throw new Error(errFechamentos.message);
   if (!fechamentos || fechamentos.length === 0) return [];
@@ -118,10 +123,10 @@ async function fetchConsumoHorasFechados(mes: number, ano: number): Promise<Cons
   const empresaIds = fechamentos.map((f: any) => f.empresa_id);
 
   // 2. Dados das empresas (nome + tipo_cobranca + nome_completo)
-  const { data: empresas, error: errEmpresas } = await supabase
+  const { data: empresas, error: errEmpresas } = await (supabase
     .from('empresas_clientes')
     .select('id, nome_abreviado, nome_completo, tipo_cobranca')
-    .in('id', empresaIds);
+    .in('id', empresaIds) as any);
 
   if (errEmpresas) throw new Error(errEmpresas.message);
 

@@ -639,26 +639,18 @@ class BooksService {
 
       return dados;
     } catch (error) {
-      console.error('Erro ao coletar dados reais, usando fallback:', error);
+      console.error('❌ Erro CRÍTICO ao coletar dados reais do book:', error);
+      console.error('❌ Detalhes:', {
+        empresaId,
+        mes,
+        ano,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       
-      // Fallback para dados mockados em caso de erro
-      const mesNome = MESES_LABELS[mes];
-      const periodo = `${mesNome} ${ano}`;
-
-      return {
-        capa: {
-          empresa_nome: 'Empresa',
-          periodo,
-          mes,
-          ano,
-          data_geracao: new Date().toLocaleDateString('pt-BR')
-        },
-        volumetria: this.getVolumetriaVazia(),
-        sla: this.getSLAVazio(),
-        backlog: this.getBacklogVazio(),
-        consumo: this.getConsumoVazio(),
-        pesquisa: this.getPesquisaVazia()
-      };
+      // Propagar o erro em vez de usar fallback silencioso
+      // O fallback mascarava bugs e gerava books com dados zerados
+      throw error;
     }
   }
 
@@ -793,28 +785,34 @@ class BooksService {
   }
 
   private getSLAVazio() {
+    // Gerar últimos 6 meses dinamicamente baseado na data atual
+    const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
+                         'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    const agora = new Date();
+    const mesAtual = agora.getMonth() + 1; // 1-12
+    
+    const historico: { mes: string; percentual: number; status: 'no_prazo' | 'vencido' }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      let mes = mesAtual - i;
+      while (mes <= 0) {
+        mes += 12;
+      }
+      historico.push({
+        mes: MESES_NOMES[mes - 1],
+        percentual: 0,
+        status: 'no_prazo' as const
+      });
+    }
+
     return {
-      sla_percentual: 50,
+      sla_percentual: 0,
       meta_percentual: 85,
-      status: 'vencido' as const,
-      fechados: 8,
-      incidentes: 2,
-      violados: 1,
-      sla_historico: [
-        { mes: 'MAIO', percentual: 100, status: 'no_prazo' as const },
-        { mes: 'JUNHO', percentual: 100, status: 'no_prazo' as const },
-        { mes: 'JULHO', percentual: 100, status: 'no_prazo' as const },
-        { mes: 'SETEMBRO', percentual: 90, status: 'no_prazo' as const }
-      ],
-      chamados_violados: [
-        {
-          id_chamado: '5017679',
-          tipo: 'Incidente' as const,
-          data_abertura: '12/12/2024',
-          data_solucao: '06/09/2025',
-          grupo_atendedor: 'IMPORTAÇÃO'
-        }
-      ]
+      status: 'no_prazo' as const,
+      fechados: 0,
+      incidentes: 0,
+      violados: 0,
+      sla_historico: historico,
+      chamados_violados: []
     };
   }
 
