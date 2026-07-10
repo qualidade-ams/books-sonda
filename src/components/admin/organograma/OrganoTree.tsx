@@ -104,7 +104,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     const produtosArray = produtos || (produto ? [produto] : []);
     
     if (!produtosArray || produtosArray.length === 0) {
-      return 'border-4 border-gray-300';
+      return 'border-4 border-gray-500';
     }
 
     if (produtosArray.length === 1) {
@@ -118,7 +118,9 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     const produtosArray = produtos || (produto ? [produto] : []);
     
     if (!produtosArray || produtosArray.length <= 1) {
-      const cor = produtosArray[0] ? coresProdutos[produtosArray[0] as keyof typeof coresProdutos] : '#d1d5db';
+      const cor = produtosArray[0] 
+        ? (coresProdutos[produtosArray[0] as keyof typeof coresProdutos] || '#6b7280') 
+        : '#6b7280';
       return { borderColor: cor };
     }
 
