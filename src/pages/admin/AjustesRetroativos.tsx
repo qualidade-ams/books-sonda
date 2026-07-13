@@ -113,7 +113,19 @@ export default function AjustesRetroativos() {
 
   // Estado de seleção de itens para email
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [sentItems, setSentItems] = useState<Set<string>>(new Set());
+  const [sentItems, setSentItems] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('ajustes_sent_items');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Persistir sentItems no localStorage
+  useEffect(() => {
+    localStorage.setItem('ajustes_sent_items', JSON.stringify(Array.from(sentItems)));
+  }, [sentItems]);
 
   // Estado do modal de email
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
@@ -1251,7 +1263,7 @@ Obrigado.`;
                                       <span className="w-[90px] flex-shrink-0 text-center">Tarefa</span>
                                       <span className="w-[75px] flex-shrink-0 text-center">Data Sist.</span>
                                       <span className="w-[70px] flex-shrink-0 text-center">Status</span>
-                                      <span className="text-center">Consultor</span>
+                                      <span className="text-left">Consultor</span>
                                     </div>
                                     {detalhesItens.map((item) => {
                                       const itemId = `${ajuste.id}-${item.itemKey}`;
@@ -1271,19 +1283,23 @@ Obrigado.`;
                                         ) : (
                                           <FileText className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                                         )}
-                                        <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-gray-700 w-[70px] flex-shrink-0">
+                                        <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-gray-700 w-[70px] flex-shrink-0 text-center">
                                           {item.chamado}
                                         </span>
-                                        <span className="text-[10px] sm:text-xs lg:text-sm text-blue-600 font-medium w-[90px] flex-shrink-0">
+                                        <span className="text-[10px] sm:text-xs lg:text-sm text-blue-600 font-medium w-[90px] flex-shrink-0 text-center">
                                           {item.tarefa || '-'}
                                         </span>
-                                        <span className="text-[10px] sm:text-xs text-gray-500 w-[75px] flex-shrink-0">
+                                        <span className="text-[10px] sm:text-xs text-gray-500 w-[75px] flex-shrink-0 text-center">
                                           {dataSistemaFmt || '-'}
                                         </span>
-                                        <span className="text-[10px] sm:text-xs text-gray-500 w-[70px] flex-shrink-0">
-                                          {item.casoEstado || '-'}
+                                        <span className="text-[10px] sm:text-xs text-gray-500 w-[70px] flex-shrink-0 text-center">
+                                          {item.casoEstado ? (
+                                            <Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[9px] px-1.5 py-0">
+                                              {item.casoEstado}
+                                            </Badge>
+                                          ) : '-'}
                                         </span>
-                                        <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600 flex-1">
+                                        <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600 flex-1 text-left">
                                           {item.consultor || '-'}
                                         </span>
                                         {foiEnviado && (
