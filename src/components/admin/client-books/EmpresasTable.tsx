@@ -311,7 +311,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                 <TableHead className="w-[8%] min-w-[70px] text-center hidden xl:table-cell">Tem AMS</TableHead>
                 <TableHead className="w-[15%] min-w-[120px] text-center hidden xl:table-cell">Produtos</TableHead>
                 <TableHead className="w-[15%] min-w-[140px] text-center hidden 2xl:table-cell">E-mail Gestor</TableHead>
-                <TableHead className="w-[15%] min-w-[140px] text-center hidden 2xl:table-cell">Comercial</TableHead>
+                <TableHead className="w-[15%] min-w-[140px] text-center hidden 2xl:table-cell">E-mail Comercial</TableHead>
                 <TableHead className="w-[10%] min-w-[90px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>

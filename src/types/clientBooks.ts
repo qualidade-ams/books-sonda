@@ -104,6 +104,9 @@ export interface EmpresaFormData {
   // NOVO: Campos de Meta SLA
   meta_sla_percentual?: number;
   quantidade_minima_chamados_sla?: number;
+  // NOVO: Campos de Segmentação de Baseline
+  baselineSegmentado?: boolean;
+  segmentacaoConfig?: any;
   // Periodicidade de apuração (ex: Samarco 15 a 14)
   dia_inicio_apuracao?: number;
   dia_fim_apuracao?: number;
@@ -166,6 +169,11 @@ export interface AnexosSummaryWebhook {
 
 // Interfaces estendidas com relacionamentos
 export interface EmpresaClienteCompleta extends EmpresaCliente {
+  tipo_repasse_especial: string;
+  duracao_periodo_meses: any;
+  percentual_dentro_periodo: any;
+  percentual_entre_periodos: any;
+  periodos_ate_zerar: any;
   produtos?: EmpresaProduto[];
   grupos?: {
     grupo_id: string;
