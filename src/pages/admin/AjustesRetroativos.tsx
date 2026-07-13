@@ -260,8 +260,8 @@ export default function AjustesRetroativos() {
       const detalhesItens = filtros.consultor !== 'all'
         ? detalhesItensBruto.filter(item => item.consultor === filtros.consultor)
         : detalhesItensBruto;
-      detalhesItens.forEach((item, idx) => {
-        const itemId = `${ajuste.id}-${idx}`;
+      detalhesItens.forEach((item) => {
+        const itemId = `${ajuste.id}-${item.itemKey}`;
         if (selectedItems.has(itemId)) {
           itens.push({
             id: itemId,
@@ -319,8 +319,6 @@ export default function AjustesRetroativos() {
 
 Identificamos que ${plural ? 'foram realizados apontamentos incorretos em tarefas' : 'foi realizado um apontamento incorreto em uma tarefa'}. Em função ${plural ? 'desses apontamentos' : 'desse apontamento'}, as horas registradas não serão contabilizadas no banco de horas do cliente.
 
-Período: ${periodoInfo} | Requerimentos: ${itens.length} | Horas: ${horasFormatadas}
-
 Caso ${plural ? 'os chamados ainda estejam Abertos ou com status Resolved' : 'o chamado ainda esteja Aberto ou com status Resolved'}, solicitamos que seja realizado o ajuste da seguinte forma:
 
 - Excluir ${plural ? 'as tarefas com os apontamentos incorretos' : 'a tarefa com o apontamento incorreto'};
@@ -343,8 +341,9 @@ Obrigado.`;
       if (!detalhes) return;
 
       const processarLista = (lista: any[]) => {
-        lista.forEach((item, idx) => {
-          const itemId = `${ajuste.id}-${idx}`;
+        lista.forEach((item) => {
+          const itemKey = item.id_externo || item.nro_solicitacao || `${item.nro_chamado}-${null}-${item.analista_tarefa}`;
+          const itemId = `${ajuste.id}-${itemKey}`;
           // Verificar se este item está na lista de selecionados
           if (itens.some(i => i.id === itemId) && item.tempo_gasto_minutos) {
             totalMinutos += item.tempo_gasto_minutos;
@@ -372,7 +371,7 @@ Obrigado.`;
     return Array.from(mesesAnos).join(', ') || 'N/A';
   };
 
-  // Gerar HTML do email com tabela de apontamentos
+  // Gerar HTML do email com tabela de apontamentos (compatível com Outlook)
   const gerarHtmlEmail = (itens: DetalheItem[], corpoTexto: string): string => {
     // Calcular horas totais
     const totalMinutos = calcularHorasItensSelecionados(itens);
@@ -382,57 +381,115 @@ Obrigado.`;
     const periodoInfo = obterPeriodoReferencia(itens);
 
     const tabelaRows = itens.map(item => `
-      <tr>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${item.empresa}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${item.chamado}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; color: #2563eb;">${item.tarefa || '-'}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${item.consultor || '-'}</td>
-      </tr>`).join('');
+          <tr>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;">${item.empresa}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;">${item.chamado}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; color: #2563eb;">${item.tarefa || '-'}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;">${item.consultor || '-'}</td>
+          </tr>`).join('');
 
     const corpoHtml = corpoTexto
-      .replace(/\n\n/g, '</p><p style="margin: 12px 0;">')
-      .replace(/\n- /g, '<br/>• ')
+      .replace(/\n\n/g, '</p><p style="margin: 12px 0; font-size: 14px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif;">')
+      .replace(/\n- /g, '<br/>&#8226; ')
       .replace(/\n/g, '<br/>');
 
-    return `
-    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 20px;">Ajuste de Apontamento</h1>
-        <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px;">Banco de Horas - ${itens.length} apontamento${itens.length > 1 ? 's' : ''}</p>
-      </div>
-      
-      <div style="padding: 24px; background: #ffffff; border: 1px solid #e5e7eb; border-top: none;">
-        <p style="margin: 12px 0; font-size: 14px; color: #374151; line-height: 1.6;">${corpoHtml}</p>
-      </div>
+    return `<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: Arial, sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 24px 16px;">
+        <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="700"><tr><td><![endif]-->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 700px; margin: 0 auto;">
+          
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background-color: #2563eb; padding: 24px 16px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif;">Ajuste de Apontamento</h1>
+              <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px; font-family: Arial, sans-serif;">Banco de Horas - ${itens.length} apontamento${itens.length > 1 ? 's' : ''}</p>
+            </td>
+          </tr>
 
-      <div style="padding: 12px 24px; background: #f0f9ff; border: 1px solid #e5e7eb; border-top: none;">
-        <div style="display: flex; gap: 24px; font-size: 13px; color: #1e40af;">
-          <span><strong>Período:</strong> ${periodoInfo}</span>
-          <span style="margin-left: 16px;"><strong>Requerimentos:</strong> ${itens.length}</span>
-          <span style="margin-left: 16px;"><strong>Horas:</strong> ${horasFormatadas}</span>
-        </div>
-      </div>
+          <!-- CORPO DO EMAIL -->
+          <tr>
+            <td style="padding: 24px; background-color: #ffffff; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+              <p style="margin: 12px 0; font-size: 14px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif;">${corpoHtml}</p>
+            </td>
+          </tr>
 
-      <div style="padding: 16px 24px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-        <div style="background: #f59e0b; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: 600; font-size: 13px;">Apontamentos Identificados</span>
-          <span style="font-size: 12px;">${itens.length} item${itens.length > 1 ? 's' : ''}</span>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 4px; overflow: hidden; border: 1px solid #e5e7eb;">
-          <thead>
-            <tr style="background: #f3f4f6;">
-              <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Empresa</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Chamado</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Tarefa</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Consultor</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tabelaRows}
-          </tbody>
+          <!-- RESUMO: PERÍODO / REQUERIMENTOS / HORAS -->
+          <tr>
+            <td style="padding: 12px 24px; background-color: #f0f9ff; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-size: 13px; color: #1e40af; font-family: Arial, sans-serif; padding-right: 24px;">
+                    <strong>Período:</strong> ${periodoInfo}
+                  </td>
+                  <td style="font-size: 13px; color: #1e40af; font-family: Arial, sans-serif; padding-right: 24px;">
+                    <strong>Requerimentos:</strong> ${itens.length}
+                  </td>
+                  <td style="font-size: 13px; color: #1e40af; font-family: Arial, sans-serif;">
+                    <strong>Horas:</strong> ${horasFormatadas}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- SEÇÃO: APONTAMENTOS IDENTIFICADOS -->
+          <tr>
+            <td style="padding: 16px 24px; background-color: #f9fafb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;">
+              
+              <!-- Header amarelo "Apontamentos Identificados" -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 12px;">
+                <tr>
+                  <td style="background-color: #f59e0b; color: #ffffff; padding: 8px 16px; font-weight: 600; font-size: 13px; font-family: Arial, sans-serif;">
+                    Apontamentos Identificados
+                  </td>
+                  <td style="background-color: #f59e0b; color: #ffffff; padding: 8px 16px; font-size: 12px; font-family: Arial, sans-serif; text-align: right;">
+                    ${itens.length} item${itens.length > 1 ? 's' : ''}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Tabela de apontamentos -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: #ffffff; border: 1px solid #e5e7eb;">
+                <thead>
+                  <tr>
+                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Empresa</th>
+                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Chamado</th>
+                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Tarefa</th>
+                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Consultor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tabelaRows}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+
         </table>
-      </div>
-    </div>`;
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   };
 
   // Abrir modal de email
@@ -563,35 +620,88 @@ Obrigado.`;
       const XLSX = await import('xlsx-js-style');
       const dados: any[][] = [];
 
-      // Cabeçalho
+      // Cabeçalho (sem coluna "Data")
       const headers = [
         'Empresa', 'Período Ref.', 'Valor Anterior', 'Valor Novo',
-        'Diferença', 'Status', 'Data', 'Consultor', 'Chamado', 'Tarefa'
+        'Diferença', 'Status', 'Consultor', 'Chamado', 'Tarefa', 'Data Sistema'
       ];
       dados.push(headers);
 
-      // Dados
-      ajustesFiltrados.forEach(ajuste => {
-        const detalhesItensBruto = extrairDetalhesAgrupados(ajuste);
-        const detalhesItens = filtros.consultor !== 'all'
-          ? detalhesItensBruto.filter(item => item.consultor === filtros.consultor)
-          : detalhesItensBruto;
+      // Helper: converter string HH:MM ou HH:MM:SS para fração de dia (valor numérico Excel)
+      const horasParaNumero = (valor: string | null): number | string => {
+        if (!valor || valor === '-') return '';
+        let v = valor.replace(/^\+/, '').trim();
+        const partes = v.split(':');
+        if (partes.length >= 2) {
+          const h = parseInt(partes[0], 10) || 0;
+          const m = parseInt(partes[1], 10) || 0;
+          return (h * 60 + m) / (24 * 60); // Fração de dia
+        }
+        return '';
+      };
 
-        detalhesItens.forEach(item => {
-          dados.push([
-            empresasMap.get(ajuste.empresa_id) || 'N/A',
-            `${getMonthName(ajuste.mes_referencia - 1)}/${ajuste.ano_referencia}`,
-            ajuste.valor_anterior || '-',
-            ajuste.valor_novo || '-',
-            ajuste.diferenca || '-',
-            ajuste.status,
-            new Date(ajuste.created_at).toLocaleDateString('pt-BR'),
-            item.consultor || '-',
-            item.chamado || '-',
-            item.tarefa || '-',
-          ]);
-        });
+      // Helper: converter minutos para fração de dia
+      const minutosParaNumero = (minutos: number): number => {
+        return minutos / (24 * 60);
+      };
+
+      // Extrair dados completos com horas individuais por tarefa e data_sistema
+      ajustesFiltrados.forEach(ajuste => {
+        const detalhes = ajuste.detalhes_mudanca;
+        if (!detalhes) return;
+
+        const processarLista = (lista: any[]) => {
+          for (const item of lista) {
+            let chamado = item.nro_chamado || '';
+            let tarefa: string | null = null;
+            const consultor = item.analista_tarefa || null;
+            const tempoMinutos = item.tempo_gasto_minutos || 0;
+            const dataSistema = item.data_sistema || null;
+
+            // Extrair chamado e tarefa do id_externo
+            if (item.id_externo) {
+              const partes = item.id_externo.split('|');
+              if (partes.length >= 2 && !chamado) chamado = partes[1];
+              if (partes.length >= 3) tarefa = partes[2];
+            }
+            if (item.nro_solicitacao) chamado = chamado || item.nro_solicitacao;
+
+            // Filtrar por consultor se necessário
+            if (filtros.consultor !== 'all' && consultor !== filtros.consultor) return;
+
+            if (!chamado) return;
+
+            // Formatar data sistema
+            const dataSistemaFormatada = dataSistema
+              ? new Date(dataSistema).toLocaleDateString('pt-BR')
+              : '-';
+
+            dados.push([
+              empresasMap.get(ajuste.empresa_id) || 'N/A',
+              `${getMonthName(ajuste.mes_referencia - 1)}/${ajuste.ano_referencia}`,
+              horasParaNumero(ajuste.valor_anterior),
+              horasParaNumero(ajuste.valor_novo),
+              minutosParaNumero(tempoMinutos),
+              ajuste.status,
+              consultor || '-',
+              chamado || '-',
+              tarefa || '-',
+              dataSistemaFormatada,
+            ]);
+          }
+        };
+
+        if (detalhes.novos && Array.isArray(detalhes.novos)) processarLista(detalhes.novos);
+        if (detalhes.removidos && Array.isArray(detalhes.removidos)) processarLista(detalhes.removidos);
       });
+
+      // Adicionar linha de somatória da Diferença (coluna E = index 4)
+      const totalRows = dados.length - 1; // Excluindo header
+      if (totalRows > 0) {
+        const somaRow: any[] = ['', '', '', '', { f: `SUM(E2:E${totalRows + 1})` }, '', '', '', '', ''];
+        somaRow[0] = 'TOTAL';
+        dados.push(somaRow);
+      }
 
       const ws = XLSX.utils.aoa_to_sheet(dados);
 
@@ -616,18 +726,43 @@ Obrigado.`;
         }
       }
 
+      // Formato de horas [h]:mm nas colunas C, D, E (índices 2, 3, 4) para todas as linhas de dados
+      for (let row = 1; row < dados.length; row++) {
+        for (const col of [2, 3, 4]) {
+          const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+          if (ws[cellRef]) {
+            // Aplicar formato de horas para células com valor numérico OU fórmula
+            if (typeof ws[cellRef].v === 'number' || ws[cellRef].f) {
+              ws[cellRef].t = 'n';
+              ws[cellRef].z = '[h]:mm';
+            }
+          }
+        }
+      }
+
+      // Estilo negrito para linha TOTAL
+      if (totalRows > 0) {
+        const totalRowIdx = dados.length - 1;
+        for (let col = 0; col < headers.length; col++) {
+          const cellRef = XLSX.utils.encode_cell({ r: totalRowIdx, c: col });
+          if (ws[cellRef]) {
+            ws[cellRef].s = { ...ws[cellRef].s, font: { bold: true } };
+          }
+        }
+      }
+
       // Ajustar largura das colunas
       ws['!cols'] = [
         { wch: 20 }, // Empresa
         { wch: 14 }, // Período Ref.
         { wch: 14 }, // Valor Anterior
         { wch: 14 }, // Valor Novo
-        { wch: 10 }, // Diferença
+        { wch: 12 }, // Diferença
         { wch: 12 }, // Status
-        { wch: 12 }, // Data
-        { wch: 25 }, // Consultor
-        { wch: 15 }, // Chamado
+        { wch: 30 }, // Consultor
+        { wch: 12 }, // Chamado
         { wch: 15 }, // Tarefa
+        { wch: 14 }, // Data Sistema
       ];
 
       const wb = XLSX.utils.book_new();
@@ -745,13 +880,15 @@ Obrigado.`;
     const detalhes = ajuste.detalhes_mudanca;
     if (!detalhes) return [];
 
-    const itens: Array<{ chamado: string; tarefa: string | null; consultor: string | null }> = [];
+    const itens: Array<{ chamado: string; tarefa: string | null; consultor: string | null; dataSistema: string | null; casoEstado: string | null; itemKey: string }> = [];
 
     const processarItens = (lista: any[]) => {
       for (const item of lista) {
         let chamado = item.nro_chamado || '';
         let tarefa: string | null = null;
         const consultor = item.analista_tarefa || null;
+        const dataSistema = item.data_sistema || null;
+        const casoEstado = item.caso_estado || null;
 
         // Extrair chamado e tarefa do id_externo (formato: AMSapontamento|{chamado}|{tarefa})
         if (item.id_externo) {
@@ -770,7 +907,9 @@ Obrigado.`;
         }
 
         if (chamado) {
-          itens.push({ chamado, tarefa, consultor });
+          // Gerar chave estável baseada no id_externo ou nro_solicitacao
+          const itemKey = item.id_externo || item.nro_solicitacao || `${chamado}-${tarefa}-${consultor}`;
+          itens.push({ chamado, tarefa, consultor, dataSistema, casoEstado, itemKey });
         }
       }
     };
@@ -1014,7 +1153,11 @@ Obrigado.`;
                       return (
                       <React.Fragment key={ajuste.id}>
                         <TableRow
-                          className="cursor-pointer hover:bg-gray-50"
+                          className={`cursor-pointer hover:bg-gray-50 ${
+                            detalhesItens.length > 0 && detalhesItens.every(item => sentItems.has(`${ajuste.id}-${item.itemKey}`))
+                              ? 'bg-green-50'
+                              : ''
+                          }`}
                           onClick={() => toggleExpandRow(ajuste.id)}
                         >
                           <TableCell className="py-3 w-10">
@@ -1100,38 +1243,49 @@ Obrigado.`;
                                 </div>
                                 {detalhesItens.length > 0 ? (
                                   <div className="space-y-1.5">
-                                    {detalhesItens.map((item, idx) => {
-                                      const itemId = `${ajuste.id}-${idx}`;
+                                    {/* Cabeçalho dos campos */}
+                                    <div className="flex items-center gap-4 py-1 px-3 text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                      <div className="w-4 flex-shrink-0"></div>
+                                      <div className="w-4 flex-shrink-0"></div>
+                                      <span className="w-[70px] flex-shrink-0 text-center">Chamado</span>
+                                      <span className="w-[90px] flex-shrink-0 text-center">Tarefa</span>
+                                      <span className="w-[75px] flex-shrink-0 text-center">Data Sist.</span>
+                                      <span className="w-[70px] flex-shrink-0 text-center">Status</span>
+                                      <span className="text-center">Consultor</span>
+                                    </div>
+                                    {detalhesItens.map((item) => {
+                                      const itemId = `${ajuste.id}-${item.itemKey}`;
                                       const foiEnviado = sentItems.has(itemId);
+                                      const dataSistemaFmt = item.dataSistema 
+                                        ? new Date(item.dataSistema).toLocaleDateString('pt-BR')
+                                        : '';
                                       return (
-                                      <div key={idx} className={`flex items-center gap-4 py-2 px-3 rounded-md border ${foiEnviado ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
+                                      <div key={itemId} className={`flex items-center gap-4 py-2 px-3 rounded-md border ${foiEnviado ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
                                         <Checkbox
                                           checked={selectedItems.has(itemId)}
                                           onCheckedChange={() => toggleItemSelection(itemId)}
                                           className="h-4 w-4 flex-shrink-0"
                                         />
-                                        {foiEnviado && (
+                                        {foiEnviado ? (
                                           <Mail className="h-3.5 w-3.5 text-green-600 flex-shrink-0" title="Email enviado" />
-                                        )}
-                                        <div className="flex items-center gap-2">
+                                        ) : (
                                           <FileText className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                                          <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-gray-700">
-                                            {item.chamado}
-                                          </span>
-                                        </div>
-                                        {item.tarefa && (
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-gray-300">—</span>
-                                            <span className="text-[10px] sm:text-xs lg:text-sm text-blue-600 font-medium">
-                                              {item.tarefa}
-                                            </span>
-                                          </div>
                                         )}
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">
-                                            {item.consultor || '-'}
-                                          </span>
-                                        </div>
+                                        <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-gray-700 w-[70px] flex-shrink-0">
+                                          {item.chamado}
+                                        </span>
+                                        <span className="text-[10px] sm:text-xs lg:text-sm text-blue-600 font-medium w-[90px] flex-shrink-0">
+                                          {item.tarefa || '-'}
+                                        </span>
+                                        <span className="text-[10px] sm:text-xs text-gray-500 w-[75px] flex-shrink-0">
+                                          {dataSistemaFmt || '-'}
+                                        </span>
+                                        <span className="text-[10px] sm:text-xs text-gray-500 w-[70px] flex-shrink-0">
+                                          {item.casoEstado || '-'}
+                                        </span>
+                                        <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600 flex-1">
+                                          {item.consultor || '-'}
+                                        </span>
                                         {foiEnviado && (
                                           <Badge className="bg-green-100 text-green-700 text-[10px] ml-auto">
                                             Enviado
