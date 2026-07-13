@@ -11,6 +11,7 @@ import type {
   BookBacklogData,
   BookConsumoData,
   BookPesquisaData,
+  BookConsumoSegmentadoData,
   ChamadosSemestreData
 } from '@/types/books';
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
@@ -31,6 +32,7 @@ class BooksDataCollectorService {
     backlog: BookBacklogData;
     consumo: BookConsumoData;
     pesquisa: BookPesquisaData;
+    consumo_segmentado?: BookConsumoSegmentadoData[];
   }> {
     console.log('🚀 INICIANDO COLETA DE DADOS DO BOOK:', { empresaId, mes, ano });
     
@@ -237,7 +239,8 @@ class BooksDataCollectorService {
           tipoContrato,
           baselineHoras
         ),
-        pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano)
+        pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano),
+        consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano)
       };
 
       console.log('✅ DADOS DO BOOK GERADOS COM SUCESSO:', {
@@ -3130,6 +3133,222 @@ class BooksDataCollectorService {
     } catch (error) {
       console.error('❌ Erro ao buscar mapeamento:', error);
       return new Map();
+    }
+  }
+
+  /**
+   * Gera snapshot dos dados de consumo segmentado (se empresa tiver baseline_segmentado ativo)
+   */
+  private async gerarDadosConsumoSegmentado(
+    empresaId: string, mes: number, ano: number
+  ): Promise<BookConsumoSegmentadoData[] | undefined> {
+    try {
+      // Verificar se empresa tem baseline segmentado
+      const { data: empresa } = await supabase
+        .from('empresas_clientes')
+        .select('baseline_segmentado, segmentacao_config, periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, baseline_horas_mensal')
+        .eq('id', empresaId)
+        .single();
+
+      if (!empresa?.baseline_segmentado || !empresa?.segmentacao_config) {
+        return undefined;
+      }
+
+      const config = empresa.segmentacao_config as any;
+      const empresas: Array<{ nome: string; percentual: number; filtro_tipo: string; filtro_valor: string }> = config?.empresas || [];
+      if (empresas.length === 0) return undefined;
+
+      console.log('📊 [gerarDadosConsumoSegmentado] Iniciando coleta para', empresas.length, 'segmentos');
+
+      const percentualRepasse = empresa.percentual_repasse_mensal || 50;
+
+      // Buscar baseline vigente
+      let baselineTotalStr = '00:00';
+      const dataRef = `${ano}-${String(mes).padStart(2, '0')}-01`;
+      const { data: baselineVigente } = await (supabase as any).rpc('get_baseline_vigente', {
+        p_empresa_id: empresaId, p_data: dataRef
+      });
+      if (baselineVigente?.[0]?.baseline_horas) {
+        baselineTotalStr = String(baselineVigente[0].baseline_horas);
+      } else {
+        const raw = empresa.baseline_horas_mensal;
+        if (typeof raw === 'number') {
+          const h = Math.floor(raw);
+          const m = Math.round((raw - h) * 60);
+          baselineTotalStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        } else {
+          baselineTotalStr = String(raw || '00:00');
+        }
+      }
+
+      // Converter baseline para minutos
+      const partes = String(baselineTotalStr).split(':');
+      const baselineTotalMin = (parseInt(partes[0] || '0') * 60) + parseInt(partes[1] || '0');
+
+      // Calcular meses do ciclo
+      const periodoApuracao = empresa.periodo_apuracao || 3;
+      const inicioVigencia = empresa.inicio_vigencia;
+      let mesesCiclo: { mes: number; ano: number }[] = [];
+
+      if (inicioVigencia) {
+        const [anoV, mesV] = inicioVigencia.split('-').map(Number);
+        const mesesDesde = (ano - anoV) * 12 + (mes - mesV);
+        const cicloAtual = Math.floor(mesesDesde / periodoApuracao);
+        const mesesAteInicio = cicloAtual * periodoApuracao;
+        let mesInicio = mesV + mesesAteInicio;
+        let anoInicio = anoV;
+        while (mesInicio > 12) { mesInicio -= 12; anoInicio += 1; }
+        for (let i = 0; i < periodoApuracao; i++) {
+          let mCalc = mesInicio + i;
+          let aCalc = anoInicio;
+          while (mCalc > 12) { mCalc -= 12; aCalc += 1; }
+          mesesCiclo.push({ mes: mCalc, ano: aCalc });
+        }
+      } else {
+        const primeiro = Math.floor((mes - 1) / 3) * 3 + 1;
+        for (let i = 0; i < 3; i++) {
+          const m = primeiro + i;
+          mesesCiclo.push(m <= 12 ? { mes: m, ano } : { mes: m - 12, ano: ano + 1 });
+        }
+      }
+
+      // Buscar taxa hora excedente
+      let taxaHora = 0;
+      const { data: taxas } = await supabase
+        .from('taxas_clientes')
+        .select('id')
+        .eq('cliente_id', empresaId)
+        .lte('vigencia_inicio', dataRef)
+        .order('vigencia_inicio', { ascending: false })
+        .limit(1);
+      if (taxas?.[0]) {
+        const { data: valores } = await supabase
+          .from('valores_taxas_funcoes')
+          .select('valor_base, valor_adicional')
+          .eq('taxa_id', taxas[0].id)
+          .eq('tipo_hora', 'remota')
+          .eq('funcao', 'Funcional')
+          .limit(1);
+        if (valores?.[0]) {
+          taxaHora = (valores[0].valor_adicional && valores[0].valor_adicional > 0)
+            ? valores[0].valor_adicional
+            : Math.round((valores[0].valor_base * 1.15) * 100) / 100;
+        }
+      }
+
+      // Para cada segmento, coletar dados
+      const resultado: BookConsumoSegmentadoData[] = [];
+
+      for (const emp of empresas) {
+        const baseline = Math.round((baselineTotalMin * emp.percentual) / 100);
+        const dadosPorMes: BookConsumoSegmentadoData['dadosPorMes'] = [];
+
+        for (let idx = 0; idx < mesesCiclo.length; idx++) {
+          const mA = mesesCiclo[idx];
+
+          // Consumo de chamados (buscar de banco_horas_calculos_segmentados se disponível)
+          let consumoChamados = 0;
+          const { data: calcParent } = await supabase
+            .from('banco_horas_calculos')
+            .select('id')
+            .eq('empresa_id', empresaId)
+            .eq('mes', mA.mes)
+            .eq('ano', mA.ano)
+            .maybeSingle();
+
+          if (calcParent) {
+            // Tentar buscar do cálculo segmentado
+            const { data: segCalc } = await (supabase as any)
+              .from('banco_horas_calculos_segmentados')
+              .select('consumo_horas')
+              .eq('calculo_id', calcParent.id)
+              .maybeSingle();
+            if (segCalc?.consumo_horas) {
+              const p = String(segCalc.consumo_horas).split(':');
+              consumoChamados = (parseInt(p[0] || '0') * 60) + parseInt(p[1] || '0');
+            }
+          }
+
+          // Reajustes segmentados
+          let reajuste = 0;
+          const { data: reajustes } = await (supabase as any)
+            .from('banco_horas_reajustes')
+            .select('valor_reajuste_horas, tipo_reajuste')
+            .eq('empresa_id', empresaId)
+            .eq('mes', mA.mes)
+            .eq('ano', mA.ano)
+            .eq('empresa_segmentada', emp.nome)
+            .eq('ativo', true);
+          if (reajustes) {
+            for (const r of reajustes) {
+              const p = String(r.valor_reajuste_horas || '00:00').split(':');
+              const mins = (parseInt(p[0] || '0') * 60) + parseInt(p[1] || '0');
+              reajuste += r.tipo_reajuste === 'entrada' ? mins : -mins;
+            }
+          }
+
+          // Requerimentos segmentados
+          let requerimentos = 0;
+          const mesCobranca = `${String(mA.mes).padStart(2, '0')}/${mA.ano}`;
+          const { data: reqs } = await (supabase as any)
+            .from('requerimentos')
+            .select('horas_funcional, horas_tecnico')
+            .eq('cliente_id', empresaId)
+            .eq('mes_cobranca', mesCobranca)
+            .eq('empresa_segmentacao_nome', emp.nome)
+            .in('status', ['enviado_faturamento', 'faturado', 'concluido', 'em_desenvolvimento']);
+          if (reqs) {
+            for (const req of reqs) {
+              if (typeof req.horas_funcional === 'string' && req.horas_funcional.includes(':')) {
+                const [h, m] = req.horas_funcional.split(':').map(Number);
+                requerimentos += h * 60 + m;
+              } else if (req.horas_funcional) {
+                requerimentos += Math.round(parseFloat(req.horas_funcional) * 60);
+              }
+              if (typeof req.horas_tecnico === 'string' && req.horas_tecnico.includes(':')) {
+                const [h, m] = req.horas_tecnico.split(':').map(Number);
+                requerimentos += h * 60 + m;
+              } else if (req.horas_tecnico) {
+                requerimentos += Math.round(parseFloat(req.horas_tecnico) * 60);
+              }
+            }
+          }
+
+          // Calcular valores derivados
+          const repasseMesAnterior = idx > 0 && dadosPorMes[idx - 1]
+            ? Math.round(dadosPorMes[idx - 1].saldo * (percentualRepasse / 100))
+            : 0;
+          const saldoAUtilizar = baseline + repasseMesAnterior;
+          const consumoTotal = consumoChamados + requerimentos + reajuste;
+          const saldo = saldoAUtilizar - consumoTotal;
+          const repasse = Math.round(saldo * (percentualRepasse / 100));
+
+          dadosPorMes.push({
+            mes: mA.mes, ano: mA.ano, baseline, repasseMesAnterior,
+            saldoAUtilizar, consumoChamados, requerimentos, reajuste,
+            consumoTotal, saldo, repasse
+          });
+        }
+
+        const ultimoMes = dadosPorMes[dadosPorMes.length - 1];
+        const excedentes = ultimoMes && ultimoMes.saldo < 0 ? Math.abs(ultimoMes.saldo) : 0;
+        const valorTotalExcedentes = taxaHora > 0 && excedentes > 0 ? (excedentes / 60) * taxaHora : 0;
+
+        resultado.push({
+          nome: emp.nome,
+          percentual: emp.percentual,
+          baseline,
+          dadosPorMes,
+          excedentes,
+          valorTotalExcedentes
+        });
+      }
+
+      console.log('✅ [gerarDadosConsumoSegmentado] Snapshot gerado:', resultado.length, 'segmentos');
+      return resultado;
+    } catch (error) {
+      console.error('❌ [gerarDadosConsumoSegmentado] Erro:', error);
+      return undefined;
     }
   }
 }
