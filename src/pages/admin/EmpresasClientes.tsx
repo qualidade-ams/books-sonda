@@ -381,7 +381,7 @@ const EmpresasClientes = () => {
       baseline_horas_mensal: baselineHorasFormatado || '00:00',
       baseline_tickets_mensal: empresa.baseline_tickets_mensal || undefined,
       possui_repasse_especial: empresa.possui_repasse_especial || false,
-      tipo_repasse_especial: empresa.tipo_repasse_especial || 'simples',
+      tipo_repasse_especial: (empresa.tipo_repasse_especial || 'simples') as 'simples' | 'por_periodo',
       ciclos_para_zerar: empresa.ciclos_para_zerar || undefined,
       percentual_repasse_mensal: empresa.percentual_repasse_mensal || 0,
       percentual_repasse_especial: empresa.percentual_repasse_especial || 0,
@@ -401,19 +401,6 @@ const EmpresasClientes = () => {
       dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0,
     };
 
-    // Debug: Log dos dados de repasse por período
-    console.log('🔍 [prepareEmpresaForEdit] Dados de repasse carregados:', {
-      empresa_id: empresa.id,
-      empresa_nome: empresa.nome_abreviado,
-      possui_repasse_especial: empresa.possui_repasse_especial,
-      tipo_repasse_especial: empresa.tipo_repasse_especial,
-      duracao_periodo_meses: empresa.duracao_periodo_meses,
-      percentual_dentro_periodo: empresa.percentual_dentro_periodo,
-      percentual_entre_periodos: empresa.percentual_entre_periodos,
-      periodos_ate_zerar: empresa.periodos_ate_zerar,
-    });
-
-    return formData;
   };
 
   return (
