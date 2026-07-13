@@ -322,7 +322,7 @@ export class BancoHorasQuarentenaService {
       if (novosIds.length > 0) {
         const { data } = await db
           .from('apontamentos_aranda')
-          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at, analista_tarefa')
+          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at, analista_tarefa, caso_estado')
           .in('id_externo', novosIds);
         novosApontamentos = data || [];
       }
@@ -495,7 +495,7 @@ export class BancoHorasQuarentenaService {
       if (novosIds.length > 0) {
         const { data } = await db
           .from('apontamentos_aranda')
-          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at, analista_tarefa')
+          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at, analista_tarefa, caso_estado')
           .in('id_externo', novosIds);
         novosApontamentos = data || [];
       }
