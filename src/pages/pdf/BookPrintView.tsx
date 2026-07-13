@@ -28,6 +28,9 @@ import BookPesquisa from '@/components/admin/books/BookPesquisa';
 import BookPortfolio from '@/components/admin/books/BookPortfolio';
 import BookOrganograma from '@/components/admin/books/BookOrganograma';
 import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganogramaComercialCS';
+import BookContraCapa from '@/components/admin/books/BookContraCapa';
+import BookConsumoSegmentado from '@/components/admin/books/BookConsumoSegmentado';
+import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
@@ -61,8 +64,25 @@ export default function BookPrintView() {
   
   const { bookData, isLoading, error, refetch } = useBookData(id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(bookData?.empresa_id || null);
+  const { baselineSegmentado: baselineSegmentadoHook, paginasSegmentos: paginasSegmentosHook } = useEmpresaSegmentacao(bookData?.empresa_id || null);
   const [isReady, setIsReady] = useState(false);
   const [consumoDataLoaded, setConsumoDataLoaded] = useState(false);
+
+  // Consumo Segmentado: priorizar snapshot do bookData
+  const hasSnapshotSegmentado = !!(bookData?.consumo_segmentado && bookData.consumo_segmentado.length > 0);
+  const baselineSegmentado = hasSnapshotSegmentado || baselineSegmentadoHook;
+  const paginasSegmentos = hasSnapshotSegmentado
+    ? (() => {
+        const total = bookData!.consumo_segmentado!.length;
+        const pages: number[][] = [];
+        for (let i = 0; i < total; i += 2) {
+          const p: number[] = [i];
+          if (i + 1 < total) p.push(i + 1);
+          pages.push(p);
+        }
+        return pages;
+      })()
+    : paginasSegmentosHook;
 
   // CRÍTICO: Limpar cache e forçar refetch ao montar o componente
   useEffect(() => {
@@ -258,6 +278,20 @@ export default function BookPrintView() {
         />
       </div>
 
+      {/* Consumo Segmentado (condicional) */}
+      {baselineSegmentado && paginasSegmentos.length > 0 && paginasSegmentos.map((indices, pageIdx) => (
+        <div key={`consumo-seg-${pageIdx}`} className="page-section page-break" data-section={`consumo-segmentado-${pageIdx}`}>
+          <BookConsumoSegmentado
+            empresaId={bookData.empresa_id}
+            empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+            mes={bookData.mes}
+            ano={bookData.ano}
+            segmentosIndices={indices}
+            snapshotData={bookData.consumo_segmentado}
+          />
+        </div>
+      ))}
+
       {/* Pesquisa */}
       <div className="page-section page-break" data-section="pesquisa">
         <BookPesquisa 
@@ -271,6 +305,11 @@ export default function BookPrintView() {
         <BookPortfolio 
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
         />
+      </div>
+
+      {/* Contra Capa */}
+      <div className="page-section page-break" data-section="contra-capa">
+        <BookContraCapa />
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { SegmentacaoConfig } from '@/types/clientBooksTypes';
 import type { Requerimento } from '@/types/requerimentos';
 import { converterHorasParaMinutos, converterMinutosParaHoras } from '@/utils/horasUtils';
+import { calcularNomePeriodoComIdioma } from '@/utils/periodoVigenciaUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VisaoSegmentadaProps {
@@ -298,7 +299,7 @@ export function VisaoSegmentada({
   tipoRepasseEspecial,
   percentualEntrePeriodos,
 }: VisaoSegmentadaProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   // Nomes dos meses traduzidos
   const MESES = [
@@ -307,6 +308,22 @@ export function VisaoSegmentada({
     t('bankHours.months.july'), t('bankHours.months.august'), t('bankHours.months.september'),
     t('bankHours.months.october'), t('bankHours.months.november'), t('bankHours.months.december')
   ];
+  
+  // Calcular nome do período atual (mesma lógica da Visão Consolidada)
+  const uiLanguage = i18n.language === 'en' ? true : i18n.language === 'es' ? 'es' : false;
+  const nomePeriodoAtual = useMemo(() => {
+    if (!mesesDoPeriodo || mesesDoPeriodo.length === 0) {
+      return t('bankHours.periodLabel', { number: periodoApuracao });
+    }
+    const mesReferencia = mesesDoPeriodo[0];
+    return calcularNomePeriodoComIdioma(
+      inicioVigencia,
+      periodoApuracao,
+      mesReferencia.mes,
+      mesReferencia.ano,
+      uiLanguage
+    );
+  }, [inicioVigencia, periodoApuracao, mesesDoPeriodo, uiLanguage]);
   
   // Estado para armazenar dados de consumo de chamados
   const [consumoPorEmpresaMes, setConsumoPorEmpresaMes] = useState<Record<string, Record<string, number>>>({});
@@ -738,7 +755,7 @@ export function VisaoSegmentada({
                   <TableRow className="bg-gray-700 hover:bg-gray-700">
                     <TableHead className="font-semibold text-white text-center">{t('common.period')}</TableHead>
                     <TableHead className="font-semibold text-white text-center" colSpan={mesesDoPeriodo.length}>
-                      {t('bankHours.periodLabel', { number: periodoApuracao })}
+                      {nomePeriodoAtual}
                     </TableHead>
                   </TableRow>
                   

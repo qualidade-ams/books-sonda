@@ -10,4 +10,6 @@ export { default as BookBacklog } from './BookBacklog';
 export { default as BookConsumo } from './BookConsumo';
 export { default as BookPesquisa } from './BookPesquisa';
 export { default as BookOrganograma } from './BookOrganograma';
+export { default as BookContraCapa } from './BookContraCapa';
+export { default as BookConsumoSegmentado } from './BookConsumoSegmentado';
 export { BookVersoesHistorico } from './BookVersoesHistorico';

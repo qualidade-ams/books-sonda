@@ -34,6 +34,9 @@ import BookPesquisa from './BookPesquisa';
 import BookOrganograma from './BookOrganograma';
 import BookOrganogramaComercialCS from './BookOrganogramaComercialCS';
 import BookPortfolio from './BookPortfolio';
+import BookContraCapa from './BookContraCapa';
+import BookConsumoSegmentado from './BookConsumoSegmentado';
+import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
 
 interface BookViewerProps {
   book: BookListItem | null;
@@ -48,6 +51,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
   const { bookData: bookDataFetched, isLoading, refetch } = useBookData(book?.id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(book?.empresa_id || null);
+  const { baselineSegmentado: baselineSegmentadoHook, paginasSegmentos: paginasSegmentosHook, isLoading: isLoadingSegmentacao } = useEmpresaSegmentacao(book?.empresa_id || null);
   const { toast } = useToast();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -69,9 +73,28 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
   // Usar override se fornecido, senão usar dados buscados
   const bookData = bookDataOverride || bookDataFetched;
 
+  // Consumo Segmentado: priorizar snapshot do bookData, fallback para hook de empresa
+  const hasSnapshotSegmentado = !!(bookData?.consumo_segmentado && bookData.consumo_segmentado.length > 0);
+  const baselineSegmentado = hasSnapshotSegmentado || baselineSegmentadoHook;
+  const paginasSegmentos = hasSnapshotSegmentado
+    ? (() => {
+        const total = bookData!.consumo_segmentado!.length;
+        const pages: number[][] = [];
+        for (let i = 0; i < total; i += 2) {
+          const p: number[] = [i];
+          if (i + 1 < total) p.push(i + 1);
+          pages.push(p);
+        }
+        return pages;
+      })()
+    : paginasSegmentosHook;
+
   // Limpar cache e recarregar dados quando o modal for aberto
   useEffect(() => {
     if (open && book?.id) {
+      // Sempre abrir na aba Capa
+      setActiveTab('capa');
+      
       console.log('🔄 BookViewer aberto - Limpando cache e recarregando dados para book:', book.id);
       
       // Limpar cache ESPECÍFICO deste book (não todos os books!)
@@ -412,6 +435,19 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
               >
                 {t('books.tabs.consumo')}
               </TabsTrigger>
+              {/* Abas dinâmicas de Consumo Segmentado */}
+              {baselineSegmentado && paginasSegmentos.length > 0 && paginasSegmentos.map((_, pageIdx) => (
+                <TabsTrigger
+                  key={`consumo-seg-${pageIdx}`}
+                  value={`consumo-seg-${pageIdx}`}
+                  className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                >
+                  {paginasSegmentos.length === 1
+                    ? t('books.tabs.consumoSegmentado', 'Consumo Segmentado')
+                    : `${t('books.tabs.consumoSegmentado', 'Consumo Segmentado')} ${pageIdx + 1}`
+                  }
+                </TabsTrigger>
+              ))}
               <TabsTrigger
                 value="pesquisa"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
@@ -423,6 +459,12 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
                 {t('books.tabs.portfolio')}
+              </TabsTrigger>
+              <TabsTrigger
+                value="contra-capa"
+                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+              >
+                {t('books.tabs.contraCapa', 'Contra Capa')}
               </TabsTrigger>
             </TabsList>
 
@@ -474,6 +516,20 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                   />
                 </TabsContent>
 
+                {/* Abas dinâmicas de Consumo Segmentado - Conteúdo */}
+                {baselineSegmentado && paginasSegmentos.length > 0 && paginasSegmentos.map((indices, pageIdx) => (
+                  <TabsContent key={`consumo-seg-content-${pageIdx}`} value={`consumo-seg-${pageIdx}`} className="mt-0 h-full">
+                    <BookConsumoSegmentado
+                      empresaId={bookData.empresa_id}
+                      empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                      mes={bookData.mes}
+                      ano={bookData.ano}
+                      segmentosIndices={indices}
+                      snapshotData={bookData.consumo_segmentado}
+                    />
+                  </TabsContent>
+                ))}
+
                 <TabsContent value="pesquisa" className="mt-0 h-full">
                   <BookPesquisa 
                     data={bookData.pesquisa}
@@ -485,6 +541,10 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                   <BookPortfolio 
                     empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
                   />
+                </TabsContent>
+
+                <TabsContent value="contra-capa" className="mt-0 h-full">
+                  <BookContraCapa />
                 </TabsContent>
 
                 {/* Abas dinâmicas de Organograma - Conteúdo */}

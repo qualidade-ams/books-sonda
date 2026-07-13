@@ -34,6 +34,9 @@ export interface BookData {
   consumo: BookConsumoData;
   pesquisa: BookPesquisaData;
   
+  // Consumo segmentado (snapshot - apenas se empresa tem baseline_segmentado)
+  consumo_segmentado?: BookConsumoSegmentadoData[];
+  
   // Organogramas (screenshots em base64)
   organogramas?: BookOrganogramaData[];
   
@@ -492,3 +495,33 @@ export const MESES_ABREVIADOS: Record<number, string> = {
   11: 'NOV',
   12: 'DEZ'
 };
+
+// ============================================================================
+// CONSUMO SEGMENTADO (SNAPSHOT)
+// ============================================================================
+
+/**
+ * Dados de consumo segmentado por empresa (snapshot congelado na geração do book)
+ */
+export interface BookConsumoSegmentadoData {
+  nome: string;
+  percentual: number;
+  dadosPorMes: BookConsumoSegmentadoMes[];
+  excedentes: number;
+  valorTotalExcedentes: number;
+  baseline: number; // em minutos
+}
+
+export interface BookConsumoSegmentadoMes {
+  mes: number;
+  ano: number;
+  baseline: number;
+  repasseMesAnterior: number;
+  saldoAUtilizar: number;
+  consumoChamados: number;
+  requerimentos: number;
+  reajuste: number;
+  consumoTotal: number;
+  saldo: number;
+  repasse: number;
+}

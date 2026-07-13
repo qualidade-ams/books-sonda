@@ -112,7 +112,7 @@ export default function BookPortfolio({ empresaNome }: BookPortfolioProps) {
 
       {/* Conteúdo com borda arredondada - ocupa todo o espaço disponível */}
       <div className="flex-1 border-2 rounded-[35.5px] p-10 min-h-0" style={{ borderColor: '#666666' }}>
-        <div className="flex flex-col justify-center space-y-10 h-full">
+        <div className="flex flex-col justify-start space-y-20 h-full" style={{ paddingTop: '20px' }}>
           {/* Primeira Linha - 4 itens */}
           <div className="flex justify-center">
             <div className="grid grid-cols-4 gap-8 items-start">

@@ -196,6 +196,7 @@ class BooksService {
           dados_backlog,
           dados_consumo,
           dados_pesquisa,
+          dados_consumo_segmentado,
           empresas_clientes (
             nome_completo,
             nome_abreviado
@@ -269,7 +270,8 @@ class BooksService {
           backlog_por_causa: data.dados_backlog?.backlog_por_causa || this.getBacklogVazio().backlog_por_causa
         },
         consumo: data.dados_consumo || this.getConsumoVazio(),
-        pesquisa: data.dados_pesquisa || this.getPesquisaVazia()
+        pesquisa: data.dados_pesquisa || this.getPesquisaVazia(),
+        consumo_segmentado: data.dados_consumo_segmentado || undefined
       };
 
       return bookData;
@@ -549,6 +551,7 @@ class BooksService {
                 dados_backlog: dadosBook.backlog,
                 dados_consumo: dadosBook.consumo,
                 dados_pesquisa: dadosBook.pesquisa,
+                dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
                 updated_at: new Date().toISOString()
               })
               .eq('id', bookExistente.id)
@@ -571,7 +574,8 @@ class BooksService {
                 dados_sla: dadosBook.sla,
                 dados_backlog: dadosBook.backlog,
                 dados_consumo: dadosBook.consumo,
-                dados_pesquisa: dadosBook.pesquisa
+                dados_pesquisa: dadosBook.pesquisa,
+                dados_consumo_segmentado: dadosBook.consumo_segmentado || null
               })
               .select()
               .single();

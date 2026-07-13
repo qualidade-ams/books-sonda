@@ -284,7 +284,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
                   }}
                 >
                   <div className="text-center">
-                    <div className="text-4xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-blue-600">
                       {data.percentual_aderencia.toFixed(1)}%
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
