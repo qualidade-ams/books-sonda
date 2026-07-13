@@ -322,7 +322,7 @@ export class BancoHorasQuarentenaService {
       if (novosIds.length > 0) {
         const { data } = await db
           .from('apontamentos_aranda')
-          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at')
+          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at, analista_tarefa')
           .in('id_externo', novosIds);
         novosApontamentos = data || [];
       }
@@ -409,6 +409,7 @@ export class BancoHorasQuarentenaService {
   /**
    * Executa detecção completa e cria registros de quarentena se houver diferenças.
    * Chamado após cada sincronização com Aranda.
+   * Otimizado: busca fechamento uma única vez e reutiliza para horas e tickets.
    */
   async executarDeteccaoCompleta(
     empresaId: string,
@@ -419,46 +420,154 @@ export class BancoHorasQuarentenaService {
     try {
       console.log('🔍 Executando detecção completa:', { empresaId, mes, ano });
 
-      const ajustesCriados: AjusteRetroativo[] = [];
-
-      // Detectar extemporâneos de horas
-      const resultHoras = await this.detectarExtemporaneos(empresaId, mes, ano);
-      if (resultHoras?.temDiferenca) {
-        const fechamento = await this.buscarFechamento(empresaId, mes, ano);
-        if (fechamento) {
-          const ajuste = await this.criarAjusteRetroativo(
-            empresaId,
-            fechamento.id,
-            mes,
-            ano,
-            resultHoras,
-            syncId
-          );
-          if (ajuste) ajustesCriados.push(ajuste);
-        }
+      // Buscar fechamento UMA ÚNICA VEZ e reutilizar para ambas as detecções
+      const fechamento = await this.buscarFechamento(empresaId, mes, ano);
+      if (!fechamento) {
+        console.log('ℹ️ Período não está fechado, nada a detectar');
+        return [];
       }
 
-      // Detectar extemporâneos de tickets
-      const resultTickets = await this.detectarExtemporaneosTickets(empresaId, mes, ano);
+      const ajustesCriados: AjusteRetroativo[] = [];
+
+      // Executar detecção de horas e tickets em PARALELO
+      const [resultHoras, resultTickets] = await Promise.all([
+        this.detectarExtemporaneosComFechamento(empresaId, mes, ano, fechamento),
+        this.detectarExtemporaneosTicketsComFechamento(empresaId, mes, ano, fechamento)
+      ]);
+
+      // Criar ajustes para horas
+      if (resultHoras?.temDiferenca) {
+        const ajuste = await this.criarAjusteRetroativo(
+          empresaId,
+          fechamento.id,
+          mes,
+          ano,
+          resultHoras,
+          syncId
+        );
+        if (ajuste) ajustesCriados.push(ajuste);
+      }
+
+      // Criar ajustes para tickets
       if (resultTickets?.temDiferenca) {
-        const fechamento = await this.buscarFechamento(empresaId, mes, ano);
-        if (fechamento) {
-          const ajuste = await this.criarAjusteRetroativo(
-            empresaId,
-            fechamento.id,
-            mes,
-            ano,
-            resultTickets,
-            syncId
-          );
-          if (ajuste) ajustesCriados.push(ajuste);
-        }
+        const ajuste = await this.criarAjusteRetroativo(
+          empresaId,
+          fechamento.id,
+          mes,
+          ano,
+          resultTickets,
+          syncId
+        );
+        if (ajuste) ajustesCriados.push(ajuste);
       }
 
       console.log(`✅ Detecção completa: ${ajustesCriados.length} ajustes criados`);
       return ajustesCriados;
     } catch (error) {
       console.error('❌ Erro na detecção completa:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Detecta extemporâneos de horas reutilizando fechamento já carregado.
+   * Evita query duplicada ao buscarFechamento.
+   */
+  private async detectarExtemporaneosComFechamento(
+    empresaId: string,
+    mes: number,
+    ano: number,
+    fechamento: FechamentoPeriodo
+  ): Promise<DeteccaoResult | null> {
+    try {
+      const idsExtemporaneos = await this.buscarIdsApontamentosExtemporaneos(empresaId, mes, ano);
+      const idsSnapshot = fechamento.apontamentos_ids || [];
+
+      const novosIds = idsExtemporaneos.filter(id => !idsSnapshot.includes(id));
+
+      if (novosIds.length === 0) {
+        return null;
+      }
+
+      console.log('⚠️ Extemporâneos detectados:', { novos: novosIds.length });
+
+      let novosApontamentos: any[] = [];
+      if (novosIds.length > 0) {
+        const { data } = await db
+          .from('apontamentos_aranda')
+          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at, analista_tarefa')
+          .in('id_externo', novosIds);
+        novosApontamentos = data || [];
+      }
+
+      const minutosNovos = novosApontamentos.reduce(
+        (acc, a) => acc + (a.tempo_gasto_minutos || 0), 0
+      );
+
+      const diferencaMinutos = minutosNovos;
+      const sinal = '+';
+      const absMinutos = Math.abs(diferencaMinutos);
+      const hDif = Math.floor(absMinutos / 60);
+      const mDif = absMinutos % 60;
+      const diferenca = `${sinal}${String(hDif).padStart(2, '0')}:${String(mDif).padStart(2, '0')}`;
+
+      const snapshotHoras = fechamento.snapshot_consumo_horas || '00:00';
+      const snapshotMinutos = converterHorasParaMinutos(snapshotHoras);
+      const novoTotalMinutos = snapshotMinutos + diferencaMinutos;
+      const valorNovo = converterMinutosParaHoras(novoTotalMinutos);
+
+      return {
+        temDiferenca: true,
+        tipo: 'apontamento_horas',
+        valorAnterior: snapshotHoras,
+        valorNovo,
+        diferenca,
+        diferencaMinutos,
+        novosApontamentos,
+        apontamentosRemovidos: []
+      };
+    } catch (error) {
+      console.error('❌ Erro ao detectar extemporâneos com fechamento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Detecta tickets extemporâneos reutilizando fechamento já carregado.
+   * Evita query duplicada ao buscarFechamento.
+   */
+  private async detectarExtemporaneosTicketsComFechamento(
+    empresaId: string,
+    mes: number,
+    ano: number,
+    fechamento: FechamentoPeriodo
+  ): Promise<DeteccaoResult | null> {
+    try {
+      const idsAtuais = await this.buscarIdsTickets(empresaId, mes, ano);
+      const idsSnapshot = fechamento.tickets_ids || [];
+
+      const novosIds = idsAtuais.filter(id => !idsSnapshot.includes(id));
+      const removidosIds = idsSnapshot.filter(id => !idsAtuais.includes(id));
+
+      if (novosIds.length === 0 && removidosIds.length === 0) {
+        return null;
+      }
+
+      const diferencaTickets = novosIds.length - removidosIds.length;
+      const snapshotTickets = fechamento.snapshot_consumo_tickets || 0;
+
+      return {
+        temDiferenca: true,
+        tipo: 'apontamento_tickets',
+        valorAnterior: String(snapshotTickets),
+        valorNovo: String(snapshotTickets + diferencaTickets),
+        diferenca: `${diferencaTickets >= 0 ? '+' : ''}${diferencaTickets}`,
+        diferencaMinutos: diferencaTickets,
+        novosApontamentos: novosIds.map(id => ({ nro_solicitacao: id })),
+        apontamentosRemovidos: removidosIds.map(id => ({ nro_solicitacao: id }))
+      };
+    } catch (error) {
+      console.error('❌ Erro ao detectar tickets extemporâneos com fechamento:', error);
       throw error;
     }
   }
@@ -1148,6 +1257,11 @@ export class BancoHorasQuarentenaService {
    * Muito mais rápido que verificar todos os fechamentos.
    * Para varredura completa, usar a Edge Function `detectar-extemporaneos`.
    */
+  /**
+   * Executa detecção automática apenas para os últimos N meses (padrão: 3).
+   * Otimizado com processamento em lotes paralelos para melhor performance.
+   * Para varredura completa, usar a Edge Function `detectar-extemporaneos`.
+   */
   async executarDeteccaoRecente(mesesAtras: number = 3): Promise<AjusteRetroativo[]> {
     try {
       console.log(`🔍 Executando detecção para os últimos ${mesesAtras} meses...`);
@@ -1177,18 +1291,26 @@ export class BancoHorasQuarentenaService {
 
       console.log(`📋 ${fechamentos.length} fechamento(s) recente(s) encontrado(s) (últimos ${mesesAtras} meses)`);
 
+      // Processar em LOTES PARALELOS para reduzir tempo total
+      const BATCH_SIZE = 5;
       const todosAjustes: AjusteRetroativo[] = [];
 
-      for (const f of fechamentos) {
-        try {
-          const ajustes = await this.executarDeteccaoCompleta(
-            f.empresa_id,
-            f.mes,
-            f.ano
-          );
-          todosAjustes.push(...ajustes);
-        } catch (err) {
-          console.warn(`⚠️ Erro ao detectar para ${f.empresa_id} ${f.mes}/${f.ano}:`, err);
+      for (let i = 0; i < fechamentos.length; i += BATCH_SIZE) {
+        const batch = fechamentos.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(fechamentos.length / BATCH_SIZE);
+        console.log(`⚡ Processando lote ${batchNum}/${totalBatches} (${batch.length} fechamentos em paralelo)`);
+
+        const results = await Promise.allSettled(
+          batch.map(f => this.executarDeteccaoCompleta(f.empresa_id, f.mes, f.ano))
+        );
+
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            todosAjustes.push(...result.value);
+          } else {
+            console.warn('⚠️ Erro em detecção paralela:', result.reason);
+          }
         }
       }
 
