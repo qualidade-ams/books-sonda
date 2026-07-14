@@ -238,7 +238,7 @@ const UserManagement = () => {
     setEditFormData({
       fullName: user.full_name || '',
       email: user.email,
-      active: user.active || true,
+      active: user.active ?? true,
       resetPassword: false,
       newPassword: '',
       confirmNewPassword: ''
