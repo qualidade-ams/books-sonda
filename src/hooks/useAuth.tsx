@@ -59,6 +59,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await supabase.auth.signOut();
                 return;
               }
+
+              // Verificar se o usuário está ativo ao restaurar sessão ou fazer login
+              if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('active')
+                  .eq('id', session.user.id)
+                  .single();
+
+                if (profile && profile.active === false) {
+                  console.warn('AuthProvider: Usuário inativo detectado, encerrando sessão');
+                  await supabase.auth.signOut();
+                  setSession(null);
+                  setUser(null);
+                  setIsReady(true);
+                  setLoading(false);
+                  return;
+                }
+              }
               
               setSession(session);
               setUser(session?.user ?? null);
@@ -141,7 +160,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     while (retryCount < maxRetries) {
       try {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -149,6 +168,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.error('AuthProvider: Erro de login:', error.message);
           return { error };
+        }
+
+        // Verificar se o usuário está ativo na tabela profiles
+        if (data?.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('active')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('AuthProvider: Erro ao verificar status do usuário:', profileError);
+            // Se não conseguir verificar, permitir login (fallback seguro)
+          } else if (profile && profile.active === false) {
+            // Usuário inativo - fazer logout imediatamente
+            await supabase.auth.signOut();
+            return {
+              error: {
+                message: 'Sua conta está desativada. Entre em contato com o administrador do sistema.'
+              }
+            };
+          }
         }
         
         return { error: null };

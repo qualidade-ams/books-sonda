@@ -58,7 +58,7 @@ class UserManagementService {
         id: user.user_id,
         email: user.user_email || '',
         full_name: user.user_full_name,
-        active: true,
+        active: user.user_active ?? true,
         created_at: user.user_created_at,
         last_sign_in_at: user.user_last_sign_in_at,
         group_name: user.group_name
@@ -179,6 +179,22 @@ class UserManagementService {
 
       console.log('✅ Usuário atualizado com sucesso:', data);
 
+      // Sincronizar status ativo com auth.users (ban/unban via Edge Function)
+      try {
+        console.log('🔄 Sincronizando status ativo com Supabase Auth...');
+        const banResult = await this.syncUserBanStatus(userData.userId, userData.active);
+        
+        if (!banResult.success) {
+          console.warn('⚠️ Erro ao sincronizar ban status:', banResult.error);
+          // Não bloquear a operação, apenas avisar
+        } else {
+          console.log('✅ Status de ban sincronizado com sucesso');
+        }
+      } catch (banError: any) {
+        console.warn('⚠️ Erro ao chamar Edge Function admin-ban-user:', banError.message);
+        // Não bloquear a operação principal
+      }
+
       // Se precisa resetar senha, chamar Edge Function
       if (userData.resetPassword && userData.newPassword) {
         console.log('🔐 Resetando senha via Edge Function...');
@@ -231,6 +247,58 @@ class UserManagementService {
         errorMessage = 'Você não tem permissão para atualizar usuários.';
       }
 
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  // Sincronizar status ativo com auth.users (ban/unban) via Edge Function
+  private async syncUserBanStatus(userId: string, active: boolean): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Obter token de autenticação
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Sessão não encontrada');
+      }
+
+      // Chamar Edge Function admin-ban-user
+      const response = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/admin-ban-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            active
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Erro desconhecido');
+        throw new Error(`Edge Function retornou erro ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao sincronizar status de ban');
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Erro ao sincronizar ban status:', error);
+      
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        errorMessage = 'Edge Function admin-ban-user não está acessível.';
+      } else if (error.message?.includes('404')) {
+        errorMessage = 'Edge Function admin-ban-user não encontrada.';
+      }
+      
       return { success: false, error: errorMessage };
     }
   }

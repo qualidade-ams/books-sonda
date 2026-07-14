@@ -71,6 +71,10 @@ const Login = () => {
           errorMessage = t('login.invalidCredentials');
         } else if (error.message && error.message.includes('Email not confirmed')) {
           errorMessage = t('login.emailNotConfirmed');
+        } else if (error.message && (error.message.includes('User is banned') || error.message.includes('user_banned'))) {
+          errorMessage = 'Sua conta está desativada. Entre em contato com o administrador do sistema.';
+        } else if (error.message && error.message.includes('conta está desativada')) {
+          errorMessage = error.message;
         } else if (error.message) {
           errorMessage = error.message;
         }
