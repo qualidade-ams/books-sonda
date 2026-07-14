@@ -513,12 +513,14 @@ async function reconciliarDelecoesporChamado(
   total_deletados: number;
   erros: number;
   detalhes: string[];
+  ids_externos_deletados: string[];
 }> {
   const resultado = {
     total_chamados_verificados: 0,
     total_deletados: 0,
     erros: 0,
-    detalhes: [] as string[]
+    detalhes: [] as string[],
+    ids_externos_deletados: [] as string[]
   };
 
   if (chamadosProcessados.size === 0) {
@@ -578,10 +580,12 @@ async function reconciliarDelecoesporChamado(
 
       // 3. Identificar registros que existem no Supabase mas NÃO no SQL Server
       const idsParaDeletar: string[] = [];
+      const idsExternosParaDeletar: string[] = [];
       
       for (const reg of registrosSupabase) {
         if (reg.id_externo && !idsExistentesNoSql.has(reg.id_externo)) {
           idsParaDeletar.push(reg.id);
+          idsExternosParaDeletar.push(reg.id_externo);
           console.log(`🗑️ [RECONCILIAÇÃO] Tarefa deletada na origem: ${reg.id_externo} (Chamado: ${reg.nro_chamado}, Tarefa: ${reg.nro_tarefa})`);
         }
       }
@@ -607,6 +611,9 @@ async function reconciliarDelecoesporChamado(
           }
         }
 
+        // Coletar ids_externos deletados para atualizar ajustes retroativos
+        resultado.ids_externos_deletados.push(...idsExternosParaDeletar);
+
         resultado.detalhes.push(
           `Chamados ${batch.slice(0, 5).join(', ')}${batch.length > 5 ? '...' : ''}: ${idsParaDeletar.length} tarefas removidas`
         );
@@ -624,6 +631,547 @@ async function reconciliarDelecoesporChamado(
   console.log(`✅ [RECONCILIAÇÃO] Concluída: ${resultado.total_chamados_verificados} chamados verificados, ${resultado.total_deletados} tarefas removidas, ${resultado.erros} erros`);
   
   return resultado;
+}
+
+/**
+ * Atualiza ajustes retroativos pendentes após apontamentos serem atualizados.
+ * 
+ * Quando um apontamento é atualizado (ex: data_atividade mudou de mês),
+ * verifica se ele ainda pertence ao mês de referência do ajuste retroativo.
+ * Se a data_atividade agora aponta para outro mês, remove do ajuste e recalcula.
+ * 
+ * @param idsExternosAtualizados Array de id_externo que foram atualizados neste sync
+ */
+async function atualizarAjustesRetroativosAposAtualizacao(
+  idsExternosAtualizados: string[]
+): Promise<{ ajustes_atualizados: number; ajustes_deletados: number }> {
+  const resultado = { ajustes_atualizados: 0, ajustes_deletados: 0 };
+
+  if (idsExternosAtualizados.length === 0) {
+    return resultado;
+  }
+
+  console.log(`🔄 [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Verificando ajustes pendentes afetados por ${idsExternosAtualizados.length} apontamentos atualizados...`);
+
+  try {
+    // Buscar todos os ajustes retroativos pendentes
+    const { data: ajustesPendentes, error: errBusca } = await supabase
+      .from('banco_horas_ajustes_retroativos')
+      .select('id, mes_referencia, ano_referencia, detalhes_mudanca, diferenca_minutos, valor_anterior, valor_novo, diferenca')
+      .eq('status', 'pendente');
+
+    if (errBusca) {
+      console.error('❌ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Erro ao buscar ajustes pendentes:', errBusca);
+      return resultado;
+    }
+
+    if (!ajustesPendentes || ajustesPendentes.length === 0) {
+      console.log('ℹ️ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Nenhum ajuste pendente encontrado');
+      return resultado;
+    }
+
+    const setAtualizados = new Set(idsExternosAtualizados);
+
+    // Para cada ajuste, verificar se algum apontamento atualizado está nele
+    for (const ajuste of ajustesPendentes) {
+      const detalhes = ajuste.detalhes_mudanca as any;
+      if (!detalhes || !detalhes.novos || !Array.isArray(detalhes.novos)) {
+        continue;
+      }
+
+      const novosOriginais: any[] = detalhes.novos;
+
+      // Encontrar apontamentos que foram atualizados neste ajuste
+      const idsExternosNoAjuste = novosOriginais
+        .filter((apt: any) => apt.id_externo && setAtualizados.has(apt.id_externo))
+        .map((apt: any) => apt.id_externo);
+
+      if (idsExternosNoAjuste.length === 0) {
+        continue;
+      }
+
+      // Buscar os dados atuais desses apontamentos no Supabase
+      const { data: apontamentosAtuais, error: errApt } = await supabase
+        .from('apontamentos_aranda')
+        .select('id_externo, data_atividade, tempo_gasto_minutos, nro_chamado, nro_tarefa, caso_estado, analista_tarefa')
+        .in('id_externo', idsExternosNoAjuste);
+
+      if (errApt || !apontamentosAtuais) {
+        console.error(`❌ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Erro ao buscar apontamentos atuais:`, errApt);
+        continue;
+      }
+
+      // Verificar quais apontamentos não pertencem mais ao mês de referência do ajuste
+      const mesRef = ajuste.mes_referencia;
+      const anoRef = ajuste.ano_referencia;
+      const idsExternosForaDoMes: string[] = [];
+
+      for (const apt of apontamentosAtuais) {
+        if (!apt.data_atividade) {
+          // Sem data_atividade → considerar fora do mês
+          idsExternosForaDoMes.push(apt.id_externo);
+          continue;
+        }
+
+        const dataAtividade = new Date(apt.data_atividade);
+        const mesAtividade = dataAtividade.getMonth() + 1; // 1-12
+        const anoAtividade = dataAtividade.getFullYear();
+
+        if (mesAtividade !== mesRef || anoAtividade !== anoRef) {
+          idsExternosForaDoMes.push(apt.id_externo);
+          console.log(`📅 [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Apontamento ${apt.id_externo} mudou de ${mesRef}/${anoRef} para ${mesAtividade}/${anoAtividade}`);
+        }
+      }
+
+      if (idsExternosForaDoMes.length === 0) {
+        // Todos os apontamentos atualizados ainda pertencem ao mês → atualizar dados no JSONB
+        const setForaDoMes = new Set(idsExternosForaDoMes);
+        const novosAtualizados = novosOriginais.map((apt: any) => {
+          if (!apt.id_externo || !setAtualizados.has(apt.id_externo)) return apt;
+          // Atualizar com dados mais recentes
+          const atualizado = apontamentosAtuais.find(a => a.id_externo === apt.id_externo);
+          if (atualizado) {
+            return {
+              ...apt,
+              data_atividade: atualizado.data_atividade,
+              tempo_gasto_minutos: atualizado.tempo_gasto_minutos,
+              caso_estado: atualizado.caso_estado,
+              analista_tarefa: atualizado.analista_tarefa
+            };
+          }
+          return apt;
+        });
+
+        // Recalcular minutos com dados atualizados
+        const minutosRecalculados = novosAtualizados.reduce(
+          (acc: number, apt: any) => acc + (apt.tempo_gasto_minutos || 0), 0
+        );
+
+        const valorAnterior = ajuste.valor_anterior || '00:00';
+        const partesAnterior = valorAnterior.split(':');
+        const minutosAnterior = (parseInt(partesAnterior[0]) || 0) * 60 + (parseInt(partesAnterior[1]) || 0);
+        const novoTotalMinutos = minutosAnterior + minutosRecalculados;
+        const hNovo = Math.floor(novoTotalMinutos / 60);
+        const mNovo = novoTotalMinutos % 60;
+        const valorNovo = `${String(hNovo).padStart(2, '0')}:${String(mNovo).padStart(2, '0')}`;
+
+        const hDif = Math.floor(minutosRecalculados / 60);
+        const mDif = minutosRecalculados % 60;
+        const diferenca = `+${String(hDif).padStart(2, '0')}:${String(mDif).padStart(2, '0')}`;
+
+        const { error: errUpdate } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .update({
+            detalhes_mudanca: { ...detalhes, novos: novosAtualizados },
+            diferenca_minutos: minutosRecalculados,
+            valor_novo: valorNovo,
+            diferenca: diferenca,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ajuste.id);
+
+        if (!errUpdate) {
+          resultado.ajustes_atualizados++;
+          console.log(`✅ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Ajuste ${ajuste.id} dados atualizados`);
+        }
+        continue;
+      }
+
+      // Remover apontamentos que mudaram de mês
+      const setForaDoMes = new Set(idsExternosForaDoMes);
+      const novosRestantes = novosOriginais.filter(
+        (apt: any) => !setForaDoMes.has(apt.id_externo)
+      );
+
+      console.log(`🗑️ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Ajuste ${ajuste.id}: ${idsExternosForaDoMes.length} apontamento(s) mudaram de mês`);
+
+      if (novosRestantes.length === 0) {
+        // Todos os apontamentos saíram do mês → deletar o ajuste
+        const { error: errDelete } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .delete()
+          .eq('id', ajuste.id);
+
+        if (!errDelete) {
+          resultado.ajustes_deletados++;
+          console.log(`✅ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Ajuste ${ajuste.id} deletado (todos apontamentos mudaram de mês)`);
+        }
+      } else {
+        // Recalcular com apontamentos restantes (atualizar dados dos que ficaram)
+        const novosAtualizados = novosRestantes.map((apt: any) => {
+          if (!apt.id_externo || !setAtualizados.has(apt.id_externo)) return apt;
+          const atualizado = apontamentosAtuais.find(a => a.id_externo === apt.id_externo);
+          if (atualizado) {
+            return {
+              ...apt,
+              data_atividade: atualizado.data_atividade,
+              tempo_gasto_minutos: atualizado.tempo_gasto_minutos,
+              caso_estado: atualizado.caso_estado,
+              analista_tarefa: atualizado.analista_tarefa
+            };
+          }
+          return apt;
+        });
+
+        const minutosRestantes = novosAtualizados.reduce(
+          (acc: number, apt: any) => acc + (apt.tempo_gasto_minutos || 0), 0
+        );
+
+        const valorAnterior = ajuste.valor_anterior || '00:00';
+        const partesAnterior = valorAnterior.split(':');
+        const minutosAnterior = (parseInt(partesAnterior[0]) || 0) * 60 + (parseInt(partesAnterior[1]) || 0);
+        const novoTotalMinutos = minutosAnterior + minutosRestantes;
+        const hNovo = Math.floor(novoTotalMinutos / 60);
+        const mNovo = novoTotalMinutos % 60;
+        const valorNovo = `${String(hNovo).padStart(2, '0')}:${String(mNovo).padStart(2, '0')}`;
+
+        const hDif = Math.floor(minutosRestantes / 60);
+        const mDif = minutosRestantes % 60;
+        const diferenca = `+${String(hDif).padStart(2, '0')}:${String(mDif).padStart(2, '0')}`;
+
+        const { error: errUpdate } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .update({
+            detalhes_mudanca: { ...detalhes, novos: novosAtualizados },
+            diferenca_minutos: minutosRestantes,
+            valor_novo: valorNovo,
+            diferenca: diferenca,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ajuste.id);
+
+        if (!errUpdate) {
+          resultado.ajustes_atualizados++;
+          console.log(`✅ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Ajuste ${ajuste.id} recalculado: ${novosAtualizados.length} apontamentos restantes, diferença: ${diferenca}`);
+        }
+      }
+    }
+
+    console.log(`✅ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Concluído: ${resultado.ajustes_atualizados} ajustes atualizados, ${resultado.ajustes_deletados} ajustes deletados`);
+    return resultado;
+
+  } catch (erro) {
+    console.error('❌ [AJUSTES RETROATIVOS - ATUALIZAÇÃO] Erro:', erro);
+    return resultado;
+  }
+}
+
+/**
+ * Atualiza ajustes retroativos pendentes após deleção de apontamentos.
+ * 
+ * Para cada ajuste retroativo com status 'pendente', verifica se algum dos
+ * apontamentos em detalhes_mudanca.novos foi deletado. Se sim:
+ * - Remove os apontamentos deletados da lista de novos
+ * - Se a lista ficar vazia, deleta o ajuste retroativo
+ * - Se ainda restarem apontamentos, recalcula diferenca_minutos e valor_novo
+ * 
+ * @param idsExternosDeletados Array de id_externo que foram removidos de apontamentos_aranda
+ */
+async function atualizarAjustesRetroativosAposDeleção(
+  idsExternosDeletados: string[]
+): Promise<{ ajustes_atualizados: number; ajustes_deletados: number }> {
+  const resultado = { ajustes_atualizados: 0, ajustes_deletados: 0 };
+
+  if (idsExternosDeletados.length === 0) {
+    return resultado;
+  }
+
+  console.log(`🔄 [AJUSTES RETROATIVOS] Verificando ajustes pendentes afetados por ${idsExternosDeletados.length} apontamentos deletados...`);
+
+  try {
+    // Buscar todos os ajustes retroativos pendentes
+    const { data: ajustesPendentes, error: errBusca } = await supabase
+      .from('banco_horas_ajustes_retroativos')
+      .select('id, detalhes_mudanca, diferenca_minutos, valor_anterior, valor_novo, diferenca')
+      .eq('status', 'pendente');
+
+    if (errBusca) {
+      console.error('❌ [AJUSTES RETROATIVOS] Erro ao buscar ajustes pendentes:', errBusca);
+      return resultado;
+    }
+
+    if (!ajustesPendentes || ajustesPendentes.length === 0) {
+      console.log('ℹ️ [AJUSTES RETROATIVOS] Nenhum ajuste pendente encontrado');
+      return resultado;
+    }
+
+    const setDeletados = new Set(idsExternosDeletados);
+
+    for (const ajuste of ajustesPendentes) {
+      const detalhes = ajuste.detalhes_mudanca as any;
+      if (!detalhes || !detalhes.novos || !Array.isArray(detalhes.novos)) {
+        continue;
+      }
+
+      // Verificar se algum apontamento do ajuste foi deletado
+      const novosOriginais: any[] = detalhes.novos;
+      const novosRestantes = novosOriginais.filter(
+        (apt: any) => !setDeletados.has(apt.id_externo)
+      );
+
+      // Se nenhum apontamento foi deletado deste ajuste, pular
+      if (novosRestantes.length === novosOriginais.length) {
+        continue;
+      }
+
+      const removidos = novosOriginais.length - novosRestantes.length;
+      console.log(`🗑️ [AJUSTES RETROATIVOS] Ajuste ${ajuste.id}: ${removidos} apontamento(s) deletado(s) da lista`);
+
+      if (novosRestantes.length === 0) {
+        // Todos os apontamentos foram deletados → deletar o ajuste retroativo
+        const { error: errDelete } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .delete()
+          .eq('id', ajuste.id);
+
+        if (errDelete) {
+          console.error(`❌ [AJUSTES RETROATIVOS] Erro ao deletar ajuste ${ajuste.id}:`, errDelete);
+        } else {
+          resultado.ajustes_deletados++;
+          console.log(`✅ [AJUSTES RETROATIVOS] Ajuste ${ajuste.id} deletado (todos apontamentos foram removidos na origem)`);
+        }
+      } else {
+        // Alguns apontamentos restam → recalcular diferença
+        const minutosRestantes = novosRestantes.reduce(
+          (acc: number, apt: any) => acc + (apt.tempo_gasto_minutos || 0), 0
+        );
+
+        // Recalcular valor_novo baseado em valor_anterior + minutosRestantes
+        const valorAnterior = ajuste.valor_anterior || '00:00';
+        const partesAnterior = valorAnterior.split(':');
+        const minutosAnterior = (parseInt(partesAnterior[0]) || 0) * 60 + (parseInt(partesAnterior[1]) || 0);
+        const novoTotalMinutos = minutosAnterior + minutosRestantes;
+        const hNovo = Math.floor(novoTotalMinutos / 60);
+        const mNovo = novoTotalMinutos % 60;
+        const valorNovo = `${String(hNovo).padStart(2, '0')}:${String(mNovo).padStart(2, '0')}`;
+
+        // Recalcular diferenca
+        const sinal = '+';
+        const hDif = Math.floor(minutosRestantes / 60);
+        const mDif = minutosRestantes % 60;
+        const diferenca = `${sinal}${String(hDif).padStart(2, '0')}:${String(mDif).padStart(2, '0')}`;
+
+        // Atualizar o ajuste com os dados recalculados
+        const { error: errUpdate } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .update({
+            detalhes_mudanca: {
+              ...detalhes,
+              novos: novosRestantes
+            },
+            diferenca_minutos: minutosRestantes,
+            valor_novo: valorNovo,
+            diferenca: diferenca,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ajuste.id);
+
+        if (errUpdate) {
+          console.error(`❌ [AJUSTES RETROATIVOS] Erro ao atualizar ajuste ${ajuste.id}:`, errUpdate);
+        } else {
+          resultado.ajustes_atualizados++;
+          console.log(`✅ [AJUSTES RETROATIVOS] Ajuste ${ajuste.id} recalculado: ${novosRestantes.length} apontamentos restantes, diferença: ${diferenca}`);
+        }
+      }
+    }
+
+    console.log(`✅ [AJUSTES RETROATIVOS] Concluído: ${resultado.ajustes_atualizados} ajustes atualizados, ${resultado.ajustes_deletados} ajustes deletados`);
+    return resultado;
+
+  } catch (erro) {
+    console.error('❌ [AJUSTES RETROATIVOS] Erro ao atualizar ajustes retroativos:', erro);
+    return resultado;
+  }
+}
+
+/**
+ * Verificação de consistência: valida TODOS os ajustes retroativos pendentes.
+ * 
+ * Para cada ajuste pendente, busca os dados atuais dos apontamentos na `apontamentos_aranda`
+ * e verifica se a `data_atividade` atual ainda pertence ao `mes_referencia/ano_referencia`.
+ * 
+ * Isso corrige race conditions onde:
+ * - A detecção de extemporâneos gravou dados antigos no JSONB
+ * - O sync atualizou `apontamentos_aranda` mas o registro foi "ignorado" em syncs subsequentes
+ * 
+ * @returns Contagem de ajustes corrigidos e deletados
+ */
+async function verificarConsistenciaAjustesRetroativos(): Promise<{
+  ajustes_atualizados: number;
+  ajustes_deletados: number;
+}> {
+  const resultado = { ajustes_atualizados: 0, ajustes_deletados: 0 };
+
+  try {
+    // Buscar todos os ajustes retroativos pendentes do tipo 'apontamento_horas'
+    const { data: ajustesPendentes, error: errBusca } = await supabase
+      .from('banco_horas_ajustes_retroativos')
+      .select('id, mes_referencia, ano_referencia, detalhes_mudanca, diferenca_minutos, valor_anterior')
+      .eq('status', 'pendente')
+      .eq('tipo_dado', 'apontamento_horas');
+
+    if (errBusca || !ajustesPendentes || ajustesPendentes.length === 0) {
+      return resultado;
+    }
+
+    for (const ajuste of ajustesPendentes) {
+      const detalhes = ajuste.detalhes_mudanca as any;
+      if (!detalhes?.novos || !Array.isArray(detalhes.novos) || detalhes.novos.length === 0) {
+        continue;
+      }
+
+      const novosOriginais: any[] = detalhes.novos;
+      const idsExternos = novosOriginais
+        .map((apt: any) => apt.id_externo)
+        .filter(Boolean);
+
+      if (idsExternos.length === 0) continue;
+
+      // Buscar dados atuais desses apontamentos
+      const { data: apontamentosAtuais, error: errApt } = await supabase
+        .from('apontamentos_aranda')
+        .select('id_externo, data_atividade, tempo_gasto_minutos, caso_estado, analista_tarefa')
+        .in('id_externo', idsExternos);
+
+      if (errApt || !apontamentosAtuais) continue;
+
+      const mesRef = ajuste.mes_referencia;
+      const anoRef = ajuste.ano_referencia;
+      const idsForaDoMes: string[] = [];
+      const idsExistentes = new Set(apontamentosAtuais.map(a => a.id_externo));
+
+      for (const apt of apontamentosAtuais) {
+        if (!apt.data_atividade) {
+          idsForaDoMes.push(apt.id_externo);
+          continue;
+        }
+
+        const dataAtividade = new Date(apt.data_atividade);
+        const mesAtividade = dataAtividade.getMonth() + 1;
+        const anoAtividade = dataAtividade.getFullYear();
+
+        if (mesAtividade !== mesRef || anoAtividade !== anoRef) {
+          idsForaDoMes.push(apt.id_externo);
+        }
+      }
+
+      // Apontamentos que foram deletados da tabela apontamentos_aranda
+      const idsDeletados = idsExternos.filter(id => !idsExistentes.has(id));
+      const idsParaRemover = [...idsForaDoMes, ...idsDeletados];
+
+      if (idsParaRemover.length === 0) {
+        // Verificar se os dados no JSONB estão atualizados
+        let precisaAtualizar = false;
+        const novosAtualizados = novosOriginais.map((apt: any) => {
+          if (!apt.id_externo) return apt;
+          const atualizado = apontamentosAtuais.find(a => a.id_externo === apt.id_externo);
+          if (atualizado && atualizado.data_atividade !== apt.data_atividade) {
+            precisaAtualizar = true;
+            return {
+              ...apt,
+              data_atividade: atualizado.data_atividade,
+              tempo_gasto_minutos: atualizado.tempo_gasto_minutos,
+              caso_estado: atualizado.caso_estado,
+              analista_tarefa: atualizado.analista_tarefa
+            };
+          }
+          return apt;
+        });
+
+        if (precisaAtualizar) {
+          const minutosRecalculados = novosAtualizados.reduce(
+            (acc: number, apt: any) => acc + (apt.tempo_gasto_minutos || 0), 0
+          );
+          const valorAnterior = ajuste.valor_anterior || '00:00';
+          const partesAnterior = valorAnterior.split(':');
+          const minutosAnterior = (parseInt(partesAnterior[0]) || 0) * 60 + (parseInt(partesAnterior[1]) || 0);
+          const novoTotalMinutos = minutosAnterior + minutosRecalculados;
+          const hNovo = Math.floor(novoTotalMinutos / 60);
+          const mNovo = novoTotalMinutos % 60;
+          const valorNovo = `${String(hNovo).padStart(2, '0')}:${String(mNovo).padStart(2, '0')}`;
+          const hDif = Math.floor(minutosRecalculados / 60);
+          const mDif = minutosRecalculados % 60;
+          const diferenca = `+${String(hDif).padStart(2, '0')}:${String(mDif).padStart(2, '0')}`;
+
+          await supabase
+            .from('banco_horas_ajustes_retroativos')
+            .update({
+              detalhes_mudanca: { ...detalhes, novos: novosAtualizados },
+              diferenca_minutos: minutosRecalculados,
+              valor_novo: valorNovo,
+              diferenca: diferenca,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', ajuste.id);
+
+          resultado.ajustes_atualizados++;
+          console.log(`✅ [CONSISTÊNCIA] Ajuste ${ajuste.id} dados atualizados`);
+        }
+        continue;
+      }
+
+      // Filtrar apontamentos que ainda pertencem ao mês
+      const setRemover = new Set(idsParaRemover);
+      const novosRestantes = novosOriginais.filter(
+        (apt: any) => apt.id_externo && !setRemover.has(apt.id_externo)
+      );
+
+      if (novosRestantes.length === 0) {
+        // Todos os apontamentos saíram — deletar o ajuste
+        const { error: errDelete } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .delete()
+          .eq('id', ajuste.id);
+
+        if (!errDelete) {
+          resultado.ajustes_deletados++;
+          console.log(`✅ [CONSISTÊNCIA] Ajuste ${ajuste.id} deletado (todos apontamentos fora do mês ${mesRef}/${anoRef})`);
+        }
+      } else {
+        // Recalcular com restantes
+        const minutosRestantes = novosRestantes.reduce(
+          (acc: number, apt: any) => acc + (apt.tempo_gasto_minutos || 0), 0
+        );
+        const valorAnterior = ajuste.valor_anterior || '00:00';
+        const partesAnterior = valorAnterior.split(':');
+        const minutosAnterior = (parseInt(partesAnterior[0]) || 0) * 60 + (parseInt(partesAnterior[1]) || 0);
+        const novoTotalMinutos = minutosAnterior + minutosRestantes;
+        const hNovo = Math.floor(novoTotalMinutos / 60);
+        const mNovo = novoTotalMinutos % 60;
+        const valorNovo = `${String(hNovo).padStart(2, '0')}:${String(mNovo).padStart(2, '0')}`;
+        const hDif = Math.floor(minutosRestantes / 60);
+        const mDif = minutosRestantes % 60;
+        const diferenca = `+${String(hDif).padStart(2, '0')}:${String(mDif).padStart(2, '0')}`;
+
+        const { error: errUpdate } = await supabase
+          .from('banco_horas_ajustes_retroativos')
+          .update({
+            detalhes_mudanca: { ...detalhes, novos: novosRestantes },
+            diferenca_minutos: minutosRestantes,
+            valor_novo: valorNovo,
+            diferenca: diferenca,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ajuste.id);
+
+        if (!errUpdate) {
+          resultado.ajustes_atualizados++;
+          console.log(`✅ [CONSISTÊNCIA] Ajuste ${ajuste.id} recalculado: ${idsParaRemover.length} removidos, ${novosRestantes.length} restantes`);
+        }
+      }
+    }
+
+    if (resultado.ajustes_atualizados > 0 || resultado.ajustes_deletados > 0) {
+      console.log(`✅ [CONSISTÊNCIA] Concluído: ${resultado.ajustes_atualizados} atualizados, ${resultado.ajustes_deletados} deletados`);
+    } else {
+      console.log('✅ [CONSISTÊNCIA] Todos os ajustes pendentes estão consistentes');
+    }
+
+    return resultado;
+  } catch (erro) {
+    console.error('❌ [CONSISTÊNCIA] Erro na verificação:', erro);
+    return resultado;
+  }
 }
 
 /**
@@ -684,6 +1232,7 @@ export async function sincronizarApontamentosIncremental(
     // 4. Processar cada registro e coletar chamados processados
     console.log(`🔄 [SYNC] Processando ${registros.length} registros...`);
     const chamadosProcessados = new Set<string>();
+    const idsExternosAtualizados: string[] = [];
     
     for (let i = 0; i < registros.length; i++) {
       const registro = registros[i];
@@ -706,6 +1255,10 @@ export async function sincronizarApontamentosIncremental(
           break;
         case 'atualizado':
           resultado.atualizados++;
+          // Coletar id_externo dos atualizados para verificar ajustes retroativos
+          if (registro.Nro_Chamado && registro.Nro_Tarefa) {
+            idsExternosAtualizados.push(`AMSapontamento|${registro.Nro_Chamado.trim()}|${registro.Nro_Tarefa.trim()}`);
+          }
           break;
         case 'ignorado':
           resultado.ignorados++;
@@ -740,7 +1293,45 @@ export async function sincronizarApontamentosIncremental(
       resultado.mensagens.push(...resultadoReconciliacao.detalhes.slice(0, 10)); // Limitar a 10 detalhes
     }
 
-    // 6. Resultado final
+    // 6. Atualizar ajustes retroativos afetados pelas deleções
+    if (resultadoReconciliacao.ids_externos_deletados.length > 0) {
+      console.log(`🔄 [SYNC] Atualizando ajustes retroativos afetados por ${resultadoReconciliacao.ids_externos_deletados.length} apontamentos deletados...`);
+      const resultadoAjustes = await atualizarAjustesRetroativosAposDeleção(resultadoReconciliacao.ids_externos_deletados);
+      
+      if (resultadoAjustes.ajustes_atualizados > 0) {
+        resultado.mensagens.push(`🔄 Ajustes retroativos: ${resultadoAjustes.ajustes_atualizados} recalculados`);
+      }
+      if (resultadoAjustes.ajustes_deletados > 0) {
+        resultado.mensagens.push(`🗑️ Ajustes retroativos: ${resultadoAjustes.ajustes_deletados} removidos (todos apontamentos excluídos na origem)`);
+      }
+    }
+
+    // 6.5. Atualizar ajustes retroativos afetados por apontamentos que mudaram de mês
+    if (idsExternosAtualizados.length > 0) {
+      console.log(`🔄 [SYNC] Verificando ajustes retroativos afetados por ${idsExternosAtualizados.length} apontamentos atualizados...`);
+      const resultadoAjustesAtualizacao = await atualizarAjustesRetroativosAposAtualizacao(idsExternosAtualizados);
+      
+      if (resultadoAjustesAtualizacao.ajustes_atualizados > 0) {
+        resultado.mensagens.push(`🔄 Ajustes retroativos (atualização): ${resultadoAjustesAtualizacao.ajustes_atualizados} recalculados`);
+      }
+      if (resultadoAjustesAtualizacao.ajustes_deletados > 0) {
+        resultado.mensagens.push(`🗑️ Ajustes retroativos (atualização): ${resultadoAjustesAtualizacao.ajustes_deletados} removidos (apontamentos mudaram de mês)`);
+      }
+    }
+
+    // 6.6. Verificação de consistência: validar TODOS os ajustes pendentes
+    // Garante que nenhum ajuste fique com apontamentos que mudaram de mês,
+    // mesmo que o registro não tenha sido "atualizado" neste sync
+    console.log('🔍 [SYNC] Verificação de consistência dos ajustes retroativos pendentes...');
+    const resultadoConsistencia = await verificarConsistenciaAjustesRetroativos();
+    if (resultadoConsistencia.ajustes_atualizados > 0) {
+      resultado.mensagens.push(`🔄 Consistência ajustes: ${resultadoConsistencia.ajustes_atualizados} corrigidos`);
+    }
+    if (resultadoConsistencia.ajustes_deletados > 0) {
+      resultado.mensagens.push(`🗑️ Consistência ajustes: ${resultadoConsistencia.ajustes_deletados} removidos`);
+    }
+
+    // 7. Resultado final
     resultado.sucesso = resultado.erros === 0;
     const mensagemFinal = `Sincronização concluída: ${resultado.inseridos} inseridos, ${resultado.atualizados} atualizados, ${resultado.ignorados} ignorados, ${resultado.deletados} deletados, ${resultado.erros} erros`;
     resultado.mensagens.push(mensagemFinal);

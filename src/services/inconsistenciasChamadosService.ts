@@ -500,16 +500,14 @@ export class InconsistenciasChamadosService {
    * Busca histórico de inconsistências já notificadas
    */
   async buscarHistorico(
-    mes: number,
     ano: number
   ): Promise<HistoricoInconsistencia[]> {
     try {
-      console.log('📜 Buscando histórico de inconsistências:', { mes, ano });
+      console.log('📜 Buscando histórico de inconsistências:', { ano });
 
       const { data, error } = await supabase
         .from('historico_inconsistencias_chamados' as any)
         .select('*')
-        .eq('mes_referencia', mes)
         .eq('ano_referencia', ano)
         .order('data_envio', { ascending: false });
 
@@ -532,16 +530,8 @@ export class InconsistenciasChamadosService {
    */
   private gerarHtmlEmail(
     inconsistencias: InconsistenciaChamado[],
-    mes: number,
     ano: number
   ): string {
-    const nomesMeses = [
-      'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
-      'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
-    ];
-
-    const mesNome = nomesMeses[mes - 1];
-
     // Agrupar inconsistências por tipo
     const porTipo = {
       mes_diferente: inconsistencias.filter(i => i.tipo_inconsistencia === 'mes_diferente'),
@@ -613,7 +603,7 @@ export class InconsistenciasChamadosService {
         <!-- Header -->
         <div class="header">
             <h1>⚠️ Inconsistências Detectadas em Chamados</h1>
-            <p>${mesNome} ${ano}</p>
+            <p>${ano}</p>
         </div>
         
         <!-- Content -->
@@ -731,7 +721,6 @@ export class InconsistenciasChamadosService {
     try {
       console.log('📧 Enviando notificações:', {
         quantidade: request.inconsistencias.length,
-        mes: request.mes_referencia,
         ano: request.ano_referencia
       });
 
@@ -767,7 +756,6 @@ export class InconsistenciasChamadosService {
       // Gerar HTML do email com todas as inconsistências
       const htmlEmail = this.gerarHtmlEmail(
         request.inconsistencias,
-        request.mes_referencia,
         request.ano_referencia
       );
 

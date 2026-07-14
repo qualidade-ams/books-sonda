@@ -1151,7 +1151,6 @@ Obrigado.`;
                       <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.newValue')}</TableHead>
                       <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.difference')}</TableHead>
                       <TableHead className="min-w-[90px] text-center text-xs sm:text-sm py-2">{t('common.status')}</TableHead>
-                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.date')}</TableHead>
                       <TableHead className="w-24 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1207,11 +1206,6 @@ Obrigado.`;
                           </TableCell>
                           <TableCell className="text-center py-3">
                             {getStatusBadge(ajuste.status)}
-                          </TableCell>
-                          <TableCell className="text-center py-3">
-                            <span className="text-[10px] sm:text-xs lg:text-sm text-gray-500">
-                              {new Date(ajuste.created_at).toLocaleDateString('pt-BR')}
-                            </span>
                           </TableCell>
                           <TableCell className="text-center py-3" onClick={(e) => e.stopPropagation()}>
                             {ajuste.status === 'pendente' && (
