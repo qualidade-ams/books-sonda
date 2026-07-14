@@ -74,21 +74,13 @@ export default function InconsistenciaChamados() {
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  // Nomes dos meses via i18n
-  const monthKeys = [
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december'
-  ];
-  const getMonthName = (monthIndex: number) => t(`monthPicker.months.${monthKeys[monthIndex]}`);
-
   const [activeTab, setActiveTab] = useState('inconsistencias_detectadas');
   const [showFilters, setShowFilters] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedInconsistencia, setSelectedInconsistencia] = useState<any>(null);
   
-  // Estado de período (mês/ano)
-  const [mesAtual, setMesAtual] = useState(new Date().getMonth() + 1);
+  // Estado de período (ano)
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
   
   // Estado de filtros (sem filtros de data iniciais)
@@ -100,32 +92,29 @@ export default function InconsistenciaChamados() {
     // data_inicio e data_fim serão definidos pelo useEffect
   });
 
-  // Atualizar filtros quando mês/ano mudar
-  const atualizarFiltrosPorPeriodo = (mes: number, ano: number) => {
-    // Calcular primeiro e último dia do mês no formato YYYY-MM-DD
-    const primeiroDia = `${ano}-${String(mes).padStart(2, '0')}-01`;
-    const ultimoDia = new Date(ano, mes, 0).getDate();
-    const ultimoDiaStr = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+  // Atualizar filtros quando ano mudar
+  const atualizarFiltrosPorAno = (ano: number) => {
+    const primeiroDia = `${ano}-01-01`;
+    const ultimoDia = `${ano}-12-31`;
     
-    console.log('📅 Definindo filtros de período:', {
-      mes,
+    console.log('📅 Definindo filtros de período (ano):', {
       ano,
       data_inicio: primeiroDia,
-      data_fim: ultimoDiaStr
+      data_fim: ultimoDia
     });
     
     setFiltros(prev => ({
       ...prev,
       data_inicio: primeiroDia,
-      data_fim: ultimoDiaStr
+      data_fim: ultimoDia
     }));
   };
 
-  // Atualizar filtros quando componente montar ou mês/ano mudar
+  // Atualizar filtros quando componente montar ou ano mudar
   useEffect(() => {
-    console.log('🔍 Atualizando filtros por período:', { mesAtual, anoAtual });
-    atualizarFiltrosPorPeriodo(mesAtual, anoAtual);
-  }, [mesAtual, anoAtual]);
+    console.log('🔍 Atualizando filtros por ano:', { anoAtual });
+    atualizarFiltrosPorAno(anoAtual);
+  }, [anoAtual]);
 
   // Estado de seleção múltipla
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -139,14 +128,14 @@ export default function InconsistenciaChamados() {
     destinatarios: '',
     cc: '',
     bcc: '',
-    assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${getMonthName(mesAtual - 1)} ${anoAtual}`,
+    assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`,
     anexos: [] as File[]
   });
 
   // Hooks
   const { inconsistencias, isLoading, refetch } = useInconsistenciasChamados(filtros);
   const { estatisticas, isLoading: isLoadingStats } = useInconsistenciasEstatisticas(filtros);
-  const { historico, isLoading: isLoadingHistorico } = useHistoricoInconsistencias(mesAtual, anoAtual);
+  const { historico, isLoading: isLoadingHistorico } = useHistoricoInconsistencias(anoAtual);
   const { enviarNotificacao, isEnviando } = useEnviarNotificacao();
 
   // Extrair lista única de analistas das inconsistências
@@ -158,24 +147,14 @@ export default function InconsistenciaChamados() {
     )
   ).sort();
 
-  // Navegação de mês
-  const navegarMesAnterior = () => {
-    if (mesAtual === 1) {
-      setMesAtual(12);
-      setAnoAtual(anoAtual - 1);
-    } else {
-      setMesAtual(mesAtual - 1);
-    }
+  // Navegação de ano
+  const navegarAnoAnterior = () => {
+    setAnoAtual(anoAtual - 1);
     setCurrentPage(1);
   };
 
-  const navegarMesProximo = () => {
-    if (mesAtual === 12) {
-      setMesAtual(1);
-      setAnoAtual(anoAtual + 1);
-    } else {
-      setMesAtual(mesAtual + 1);
-    }
+  const navegarAnoProximo = () => {
+    setAnoAtual(anoAtual + 1);
     setCurrentPage(1);
   };
 
@@ -263,7 +242,7 @@ export default function InconsistenciaChamados() {
       destinatarios: emails.join('; '),
       cc: '',
       bcc: '',
-      assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${getMonthName(mesAtual - 1)} ${anoAtual}`,
+      assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`,
       anexos: []
     });
 
@@ -285,7 +264,6 @@ export default function InconsistenciaChamados() {
 
     enviarNotificacao({
       inconsistencias: selecionadas,
-      mes_referencia: mesAtual,
       ano_referencia: anoAtual
     }, {
       onSuccess: () => {
@@ -300,7 +278,7 @@ export default function InconsistenciaChamados() {
           destinatarios: '',
           cc: '',
           bcc: '',
-          assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${getMonthName(mesAtual - 1)} ${anoAtual}`,
+          assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`,
           anexos: []
         });
         refetch();
@@ -538,26 +516,26 @@ export default function InconsistenciaChamados() {
             </Card>
           </div>
 
-          {/* Navegação por Mês */}
+          {/* Navegação por Ano */}
           <Card>
             <CardContent className="py-3 px-4">
               <div className="flex items-center justify-between">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={navegarMesAnterior}
+                  onClick={navegarAnoAnterior}
                   className="flex items-center gap-1"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   {t('common.previous')}
                 </Button>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {getMonthName(mesAtual - 1)} {anoAtual}
+                  {anoAtual}
                 </h2>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={navegarMesProximo}
+                  onClick={navegarAnoProximo}
                   className="flex items-center gap-1"
                 >
                   {t('common.next')}
@@ -1188,7 +1166,7 @@ export default function InconsistenciaChamados() {
                   {/* Header Preview */}
                   <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded text-center">
                     <div className="font-bold text-lg">{t('inconsistencias.previewHeader')}</div>
-                    <div className="text-sm mt-1">{getMonthName(mesAtual - 1)} {anoAtual}</div>
+                    <div className="text-sm mt-1">{anoAtual}</div>
                   </div>
 
                   {/* Intro */}

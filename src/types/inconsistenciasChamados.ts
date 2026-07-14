@@ -97,7 +97,7 @@ export interface HistoricoInconsistencia {
 
 export interface EnviarNotificacaoRequest {
   inconsistencias: InconsistenciaChamado[];
-  mes_referencia: number;
+  mes_referencia?: number;
   ano_referencia: number;
 }
 

@@ -171,7 +171,7 @@ export function SyncProcessingIndicator() {
                 <div className="flex items-center justify-between text-xs py-1">
                   <span className="text-gray-600 dark:text-gray-400">📊 Pesquisas:</span>
                   <span className="font-medium text-gray-800 dark:text-gray-200">
-                    {syncProgress.resultado.novos} novos, {syncProgress.resultado.atualizados} atualizados
+                    {syncProgress.resultado.novos ?? 0} novos, {syncProgress.resultado.atualizados ?? 0} atualizados
                   </span>
                 </div>
               )}
@@ -181,7 +181,7 @@ export function SyncProcessingIndicator() {
                 <div className="flex items-center justify-between text-xs py-1">
                   <span className="text-gray-600 dark:text-gray-400">👥 Especialistas:</span>
                   <span className="font-medium text-gray-800 dark:text-gray-200">
-                    {syncProgress.resultado.especialistas.novos} novos, {syncProgress.resultado.especialistas.atualizados} atualizados
+                    {syncProgress.resultado.especialistas.novos ?? 0} novos, {syncProgress.resultado.especialistas.atualizados ?? 0} atualizados
                   </span>
                 </div>
               )}
@@ -191,7 +191,7 @@ export function SyncProcessingIndicator() {
                 <div className="flex items-center justify-between text-xs py-1">
                   <span className="text-gray-600 dark:text-gray-400">📝 Apontamentos:</span>
                   <span className="font-medium text-gray-800 dark:text-gray-200">
-                    {syncProgress.resultado.apontamentos.novos} novos, {syncProgress.resultado.apontamentos.atualizados} atualizados
+                    {syncProgress.resultado.apontamentos.novos ?? 0} novos, {syncProgress.resultado.apontamentos.atualizados ?? 0} atualizados
                   </span>
                 </div>
               )}
@@ -201,7 +201,7 @@ export function SyncProcessingIndicator() {
                 <div className="flex items-center justify-between text-xs py-1">
                   <span className="text-gray-600 dark:text-gray-400">🎫 Tickets:</span>
                   <span className="font-medium text-gray-800 dark:text-gray-200">
-                    {syncProgress.resultado.tickets.novos} novos, {syncProgress.resultado.tickets.atualizados} atualizados
+                    {syncProgress.resultado.tickets.novos ?? 0} novos, {syncProgress.resultado.tickets.atualizados ?? 0} atualizados
                   </span>
                 </div>
               )}

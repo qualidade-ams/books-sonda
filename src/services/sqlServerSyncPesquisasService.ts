@@ -332,16 +332,8 @@ export async function sincronizarDados(
         resultadoEspecialistas = await responseEspecialistas.json();
         console.log('Resultado da sincronização de especialistas:', resultadoEspecialistas);
         
-        // Limpar cache de especialistas após sincronização bem-sucedida
-        if (resultadoEspecialistas.sucesso) {
-          try {
-            const { limparCacheEspecialistas } = await import('@/integrations/supabase/admin-client');
-            limparCacheEspecialistas();
-            console.log('✅ Cache de especialistas limpo após sincronização');
-          } catch (error) {
-            console.warn('⚠️ Erro ao limpar cache de especialistas:', error);
-          }
-        }
+        // Nota: O cache de especialistas é gerenciado pelo TanStack Query.
+        // A invalidação é feita automaticamente via queryClient nos hooks.
       } else {
         console.warn('Erro na sincronização de especialistas, continuando...');
         resultadoEspecialistas = {

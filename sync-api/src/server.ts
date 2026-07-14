@@ -3308,7 +3308,16 @@ app.post('/api/sync-tickets', async (req, res) => {
     
     await pool.close();
     
-    res.json(resultado);
+    // Retornar resultado com mapeamento inseridos → novos (consistência com frontend)
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: resultado.mensagens
+    });
     
   } catch (error) {
     console.error('❌ [API] Erro na sincronização de tickets:', error);
@@ -3393,7 +3402,16 @@ app.post('/api/sync-tickets-incremental', async (req, res) => {
     
     await pool.close();
     
-    res.json(resultado);
+    // Retornar resultado com mapeamento inseridos → novos (consistência com frontend)
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: resultado.mensagens
+    });
     
   } catch (error) {
     console.error('❌ [API] Erro na sincronização incremental de tickets:', error);

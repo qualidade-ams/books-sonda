@@ -57,15 +57,15 @@ export function useInconsistenciasEstatisticas(filtros?: InconsistenciasChamados
 /**
  * Hook para buscar histórico de inconsistências
  */
-export function useHistoricoInconsistencias(mes: number, ano: number) {
+export function useHistoricoInconsistencias(ano: number) {
   const {
     data: historico = [],
     isLoading,
     error,
     refetch
   } = useQuery<HistoricoInconsistencia[]>({
-    queryKey: ['historico-inconsistencias', mes, ano],
-    queryFn: () => inconsistenciasChamadosService.buscarHistorico(mes, ano),
+    queryKey: ['historico-inconsistencias', ano],
+    queryFn: () => inconsistenciasChamadosService.buscarHistorico(ano),
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
 
