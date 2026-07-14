@@ -1798,7 +1798,6 @@ const ptBR = {
     // Cards
     totalInconsistencies: 'Total de Inconsistências',
     differentMonth: 'Mês Diferente',
-    invertedDate: 'Data Invertida',
     excessiveTime: 'Tempo Excessivo',
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sem Atualização 16+ dias',

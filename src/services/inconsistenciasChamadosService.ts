@@ -65,13 +65,17 @@ export class InconsistenciasChamadosService {
 
       const inconsistencias: InconsistenciaChamado[] = [];
 
-      // 1. Buscar inconsistências em apontamentos_aranda
-      const apontamentos = await this.buscarInconsistenciasApontamentos(filtros);
-      inconsistencias.push(...apontamentos);
+      // 1. Buscar inconsistências em apontamentos_aranda (se origem não filtrada para tickets)
+      if (!filtros?.origem || filtros.origem === 'all' || filtros.origem === 'apontamentos') {
+        const apontamentos = await this.buscarInconsistenciasApontamentos(filtros);
+        inconsistencias.push(...apontamentos);
+      }
 
-      // 2. Buscar inconsistências em apontamentos_tickets_aranda
-      const tickets = await this.buscarInconsistenciasTickets(filtros);
-      inconsistencias.push(...tickets);
+      // 2. Buscar inconsistências em apontamentos_tickets_aranda (se origem não filtrada para apontamentos)
+      if (!filtros?.origem || filtros.origem === 'all' || filtros.origem === 'tickets') {
+        const tickets = await this.buscarInconsistenciasTickets(filtros);
+        inconsistencias.push(...tickets);
+      }
 
       // 3. Filtrar inconsistências já enviadas (que estão no histórico)
       const inconsistenciasNaoEnviadas = await this.filtrarInconsistenciasNaoEnviadas(inconsistencias);
@@ -152,25 +156,29 @@ export class InconsistenciasChamadosService {
     filtros?: InconsistenciasChamadosFiltros
   ): Promise<InconsistenciaChamado[]> {
     try {
-      // Query base
+      // Query base - selecionar apenas campos necessários para performance
       let query = supabase
         .from('apontamentos_aranda' as any)
-        .select('*');
+        .select('id, nro_chamado, nro_tarefa, tipo_chamado, data_abertura, data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, org_us_final, analista_tarefa, item_configuracao, created_at');
 
-      // Aplicar filtros de data se fornecidos
-      if (filtros?.data_inicio) {
-        query = query.gte('data_atividade', filtros.data_inicio);
-      }
-      if (filtros?.data_fim) {
-        query = query.lte('data_atividade', filtros.data_fim);
-      }
+      // Aplicar filtros de data (obrigatório para evitar timeout)
+      // Se não fornecidos, usar ano atual como fallback
+      const anoAtual = new Date().getFullYear();
+      const dataInicio = filtros?.data_inicio || `${anoAtual}-01-01`;
+      const dataFim = filtros?.data_fim || `${anoAtual}-12-31`;
+      query = query.gte('data_atividade', dataInicio);
+      query = query.lte('data_atividade', dataFim);
 
       // Aplicar filtro de busca (número do chamado)
+      // Remove prefixos conhecidos para buscar pelo número puro
       if (filtros?.busca) {
-        query = query.ilike('nro_chamado', `%${filtros.busca}%`);
+        const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
+        if (buscaLimpa) {
+          query = query.ilike('nro_chamado', `%${buscaLimpa}%`);
+        }
       }
 
-      // Aplicar filtro de analista (busca exata)
+      // Aplicar filtro de analista (igualdade exata - valor vem do dropdown)
       if (filtros?.analista) {
         query = query.eq('analista_tarefa', filtros.analista);
       }
@@ -250,22 +258,31 @@ export class InconsistenciasChamadosService {
     filtros?: InconsistenciasChamadosFiltros
   ): Promise<InconsistenciaChamado[]> {
     try {
-      // Query base
+      // Query base - selecionar apenas campos necessários para performance
       let query = supabase
         .from('apontamentos_tickets_aranda' as any)
-        .select('*');
+        .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario, created_at');
 
-      // Aplicar filtros de data se fornecidos
-      if (filtros?.data_inicio) {
-        query = query.gte('data_abertura', filtros.data_inicio);
-      }
-      if (filtros?.data_fim) {
-        query = query.lte('data_abertura', filtros.data_fim);
-      }
+      // Aplicar filtros de data (obrigatório para evitar timeout)
+      // Se não fornecidos, usar ano atual como fallback
+      const anoAtual = new Date().getFullYear();
+      const dataInicio = filtros?.data_inicio || `${anoAtual}-01-01`;
+      const dataFim = filtros?.data_fim || `${anoAtual}-12-31`;
+      query = query.gte('data_abertura', dataInicio);
+      query = query.lte('data_abertura', dataFim);
 
       // Aplicar filtro de busca (número da solicitação)
+      // Remove prefixos conhecidos (RF, IM, PM) para buscar pelo número puro
       if (filtros?.busca) {
-        query = query.ilike('nro_solicitacao', `%${filtros.busca}%`);
+        const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
+        if (buscaLimpa) {
+          query = query.ilike('nro_solicitacao', `%${buscaLimpa}%`);
+        }
+      }
+
+      // Aplicar filtro de analista (igualdade exata - valor vem do dropdown)
+      if (filtros?.analista) {
+        query = query.eq('nome_responsavel', filtros.analista);
       }
 
       // Excluir tickets do grupo CA SDM (não são inconsistências reais)
@@ -293,7 +310,7 @@ export class InconsistenciasChamadosService {
       for (const ticket of data as any[]) {
         const tipos = this.detectarInconsistencias(
           ticket.data_abertura,
-          ticket.data_sistema,
+          null, // Tickets não têm coluna data_sistema
           null, // Tickets não têm tempo_gasto_horas
           ticket.item_configuracao
         );
@@ -339,7 +356,7 @@ export class InconsistenciasChamadosService {
               nro_tarefa: null,
               data_abertura: ticket.data_abertura || null,
               data_atividade: isIc999999 ? null : ticket.data_abertura,
-              data_sistema: isIc999999 ? null : ticket.data_sistema,
+              data_sistema: null, // Tickets não possuem coluna data_sistema
               tempo_gasto_horas: null,
               tempo_gasto_minutos: null,
               empresa: ticket.organizacao,
@@ -350,7 +367,7 @@ export class InconsistenciasChamadosService {
               descricao_inconsistencia: this.gerarDescricao(
                 tipo,
                 ticket.data_abertura,
-                ticket.data_sistema,
+                null, // Tickets não possuem data_sistema
                 null,
                 ticket.item_configuracao,
                 ticket.data_ultimo_comentario,
@@ -401,11 +418,6 @@ export class InconsistenciasChamadosService {
       tipos.push('mes_diferente');
     }
 
-    // Regra 2: Data sistema anterior à data atividade
-    if (dtSistema < dtAtividade) {
-      tipos.push('data_invertida');
-    }
-
     // Regra 3: Tempo excessivo (> 10 horas)
     if (tempoGastoHoras) {
       const [horas] = tempoGastoHoras.split(':').map(Number);
@@ -435,10 +447,6 @@ export class InconsistenciasChamadosService {
     switch (tipo) {
       case 'mes_diferente':
         return `Data Atividade (${dtAtividade.toLocaleDateString('pt-BR')}) e Data Sistema (${dtSistema.toLocaleDateString('pt-BR')}) em meses diferentes`;
-      
-      case 'data_invertida':
-        const diferencaDias = Math.floor((dtAtividade.getTime() - dtSistema.getTime()) / (1000 * 60 * 60 * 24));
-        return `Data Sistema (${dtSistema.toLocaleDateString('pt-BR')}) é ${diferencaDias} dia(s) anterior à Data Atividade (${dtAtividade.toLocaleDateString('pt-BR')})`;
       
       case 'tempo_excessivo':
         return `Tempo gasto (${tempoGastoHoras}) excede o limite de 10 horas`;
@@ -472,7 +480,6 @@ export class InconsistenciasChamadosService {
         total: inconsistencias.length,
         por_tipo: {
           mes_diferente: 0,
-          data_invertida: 0,
           tempo_excessivo: 0,
           ic_999999: 0,
           sem_atualizacao: 0
@@ -535,14 +542,12 @@ export class InconsistenciasChamadosService {
     // Agrupar inconsistências por tipo
     const porTipo = {
       mes_diferente: inconsistencias.filter(i => i.tipo_inconsistencia === 'mes_diferente'),
-      data_invertida: inconsistencias.filter(i => i.tipo_inconsistencia === 'data_invertida'),
       tempo_excessivo: inconsistencias.filter(i => i.tipo_inconsistencia === 'tempo_excessivo'),
       sem_atualizacao: inconsistencias.filter(i => i.tipo_inconsistencia === 'sem_atualizacao')
     };
 
     const tipoLabels = {
       mes_diferente: 'Mês Diferente',
-      data_invertida: 'Data Invertida',
       tempo_excessivo: 'Tempo Excessivo',
       ic_999999: 'IC 999999',
       sem_atualizacao: 'Sem Atualização 16+ dias'
@@ -550,7 +555,6 @@ export class InconsistenciasChamadosService {
 
     const tipoColors = {
       mes_diferente: '#F59E0B',
-      data_invertida: '#EF4444',
       tempo_excessivo: '#F97316',
       ic_999999: '#9333EA',
       sem_atualizacao: '#0EA5E9'
@@ -626,8 +630,8 @@ export class InconsistenciasChamadosService {
                         <div class="summary-stat-label">Mês Diferente</div>
                     </div>
                     <div class="summary-stat">
-                        <div class="summary-stat-value">${porTipo.data_invertida.length}</div>
-                        <div class="summary-stat-label">Data Invertida</div>
+                        <div class="summary-stat-value">${porTipo.tempo_excessivo.length}</div>
+                        <div class="summary-stat-label">Tempo Excessivo</div>
                     </div>
                 </div>
             </div>`;
