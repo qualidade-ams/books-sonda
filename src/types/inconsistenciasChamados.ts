@@ -7,7 +7,6 @@ export type OrigemInconsistencia = 'apontamentos' | 'tickets';
 
 export type TipoInconsistencia = 
   | 'mes_diferente'      // data_atividade e data_sistema em meses diferentes
-  | 'data_invertida'     // data_sistema < data_atividade
   | 'tempo_excessivo'    // tempo_gasto_horas > 10:00
   | 'ic_999999'          // item_configuracao começa com 999999
   | 'sem_atualizacao';   // chamado sem atualização há 16+ dias (status Open/Hold/In Progress/Acknowledged)
@@ -55,7 +54,6 @@ export interface InconsistenciasChamadosEstatisticas {
   total: number;
   por_tipo: {
     mes_diferente: number;
-    data_invertida: number;
     tempo_excessivo: number;
     ic_999999: number;
     sem_atualizacao: number;
@@ -104,7 +102,6 @@ export interface EnviarNotificacaoRequest {
 // Labels para exibição
 export const TIPO_INCONSISTENCIA_LABELS: Record<TipoInconsistencia, string> = {
   mes_diferente: 'Mês Diferente',
-  data_invertida: 'Data Invertida',
   tempo_excessivo: 'Tempo Excessivo',
   ic_999999: 'IC 999999',
   sem_atualizacao: 'Sem Atualização 16+ dias'
@@ -118,7 +115,6 @@ export const ORIGEM_LABELS: Record<OrigemInconsistencia, string> = {
 // Cores para badges
 export const TIPO_INCONSISTENCIA_COLORS: Record<TipoInconsistencia, string> = {
   mes_diferente: 'bg-yellow-100 text-yellow-800',
-  data_invertida: 'bg-red-100 text-red-800',
   tempo_excessivo: 'bg-orange-100 text-orange-800',
   ic_999999: 'bg-purple-100 text-purple-800',
   sem_atualizacao: 'bg-sky-100 text-sky-800'

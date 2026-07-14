@@ -1798,7 +1798,6 @@ const es = {
     // Tarjetas
     totalInconsistencies: 'Total de Inconsistencias',
     differentMonth: 'Mes Diferente',
-    invertedDate: 'Fecha Invertida',
     excessiveTime: 'Tiempo Excesivo',
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sin Actualización 16+ días',

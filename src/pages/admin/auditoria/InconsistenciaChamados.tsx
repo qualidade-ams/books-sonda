@@ -83,13 +83,14 @@ export default function InconsistenciaChamados() {
   // Estado de período (ano)
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
   
-  // Estado de filtros (sem filtros de data iniciais)
+  // Estado de filtros (com filtros de data iniciais para evitar query sem período)
   const [filtros, setFiltros] = useState<InconsistenciasChamadosFiltros>({
     busca: '',
     tipo_inconsistencia: 'all',
     origem: 'all',
-    analista: ''
-    // data_inicio e data_fim serão definidos pelo useEffect
+    analista: '',
+    data_inicio: `${new Date().getFullYear()}-01-01`,
+    data_fim: `${new Date().getFullYear()}-12-31`
   });
 
   // Atualizar filtros quando ano mudar
@@ -359,8 +360,7 @@ export default function InconsistenciaChamados() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-bg-secondary">
-        <div className="px-6 py-6 space-y-6">
+      <div className="space-y-6">
           {/* Cabeçalho */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
@@ -394,7 +394,7 @@ export default function InconsistenciaChamados() {
           </div>
 
           {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -430,26 +430,6 @@ export default function InconsistenciaChamados() {
                 ) : (
                   <div className="text-xl lg:text-2xl font-bold text-yellow-600">
                     {estatisticas?.por_tipo.mes_diferente || 0}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-red-600">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    {t('inconsistencias.invertedDate')}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {isLoadingStats ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <div className="text-xl lg:text-2xl font-bold text-red-600">
-                    {estatisticas?.por_tipo.data_invertida || 0}
                   </div>
                 )}
               </CardContent>
@@ -625,7 +605,6 @@ export default function InconsistenciaChamados() {
                             <SelectContent>
                               <SelectItem value="all">{t('common.all')}</SelectItem>
                               <SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem>
-                              <SelectItem value="data_invertida">{t('inconsistencias.invertedDate')}</SelectItem>
                               <SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem>
                               <SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem>
                               <SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem>
@@ -941,7 +920,6 @@ export default function InconsistenciaChamados() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
 
       {/* Modal de Visualização */}
       <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
@@ -1189,12 +1167,6 @@ export default function InconsistenciaChamados() {
                           {inconsistencias.filter(inc => selectedIds.includes(inc.id) && inc.tipo_inconsistencia === 'mes_diferente').length}
                         </div>
                         <div className="text-xs text-blue-600">{t('inconsistencias.differentMonth')}</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-blue-900">
-                          {inconsistencias.filter(inc => selectedIds.includes(inc.id) && inc.tipo_inconsistencia === 'data_invertida').length}
-                        </div>
-                        <div className="text-xs text-blue-600">{t('inconsistencias.invertedDate')}</div>
                       </div>
                     </div>
                   </div>

@@ -1798,7 +1798,6 @@ const en = {
     // Cards
     totalInconsistencies: 'Total Inconsistencies',
     differentMonth: 'Different Month',
-    invertedDate: 'Inverted Date',
     excessiveTime: 'Excessive Time',
     ic999999: 'IC 999999',
     noUpdate16Days: 'No Update 16+ days',
