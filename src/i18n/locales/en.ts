@@ -1069,7 +1069,7 @@ const en = {
     confirmSendDesc: 'Do you want to send the <strong>{{type}}</strong> email to <strong>{{count}} recipient(s)</strong>?',
     confirmSendDescPre: 'Do you want to send the',
     confirmSendDescMid: 'email to',
-    recipients: 'recipient(s)',
+    recipientsCount: 'recipient(s)',
     sending: 'Sending...',
     // Segmented View
     loadingSegmentedData: 'Loading segmented consumption data...',

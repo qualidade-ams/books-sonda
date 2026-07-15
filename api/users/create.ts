@@ -1,9 +1,20 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+/**
+ * API Route para criação de usuários usando Supabase Admin API
+ * Endpoint: POST /api/users/create
+ * 
+ * Cria um novo usuário no Supabase Auth e seu perfil na tabela profiles.
+ * Requer autenticação e permissões de administrador.
+ * 
+ * Compatível com Vercel Serverless Functions (Node.js runtime)
+ */
+
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface CreateUserRequest {
@@ -14,45 +25,52 @@ interface CreateUserRequest {
   sendWelcomeEmail: boolean;
 }
 
-serve(async (req) => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return res.status(200).setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
+      .setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+      .end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
     // Verificar autenticação
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers['authorization'] as string;
     if (!authHeader) {
       throw new Error('Não autenticado');
     }
 
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error('Variáveis de ambiente do Supabase não configuradas');
+    }
+
     // Criar cliente Supabase com service role key (admin)
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
 
     // Criar cliente Supabase normal para verificar permissões do usuário atual
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    });
 
     // Verificar se o usuário atual está autenticado
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
+
     if (userError || !user) {
       throw new Error('Usuário não autenticado');
     }
@@ -69,14 +87,14 @@ serve(async (req) => {
     }
 
     // Verificar se o usuário é administrador
-    const isAdmin = profile.user_groups?.name === 'Administradores';
-    
+    const isAdmin = (profile as any).user_groups?.name === 'Administradores';
+
     if (!isAdmin) {
       throw new Error('Você não tem permissões para criar usuários');
     }
 
     // Parse do body da requisição
-    const { email, password, fullName, active, sendWelcomeEmail }: CreateUserRequest = await req.json();
+    const { email, password, fullName, active, sendWelcomeEmail }: CreateUserRequest = req.body;
 
     // Validações
     if (!email || !password || !fullName) {
@@ -91,7 +109,7 @@ serve(async (req) => {
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Confirmar email automaticamente
+      email_confirm: true,
       user_metadata: {
         full_name: fullName,
       },
@@ -117,49 +135,34 @@ serve(async (req) => {
 
     if (profileInsertError) {
       console.error('Erro ao criar perfil:', profileInsertError);
-      
+
       // Se falhar ao criar perfil, deletar o usuário criado
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      
+
       throw new Error('Erro ao criar perfil do usuário');
     }
 
     // Enviar email de boas-vindas (se solicitado)
     if (sendWelcomeEmail) {
       try {
-        // Aqui você pode integrar com seu serviço de email
-        // Por enquanto, apenas logamos
         console.log(`Email de boas-vindas deveria ser enviado para: ${email}`);
       } catch (emailError) {
         console.error('Erro ao enviar email de boas-vindas:', emailError);
-        // Não falhar a criação do usuário se o email falhar
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        userId: newUser.user.id,
-        message: 'Usuário criado com sucesso',
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    return res.status(200).json({
+      success: true,
+      userId: newUser.user.id,
+      message: 'Usuário criado com sucesso',
+    });
 
   } catch (error: any) {
-    console.error('Erro na Edge Function:', error);
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message || 'Erro ao criar usuário',
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
-    );
+    console.error('Erro na API:', error);
+
+    return res.status(400).json({
+      success: false,
+      error: error.message || 'Erro ao criar usuário',
+    });
   }
-});
+}

@@ -1069,7 +1069,7 @@ const ptBR = {
     confirmSendDesc: 'Deseja enviar o email de <strong>{{type}}</strong> para <strong>{{count}} destinatário(s)</strong>?',
     confirmSendDescPre: 'Deseja enviar o email de',
     confirmSendDescMid: 'para',
-    recipients: 'destinatário(s)',
+    recipientsCount: 'destinatário(s)',
     sending: 'Enviando...',
     // Visão Segmentada
     loadingSegmentedData: 'Carregando dados de consumo segmentado...',
