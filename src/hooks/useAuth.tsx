@@ -62,20 +62,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
               // Verificar se o usuário está ativo ao restaurar sessão ou fazer login
               if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('active')
-                  .eq('id', session.user.id)
-                  .single();
+                try {
+                  const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('active')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
 
-                if (profile && profile.active === false) {
-                  console.warn('AuthProvider: Usuário inativo detectado, encerrando sessão');
-                  await supabase.auth.signOut();
-                  setSession(null);
-                  setUser(null);
-                  setIsReady(true);
-                  setLoading(false);
-                  return;
+                  if (profileError) {
+                    console.warn('AuthProvider: Erro ao verificar status ativo, permitindo acesso:', profileError.message);
+                    // Em caso de erro na verificação, permitir acesso (fallback seguro)
+                  } else if (profile && profile.active === false) {
+                    console.warn('AuthProvider: Usuário inativo detectado, encerrando sessão');
+                    await supabase.auth.signOut();
+                    setSession(null);
+                    setUser(null);
+                    setIsReady(true);
+                    setLoading(false);
+                    return;
+                  }
+                } catch (err) {
+                  console.warn('AuthProvider: Exceção ao verificar status ativo, permitindo acesso:', err);
+                  // Em caso de exceção, permitir acesso para não travar a aplicação
                 }
               }
               
