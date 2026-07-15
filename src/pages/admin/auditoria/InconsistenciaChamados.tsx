@@ -80,8 +80,9 @@ export default function InconsistenciaChamados() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedInconsistencia, setSelectedInconsistencia] = useState<any>(null);
   
-  // Estado de período (ano)
+  // Estado de período (ano e mês)
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
+  const [mesAtual, setMesAtual] = useState<string>('all'); // 'all' = todos os meses, '01'-'12' = mês específico
   
   // Estado de filtros (com filtros de data iniciais para evitar query sem período)
   const [filtros, setFiltros] = useState<InconsistenciasChamadosFiltros>({
@@ -93,13 +94,25 @@ export default function InconsistenciaChamados() {
     data_fim: `${new Date().getFullYear()}-12-31`
   });
 
-  // Atualizar filtros quando ano mudar
-  const atualizarFiltrosPorAno = (ano: number) => {
-    const primeiroDia = `${ano}-01-01`;
-    const ultimoDia = `${ano}-12-31`;
+  // Atualizar filtros quando ano/mês mudar
+  const atualizarFiltrosPorPeriodo = (ano: number, mes: string) => {
+    let primeiroDia: string;
+    let ultimoDia: string;
+
+    if (mes === 'all') {
+      primeiroDia = `${ano}-01-01`;
+      ultimoDia = `${ano}-12-31`;
+    } else {
+      const mesNum = parseInt(mes, 10);
+      primeiroDia = `${ano}-${mes}-01`;
+      // Último dia do mês
+      const ultimoDiaDate = new Date(ano, mesNum, 0);
+      ultimoDia = `${ano}-${mes}-${String(ultimoDiaDate.getDate()).padStart(2, '0')}`;
+    }
     
-    console.log('📅 Definindo filtros de período (ano):', {
+    console.log('📅 Definindo filtros de período:', {
       ano,
+      mes,
       data_inicio: primeiroDia,
       data_fim: ultimoDia
     });
@@ -111,11 +124,11 @@ export default function InconsistenciaChamados() {
     }));
   };
 
-  // Atualizar filtros quando componente montar ou ano mudar
+  // Atualizar filtros quando componente montar ou ano/mês mudar
   useEffect(() => {
-    console.log('🔍 Atualizando filtros por ano:', { anoAtual });
-    atualizarFiltrosPorAno(anoAtual);
-  }, [anoAtual]);
+    console.log('🔍 Atualizando filtros por período:', { anoAtual, mesAtual });
+    atualizarFiltrosPorPeriodo(anoAtual, mesAtual);
+  }, [anoAtual, mesAtual]);
 
   // Estado de seleção múltipla
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -165,13 +178,15 @@ export default function InconsistenciaChamados() {
       filtros.busca !== '' ||
       filtros.tipo_inconsistencia !== 'all' ||
       filtros.origem !== 'all' ||
-      filtros.analista !== ''
+      filtros.analista !== '' ||
+      mesAtual !== 'all'
       // Não incluir data_inicio e data_fim pois são filtros padrão do período
     );
   };
 
   // Limpar filtros (mantendo filtros de período)
   const limparFiltros = () => {
+    setMesAtual('all');
     setFiltros(prev => ({
       ...prev,
       busca: '',
@@ -579,7 +594,7 @@ export default function InconsistenciaChamados() {
                   {/* Filtros */}
                   {showFilters && (
                     <div className="space-y-4 pt-4 border-t">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                           <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                           <div className="relative">
@@ -645,6 +660,36 @@ export default function InconsistenciaChamados() {
                               <SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem>
                               <SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem>
                               <SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <div className="text-sm font-medium mb-2">Mês</div>
+                          <Select
+                            value={mesAtual}
+                            onValueChange={(value) => {
+                              setMesAtual(value);
+                              setCurrentPage(1);
+                            }}
+                          >
+                            <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos os meses</SelectItem>
+                              <SelectItem value="01">Janeiro</SelectItem>
+                              <SelectItem value="02">Fevereiro</SelectItem>
+                              <SelectItem value="03">Março</SelectItem>
+                              <SelectItem value="04">Abril</SelectItem>
+                              <SelectItem value="05">Maio</SelectItem>
+                              <SelectItem value="06">Junho</SelectItem>
+                              <SelectItem value="07">Julho</SelectItem>
+                              <SelectItem value="08">Agosto</SelectItem>
+                              <SelectItem value="09">Setembro</SelectItem>
+                              <SelectItem value="10">Outubro</SelectItem>
+                              <SelectItem value="11">Novembro</SelectItem>
+                              <SelectItem value="12">Dezembro</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
