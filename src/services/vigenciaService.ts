@@ -4,7 +4,6 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { supabaseAdmin } from '@/integrations/supabase/adminClient';
 
 export interface VigenciaStatus {
   id: string;
@@ -29,12 +28,7 @@ class VigenciaService {
    */
   async executarInativacaoAutomatica(): Promise<number> {
     try {
-      // Validar se o cliente admin está disponível
-      if (!supabaseAdmin) {
-        throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
-      }
-
-      const { data, error } = await supabaseAdmin.rpc('inativar_empresas_vencidas');
+      const { data, error } = await supabase.rpc('inativar_empresas_vencidas');
       
       if (error) {
         console.error('Erro ao executar inativação automática:', error);
