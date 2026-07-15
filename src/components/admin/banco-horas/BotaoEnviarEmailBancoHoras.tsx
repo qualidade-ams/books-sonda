@@ -1241,7 +1241,7 @@ img { -ms-interpolation-mode: bicubic; }
                 {t('bankHours.confirmSendDescPre')}{' '}
                 <strong>{tipoEmail === 'saldo_parcial' ? t('bankHours.partialBalance') : t('bankHours.monthBalance')}</strong>{' '}
                 {t('bankHours.confirmSendDescMid')}{' '}
-                <strong>{extrairEmails(destinatariosTexto).length} {t('bankHours.recipients')}</strong>?
+                <strong>{extrairEmails(destinatariosTexto).length} {t('bankHours.recipientsCount')}</strong>?
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
