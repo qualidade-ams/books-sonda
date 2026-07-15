@@ -1,17 +1,13 @@
 /**
  * Serviço de Infraestrutura de Storage para Anexos
  * Gerencia buckets, políticas e estrutura de pastas no Supabase Storage
+ * 
+ * NOTA: Operações administrativas (criar buckets, mover entre buckets, limpeza)
+ * devem ser executadas via Edge Functions ou Serverless Functions no backend.
+ * Este serviço no frontend expõe apenas operações que o client autenticado pode fazer.
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { adminClient } from '@/integrations/supabase/adminClient';
-
-// Helper para validar se adminClient está disponível
-function validateAdminClient(): void {
-  if (!adminClient) {
-    throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
-  }
-}
 
 export interface StorageBucketConfig {
   id: string;
@@ -68,45 +64,12 @@ export class AnexoStorageService {
 
   /**
    * Cria os buckets necessários (requer permissões de admin)
+   * NOTA: Esta operação deve ser feita via Dashboard ou Edge Function
    */
   static async criarBuckets(): Promise<void> {
-    const bucketConfigs: StorageBucketConfig[] = [
-      {
-        id: this.BUCKET_TEMPORARIO,
-        name: this.BUCKET_TEMPORARIO,
-        public: false,
-        fileSizeLimit: this.FILE_SIZE_LIMIT,
-        allowedMimeTypes: this.ALLOWED_MIME_TYPES
-      },
-      {
-        id: this.BUCKET_PERMANENTE,
-        name: this.BUCKET_PERMANENTE,
-        public: false,
-        fileSizeLimit: this.FILE_SIZE_LIMIT,
-        allowedMimeTypes: this.ALLOWED_MIME_TYPES
-      }
-    ];
-
-    for (const config of bucketConfigs) {
-      try {
-        validateAdminClient();
-
-        const { error } = await adminClient!.storage.createBucket(config.id, {
-          public: config.public,
-          fileSizeLimit: config.fileSizeLimit,
-          allowedMimeTypes: config.allowedMimeTypes
-        });
-
-        if (error && !error.message.includes('already exists')) {
-          throw error;
-        }
-
-        console.log(`Bucket ${config.id} configurado com sucesso`);
-      } catch (error) {
-        console.error(`Erro ao criar bucket ${config.id}:`, error);
-        throw error;
-      }
-    }
+    throw new Error(
+      'Operação administrativa: criar buckets deve ser feito via Supabase Dashboard ou Edge Function.'
+    );
   }
 
   /**
@@ -177,14 +140,15 @@ export class AnexoStorageService {
 
   /**
    * Move arquivo do bucket temporário para permanente
+   * NOTA: Esta operação deve ser feita via Edge Function com Service Role Key
    */
   static async moverParaPermanente(
     caminhoTemporario: string,
     caminhoPermanente: string
   ): Promise<void> {
     try {
-      // Baixar arquivo do bucket temporário
-      const { data: arquivo, error: downloadError } = await adminClient.storage
+      // Baixar arquivo do bucket temporário usando client autenticado
+      const { data: arquivo, error: downloadError } = await supabase.storage
         .from(this.BUCKET_TEMPORARIO)
         .download(caminhoTemporario);
 
@@ -193,7 +157,7 @@ export class AnexoStorageService {
       }
 
       // Upload para bucket permanente
-      const { error: uploadError } = await adminClient!.storage
+      const { error: uploadError } = await supabase.storage
         .from(this.BUCKET_PERMANENTE)
         .upload(caminhoPermanente, arquivo);
 
@@ -202,7 +166,7 @@ export class AnexoStorageService {
       }
 
       // Remover do bucket temporário
-      const { error: deleteError } = await adminClient!.storage
+      const { error: deleteError } = await supabase.storage
         .from(this.BUCKET_TEMPORARIO)
         .remove([caminhoTemporario]);
 
@@ -221,9 +185,7 @@ export class AnexoStorageService {
    * Remove arquivo do storage
    */
   static async removerArquivo(bucket: string, caminho: string): Promise<void> {
-    validateAdminClient();
-    
-    const { error } = await adminClient!.storage
+    const { error } = await supabase.storage
       .from(bucket)
       .remove([caminho]);
 
@@ -304,42 +266,19 @@ export class AnexoStorageService {
 
   /**
    * Limpa arquivos expirados (para uso em jobs)
+   * NOTA: Para uso completo, mover para Edge Function com Service Role Key
    */
   static async limparArquivosExpirados(): Promise<number> {
     try {
-      // Buscar anexos expirados no banco
-      const { data: anexosExpirados, error } = await adminClient
-        .from('anexos_temporarios')
-        .select('nome_arquivo, empresa_id')
-        .lt('data_expiracao', new Date().toISOString())
-        .in('status', ['pendente', 'enviando']);
+      // Chamar a função RPC que já é SECURITY DEFINER
+      const { data, error } = await supabase.rpc('limpar_anexos_expirados');
 
       if (error) {
         throw error;
       }
 
-      let removidos = 0;
-
-      for (const anexo of anexosExpirados || []) {
-        try {
-          const caminho = this.gerarCaminhoArquivo(
-            anexo.empresa_id,
-            anexo.nome_arquivo,
-            true
-          );
-
-          await this.removerArquivo(this.BUCKET_TEMPORARIO, caminho);
-          removidos++;
-        } catch (error) {
-          console.error(`Erro ao remover arquivo ${anexo.nome_arquivo}:`, error);
-        }
-      }
-
-      // Atualizar status no banco usando a função SQL
-      await adminClient!.rpc('limpar_anexos_expirados');
-
-      console.log(`Limpeza concluída: ${removidos} arquivos removidos`);
-      return removidos;
+      console.log(`Limpeza concluída: ${data} registros removidos`);
+      return data || 0;
     } catch (error) {
       console.error('Erro na limpeza de arquivos expirados:', error);
       throw error;

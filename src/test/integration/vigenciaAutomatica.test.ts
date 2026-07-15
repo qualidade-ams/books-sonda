@@ -55,14 +55,6 @@ const mockSupabase = {
   })
 };
 
-// Mock do adminClient
-const mockAdminClient = {
-  rpc: () => Promise.resolve({
-    data: 1,
-    error: null
-  })
-};
-
 describe('Vigência Automática', () => {
   beforeEach(() => {
     // Reset do job scheduler antes de cada teste
