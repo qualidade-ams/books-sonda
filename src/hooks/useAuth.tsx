@@ -26,8 +26,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
     let retryCount = 0;
     const maxRetries = 3;
-    let lastLogTime = 0;
-    const LOG_DEBOUNCE = 1000; // 1 segundo
+    let currentUserId: string | null = null; // Track current user to avoid unnecessary re-renders
+    let activeCheckDone = false; // Track if active check was already done for this user
 
     // Função para verificar se a sessão ainda é válida
     const isSessionValid = (session: Session | null): boolean => {
@@ -41,59 +41,113 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return expiresAt > (now + 300);
     };
 
+    // Verificação de ativo em background (não bloqueia o estado)
+    const checkUserActive = async (userId: string) => {
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('active')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profileError) {
+          console.warn('AuthProvider: Erro ao verificar status ativo, permitindo acesso:', profileError.message);
+          return true; // Permitir acesso em caso de erro
+        }
+        
+        if (profile && profile.active === false) {
+          console.warn('AuthProvider: Usuário inativo detectado, encerrando sessão');
+          return false;
+        }
+        
+        return true; // Usuário ativo ou não encontrado (permitir)
+      } catch (err) {
+        console.warn('AuthProvider: Exceção ao verificar status ativo, permitindo acesso:', err);
+        return true; // Permitir acesso em caso de exceção
+      }
+    };
+
     // Função para tentar conectar com retry
     const initializeAuth = async () => {
       try {
         // Configurar listener de mudanças de autenticação
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            // Apenas logar eventos importantes e com debounce
-            const now = Date.now();
-            if ((event === 'SIGNED_IN' || event === 'SIGNED_OUT') && now - lastLogTime > LOG_DEBOUNCE) {
-              lastLogTime = now;
+            if (!mounted) return;
+
+            // SIGNED_OUT - limpar estado
+            if (event === 'SIGNED_OUT') {
+              currentUserId = null;
+              activeCheckDone = false;
+              setSession(null);
+              setUser(null);
+              setIsReady(true);
+              setLoading(false);
+              return;
             }
-            
-            if (mounted) {
-              // Verificar validade da sessão
+
+            // Para TOKEN_REFRESHED, a sessão nova já é válida (acabou de ser renovada)
+            // Não verificar isSessionValid aqui pois pode causar loop
+            if (event !== 'TOKEN_REFRESHED') {
+              // Verificar validade da sessão apenas para outros eventos
               if (session && !isSessionValid(session)) {
                 await supabase.auth.signOut();
                 return;
               }
-
-              // Verificar se o usuário está ativo ao restaurar sessão ou fazer login
-              if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-                try {
-                  const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('active')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                  if (profileError) {
-                    console.warn('AuthProvider: Erro ao verificar status ativo, permitindo acesso:', profileError.message);
-                    // Em caso de erro na verificação, permitir acesso (fallback seguro)
-                  } else if (profile && profile.active === false) {
-                    console.warn('AuthProvider: Usuário inativo detectado, encerrando sessão');
-                    await supabase.auth.signOut();
-                    setSession(null);
-                    setUser(null);
-                    setIsReady(true);
-                    setLoading(false);
-                    return;
-                  }
-                } catch (err) {
-                  console.warn('AuthProvider: Exceção ao verificar status ativo, permitindo acesso:', err);
-                  // Em caso de exceção, permitir acesso para não travar a aplicação
-                }
-              }
-              
-              setSession(session);
-              setUser(session?.user ?? null);
-              if (!isReady) {
-                setIsReady(true);
-              }
-              setLoading(false);
             }
+
+            // TOKEN_REFRESHED: Se o usuário é o mesmo, apenas atualizar session silenciosamente
+            // Isso evita re-renders desnecessários que causam loading nas telas
+            if (event === 'TOKEN_REFRESHED' && session?.user?.id === currentUserId) {
+              // Atualizar session ref sem causar re-render de user (mesmo ID)
+              setSession(session);
+              return;
+            }
+
+            // SIGNED_IN ou mudança de usuário: verificar ativo
+            if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+              const userId = session.user.id;
+              
+              // Se é o mesmo usuário e já verificamos, não verificar novamente
+              if (userId === currentUserId && activeCheckDone) {
+                setSession(session);
+                setUser(session.user);
+                if (!isReady) setIsReady(true);
+                setLoading(false);
+                return;
+              }
+
+              // Novo usuário ou primeira verificação - checar ativo
+              const isActive = await checkUserActive(userId);
+              
+              if (!mounted) return;
+              
+              if (!isActive) {
+                await supabase.auth.signOut();
+                currentUserId = null;
+                activeCheckDone = false;
+                setSession(null);
+                setUser(null);
+                setIsReady(true);
+                setLoading(false);
+                return;
+              }
+
+              // Usuário ativo - atualizar estado
+              currentUserId = userId;
+              activeCheckDone = true;
+              setSession(session);
+              setUser(session.user);
+              setIsReady(true);
+              setLoading(false);
+              return;
+            }
+            
+            // Fallback para outros eventos
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (!isReady) setIsReady(true);
+            setLoading(false);
           }
         );
 
@@ -118,6 +172,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         
         if (mounted) {
+          if (session?.user) {
+            currentUserId = session.user.id;
+            activeCheckDone = true; // O onAuthStateChange vai verificar
+          }
           setSession(session);
           setUser(session?.user ?? null);
           setIsReady(true);
