@@ -220,11 +220,19 @@ export default function InconsistenciaChamados() {
 
   const handleItemsPerPageChange = (value: string) => { setItemsPerPage(Number(value)); setCurrentPage(1); setCurrentPageResolvidas(1); };
 
-  // Formatar data
+  // Formatar data (apenas dd/MM/yyyy)
   const formatarData = (data: string | null) => {
     if (!data) return '-';
     const d = new Date(data);
     if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  // Formatar data completa com horas (para tooltip)
+  const formatarDataCompleta = (data: string | null) => {
+    if (!data) return '';
+    const d = new Date(data);
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
@@ -319,34 +327,36 @@ export default function InconsistenciaChamados() {
                   <div className="flex items-center justify-center py-12"><div className="text-center"><AlertTriangle className="h-16 w-16 text-gray-400 mx-auto mb-4" /><p className="text-gray-500 mb-2 font-medium">{t('inconsistencias.noInconsistencyFound')}</p></div></div>
                 ) : (
                   <>
-                    <Table>
+                    <Table className="w-full text-xs sm:text-sm">
                       <TableHeader><TableRow>
-                        <TableHead className="w-12"><Checkbox checked={selectedIds.length === paginatedInconsistencias.length && paginatedInconsistencias.length > 0} onCheckedChange={handleSelectAll} /></TableHead>
-                        <TableHead className="w-[120px] text-center">{t('inconsistencias.ticketNumber')}</TableHead>
-                        <TableHead className="w-[100px] text-center">{t('inconsistencias.taskNumber')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('common.type')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('inconsistencias.openDate')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('inconsistencias.activityDate')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('inconsistencias.systemDate')}</TableHead>
-                        <TableHead className="w-[100px] text-center">{t('inconsistencias.time')}</TableHead>
-                        <TableHead className="w-[180px] text-center">{t('historico.company')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('inconsistencias.analyst')}</TableHead>
-                        <TableHead className="text-center w-[120px]">{t('common.actions')}</TableHead>
+                        <TableHead className="w-12 py-2"><Checkbox checked={selectedIds.length === paginatedInconsistencias.length && paginatedInconsistencias.length > 0} onCheckedChange={handleSelectAll} /></TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.ticketNumber')}</TableHead>
+                        <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.taskNumber')}</TableHead>
+                        <TableHead className="min-w-[90px] text-center text-xs sm:text-sm py-2">Status</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('common.type')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.openDate')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.activityDate')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.systemDate')}</TableHead>
+                        <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.time')}</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('historico.company')}</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.analyst')}</TableHead>
+                        <TableHead className="w-[60px] text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
                         {paginatedInconsistencias.map((inc) => (
                           <TableRow key={inc.id} className="hover:bg-gray-50">
-                            <TableCell><Checkbox checked={selectedIds.includes(inc.id)} onCheckedChange={(checked) => handleSelectItem(inc.id, checked as boolean)} /></TableCell>
-                            <TableCell className="text-center"><div className="flex items-center justify-center gap-2 whitespace-nowrap"><ClipboardList className="h-4 w-4 text-blue-600 flex-shrink-0" /><span className="font-mono text-foreground text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
-                            <TableCell className="text-center"><span className="font-mono text-xs sm:text-sm">{inc.nro_tarefa || '-'}</span></TableCell>
-                            <TableCell className="text-center"><Badge className={TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
-                            <TableCell className="text-center"><span className="text-xs sm:text-sm">{formatarData(inc.data_abertura)}</span></TableCell>
-                            <TableCell className="text-center"><span className="text-xs sm:text-sm">{formatarData(inc.data_atividade)}</span></TableCell>
-                            <TableCell className="text-center"><span className="text-xs sm:text-sm">{formatarData(inc.data_sistema)}</span></TableCell>
-                            <TableCell className="text-center"><span className="font-mono text-xs sm:text-sm">{inc.tempo_gasto_horas || '-'}</span></TableCell>
-                            <TableCell className="text-xs sm:text-sm max-w-[180px] text-center">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
-                            <TableCell className="text-xs sm:text-sm text-center"><span>{inc.analista || '-'}</span></TableCell>
-                            <TableCell className="text-center"><Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-4 w-4 text-blue-600" /></Button></TableCell>
+                            <TableCell className="py-2"><Checkbox checked={selectedIds.includes(inc.id)} onCheckedChange={(checked) => handleSelectItem(inc.id, checked as boolean)} /></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs">{inc.nro_tarefa || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2"><Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado || '-'}</Badge></TableCell>
+                            <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_abertura)}>{formatarData(inc.data_abertura)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_atividade)}>{formatarData(inc.data_atividade)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_sistema)}>{formatarData(inc.data_sistema)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-xs sm:text-sm font-medium">{inc.tempo_gasto_horas || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2 max-w-[120px]">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
+                            <TableCell className="text-center py-2"><span className="text-xs sm:text-sm">{inc.analista || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

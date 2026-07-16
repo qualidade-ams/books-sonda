@@ -27,6 +27,7 @@ interface InconsistenciaDetectada {
   tempo_gasto_minutos: number | null;
   empresa: string | null;
   analista: string | null;
+  status_chamado: string | null;
   chave_unica: string;
 }
 
@@ -41,6 +42,49 @@ interface ResultadoDeteccao {
 
 class InconsistenciasDeteccaoService {
   private cacheEmpresas: Map<string, string> | null = null;
+
+  /**
+   * Tamanho do lote para paginação de queries (Supabase limita a 1000 por padrão)
+   */
+  private readonly PAGE_SIZE = 1000;
+
+  /**
+   * Busca TODOS os registros de uma query paginando automaticamente
+   * O Supabase retorna no máximo 1000 registros por request.
+   * Esta função faz múltiplas requests para buscar todos.
+   */
+  private async buscarTodosPaginado<T>(
+    queryBuilder: () => any,
+    orderColumn: string = 'id'
+  ): Promise<T[]> {
+    const todosRegistros: T[] = [];
+    let offset = 0;
+    let continuar = true;
+
+    while (continuar) {
+      const { data, error } = await queryBuilder()
+        .order(orderColumn, { ascending: true })
+        .range(offset, offset + this.PAGE_SIZE - 1);
+
+      if (error) {
+        console.error(`❌ [DETECCAO] Erro na paginação (offset ${offset}):`, error);
+        break;
+      }
+
+      if (!data || data.length === 0) {
+        continuar = false;
+      } else {
+        todosRegistros.push(...(data as T[]));
+        if (data.length < this.PAGE_SIZE) {
+          continuar = false;
+        } else {
+          offset += this.PAGE_SIZE;
+        }
+      }
+    }
+
+    return todosRegistros;
+  }
 
   /**
    * Busca mapa de empresas para nome abreviado
@@ -177,6 +221,7 @@ class InconsistenciasDeteccaoService {
             tempo_gasto_minutos: inc.tempo_gasto_minutos,
             empresa: inc.empresa,
             analista: inc.analista,
+            status_chamado: inc.status_chamado,
             chave_unica: inc.chave_unica,
             status: 'ativa',
             data_deteccao: new Date().toISOString()
@@ -184,11 +229,27 @@ class InconsistenciasDeteccaoService {
         }
       }
 
-      // 4. Identificar resolvidas (existiam como ativas mas não foram detectadas agora)
-      const chavesResolvidas: string[] = [];
+      // 4. Identificar candidatas a resolvidas (existiam como ativas mas não foram detectadas agora)
+      // IMPORTANTE: Antes de marcar como resolvida, re-verificar nos dados originais se a
+      // inconsistência realmente foi corrigida. Isso previne falsos positivos causados por
+      // eventuais falhas de paginação ou filtros.
+      const candidatasResolvidas: string[] = [];
       for (const [chave, id] of ativasMap.entries()) {
         if (!chavesDetectadas.has(chave)) {
-          chavesResolvidas.push(id);
+          candidatasResolvidas.push(id);
+        }
+      }
+
+      // 4.1. Validar candidatas - buscar dados originais e re-verificar inconsistência
+      const chavesResolvidas: string[] = [];
+      if (candidatasResolvidas.length > 0) {
+        const resolvidasValidadas = await this.validarResolucao(candidatasResolvidas);
+        chavesResolvidas.push(...resolvidasValidadas);
+        
+        const naoResolvidas = candidatasResolvidas.length - resolvidasValidadas.length;
+        if (naoResolvidas > 0) {
+          console.log(`⚠️ [DETECCAO] ${naoResolvidas} inconsistências NÃO foram resolvidas (dados originais ainda inconsistentes)`);
+          resultado.mensagens.push(`${naoResolvidas} inconsistências mantidas (dados ainda inconsistentes)`);
         }
       }
 
@@ -235,6 +296,9 @@ class InconsistenciasDeteccaoService {
       // 7. Calcular mantidas
       resultado.mantidas = ativasMap.size - chavesResolvidas.length;
 
+      // 7.1 Atualizar status_chamado das inconsistências mantidas (tickets podem ter mudado de status)
+      await this.atualizarStatusChamados(inconsistenciasDetectadas, ativasMap);
+
       resultado.sucesso = true;
       resultado.mensagens.push(
         `Resultado: ${resultado.novas} novas, ${resultado.resolvidas} resolvidas, ${resultado.mantidas} mantidas`
@@ -252,6 +316,7 @@ class InconsistenciasDeteccaoService {
 
   /**
    * Detecta inconsistências na tabela apontamentos_aranda
+   * Usa paginação para buscar TODOS os registros (tabela pode ter 50k+ linhas)
    */
   private async detectarInconsistenciasApontamentos(): Promise<InconsistenciaDetectada[]> {
     try {
@@ -261,17 +326,18 @@ class InconsistenciasDeteccaoService {
       const anoAtual = new Date().getFullYear();
       const dataInicio = `${anoAtual - 1}-01-01`;
 
-      const { data, error } = await supabase
-        .from('apontamentos_aranda' as any)
-        .select('id, nro_chamado, nro_tarefa, tipo_chamado, data_abertura, data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, org_us_final, analista_tarefa, item_configuracao')
-        .gte('data_atividade', dataInicio);
+      // Buscar TODOS os registros com paginação
+      const data = await this.buscarTodosPaginado<any>(
+        () => supabase
+          .from('apontamentos_aranda' as any)
+          .select('id, nro_chamado, nro_tarefa, tipo_chamado, data_abertura, data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, org_us_final, analista_tarefa, item_configuracao')
+          .gte('data_atividade', dataInicio),
+        'id'
+      );
 
-      if (error) {
-        console.error('❌ [DETECCAO] Erro ao buscar apontamentos:', error);
-        return [];
-      }
+      console.log(`🔍 [DETECCAO] Apontamentos buscados: ${data.length} registros (com paginação)`);
 
-      if (!data || data.length === 0) return [];
+      if (data.length === 0) return [];
 
       const inconsistencias: InconsistenciaDetectada[] = [];
 
@@ -310,6 +376,7 @@ class InconsistenciasDeteccaoService {
             tempo_gasto_minutos: apt.tempo_gasto_minutos,
             empresa: empresaAbreviada,
             analista: apt.analista_tarefa,
+            status_chamado: null, // Apontamentos não têm status próprio
             chave_unica: this.gerarChaveUnica('apontamentos', nroFormatado, tipo, apt.data_atividade)
           });
         }
@@ -324,6 +391,7 @@ class InconsistenciasDeteccaoService {
 
   /**
    * Detecta inconsistências na tabela apontamentos_tickets_aranda
+   * Usa paginação para buscar TODOS os registros (tabela pode ter 25k+ linhas)
    */
   private async detectarInconsistenciasTickets(): Promise<InconsistenciaDetectada[]> {
     try {
@@ -333,18 +401,22 @@ class InconsistenciasDeteccaoService {
       const anoAtual = new Date().getFullYear();
       const dataInicio = `${anoAtual - 1}-01-01`;
 
-      const { data, error } = await supabase
-        .from('apontamentos_tickets_aranda' as any)
-        .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario')
-        .gte('data_abertura', dataInicio)
-        .neq('nome_grupo', 'CA SDM');
+      // Buscar TODOS os registros com paginação
+      // Excluir tickets com status finalizado (Cancelled, Closed, Resolved) 
+      // pois não faz sentido monitorar atualização de tickets finalizados
+      const data = await this.buscarTodosPaginado<any>(
+        () => supabase
+          .from('apontamentos_tickets_aranda' as any)
+          .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario')
+          .gte('data_abertura', dataInicio)
+          .neq('nome_grupo', 'CA SDM')
+          .not('status', 'in', '("Cancelled","Closed","Resolved")'),
+        'id'
+      );
 
-      if (error) {
-        console.error('❌ [DETECCAO] Erro ao buscar tickets:', error);
-        return [];
-      }
+      console.log(`🔍 [DETECCAO] Tickets buscados: ${data.length} registros (com paginação)`);
 
-      if (!data || data.length === 0) return [];
+      if (data.length === 0) return [];
 
       const inconsistencias: InconsistenciaDetectada[] = [];
 
@@ -408,6 +480,7 @@ class InconsistenciasDeteccaoService {
             tempo_gasto_minutos: null,
             empresa: empresaAbreviada,
             analista: ticket.nome_responsavel || null,
+            status_chamado: ticket.status || null,
             chave_unica: this.gerarChaveUnica('tickets', nroFormatado, tipo, isIc999999 ? null : ticket.data_abertura)
           });
         }
@@ -417,6 +490,255 @@ class InconsistenciasDeteccaoService {
     } catch (error) {
       console.error('❌ [DETECCAO] Erro ao detectar em tickets:', error);
       return [];
+    }
+  }
+
+  /**
+   * Atualiza o campo status_chamado das inconsistências ativas com base nos dados detectados.
+   * Isso garante que o status exibido na interface esteja sempre atualizado.
+   */
+  private async atualizarStatusChamados(
+    inconsistenciasDetectadas: InconsistenciaDetectada[],
+    ativasMap: Map<string, string>
+  ): Promise<void> {
+    try {
+      // Mapear chave_unica -> status_chamado das detecções atuais
+      const statusPorChave = new Map<string, string | null>();
+      for (const inc of inconsistenciasDetectadas) {
+        if (inc.status_chamado) {
+          statusPorChave.set(inc.chave_unica, inc.status_chamado);
+        }
+      }
+
+      // Atualizar apenas as que têm chave no ativasMap (existiam antes)
+      const updates: { id: string; status_chamado: string }[] = [];
+      for (const [chave, id] of ativasMap.entries()) {
+        const status = statusPorChave.get(chave);
+        if (status) {
+          updates.push({ id, status_chamado: status });
+        }
+      }
+
+      if (updates.length === 0) return;
+
+      // Atualizar em lotes
+      const batchSize = 100;
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize);
+        for (const item of batch) {
+          await supabase
+            .from('inconsistencias_chamados' as any)
+            .update({ status_chamado: item.status_chamado })
+            .eq('id', item.id);
+        }
+      }
+
+      console.log(`✅ [DETECCAO] ${updates.length} status_chamado atualizados`);
+    } catch (error) {
+      console.error('❌ [DETECCAO] Erro ao atualizar status_chamado:', error);
+    }
+  }
+
+  /**
+   * Valida se as inconsistências realmente foram resolvidas verificando os dados originais.
+   * Retorna apenas os IDs das inconsistências que realmente foram corrigidas.
+   * 
+   * Para cada tipo de inconsistência, verifica no registro original se a condição
+   * que gerou a inconsistência ainda existe:
+   * - mes_diferente: verifica se data_atividade e data_sistema agora estão no mesmo mês
+   * - tempo_excessivo: verifica se tempo_gasto_horas agora é <= 10h
+   * - ic_999999: verifica se item_configuracao não começa mais com 999999
+   * - sem_atualizacao: verifica se o ticket foi atualizado nos últimos 16 dias
+   */
+  private async validarResolucao(idsCandidata: string[]): Promise<string[]> {
+    const idsConfirmados: string[] = [];
+
+    try {
+      // Buscar detalhes das inconsistências candidatas
+      const batchSize = 100;
+      const todasCandidatas: any[] = [];
+
+      for (let i = 0; i < idsCandidata.length; i += batchSize) {
+        const batch = idsCandidata.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('inconsistencias_chamados' as any)
+          .select('id, origem, nro_chamado, tipo_inconsistencia, data_atividade, data_sistema, tempo_gasto_horas, item_configuracao, chave_unica')
+          .in('id', batch);
+
+        if (error) {
+          console.error(`❌ [DETECCAO] Erro ao buscar candidatas para validação:`, error);
+          // Em caso de erro, NÃO marca como resolvida (seguro por padrão)
+          continue;
+        }
+        if (data) todasCandidatas.push(...data);
+      }
+
+      for (const candidata of todasCandidatas) {
+        const resolvida = await this.verificarSeRealmenteResolvida(candidata);
+        if (resolvida) {
+          idsConfirmados.push(candidata.id);
+        } else {
+          console.log(`⚠️ [DETECCAO] Inconsistência ${candidata.nro_chamado} (${candidata.tipo_inconsistencia}) NÃO resolvida - dados originais ainda inconsistentes`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [DETECCAO] Erro na validação de resolução:', error);
+      // Em caso de erro, não marca nenhuma como resolvida (fail-safe)
+    }
+
+    return idsConfirmados;
+  }
+
+  /**
+   * Verifica se uma inconsistência específica foi realmente resolvida
+   * consultando o registro original no banco
+   */
+  private async verificarSeRealmenteResolvida(inconsistencia: any): Promise<boolean> {
+    const { origem, nro_chamado, tipo_inconsistencia, data_atividade } = inconsistencia;
+
+    try {
+      if (origem === 'apontamentos') {
+        // Extrair número do chamado (remover prefixo tipo "RF ", "IM ", etc.)
+        const nroLimpo = nro_chamado.replace(/^(RF|IM|PM)\s*/, '');
+        
+        // Buscar o apontamento original com a mesma data_atividade
+        let query = supabase
+          .from('apontamentos_aranda' as any)
+          .select('data_atividade, data_sistema, tempo_gasto_horas, item_configuracao')
+          .eq('nro_chamado', nroLimpo);
+
+        // Se temos data_atividade, usar para filtrar o registro específico
+        if (data_atividade) {
+          const dtAtividade = new Date(data_atividade);
+          const dataStr = dtAtividade.toISOString().split('T')[0];
+          query = query.gte('data_atividade', `${dataStr}T00:00:00`)
+                       .lt('data_atividade', `${dataStr}T23:59:59`);
+        }
+
+        const { data: registros, error } = await query.limit(1);
+
+        if (error) {
+          console.error(`❌ [DETECCAO] Erro ao verificar apontamento ${nro_chamado}:`, error);
+          // Em caso de erro, NÃO marca como resolvida (seguro por padrão)
+          return false;
+        }
+
+        if (!registros || registros.length === 0) {
+          // Registro não encontrado no banco - pode não ter sido sincronizado ainda
+          // NÃO marca como resolvida (conservador - mantém ativa até que o registro
+          // reapareça na sync e seja verificado como correto)
+          console.log(`⚠️ [DETECCAO] Apontamento ${nro_chamado} não encontrado no banco - mantém ativa`);
+          return false;
+        }
+
+        const registro = registros[0] as any;
+        return this.verificarCorrecao(tipo_inconsistencia, registro);
+
+      } else if (origem === 'tickets') {
+        // Extrair número da solicitação
+        const nroLimpo = nro_chamado.replace(/^(RF|IM|PM)\s*/, '');
+        
+        const { data: registros, error } = await supabase
+          .from('apontamentos_tickets_aranda' as any)
+          .select('data_abertura, item_configuracao, data_ultimo_comentario, status')
+          .eq('nro_solicitacao', nroLimpo)
+          .limit(1);
+
+        if (error) {
+          console.error(`❌ [DETECCAO] Erro ao verificar ticket ${nro_chamado}:`, error);
+          return false;
+        }
+
+        if (!registros || registros.length === 0) {
+          // Registro não encontrado - pode não ter sido sincronizado ainda
+          // NÃO marca como resolvida (conservador)
+          console.log(`⚠️ [DETECCAO] Ticket ${nro_chamado} não encontrado no banco - mantém ativa`);
+          return false;
+        }
+
+        const registro = registros[0] as any;
+        return this.verificarCorrecaoTicket(tipo_inconsistencia, registro);
+      }
+
+      // Origem desconhecida - mantém como ativa por segurança
+      return false;
+    } catch (error) {
+      console.error(`❌ [DETECCAO] Erro ao verificar resolução de ${nro_chamado}:`, error);
+      // Em caso de erro, NÃO marca como resolvida (seguro por padrão)
+      return false;
+    }
+  }
+
+  /**
+   * Verifica se a condição de inconsistência foi corrigida no apontamento
+   */
+  private verificarCorrecao(
+    tipoInconsistencia: string,
+    registro: { data_atividade: string | null; data_sistema: string | null; tempo_gasto_horas: string | null; item_configuracao: string | null }
+  ): boolean {
+    switch (tipoInconsistencia) {
+      case 'mes_diferente': {
+        if (!registro.data_atividade || !registro.data_sistema) return true;
+        const dtAtividade = new Date(registro.data_atividade);
+        const dtSistema = new Date(registro.data_sistema);
+        // Resolvida se agora estão no mesmo mês/ano
+        return dtAtividade.getMonth() === dtSistema.getMonth() &&
+               dtAtividade.getFullYear() === dtSistema.getFullYear();
+      }
+
+      case 'tempo_excessivo': {
+        if (!registro.tempo_gasto_horas) return true;
+        const [horas] = registro.tempo_gasto_horas.split(':').map(Number);
+        // Resolvida se agora é <= 10 horas
+        return horas <= 10;
+      }
+
+      case 'ic_999999': {
+        if (!registro.item_configuracao) return true;
+        // Resolvida se IC não começa mais com 999999
+        return !registro.item_configuracao.trim().startsWith('999999');
+      }
+
+      default:
+        return true;
+    }
+  }
+
+  /**
+   * Verifica se a condição de inconsistência foi corrigida no ticket
+   */
+  private verificarCorrecaoTicket(
+    tipoInconsistencia: string,
+    registro: { data_abertura: string | null; item_configuracao: string | null; data_ultimo_comentario: string | null; status: string | null }
+  ): boolean {
+    // Tickets com status finalizado (Cancelled, Closed, Resolved) são considerados resolvidos
+    const statusFinalizados = ['Cancelled', 'Closed', 'Resolved'];
+    if (registro.status && statusFinalizados.includes(registro.status)) {
+      return true;
+    }
+
+    switch (tipoInconsistencia) {
+      case 'ic_999999': {
+        if (!registro.item_configuracao) return true;
+        return !registro.item_configuracao.trim().startsWith('999999');
+      }
+
+      case 'sem_atualizacao': {
+        // Resolvida se: status mudou para não-relevante OU foi atualizado nos últimos 16 dias
+        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged'];
+        if (!registro.status || !statusRelevantes.includes(registro.status)) {
+          return true; // Status mudou para um não monitorado
+        }
+        if (!registro.data_ultimo_comentario) return false;
+        const dataUltimoComentario = new Date(registro.data_ultimo_comentario);
+        const hoje = new Date();
+        const diffMs = hoje.getTime() - dataUltimoComentario.getTime();
+        const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        return diffDias < 16;
+      }
+
+      default:
+        return true;
     }
   }
 
