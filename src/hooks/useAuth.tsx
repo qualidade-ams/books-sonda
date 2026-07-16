@@ -117,29 +117,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return;
               }
 
-              // Novo usuário ou primeira verificação - checar ativo
-              const isActive = await checkUserActive(userId);
-              
-              if (!mounted) return;
-              
-              if (!isActive) {
-                await supabase.auth.signOut();
-                currentUserId = null;
-                activeCheckDone = false;
-                setSession(null);
-                setUser(null);
-                setIsReady(true);
-                setLoading(false);
-                return;
-              }
-
-              // Usuário ativo - atualizar estado
+              // Setar estado imediatamente para desbloquear a UI
+              // A verificação de "ativo" é feita em background sem bloquear
               currentUserId = userId;
-              activeCheckDone = true;
               setSession(session);
               setUser(session.user);
               setIsReady(true);
               setLoading(false);
+
+              // Verificar ativo em background (não bloqueia renderização)
+              checkUserActive(userId).then((isActive) => {
+                if (!mounted) return;
+                if (!isActive) {
+                  console.warn('AuthProvider: Usuário inativo detectado em background, encerrando sessão');
+                  supabase.auth.signOut();
+                  currentUserId = null;
+                  activeCheckDone = false;
+                  setSession(null);
+                  setUser(null);
+                } else {
+                  activeCheckDone = true;
+                }
+              });
               return;
             }
             

@@ -53,6 +53,12 @@ const LOCAL_STORAGE_KEYS = [
 
   // Acessibilidade
   'fontSize',
+
+  // Idioma
+  'books-snd-language',
+
+  // Ajustes retroativos (itens enviados)
+  'ajustes_sent_items',
 ] as const;
 
 const LOCAL_STORAGE_PREFIXES = [

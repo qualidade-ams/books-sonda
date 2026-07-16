@@ -6,6 +6,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { safeFetch } from '@/utils/apiConfig';
 import type { DadosSqlServer, ResultadoSincronizacao } from '@/types/pesquisasSatisfacao';
+import { inconsistenciasDeteccaoService } from '@/services/inconsistenciasDeteccaoService';
 
 // ============================================
 // CONFIGURAÇÃO
@@ -547,6 +548,38 @@ export async function sincronizarDados(
     console.log('📊 [DEBUG] Resultado final - apontamentos:', resultadoCombinado.apontamentos);
     console.log('📊 [DEBUG] Resultado final - apontamentos.total_processados:', resultadoCombinado.apontamentos?.total_processados);
     console.log('📊 [DEBUG] Resultado final completo:', JSON.stringify(resultadoCombinado, null, 2));
+
+    // 8. Executar detecção de inconsistências (se apontamentos ou tickets foram sincronizados)
+    if (tabelasParaSincronizar.apontamentos || tabelasParaSincronizar.tickets) {
+      try {
+        console.log('🔍 [INCONSISTENCIAS] Executando detecção de inconsistências após sincronização...');
+        onLog?.('🔍 Detectando inconsistências nos dados sincronizados...');
+        
+        const resultadoDeteccao = await inconsistenciasDeteccaoService.executarDeteccao();
+        
+        mensagensCombinadas.push('');
+        mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        mensagensCombinadas.push('🔍 DETECÇÃO DE INCONSISTÊNCIAS');
+        mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        mensagensCombinadas.push(`Total detectadas: ${resultadoDeteccao.total_detectadas}`);
+        mensagensCombinadas.push(`Novas: ${resultadoDeteccao.novas}`);
+        mensagensCombinadas.push(`Resolvidas: ${resultadoDeteccao.resolvidas}`);
+        mensagensCombinadas.push(`Mantidas: ${resultadoDeteccao.mantidas}`);
+        
+        if (resultadoDeteccao.resolvidas > 0) {
+          mensagensCombinadas.push(`✅ ${resultadoDeteccao.resolvidas} inconsistência(s) corrigida(s) pelos analistas`);
+        }
+        
+        onLog?.(`✅ Inconsistências: ${resultadoDeteccao.novas} novas, ${resultadoDeteccao.resolvidas} resolvidas`);
+        console.log('✅ [INCONSISTENCIAS] Detecção finalizada:', resultadoDeteccao);
+      } catch (erroDeteccao) {
+        console.error('⚠️ [INCONSISTENCIAS] Erro na detecção (não bloqueia sync):', erroDeteccao);
+        onLog?.('⚠️ Erro na detecção de inconsistências (não afeta sincronização)');
+        mensagensCombinadas.push('');
+        mensagensCombinadas.push('⚠️ Detecção de inconsistências falhou (não afeta sincronização)');
+      }
+    }
+
     return resultadoCombinado;
 
   } catch (erro) {
