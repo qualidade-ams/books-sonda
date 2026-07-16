@@ -67,6 +67,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { isClienteEspecialBRFONSDAGUIRRE } from '@/utils/clienteEspecialUtils';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 
 const DEFAULT_ITEMS_PER_PAGE = 25;
 
@@ -81,7 +84,7 @@ export default function InconsistenciaChamados() {
   const [selectedInconsistencia, setSelectedInconsistencia] = useState<any>(null);
   
   // Estado de período (ano e mês)
-  const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
+  const [anoAtual, setAnoAtual] = useState(Math.max(new Date().getFullYear(), 2024));
   const [mesAtual, setMesAtual] = useState<string>('all'); // 'all' = todos os meses, '01'-'12' = mês específico
   
   // Estado de filtros (com filtros de data iniciais para evitar query sem período)
@@ -152,6 +155,26 @@ export default function InconsistenciaChamados() {
   const { historico, isLoading: isLoadingHistorico } = useHistoricoInconsistencias(anoAtual);
   const { enviarNotificacao, isEnviando } = useEnviarNotificacao();
 
+  // Query para buscar nomes de empresas cadastradas (para validar se empresa está no sistema)
+  const { data: empresasCadastradas } = useQuery({
+    queryKey: ['empresas-nomes-cadastradas'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('empresas_clientes')
+        .select('nome_abreviado')
+        .order('nome_abreviado');
+      if (error) throw error;
+      return (data || []).map(e => e.nome_abreviado?.toUpperCase().trim()).filter(Boolean) as string[];
+    },
+    staleTime: 10 * 60 * 1000, // Cache de 10 minutos
+  });
+
+  // Verificar se empresa está cadastrada no sistema
+  const isEmpresaCadastrada = (nomeEmpresa: string | null) => {
+    if (!nomeEmpresa || !empresasCadastradas) return true; // Se não tiver dados, não marca em vermelho
+    return empresasCadastradas.includes(nomeEmpresa.toUpperCase().trim());
+  };
+
   // Extrair lista única de analistas das inconsistências
   const analistasUnicos = Array.from(
     new Set(
@@ -161,10 +184,12 @@ export default function InconsistenciaChamados() {
     )
   ).sort();
 
-  // Navegação de ano
+  // Navegação de ano (mínimo: 2024)
   const navegarAnoAnterior = () => {
-    setAnoAtual(anoAtual - 1);
-    setCurrentPage(1);
+    if (anoAtual > 2024) {
+      setAnoAtual(anoAtual - 1);
+      setCurrentPage(1);
+    }
   };
 
   const navegarAnoProximo = () => {
@@ -519,6 +544,7 @@ export default function InconsistenciaChamados() {
                   variant="outline"
                   size="sm"
                   onClick={navegarAnoAnterior}
+                  disabled={anoAtual <= 2024}
                   className="flex items-center gap-1"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -792,8 +818,26 @@ export default function InconsistenciaChamados() {
                               </TableCell>
                               
                               {/* Coluna Empresa */}
-                              <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
-                                <span>{inc.empresa || '-'}</span>
+                              <TableCell className="text-xs sm:text-sm max-w-[180px] text-center">
+                                {(() => {
+                                  const isClienteEspecial = isClienteEspecialBRFONSDAGUIRRE(inc.empresa);
+                                  
+                                  if (isClienteEspecial) {
+                                    return (
+                                      <ClienteNomeDisplay
+                                        nomeEmpresa={inc.empresa}
+                                        nomeCliente={inc.analista}
+                                        className="inline font-medium"
+                                      />
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <span className={`font-medium ${!isEmpresaCadastrada(inc.empresa) ? 'text-red-600' : ''}`}>
+                                      {inc.empresa || '-'}
+                                    </span>
+                                  );
+                                })()}
                               </TableCell>
                               
                               {/* Coluna Analista */}
@@ -942,8 +986,26 @@ export default function InconsistenciaChamados() {
                             </TableCell>
                             
                             {/* Coluna Empresa */}
-                            <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
-                              <span>{item.empresa || '-'}</span>
+                            <TableCell className="text-xs sm:text-sm max-w-[180px] text-center">
+                              {(() => {
+                                const isClienteEspecial = isClienteEspecialBRFONSDAGUIRRE(item.empresa);
+                                
+                                if (isClienteEspecial) {
+                                  return (
+                                    <ClienteNomeDisplay
+                                      nomeEmpresa={item.empresa}
+                                      nomeCliente={item.analista}
+                                      className="inline font-medium"
+                                    />
+                                  );
+                                }
+                                
+                                return (
+                                  <span className={`font-medium ${!isEmpresaCadastrada(item.empresa) ? 'text-red-600' : ''}`}>
+                                    {item.empresa || '-'}
+                                  </span>
+                                );
+                              })()}
                             </TableCell>
                             
                             {/* Coluna Data Envio */}
