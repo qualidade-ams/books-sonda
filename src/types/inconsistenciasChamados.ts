@@ -39,6 +39,7 @@ export interface InconsistenciaChamado {
   
   // Status e resolução (nova abordagem persistida)
   status?: 'ativa' | 'resolvida';
+  status_chamado?: string | null;
   data_deteccao?: string;
   data_resolucao?: string | null;
   
