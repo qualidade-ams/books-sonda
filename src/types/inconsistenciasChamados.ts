@@ -37,8 +37,14 @@ export interface InconsistenciaChamado {
   tipo_inconsistencia: TipoInconsistencia;
   descricao_inconsistencia: string;
   
+  // Status e resolução (nova abordagem persistida)
+  status?: 'ativa' | 'resolvida';
+  data_deteccao?: string;
+  data_resolucao?: string | null;
+  
   // Auditoria
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface InconsistenciasChamadosFiltros {
@@ -48,6 +54,7 @@ export interface InconsistenciasChamadosFiltros {
   analista?: string;
   data_inicio?: string;
   data_fim?: string;
+  status?: 'ativa' | 'resolvida' | 'all';
 }
 
 export interface InconsistenciasChamadosEstatisticas {

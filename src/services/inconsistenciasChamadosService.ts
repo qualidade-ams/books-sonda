@@ -1,176 +1,63 @@
+/**
+ * Serviço para leitura de inconsistências de chamados persistidas
+ * 
+ * Este serviço lê dados da tabela `inconsistencias_chamados` que é populada
+ * automaticamente após cada sincronização com o SQL Server.
+ * 
+ * A detecção de inconsistências é feita pelo `inconsistenciasDeteccaoService.ts`
+ * que roda após a sincronização.
+ */
+
 import { supabase } from '@/integrations/supabase/client';
 import type { 
   InconsistenciaChamado, 
   InconsistenciasChamadosFiltros,
   InconsistenciasChamadosEstatisticas,
-  TipoInconsistencia,
   HistoricoInconsistencia,
   EnviarNotificacaoRequest
 } from '@/types/inconsistenciasChamados';
 
-/**
- * Serviço para gerenciar inconsistências de chamados
- * Busca e analisa chamados com problemas nas tabelas apontamentos_aranda e apontamentos_tickets_aranda
- * 
- * NOTA: Os erros de TypeScript relacionados às tabelas são esperados porque estas tabelas
- * não estão definidas nos tipos gerados do Supabase. O código funciona corretamente em runtime.
- */
 export class InconsistenciasChamadosService {
-  private cacheEmpresas: Map<string, string> | null = null;
 
   /**
-   * Busca empresas cadastradas e retorna mapa nome_completo -> nome_abreviado
-   */
-  private async buscarMapaEmpresas(): Promise<Map<string, string>> {
-    if (this.cacheEmpresas) return this.cacheEmpresas;
-
-    const { data, error } = await supabase
-      .from('empresas_clientes')
-      .select('nome_completo, nome_abreviado');
-
-    if (error || !data) {
-      console.error('❌ Erro ao buscar empresas:', error);
-      return new Map();
-    }
-
-    this.cacheEmpresas = new Map();
-    for (const emp of data) {
-      if (emp.nome_completo && emp.nome_abreviado) {
-        this.cacheEmpresas.set(emp.nome_completo.toUpperCase().trim(), emp.nome_abreviado);
-      }
-    }
-    return this.cacheEmpresas;
-  }
-
-  /**
-   * Retorna nome abreviado da empresa ou o nome original se não encontrar
-   */
-  private obterNomeAbreviado(nomeCompleto: string, mapa: Map<string, string>): string {
-    if (!nomeCompleto) return '-';
-    const abreviado = mapa.get(nomeCompleto.toUpperCase().trim());
-    return abreviado || nomeCompleto;
-  }
-
-  /**
-   * Busca todas as inconsistências de chamados
-   * 
-   * @param filtros - Filtros opcionais para busca
-   * @returns Lista de inconsistências encontradas
+   * Busca inconsistências ativas (pendentes de correção)
    */
   async buscarInconsistencias(
     filtros?: InconsistenciasChamadosFiltros
   ): Promise<InconsistenciaChamado[]> {
     try {
-      console.log('🔍 Buscando inconsistências de chamados:', filtros);
+      console.log('🔍 Buscando inconsistências ativas:', filtros);
 
-      const inconsistencias: InconsistenciaChamado[] = [];
-
-      // 1. Buscar inconsistências em apontamentos_aranda (se origem não filtrada para tickets)
-      if (!filtros?.origem || filtros.origem === 'all' || filtros.origem === 'apontamentos') {
-        const apontamentos = await this.buscarInconsistenciasApontamentos(filtros);
-        inconsistencias.push(...apontamentos);
-      }
-
-      // 2. Buscar inconsistências em apontamentos_tickets_aranda (se origem não filtrada para apontamentos)
-      if (!filtros?.origem || filtros.origem === 'all' || filtros.origem === 'tickets') {
-        const tickets = await this.buscarInconsistenciasTickets(filtros);
-        inconsistencias.push(...tickets);
-      }
-
-      // 3. Filtrar inconsistências já enviadas (que estão no histórico)
-      const inconsistenciasNaoEnviadas = await this.filtrarInconsistenciasNaoEnviadas(inconsistencias);
-
-      // 4. Mapear nomes de empresas para nomes abreviados
-      const mapaEmpresas = await this.buscarMapaEmpresas();
-      for (const inc of inconsistenciasNaoEnviadas) {
-        if (inc.empresa) {
-          inc.empresa = this.obterNomeAbreviado(inc.empresa, mapaEmpresas);
-        }
-      }
-
-      // 5. Ordenar por data_atividade DESC
-      inconsistenciasNaoEnviadas.sort((a, b) => {
-        const dataA = new Date(a.data_atividade);
-        const dataB = new Date(b.data_atividade);
-        return dataB.getTime() - dataA.getTime();
-      });
-
-      console.log('✅ Inconsistências encontradas:', inconsistenciasNaoEnviadas.length);
-
-      return inconsistenciasNaoEnviadas;
-    } catch (error) {
-      console.error('❌ Erro ao buscar inconsistências:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Filtra inconsistências que já foram enviadas (estão no histórico)
-   */
-  private async filtrarInconsistenciasNaoEnviadas(
-    inconsistencias: InconsistenciaChamado[]
-  ): Promise<InconsistenciaChamado[]> {
-    try {
-      // Buscar todas as inconsistências no histórico
-      const { data: historico, error } = await supabase
-        .from('historico_inconsistencias_chamados' as any)
-        .select('nro_chamado, tipo_inconsistencia, origem, data_atividade');
-
-      if (error) {
-        console.error('❌ Erro ao buscar histórico:', error);
-        // Em caso de erro, retornar todas as inconsistências
-        return inconsistencias;
-      }
-
-      if (!historico || historico.length === 0) {
-        return inconsistencias;
-      }
-
-      // Criar um Set com chaves únicas das inconsistências já enviadas
-      const enviadas = new Set(
-        (historico as any[]).map((h: any) => 
-          `${h.origem}-${h.nro_chamado}-${h.tipo_inconsistencia}-${h.data_atividade}`
-        )
-      );
-
-      // Filtrar apenas as que não foram enviadas
-      const naoEnviadas = inconsistencias.filter(inc => {
-        const chave = `${inc.origem}-${inc.nro_chamado}-${inc.tipo_inconsistencia}-${inc.data_atividade}`;
-        return !enviadas.has(chave);
-      });
-
-      console.log(`🔍 Filtradas: ${inconsistencias.length} total, ${naoEnviadas.length} não enviadas, ${enviadas.size} já enviadas`);
-
-      return naoEnviadas;
-    } catch (error) {
-      console.error('❌ Erro ao filtrar inconsistências:', error);
-      // Em caso de erro, retornar todas as inconsistências
-      return inconsistencias;
-    }
-  }
-
-  /**
-   * Busca inconsistências na tabela apontamentos_aranda
-   */
-  private async buscarInconsistenciasApontamentos(
-    filtros?: InconsistenciasChamadosFiltros
-  ): Promise<InconsistenciaChamado[]> {
-    try {
-      // Query base - selecionar apenas campos necessários para performance
       let query = supabase
-        .from('apontamentos_aranda' as any)
-        .select('id, nro_chamado, nro_tarefa, tipo_chamado, data_abertura, data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, org_us_final, analista_tarefa, item_configuracao, created_at');
+        .from('inconsistencias_chamados' as any)
+        .select('*')
+        .eq('status', 'ativa')
+        .order('data_atividade', { ascending: false });
 
-      // Aplicar filtros de data (obrigatório para evitar timeout)
-      // Se não fornecidos, usar ano atual como fallback
-      const anoAtual = new Date().getFullYear();
-      const dataInicio = filtros?.data_inicio || `${anoAtual}-01-01`;
-      const dataFim = filtros?.data_fim || `${anoAtual}-12-31`;
-      query = query.gte('data_atividade', dataInicio);
-      query = query.lte('data_atividade', dataFim);
+      // Filtro por período (data_atividade)
+      if (filtros?.data_inicio) {
+        query = query.gte('data_atividade', filtros.data_inicio);
+      }
+      if (filtros?.data_fim) {
+        query = query.lte('data_atividade', filtros.data_fim);
+      }
 
-      // Aplicar filtro de busca (número do chamado)
-      // Remove prefixos conhecidos para buscar pelo número puro
+      // Filtro por tipo de inconsistência
+      if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
+        query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
+      }
+
+      // Filtro por origem
+      if (filtros?.origem && filtros.origem !== 'all') {
+        query = query.eq('origem', filtros.origem);
+      }
+
+      // Filtro por analista
+      if (filtros?.analista) {
+        query = query.eq('analista', filtros.analista);
+      }
+
+      // Filtro por busca (número do chamado)
       if (filtros?.busca) {
         const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
         if (buscaLimpa) {
@@ -178,302 +65,90 @@ export class InconsistenciasChamadosService {
         }
       }
 
-      // Aplicar filtro de analista (igualdade exata - valor vem do dropdown)
-      if (filtros?.analista) {
-        query = query.eq('analista_tarefa', filtros.analista);
-      }
-
       const { data, error } = await query;
 
       if (error) {
-        console.error('❌ Erro ao buscar apontamentos:', error);
+        console.error('❌ Erro ao buscar inconsistências:', error);
         throw error;
       }
 
-      if (!data || data.length === 0) {
-        return [];
-      }
-
-      // Filtrar e mapear inconsistências
-      const inconsistencias: InconsistenciaChamado[] = [];
-
-      for (const apontamento of data as any[]) {
-        const tipos = this.detectarInconsistencias(
-          apontamento.data_atividade,
-          apontamento.data_sistema,
-          apontamento.tempo_gasto_horas,
-          null // IC 999999 é verificado apenas em apontamentos_tickets_aranda
-        );
-
-        // Se há inconsistências detectadas
-        if (tipos.length > 0) {
-          // Filtrar por tipo se especificado
-          const tiposFiltrados = filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all'
-            ? tipos.filter(t => t === filtros.tipo_inconsistencia)
-            : tipos;
-
-          // Criar uma inconsistência para cada tipo detectado
-          for (const tipo of tiposFiltrados) {
-            const tipoChamado = apontamento.tipo_chamado || '';
-            const nroChamado = apontamento.nro_chamado || 'N/A';
-            inconsistencias.push({
-              id: `${apontamento.id}-${tipo}`,
-              origem: 'apontamentos',
-              nro_chamado: tipoChamado ? `${tipoChamado} ${nroChamado}` : nroChamado,
-              nro_tarefa: apontamento.nro_tarefa || null,
-              data_abertura: apontamento.data_abertura || null,
-              data_atividade: apontamento.data_atividade,
-              data_sistema: apontamento.data_sistema,
-              tempo_gasto_horas: apontamento.tempo_gasto_horas,
-              tempo_gasto_minutos: apontamento.tempo_gasto_minutos,
-              empresa: apontamento.org_us_final,
-              analista: apontamento.analista_tarefa,
-              tipo_chamado: apontamento.tipo_chamado,
-              item_configuracao: apontamento.item_configuracao,
-              tipo_inconsistencia: tipo,
-              descricao_inconsistencia: this.gerarDescricao(
-                tipo,
-                apontamento.data_atividade,
-                apontamento.data_sistema,
-                apontamento.tempo_gasto_horas,
-                apontamento.item_configuracao
-              ),
-              created_at: apontamento.created_at
-            });
-          }
-        }
-      }
-
-      return inconsistencias;
+      console.log('✅ Inconsistências ativas encontradas:', data?.length || 0);
+      return (data as any[] || []) as InconsistenciaChamado[];
     } catch (error) {
-      console.error('❌ Erro ao buscar inconsistências de apontamentos:', error);
-      return [];
+      console.error('❌ Erro ao buscar inconsistências:', error);
+      throw error;
     }
   }
 
   /**
-   * Busca inconsistências na tabela apontamentos_tickets_aranda
+   * Busca inconsistências resolvidas (corrigidas pelo analista)
    */
-  private async buscarInconsistenciasTickets(
+  async buscarResolvidas(
     filtros?: InconsistenciasChamadosFiltros
   ): Promise<InconsistenciaChamado[]> {
     try {
-      // Query base - selecionar apenas campos necessários para performance
+      console.log('📜 Buscando inconsistências resolvidas:', filtros);
+
       let query = supabase
-        .from('apontamentos_tickets_aranda' as any)
-        .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario, created_at');
+        .from('inconsistencias_chamados' as any)
+        .select('*')
+        .eq('status', 'resolvida')
+        .order('data_resolucao', { ascending: false });
 
-      // Aplicar filtros de data (obrigatório para evitar timeout)
-      // Se não fornecidos, usar ano atual como fallback
-      const anoAtual = new Date().getFullYear();
-      const dataInicio = filtros?.data_inicio || `${anoAtual}-01-01`;
-      const dataFim = filtros?.data_fim || `${anoAtual}-12-31`;
-      query = query.gte('data_abertura', dataInicio);
-      query = query.lte('data_abertura', dataFim);
+      // Filtro por período (data_atividade)
+      if (filtros?.data_inicio) {
+        query = query.gte('data_atividade', filtros.data_inicio);
+      }
+      if (filtros?.data_fim) {
+        query = query.lte('data_atividade', filtros.data_fim);
+      }
 
-      // Aplicar filtro de busca (número da solicitação)
-      // Remove prefixos conhecidos (RF, IM, PM) para buscar pelo número puro
+      // Filtro por tipo de inconsistência
+      if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
+        query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
+      }
+
+      // Filtro por origem
+      if (filtros?.origem && filtros.origem !== 'all') {
+        query = query.eq('origem', filtros.origem);
+      }
+
+      // Filtro por analista
+      if (filtros?.analista) {
+        query = query.eq('analista', filtros.analista);
+      }
+
+      // Filtro por busca
       if (filtros?.busca) {
         const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
         if (buscaLimpa) {
-          query = query.ilike('nro_solicitacao', `%${buscaLimpa}%`);
+          query = query.ilike('nro_chamado', `%${buscaLimpa}%`);
         }
-      }
-
-      // Aplicar filtro de analista (igualdade exata - valor vem do dropdown)
-      if (filtros?.analista) {
-        query = query.eq('nome_responsavel', filtros.analista);
-      }
-
-      // Excluir tickets do grupo CA SDM (não são inconsistências reais)
-      query = query.neq('nome_grupo', 'CA SDM');
-
-      // Se filtrando apenas por sem_atualizacao, buscar apenas tickets com status relevantes
-      if (filtros?.tipo_inconsistencia === 'sem_atualizacao') {
-        query = query.in('status', ['Open', 'Hold', 'In Progress', 'Acknowledged']);
       }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error('❌ Erro ao buscar tickets:', error);
+        console.error('❌ Erro ao buscar resolvidas:', error);
         throw error;
       }
 
-      if (!data || data.length === 0) {
-        return [];
-      }
-
-      // Filtrar e mapear inconsistências
-      const inconsistencias: InconsistenciaChamado[] = [];
-
-      for (const ticket of data as any[]) {
-        const tipos = this.detectarInconsistencias(
-          ticket.data_abertura,
-          null, // Tickets não têm coluna data_sistema
-          null, // Tickets não têm tempo_gasto_horas
-          ticket.item_configuracao
-        );
-
-        // Regra 5: Sem atualização há 16+ dias (específica de tickets)
-        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged'];
-        if (
-          ticket.status && 
-          statusRelevantes.includes(ticket.status) && 
-          ticket.data_ultimo_comentario
-        ) {
-          const dataUltimoComentario = new Date(ticket.data_ultimo_comentario);
-          const hoje = new Date();
-          const diffMs = hoje.getTime() - dataUltimoComentario.getTime();
-          const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          if (diffDias >= 16) {
-            tipos.push('sem_atualizacao');
-          }
-        }
-
-        // Se há inconsistências detectadas
-        if (tipos.length > 0) {
-          // Filtrar por tipo se especificado
-          const tiposFiltrados = filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all'
-            ? tipos.filter(t => t === filtros.tipo_inconsistencia)
-            : tipos;
-
-          // Criar uma inconsistência para cada tipo detectado
-          for (const tipo of tiposFiltrados) {
-            // Mapear cod_tipo para prefixo: Solicitação->RF, Incidente->IM, Problema->PM
-            const codTipo = ticket.cod_tipo || '';
-            let prefixo = '';
-            if (codTipo === 'Solicitação') prefixo = 'RF';
-            else if (codTipo === 'Incidente') prefixo = 'IM';
-            else if (codTipo === 'Problema') prefixo = 'PM';
-
-            const nroSolicitacao = ticket.nro_solicitacao || 'N/A';
-            const isIc999999 = tipo === 'ic_999999';
-            inconsistencias.push({
-              id: `${ticket.id}-${tipo}`,
-              origem: 'tickets',
-              nro_chamado: prefixo ? `${prefixo} ${nroSolicitacao}` : nroSolicitacao,
-              nro_tarefa: null,
-              data_abertura: ticket.data_abertura || null,
-              data_atividade: isIc999999 ? null : ticket.data_abertura,
-              data_sistema: null, // Tickets não possuem coluna data_sistema
-              tempo_gasto_horas: null,
-              tempo_gasto_minutos: null,
-              empresa: ticket.organizacao,
-              analista: ticket.nome_responsavel || null,
-              tipo_chamado: prefixo || null,
-              item_configuracao: ticket.item_configuracao,
-              tipo_inconsistencia: tipo,
-              descricao_inconsistencia: this.gerarDescricao(
-                tipo,
-                ticket.data_abertura,
-                null, // Tickets não possuem data_sistema
-                null,
-                ticket.item_configuracao,
-                ticket.data_ultimo_comentario,
-                ticket.status
-              ),
-              created_at: ticket.created_at
-            });
-          }
-        }
-      }
-
-      return inconsistencias;
+      console.log('✅ Inconsistências resolvidas encontradas:', data?.length || 0);
+      return (data as any[] || []) as InconsistenciaChamado[];
     } catch (error) {
-      console.error('❌ Erro ao buscar inconsistências de tickets:', error);
-      return [];
+      console.error('❌ Erro ao buscar resolvidas:', error);
+      throw error;
     }
   }
 
   /**
-   * Detecta tipos de inconsistências em um chamado
-   */
-  private detectarInconsistencias(
-    dataAtividade: string | null,
-    dataSistema: string | null,
-    tempoGastoHoras: string | null,
-    itemConfiguracao: string | null
-  ): TipoInconsistencia[] {
-    const tipos: TipoInconsistencia[] = [];
-
-    // Regra 4: Item de configuração começa com 999999 (independe de datas)
-    if (itemConfiguracao && itemConfiguracao.trim().startsWith('999999')) {
-      tipos.push('ic_999999');
-    }
-
-    // Regras que dependem de datas
-    if (!dataAtividade || !dataSistema) {
-      return tipos;
-    }
-
-    const dtAtividade = new Date(dataAtividade);
-    const dtSistema = new Date(dataSistema);
-
-    // Regra 1: Data sistema em mês diferente da data atividade (anterior ou posterior)
-    if (
-      dtAtividade.getMonth() !== dtSistema.getMonth() ||
-      dtAtividade.getFullYear() !== dtSistema.getFullYear()
-    ) {
-      tipos.push('mes_diferente');
-    }
-
-    // Regra 3: Tempo excessivo (> 10 horas)
-    if (tempoGastoHoras) {
-      const [horas] = tempoGastoHoras.split(':').map(Number);
-      if (horas > 10) {
-        tipos.push('tempo_excessivo');
-      }
-    }
-
-    return tipos;
-  }
-
-  /**
-   * Gera descrição legível da inconsistência
-   */
-  private gerarDescricao(
-    tipo: TipoInconsistencia,
-    dataAtividade: string,
-    dataSistema: string,
-    tempoGastoHoras: string | null,
-    itemConfiguracao: string | null = null,
-    dataUltimoComentario: string | null = null,
-    status: string | null = null
-  ): string {
-    const dtAtividade = new Date(dataAtividade);
-    const dtSistema = new Date(dataSistema);
-
-    switch (tipo) {
-      case 'mes_diferente':
-        return `Data Atividade (${dtAtividade.toLocaleDateString('pt-BR')}) e Data Sistema (${dtSistema.toLocaleDateString('pt-BR')}) em meses diferentes`;
-      
-      case 'tempo_excessivo':
-        return `Tempo gasto (${tempoGastoHoras}) excede o limite de 10 horas`;
-      
-      case 'ic_999999':
-        return `Item de Configuração inválido: ${itemConfiguracao}`;
-      
-      case 'sem_atualizacao': {
-        const dtComentario = dataUltimoComentario ? new Date(dataUltimoComentario) : null;
-        const hoje = new Date();
-        const dias = dtComentario ? Math.floor((hoje.getTime() - dtComentario.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-        const dataFormatada = dtComentario ? dtComentario.toLocaleDateString('pt-BR') : '-';
-        return `Chamado com status "${status || '-'}" sem atualização há ${dias} dia(s). Último comentário: ${dataFormatada}`;
-      }
-      
-      default:
-        return 'Inconsistência detectada';
-    }
-  }
-
-  /**
-   * Busca estatísticas de inconsistências
+   * Busca estatísticas de inconsistências ativas
    */
   async buscarEstatisticas(
     filtros?: InconsistenciasChamadosFiltros
   ): Promise<InconsistenciasChamadosEstatisticas> {
     try {
+      // Buscar todas as ativas com os filtros aplicados
       const inconsistencias = await this.buscarInconsistencias(filtros);
 
       const estatisticas: InconsistenciasChamadosEstatisticas = {
@@ -490,7 +165,6 @@ export class InconsistenciasChamadosService {
         }
       };
 
-      // Contar por tipo e origem
       for (const inc of inconsistencias) {
         estatisticas.por_tipo[inc.tipo_inconsistencia]++;
         estatisticas.por_origem[inc.origem]++;
@@ -504,13 +178,13 @@ export class InconsistenciasChamadosService {
   }
 
   /**
-   * Busca histórico de inconsistências já notificadas
+   * Busca histórico de emails enviados (tabela historico_inconsistencias_chamados)
    */
-  async buscarHistorico(
+  async buscarHistoricoEmails(
     ano: number
   ): Promise<HistoricoInconsistencia[]> {
     try {
-      console.log('📜 Buscando histórico de inconsistências:', { ano });
+      console.log('📧 Buscando histórico de emails enviados:', { ano });
 
       const { data, error } = await supabase
         .from('historico_inconsistencias_chamados' as any)
@@ -519,207 +193,20 @@ export class InconsistenciasChamadosService {
         .order('data_envio', { ascending: false });
 
       if (error) {
-        console.error('❌ Erro ao buscar histórico:', error);
+        console.error('❌ Erro ao buscar histórico de emails:', error);
         throw error;
       }
 
-      console.log('✅ Histórico encontrado:', data?.length || 0);
-
+      console.log('✅ Histórico de emails encontrado:', data?.length || 0);
       return (data as any[]) || [];
     } catch (error) {
-      console.error('❌ Erro ao buscar histórico:', error);
+      console.error('❌ Erro ao buscar histórico de emails:', error);
       throw error;
     }
   }
 
   /**
-   * Gera HTML do email com lista de inconsistências
-   */
-  private gerarHtmlEmail(
-    inconsistencias: InconsistenciaChamado[],
-    ano: number
-  ): string {
-    // Agrupar inconsistências por tipo
-    const porTipo = {
-      mes_diferente: inconsistencias.filter(i => i.tipo_inconsistencia === 'mes_diferente'),
-      tempo_excessivo: inconsistencias.filter(i => i.tipo_inconsistencia === 'tempo_excessivo'),
-      sem_atualizacao: inconsistencias.filter(i => i.tipo_inconsistencia === 'sem_atualizacao')
-    };
-
-    const tipoLabels = {
-      mes_diferente: 'Mês Diferente',
-      tempo_excessivo: 'Tempo Excessivo',
-      ic_999999: 'IC 999999',
-      sem_atualizacao: 'Sem Atualização 16+ dias'
-    };
-
-    const tipoColors = {
-      mes_diferente: '#F59E0B',
-      tempo_excessivo: '#F97316',
-      ic_999999: '#9333EA',
-      sem_atualizacao: '#0EA5E9'
-    };
-
-    let html = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
-        .email-container { max-width: 900px; margin: 0 auto; background-color: #ffffff; }
-        .header { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 32px; text-align: center; }
-        .header h1 { color: #ffffff; font-size: 24px; font-weight: bold; margin: 0 0 8px 0; }
-        .header p { color: #e0e7ff; font-size: 14px; margin: 0; }
-        .content { padding: 32px; }
-        .intro { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px; }
-        .intro p { color: #92400e; font-size: 14px; line-height: 1.6; margin: 0; }
-        .section { margin-bottom: 32px; }
-        .section-title { font-size: 18px; font-weight: bold; color: #1f2937; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
-        .inconsistencia-card { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-        .inconsistencia-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .chamado-numero { font-size: 16px; font-weight: bold; color: #1f2937; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; color: #ffffff; }
-        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
-        .info-item { font-size: 13px; }
-        .info-label { color: #6b7280; font-weight: 500; }
-        .info-value { color: #1f2937; font-weight: 600; margin-top: 2px; }
-        .descricao { background-color: #fef3c7; border-left: 3px solid #f59e0b; padding: 12px; border-radius: 4px; margin-top: 12px; }
-        .descricao p { color: #92400e; font-size: 13px; line-height: 1.5; margin: 0; }
-        .footer { background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; }
-        .footer p { color: #6b7280; font-size: 12px; margin: 0; }
-        .summary { background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
-        .summary-title { font-size: 14px; font-weight: bold; color: #1e40af; margin-bottom: 8px; }
-        .summary-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .summary-stat { text-align: center; }
-        .summary-stat-value { font-size: 24px; font-weight: bold; color: #1e40af; }
-        .summary-stat-label { font-size: 12px; color: #3b82f6; margin-top: 4px; }
-        @media only screen and (max-width: 600px) {
-            .content { padding: 16px; }
-            .info-grid { grid-template-columns: 1fr; }
-            .summary-stats { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="header">
-            <h1>⚠️ Inconsistências Detectadas em Chamados</h1>
-            <p>${ano}</p>
-        </div>
-        
-        <!-- Content -->
-        <div class="content">
-            <!-- Intro -->
-            <div class="intro">
-                <p><strong>Atenção!</strong> Foram detectadas inconsistências nos chamados que requerem sua verificação e correção. Por favor, revise os itens abaixo e tome as ações necessárias.</p>
-            </div>
-
-            <!-- Summary -->
-            <div class="summary">
-                <div class="summary-title">Resumo das Inconsistências</div>
-                <div class="summary-stats">
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${inconsistencias.length}</div>
-                        <div class="summary-stat-label">Total</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${porTipo.mes_diferente.length}</div>
-                        <div class="summary-stat-label">Mês Diferente</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${porTipo.tempo_excessivo.length}</div>
-                        <div class="summary-stat-label">Tempo Excessivo</div>
-                    </div>
-                </div>
-            </div>`;
-
-    // Gerar seções por tipo de inconsistência
-    for (const [tipo, lista] of Object.entries(porTipo)) {
-      if (lista.length === 0) continue;
-
-      const tipoKey = tipo as TipoInconsistencia;
-      const cor = tipoColors[tipoKey];
-      const label = tipoLabels[tipoKey];
-
-      html += `
-            <!-- Seção: ${label} -->
-            <div class="section">
-                <div class="section-title">${label} (${lista.length})</div>`;
-
-      for (const inc of lista) {
-        const origemIcon = inc.origem === 'apontamentos' ? '📋' : '🎫';
-        const dataAtividade = new Date(inc.data_atividade).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        const dataSistema = new Date(inc.data_sistema).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-
-        html += `
-                <div class="inconsistencia-card">
-                    <div class="inconsistencia-header">
-                        <div class="chamado-numero">${origemIcon} ${inc.nro_chamado}</div>
-                        <span class="badge" style="background-color: ${cor};">${label}</span>
-                    </div>
-                    
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Data Atividade</div>
-                            <div class="info-value">${dataAtividade}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Data Sistema</div>
-                            <div class="info-value">${dataSistema}</div>
-                        </div>
-                        ${inc.tempo_gasto_horas ? `
-                        <div class="info-item">
-                            <div class="info-label">Tempo Gasto</div>
-                            <div class="info-value">${inc.tempo_gasto_horas}</div>
-                        </div>` : ''}
-                        <div class="info-item">
-                            <div class="info-label">Empresa</div>
-                            <div class="info-value">${inc.empresa || '-'}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="descricao">
-                        <p><strong>Descrição:</strong> ${inc.descricao_inconsistencia}</p>
-                    </div>
-                </div>`;
-      }
-
-      html += `
-            </div>`;
-    }
-
-    html += `
-        </div>
-        
-        <!-- Footer -->
-        <div class="footer">
-            <p>Este é um email automático do sistema Books SND. Por favor, não responda a este email.</p>
-            <p style="margin-top: 8px;">Para dúvidas, entre em contato com o suporte.</p>
-        </div>
-    </div>
-</body>
-</html>`;
-
-    return html;
-  }
-
-  /**
-   * Envia notificação por email e move inconsistências para histórico
+   * Envia notificação por email e registra no histórico
    */
   async enviarNotificacao(request: EnviarNotificacaoRequest): Promise<void> {
     try {
@@ -744,65 +231,36 @@ export class InconsistenciasChamadosService {
 
       const enviadoPorNome = profile?.full_name || user.email || 'Sistema';
 
-      // Agrupar inconsistências por analista
-      const porAnalista = new Map<string, InconsistenciaChamado[]>();
-
+      // Salvar cada inconsistência no histórico de emails
       for (const inc of request.inconsistencias) {
-        const analista = inc.analista || 'Sem Analista';
-        if (!porAnalista.has(analista)) {
-          porAnalista.set(analista, []);
+        const { error: insertError } = await supabase
+          .from('historico_inconsistencias_chamados' as any)
+          .insert({
+            origem: inc.origem,
+            nro_chamado: inc.nro_chamado,
+            tipo_inconsistencia: inc.tipo_inconsistencia,
+            data_atividade: inc.data_atividade,
+            data_sistema: inc.data_sistema,
+            tempo_gasto_horas: inc.tempo_gasto_horas,
+            tempo_gasto_minutos: inc.tempo_gasto_minutos,
+            empresa: inc.empresa,
+            analista: inc.analista,
+            tipo_chamado: inc.tipo_chamado,
+            descricao_inconsistencia: inc.descricao_inconsistencia,
+            email_analista: null,
+            enviado_por: user.id,
+            enviado_por_nome: enviadoPorNome,
+            mes_referencia: request.mes_referencia,
+            ano_referencia: request.ano_referencia
+          });
+
+        if (insertError) {
+          console.error('❌ Erro ao salvar no histórico:', insertError);
+          throw insertError;
         }
-        porAnalista.get(analista)!.push(inc);
       }
 
-      console.log('👥 Analistas a notificar:', porAnalista.size);
-
-      // Gerar HTML do email com todas as inconsistências
-      const htmlEmail = this.gerarHtmlEmail(
-        request.inconsistencias,
-        request.ano_referencia
-      );
-
-      console.log('📧 Email HTML gerado com sucesso');
-      console.log('📧 Preview do email:', htmlEmail.substring(0, 500) + '...');
-
-      // Enviar email para cada analista e salvar no histórico
-      for (const [analista, inconsistencias] of porAnalista.entries()) {
-        // TODO: Implementar envio de email real usando o htmlEmail gerado
-        // Por enquanto, apenas salvar no histórico
-        
-        for (const inc of inconsistencias) {
-          const { error: insertError } = await supabase
-            .from('historico_inconsistencias_chamados' as any)
-            .insert({
-              origem: inc.origem,
-              nro_chamado: inc.nro_chamado,
-              tipo_inconsistencia: inc.tipo_inconsistencia,
-              data_atividade: inc.data_atividade,
-              data_sistema: inc.data_sistema,
-              tempo_gasto_horas: inc.tempo_gasto_horas,
-              tempo_gasto_minutos: inc.tempo_gasto_minutos,
-              empresa: inc.empresa,
-              analista: inc.analista,
-              tipo_chamado: inc.tipo_chamado,
-              descricao_inconsistencia: inc.descricao_inconsistencia,
-              email_analista: null, // TODO: Buscar email do analista
-              enviado_por: user.id,
-              enviado_por_nome: enviadoPorNome,
-              mes_referencia: request.mes_referencia,
-              ano_referencia: request.ano_referencia
-            });
-
-          if (insertError) {
-            console.error('❌ Erro ao salvar no histórico:', insertError);
-            throw insertError;
-          }
-        }
-
-        console.log(`✅ Notificação enviada para ${analista}: ${inconsistencias.length} chamados`);
-      }
-
-      console.log('✅ Todas as notificações foram enviadas');
+      console.log(`✅ ${request.inconsistencias.length} notificações registradas no histórico`);
     } catch (error) {
       console.error('❌ Erro ao enviar notificações:', error);
       throw error;

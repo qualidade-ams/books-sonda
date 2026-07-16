@@ -9,7 +9,7 @@ import type {
 } from '@/types/inconsistenciasChamados';
 
 /**
- * Hook para gerenciar inconsistências de chamados
+ * Hook para buscar inconsistências ativas (pendentes de correção)
  */
 export function useInconsistenciasChamados(filtros?: InconsistenciasChamadosFiltros) {
   const {
@@ -18,7 +18,7 @@ export function useInconsistenciasChamados(filtros?: InconsistenciasChamadosFilt
     error,
     refetch
   } = useQuery<InconsistenciaChamado[]>({
-    queryKey: ['inconsistencias-chamados', filtros],
+    queryKey: ['inconsistencias-chamados', 'ativas', filtros],
     queryFn: () => inconsistenciasChamadosService.buscarInconsistencias(filtros),
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
@@ -32,7 +32,30 @@ export function useInconsistenciasChamados(filtros?: InconsistenciasChamadosFilt
 }
 
 /**
- * Hook para buscar estatísticas de inconsistências
+ * Hook para buscar inconsistências resolvidas (corrigidas pelo analista)
+ */
+export function useInconsistenciasResolvidas(filtros?: InconsistenciasChamadosFiltros) {
+  const {
+    data: resolvidas = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery<InconsistenciaChamado[]>({
+    queryKey: ['inconsistencias-chamados', 'resolvidas', filtros],
+    queryFn: () => inconsistenciasChamadosService.buscarResolvidas(filtros),
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+
+  return {
+    resolvidas,
+    isLoading,
+    error,
+    refetch
+  };
+}
+
+/**
+ * Hook para buscar estatísticas de inconsistências ativas
  */
 export function useInconsistenciasEstatisticas(filtros?: InconsistenciasChamadosFiltros) {
   const {
@@ -55,17 +78,17 @@ export function useInconsistenciasEstatisticas(filtros?: InconsistenciasChamados
 }
 
 /**
- * Hook para buscar histórico de inconsistências
+ * Hook para buscar histórico de emails enviados
  */
-export function useHistoricoInconsistencias(ano: number) {
+export function useHistoricoEmailsInconsistencias(ano: number) {
   const {
     data: historico = [],
     isLoading,
     error,
     refetch
   } = useQuery<HistoricoInconsistencia[]>({
-    queryKey: ['historico-inconsistencias', ano],
-    queryFn: () => inconsistenciasChamadosService.buscarHistorico(ano),
+    queryKey: ['historico-emails-inconsistencias', ano],
+    queryFn: () => inconsistenciasChamadosService.buscarHistoricoEmails(ano),
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
 
@@ -78,7 +101,15 @@ export function useHistoricoInconsistencias(ano: number) {
 }
 
 /**
- * Hook para enviar notificações
+ * @deprecated Use useHistoricoEmailsInconsistencias instead
+ * Mantido para compatibilidade
+ */
+export function useHistoricoInconsistencias(ano: number) {
+  return useHistoricoEmailsInconsistencias(ano);
+}
+
+/**
+ * Hook para enviar notificações por email
  */
 export function useEnviarNotificacao() {
   const queryClient = useQueryClient();
@@ -90,7 +121,7 @@ export function useEnviarNotificacao() {
       // Invalidar queries para atualizar dados
       queryClient.invalidateQueries({ queryKey: ['inconsistencias-chamados'] });
       queryClient.invalidateQueries({ queryKey: ['inconsistencias-estatisticas'] });
-      queryClient.invalidateQueries({ queryKey: ['historico-inconsistencias'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-emails-inconsistencias'] });
     }
   });
 
