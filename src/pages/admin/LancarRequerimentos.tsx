@@ -400,13 +400,15 @@ const LancarRequerimentos = () => {
         try {
             // Criar o requerimento (o formulário já gerencia a criação do segundo requerimento se necessário)
             console.log('🏠 PÁGINA - Chamando createRequerimento.mutateAsync...');
-            await createRequerimento.mutateAsync(data);
+            const novoRequerimento = await createRequerimento.mutateAsync(data);
             console.log('🏠 PÁGINA - createRequerimento.mutateAsync concluído');
             setShowCreateModal(false);
             screenReader.announceSuccess('Requerimento criado com sucesso');
+            return novoRequerimento?.id;
         } catch (error) {
             console.error('🏠 PÁGINA - Erro ao criar:', error);
             screenReader.announceError('Erro ao criar requerimento');
+            throw error;
         }
     }, [createRequerimento, screenReader]);
 

@@ -30,11 +30,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { Save, X, FileText, Info } from 'lucide-react';
+import { Save, X, FileText, Info, Upload, Trash2, Download, Paperclip, Loader2 } from 'lucide-react';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { inativarTaxasCliente } from '@/services/taxasClientesService';
+import { useEmpresaAnexos } from '@/hooks/useEmpresaAnexos';
+import { empresaAnexosService } from '@/services/empresaAnexosService';
 import { SegmentacaoBaselineForm } from './SegmentacaoBaselineForm';
 import SecaoBaselineComHistorico from './SecaoBaselineComHistorico';
 import SecaoPercentualRepasseComHistorico from './SecaoPercentualRepasseComHistorico';
@@ -303,6 +305,23 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Hook para gerenciamento de anexos
+  const {
+    anexosSalvos,
+    isLoadingAnexos,
+    anexosPendentes,
+    adicionarArquivos,
+    removerAnexoPendente,
+    excluirAnexoSalvo,
+    uploadTodosPendentes,
+    downloadAnexo,
+    limparPendentes,
+    totalAnexos,
+    podeAdicionarMais,
+    isUploading,
+    isExcluindo,
+  } = useEmpresaAnexos(empresaId);
+  
   // Desabilitar todos os campos quando estiver no modo view
   const isViewMode = mode === 'view';
   const isFieldDisabled = isSubmitting || isLoading || isViewMode;
@@ -416,6 +435,16 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
     }
   }, [initialData, form]);
 
+  // Auto-upload de anexos pendentes quando empresaId fica disponível (ex: após criar empresa)
+  useEffect(() => {
+    if (empresaId && anexosPendentes.length > 0 && !isUploading) {
+      const pendentesReais = anexosPendentes.filter(a => a.status === 'pendente');
+      if (pendentesReais.length > 0) {
+        uploadTodosPendentes(empresaId);
+      }
+    }
+  }, [empresaId]);
+
   const handleSubmit = async (data: EmpresaFormData) => {
     // Não fazer nada se estiver no modo view
     if (isViewMode) {
@@ -486,6 +515,27 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
       // Salvar a empresa primeiro
       await onSubmit(normalizedData);
+
+      // Upload de anexos pendentes (somente se temos o empresaId - modo edit)
+      if (empresaId && anexosPendentes.length > 0) {
+        try {
+          const resultado = await uploadTodosPendentes(empresaId);
+          if (resultado.erros > 0) {
+            toast({
+              title: "Aviso",
+              description: `Empresa salva, mas ${resultado.erros} anexo(s) não puderam ser enviados.`,
+              variant: "destructive",
+            });
+          }
+        } catch (anexoError) {
+          console.error('Erro ao fazer upload dos anexos:', anexoError);
+          toast({
+            title: "Aviso",
+            description: "Empresa salva, mas houve erro ao enviar alguns anexos.",
+            variant: "destructive",
+          });
+        }
+      }
 
       // Se o status foi alterado para inativo, inativar as taxas automaticamente
       if (statusMudouParaInativo && initialData?.id) {
@@ -1166,6 +1216,174 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             </FormItem>
           )}
         />
+
+        {/* Seção de Anexos */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="h-5 w-5 text-gray-500" />
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Anexos da Empresa
+                  </h3>
+                  <span className="text-xs text-gray-500">
+                    ({totalAnexos}/{empresaAnexosService.getMaxAnexos()})
+                  </span>
+                </div>
+                {!isViewMode && podeAdicionarMais && (
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      multiple
+                      accept={empresaAnexosService.getExtensoesSuportadas()}
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          adicionarArquivos(e.target.files);
+                          e.target.value = ''; // Reset para permitir selecionar o mesmo arquivo
+                        }
+                      }}
+                      disabled={isFieldDisabled || isUploading}
+                    />
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-sonda-blue border border-sonda-blue rounded-md hover:bg-sonda-blue/5 transition-colors">
+                      <Upload className="h-4 w-4" />
+                      Adicionar Arquivo
+                    </div>
+                  </label>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500">
+                Máximo {empresaAnexosService.getMaxAnexos()} arquivos. Tipos aceitos: PDF, Word, Excel, PowerPoint, imagens, texto, CSV, ZIP. Tamanho máximo: 10MB por arquivo.
+              </p>
+
+              {/* Lista de anexos salvos */}
+              {isLoadingAnexos ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  <span className="ml-2 text-sm text-gray-500">Carregando anexos...</span>
+                </div>
+              ) : (
+                <>
+                  {anexosSalvos.length > 0 && (
+                    <div className="space-y-2">
+                      {anexosSalvos.map((anexo) => (
+                        <div
+                          key={anexo.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-700 truncate">
+                                {anexo.nome_original}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {empresaAnexosService.formatarTamanho(anexo.tamanho_bytes)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                              onClick={() => downloadAnexo(anexo)}
+                              title="Baixar"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {!isViewMode && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                onClick={() => excluirAnexoSalvo(anexo.id)}
+                                disabled={isExcluindo}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Lista de anexos pendentes (aguardando salvar empresa) */}
+                  {anexosPendentes.length > 0 && (
+                    <div className="space-y-2">
+                      {anexosPendentes.map((pendente) => (
+                        <div
+                          key={pendente.id}
+                          className={`flex items-center justify-between p-3 rounded-lg border ${
+                            pendente.status === 'erro'
+                              ? 'bg-red-50 border-red-200'
+                              : pendente.status === 'uploading'
+                              ? 'bg-blue-50 border-blue-200'
+                              : pendente.status === 'concluido'
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-yellow-50 border-yellow-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {pendente.status === 'uploading' ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-700 truncate">
+                                {pendente.arquivo.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {empresaAnexosService.formatarTamanho(pendente.arquivo.size)}
+                                {pendente.status === 'pendente' && ' - Aguardando upload'}
+                                {pendente.status === 'uploading' && ' - Enviando...'}
+                                {pendente.status === 'erro' && (
+                                  <span className="text-red-600"> - {pendente.erro}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          {!isViewMode && pendente.status !== 'uploading' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-800 flex-shrink-0"
+                              onClick={() => removerAnexoPendente(pendente.id)}
+                              title="Remover"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Estado vazio */}
+                  {anexosSalvos.length === 0 && anexosPendentes.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <Paperclip className="h-8 w-8 text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500">Nenhum anexo adicionado</p>
+                      {!isViewMode && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Clique em "Adicionar Arquivo" para anexar documentos
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         </TabsContent>
 
