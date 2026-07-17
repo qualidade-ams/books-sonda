@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { safeFetch } from '@/utils/apiConfig';
 import type { DadosSqlServer, ResultadoSincronizacao } from '@/types/pesquisasSatisfacao';
 import { inconsistenciasDeteccaoService } from '@/services/inconsistenciasDeteccaoService';
+import { bancoHorasQuarentenaService } from '@/services/bancoHorasQuarentenaService';
 
 // ============================================
 // CONFIGURAÇÃO
@@ -577,6 +578,36 @@ export async function sincronizarDados(
         onLog?.('⚠️ Erro na detecção de inconsistências (não afeta sincronização)');
         mensagensCombinadas.push('');
         mensagensCombinadas.push('⚠️ Detecção de inconsistências falhou (não afeta sincronização)');
+      }
+    }
+
+    // 9. Executar detecção de ajustes retroativos (se apontamentos foram sincronizados)
+    if (tabelasParaSincronizar.apontamentos) {
+      try {
+        console.log('🔍 [AJUSTES RETROATIVOS] Executando detecção após sincronização...');
+        onLog?.('🔍 Detectando ajustes retroativos em períodos fechados...');
+
+        const ajustesCriados = await bancoHorasQuarentenaService.executarDeteccaoRecente(2);
+
+        mensagensCombinadas.push('');
+        mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        mensagensCombinadas.push('🔍 DETECÇÃO DE AJUSTES RETROATIVOS');
+        mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        mensagensCombinadas.push(`Ajustes detectados/atualizados: ${ajustesCriados.length}`);
+
+        if (ajustesCriados.length > 0) {
+          mensagensCombinadas.push(`⚠️ ${ajustesCriados.length} ajuste(s) retroativo(s) enviado(s) para quarentena`);
+        } else {
+          mensagensCombinadas.push('✅ Nenhum ajuste retroativo detectado');
+        }
+
+        onLog?.(`✅ Ajustes retroativos: ${ajustesCriados.length} detectados`);
+        console.log('✅ [AJUSTES RETROATIVOS] Detecção finalizada:', ajustesCriados.length, 'ajustes');
+      } catch (erroAjustes) {
+        console.error('⚠️ [AJUSTES RETROATIVOS] Erro na detecção (não bloqueia sync):', erroAjustes);
+        onLog?.('⚠️ Erro na detecção de ajustes retroativos (não afeta sincronização)');
+        mensagensCombinadas.push('');
+        mensagensCombinadas.push('⚠️ Detecção de ajustes retroativos falhou (não afeta sincronização)');
       }
     }
 

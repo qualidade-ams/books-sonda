@@ -7,7 +7,7 @@
  * @module pages/admin/AjustesRetroativos
  */
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Clock,
   AlertTriangle,
@@ -71,7 +71,6 @@ import {
   useDescartarAjuste
 } from '@/hooks/useAjustesRetroativos';
 import { useEmpresas } from '@/hooks/useEmpresas';
-import { bancoHorasQuarentenaService } from '@/services/bancoHorasQuarentenaService';
 import type { AjusteRetroativo } from '@/services/bancoHorasQuarentenaService';
 import { emailService } from '@/services/emailService';
 import { supabase } from '@/integrations/supabase/client';
@@ -162,33 +161,8 @@ export default function AjustesRetroativos() {
   const aprovarMutation = useAprovarAjuste();
   const descartarMutation = useDescartarAjuste();
 
-  // Detecção automática ao abrir a tela
-  const deteccaoExecutada = useRef(false);
-  const [isDetectando, setIsDetectando] = useState(false);
-
-  useEffect(() => {
-    if (deteccaoExecutada.current) return;
-    deteccaoExecutada.current = true;
-
-    const executarDeteccaoAutomatica = async () => {
-      try {
-        setIsDetectando(true);
-        console.log('🔍 Executando detecção automática (últimos 2 meses)...');
-        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoRecente(2);
-        console.log('✅ Detecção automática concluída:', ajustes.length, 'ajustes');
-        if (ajustes.length > 0) {
-          // Forçar refetch dos dados da tela
-          refetchAjustes();
-        }
-      } catch (error) {
-        console.error('⚠️ Erro na detecção automática:', error);
-      } finally {
-        setIsDetectando(false);
-      }
-    };
-
-    executarDeteccaoAutomatica();
-  }, []);
+  // Detecção de ajustes retroativos é feita durante a sincronização (padrão Inconsistência de Chamados)
+  // A página apenas consulta a tabela banco_horas_ajustes_retroativos já populada
 
   // Empresas ativas com AMS
   const empresasAtivas = useMemo(() => {
@@ -1150,14 +1124,8 @@ Obrigado.`;
             </CardHeader>
 
             <CardContent className="space-y-4 overflow-x-auto">
-              {(isLoading || isDetectando) ? (
+              {isLoading ? (
                 <div className="space-y-3">
-                  {isDetectando && (
-                    <div className="text-sm text-sonda-blue flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 animate-spin" />
-                      {t('ajustesRetroativos.checkingExtemporaneous')}
-                    </div>
-                  )}
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
