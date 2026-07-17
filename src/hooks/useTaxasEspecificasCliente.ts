@@ -9,8 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 export interface TaxasEspecificasCliente {
   id: string;
   cliente_id: string;
-  ticket_excedente_simples?: number;
-  // Outros campos específicos podem ser adicionados aqui
+  ticket_excedente_simples?: number;    // EXXONMOBIL
+  ticket_excedente_complexo?: number;   // EXXONMOBIL
+  ticket_excedente?: number;            // NIDEC
+  ticket_excedente_1?: number;          // CHIESI
+  ticket_excedente_2?: number;          // CHIESI (Ticket Excedente)
+  valor_ticket?: number;                // VOTORANTIM, CSN
+  valor_ticket_excedente?: number;      // VOTORANTIM, CSN
 }
 
 /**
@@ -105,41 +110,40 @@ export function useTaxasEspecificasCliente(empresaId?: string) {
         return null;
       }
       
-      // Verificar se tem o campo ticket_excedente_simples
-      if (data.ticket_excedente_simples === null || data.ticket_excedente_simples === undefined) {
-        console.log('⚠️ [useTaxasEspecificasCliente] Campo ticket_excedente_simples está vazio:', {
-          valor: data.ticket_excedente_simples,
-          tipo: typeof data.ticket_excedente_simples,
-          empresa: empresa.nome_abreviado,
-          registro_completo: data
-        });
-        return data; // Retornar mesmo assim para debug
-      }
-      
-      // Converter para número se necessário
-      const valorNumerico = typeof data.ticket_excedente_simples === 'string' 
-        ? parseFloat(data.ticket_excedente_simples)
-        : data.ticket_excedente_simples;
-      
+      // Converter campos de ticket excedente para número
+      const parseNumero = (val: any): number | undefined => {
+        if (val === null || val === undefined) return undefined;
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return isNaN(num) ? undefined : num;
+      };
+
+      const resultado: TaxasEspecificasCliente = {
+        id: data.id,
+        cliente_id: data.cliente_id,
+        ticket_excedente_simples: parseNumero(data.ticket_excedente_simples),
+        ticket_excedente_complexo: parseNumero(data.ticket_excedente_complexo),
+        ticket_excedente: parseNumero(data.ticket_excedente),
+        ticket_excedente_1: parseNumero(data.ticket_excedente_1),
+        ticket_excedente_2: parseNumero(data.ticket_excedente_2),
+        valor_ticket: parseNumero(data.valor_ticket),
+        valor_ticket_excedente: parseNumero(data.valor_ticket_excedente),
+      };
+
       console.log('🎯 [useTaxasEspecificasCliente] Taxa específica encontrada:', {
         empresa: {
           id: empresa.id,
           nome_abreviado: empresa.nome_abreviado,
           nome_completo: empresa.nome_completo
         },
-        valor_original: data.ticket_excedente_simples,
-        valor_numerico: valorNumerico,
-        valor_formatado: new Intl.NumberFormat('pt-BR', { 
-          style: 'currency', 
-          currency: 'BRL' 
-        }).format(valorNumerico),
-        esperado_exxonmobil: 'R$ 2.545,43'
+        campos_ticket: {
+          valor_ticket_excedente: resultado.valor_ticket_excedente,
+          ticket_excedente_2: resultado.ticket_excedente_2,
+          ticket_excedente: resultado.ticket_excedente,
+          ticket_excedente_simples: resultado.ticket_excedente_simples,
+        }
       });
       
-      return {
-        ...data,
-        ticket_excedente_simples: valorNumerico
-      } as TaxasEspecificasCliente;
+      return resultado;
     },
     enabled: !!empresaId,
     staleTime: 5 * 60 * 1000, // 5 minutos
@@ -155,13 +159,12 @@ export function useTaxasEspecificasCliente(empresaId?: string) {
       details: (error as any).details
     } : null,
     taxasEspecificas,
-    ticket_excedente_simples: taxasEspecificas?.ticket_excedente_simples,
-    tipo_valor: typeof taxasEspecificas?.ticket_excedente_simples,
-    valor_formatado: taxasEspecificas?.ticket_excedente_simples ? 
-      new Intl.NumberFormat('pt-BR', { 
-        style: 'currency', 
-        currency: 'BRL' 
-      }).format(taxasEspecificas.ticket_excedente_simples) : 'N/A'
+    campos_ticket: taxasEspecificas ? {
+      valor_ticket_excedente: taxasEspecificas.valor_ticket_excedente,
+      ticket_excedente_2: taxasEspecificas.ticket_excedente_2,
+      ticket_excedente: taxasEspecificas.ticket_excedente,
+      ticket_excedente_simples: taxasEspecificas.ticket_excedente_simples,
+    } : null
   });
   
   return {

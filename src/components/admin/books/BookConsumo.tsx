@@ -167,7 +167,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   
   console.log('💰 Taxas específicas do cliente:', {
     taxasEspecificas,
-    ticket_excedente_simples: taxasEspecificas?.ticket_excedente_simples,
+    campos_ticket: taxasEspecificas ? {
+      valor_ticket_excedente: taxasEspecificas.valor_ticket_excedente,
+      ticket_excedente_2: taxasEspecificas.ticket_excedente_2,
+      ticket_excedente: taxasEspecificas.ticket_excedente,
+      ticket_excedente_simples: taxasEspecificas.ticket_excedente_simples,
+    } : null,
     todos_campos: taxasEspecificas ? Object.keys(taxasEspecificas) : []
   });
 
@@ -247,7 +252,51 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           vigencia_fim: taxaMaisRecente.vigencia_fim
         });
         
-        // ✅ BUSCAR VALOR_ADICIONAL DA FUNÇÃO FUNCIONAL (Hora Adicional - Excedente do Banco)
+        // ✅ Para contratos de TICKET: buscar valor de ticket excedente direto da taxa
+        // Mesma prioridade do bancoHorasExcedentesService:
+        // 1. valor_ticket_excedente (VOTORANTIM, CSN)
+        // 2. ticket_excedente_2 (CHIESI)
+        // 3. ticket_excedente (NIDEC)
+        // 4. ticket_excedente_simples (EXXONMOBIL)
+        if (isTicket) {
+          const { data: taxaTicketData, error: taxaTicketError } = await supabase
+            .from('taxas_clientes')
+            .select('valor_ticket_excedente, ticket_excedente_2, ticket_excedente, ticket_excedente_simples')
+            .eq('id', taxaMaisRecente.id)
+            .single();
+          
+          if (taxaTicketError) {
+            console.error('❌ [buscarTaxaExcedente] Erro ao buscar taxa de ticket:', taxaTicketError);
+            setTaxaPadraoEmpresa(0);
+            return;
+          }
+
+          if (taxaTicketData) {
+            const taxaTicketExcedente = 
+              (taxaTicketData as any).valor_ticket_excedente || 
+              (taxaTicketData as any).ticket_excedente_2 || 
+              (taxaTicketData as any).ticket_excedente ||
+              (taxaTicketData as any).ticket_excedente_simples;
+
+            if (taxaTicketExcedente && taxaTicketExcedente > 0) {
+              console.log('✅ [buscarTaxaExcedente] Taxa de ticket excedente encontrada:', {
+                valor: taxaTicketExcedente,
+                campo_usado: (taxaTicketData as any).valor_ticket_excedente ? 'valor_ticket_excedente' :
+                             (taxaTicketData as any).ticket_excedente_2 ? 'ticket_excedente_2' :
+                             (taxaTicketData as any).ticket_excedente ? 'ticket_excedente' :
+                             'ticket_excedente_simples'
+              });
+              setTaxaPadraoEmpresa(Number(taxaTicketExcedente));
+              return;
+            }
+          }
+
+          console.log('⚠️ [buscarTaxaExcedente] Nenhum valor de ticket excedente encontrado na taxa');
+          setTaxaPadraoEmpresa(0);
+          return;
+        }
+
+        // ✅ Para contratos de HORAS: BUSCAR VALOR_ADICIONAL DA FUNÇÃO FUNCIONAL (Hora Adicional - Excedente do Banco)
         // Mesma lógica do bancoHorasExcedentesService.ts
         const { data: valoresArray, error: valoresError } = await supabase
           .from('valores_taxas_funcoes')
@@ -359,7 +408,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     };
     
     buscarTaxaExcedente();
-  }, [empresaId, mes, ano, data.taxa_hora_excedente]);
+  }, [empresaId, mes, ano, data.taxa_hora_excedente, isTicket]);
 
   // Buscar dados de banco de horas do trimestre ao montar o componente
   // Se os dados já estão no snapshot (data.banco_horas_trimestre), usar direto
@@ -1624,7 +1673,16 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2 font-semibold whitespace-nowrap">{isTicket ? 'Taxa/ticket Excedente' : t('books.bookContent.surplusRate')}</td>
                     {(() => {
                       const totalColunas = bancoHorasTrimestre.length;
-                      const taxaEspecifica = taxasEspecificas?.ticket_excedente_simples;
+                      // ✅ MESMA LÓGICA DE PRIORIDADE do bancoHorasExcedentesService:
+                      // 1. valor_ticket_excedente (VOTORANTIM, CSN)
+                      // 2. ticket_excedente_2 (CHIESI)
+                      // 3. ticket_excedente (NIDEC)
+                      // 4. ticket_excedente_simples (EXXONMOBIL)
+                      const taxaEspecifica = 
+                        (taxasEspecificas?.valor_ticket_excedente && taxasEspecificas.valor_ticket_excedente > 0 ? taxasEspecificas.valor_ticket_excedente : undefined) ||
+                        (taxasEspecificas?.ticket_excedente_2 && taxasEspecificas.ticket_excedente_2 > 0 ? taxasEspecificas.ticket_excedente_2 : undefined) ||
+                        (taxasEspecificas?.ticket_excedente && taxasEspecificas.ticket_excedente > 0 ? taxasEspecificas.ticket_excedente : undefined) ||
+                        (taxasEspecificas?.ticket_excedente_simples && taxasEspecificas.ticket_excedente_simples > 0 ? taxasEspecificas.ticket_excedente_simples : undefined);
                       const taxa = (taxaEspecifica && taxaEspecifica > 0) 
                         ? taxaEspecifica 
                         : (taxaPadraoEmpresa || 0);
