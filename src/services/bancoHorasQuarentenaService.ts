@@ -584,6 +584,23 @@ export class BancoHorasQuarentenaService {
     syncId?: string
   ): Promise<AjusteRetroativo | null> {
     try {
+      // Verificar se já existe ajuste APROVADO ou DESCARTADO para este período/tipo
+      // Se já foi resolvido, NÃO recriar como pendente
+      const { data: jaResolvido } = await db
+        .from('banco_horas_ajustes_retroativos')
+        .select('id, status')
+        .eq('empresa_id', empresaId)
+        .eq('mes_referencia', mes)
+        .eq('ano_referencia', ano)
+        .eq('tipo_dado', deteccao.tipo)
+        .in('status', ['aprovado', 'descartado'])
+        .maybeSingle();
+
+      if (jaResolvido) {
+        console.log(`ℹ️ Ajuste já ${jaResolvido.status} para ${empresaId} ${mes}/${ano} (${deteccao.tipo}). Ignorando re-detecção.`);
+        return null;
+      }
+
       // Verificar se já existe ajuste pendente para este período/tipo
       const { data: existente } = await db
         .from('banco_horas_ajustes_retroativos')
