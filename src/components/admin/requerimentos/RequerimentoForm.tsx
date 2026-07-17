@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Calculator, HelpCircle, AlertCircle } from 'lucide-react';
+import { Calculator, HelpCircle, AlertCircle, Upload, Trash2, Download, Paperclip, Loader2, FileText, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
@@ -40,13 +40,15 @@ import { InputHoras } from '@/components/ui/input-horas';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { somarHoras, formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { buscarTaxaVigente } from '@/services/taxasClientesService';
+import { useRequerimentoAnexos } from '@/hooks/useRequerimentoAnexos';
+import { requerimentoAnexosService } from '@/services/requerimentoAnexosService';
 import type { TaxaClienteCompleta, TipoFuncao } from '@/types/taxasClientes';
 import { calcularValores } from '@/types/taxasClientes';
 import { useState } from 'react';
 
 interface RequerimentoFormProps {
   requerimento?: Requerimento;
-  onSubmit: (data: RequerimentoFormData) => Promise<void>;
+  onSubmit: (data: RequerimentoFormData) => Promise<string | void>;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -65,6 +67,22 @@ export function RequerimentoForm({
   const translatedTipoHoraExtra = useTranslatedTipoHoraExtra();
   const { form: responsiveForm, modal: responsiveModal } = useResponsive();
   const { screenReader, focusManagement } = useAccessibility();
+  
+  // Hook para gerenciamento de anexos
+  const {
+    anexosSalvos,
+    isLoadingAnexos,
+    anexosPendentes,
+    adicionarArquivos,
+    removerAnexoPendente,
+    excluirAnexoSalvo,
+    uploadTodosPendentes,
+    downloadAnexo,
+    totalAnexos,
+    podeAdicionarMais,
+    isUploading,
+    isExcluindo,
+  } = useRequerimentoAnexos(requerimento?.id);
   
   // Estado para taxa vigente do cliente
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
@@ -962,7 +980,17 @@ export function RequerimentoForm({
     
     try {
       // Criar o requerimento (o serviço já gerencia a criação do segundo requerimento se necessário)
-      await onSubmit(data);
+      const resultId = await onSubmit(data);
+      
+      // Upload de anexos pendentes
+      const targetId = requerimento?.id || (typeof resultId === 'string' ? resultId : undefined);
+      if (targetId && anexosPendentes.length > 0) {
+        try {
+          await uploadTodosPendentes(targetId);
+        } catch (anexoError) {
+          console.error('Erro ao fazer upload dos anexos:', anexoError);
+        }
+      }
       
       // ✅ Só reseta o formulário se for criação E teve sucesso
       if (!requerimento) {
@@ -984,7 +1012,7 @@ export function RequerimentoForm({
       // Propagar o erro para que o React Hook Form saiba que houve falha
       throw error;
     }
-  }, [onSubmit, requerimento, form, screenReader, mostrarCampoTickets, clienteSelecionado]);
+  }, [onSubmit, requerimento, form, screenReader, mostrarCampoTickets, clienteSelecionado, anexosPendentes, uploadTodosPendentes]);
 
   // Validações em tempo real
   const chamadoValidation = useMemo(() => [
@@ -1737,6 +1765,161 @@ export function RequerimentoForm({
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Seção: Anexos */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="h-4 w-4 text-gray-500" />
+                  <h4 className="text-sm font-semibold">Anexos</h4>
+                  <span className="text-xs text-gray-500">
+                    ({totalAnexos}/{requerimentoAnexosService.getMaxAnexos()})
+                  </span>
+                </div>
+                {podeAdicionarMais && (
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      multiple
+                      accept={requerimentoAnexosService.getExtensoesSuportadas()}
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          adicionarArquivos(e.target.files);
+                          e.target.value = '';
+                        }
+                      }}
+                      disabled={isLoading || isUploading}
+                    />
+                    <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-sonda-blue border border-sonda-blue rounded-md hover:bg-sonda-blue/5 transition-colors cursor-pointer">
+                      <Upload className="h-3.5 w-3.5" />
+                      Adicionar
+                    </div>
+                  </label>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500">
+                Máx. {requerimentoAnexosService.getMaxAnexos()} arquivos, 10MB cada. PDF, Word, Excel, imagens, CSV, ZIP.
+              </p>
+
+              {/* Lista de anexos salvos */}
+              {isLoadingAnexos ? (
+                <div className="flex items-center justify-center py-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  <span className="ml-2 text-xs text-gray-500">Carregando anexos...</span>
+                </div>
+              ) : (
+                <>
+                  {anexosSalvos.length > 0 && (
+                    <div className="space-y-1.5">
+                      {anexosSalvos.map((anexo) => (
+                        <div
+                          key={anexo.id}
+                          className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-gray-700 truncate">
+                                {anexo.nome_original}
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                {requerimentoAnexosService.formatarTamanho(anexo.tamanho_bytes)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-blue-600 hover:text-blue-800"
+                              onClick={() => downloadAnexo(anexo)}
+                              title="Baixar"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
+                              onClick={() => excluirAnexoSalvo(anexo.id)}
+                              disabled={isExcluindo}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Lista de anexos pendentes */}
+                  {anexosPendentes.length > 0 && (
+                    <div className="space-y-1.5">
+                      {anexosPendentes.map((pendente) => (
+                        <div
+                          key={pendente.id}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border ${
+                            pendente.status === 'erro'
+                              ? 'bg-red-50 border-red-200'
+                              : pendente.status === 'uploading'
+                              ? 'bg-blue-50 border-blue-200'
+                              : pendente.status === 'concluido'
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-yellow-50 border-yellow-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {pendente.status === 'uploading' ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500 flex-shrink-0" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-gray-700 truncate">
+                                {pendente.arquivo.name}
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                {requerimentoAnexosService.formatarTamanho(pendente.arquivo.size)}
+                                {pendente.status === 'pendente' && ' - Aguardando'}
+                                {pendente.status === 'uploading' && ' - Enviando...'}
+                                {pendente.status === 'erro' && (
+                                  <span className="text-red-600"> - {pendente.erro}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          {pendente.status !== 'uploading' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-800 flex-shrink-0"
+                              onClick={() => removerAnexoPendente(pendente.id)}
+                              title="Remover"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Estado vazio */}
+                  {anexosSalvos.length === 0 && anexosPendentes.length === 0 && (
+                    <div className="flex items-center justify-center py-4 text-center">
+                      <Paperclip className="h-5 w-5 text-gray-300 mr-2" />
+                      <p className="text-xs text-gray-500">Nenhum anexo adicionado</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Botões de Ação */}
