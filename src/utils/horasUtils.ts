@@ -26,11 +26,14 @@ export function converterHorasParaMinutos(horasString: string): number {
 
   // Se contém ":", trata como HH:MM
   if (valor.includes(':')) {
-    // Verificar se é negativo
+    // Verificar se é negativo (pelo primeiro caractere)
     const isNegativo = valor.startsWith('-');
-    const valorSemSinal = isNegativo ? valor.substring(1) : valor;
     
-    const [horasStr, minutosStr] = valorSemSinal.split(':');
+    // Sanitizar: remover TODOS os sinais de menos e depois processar
+    // Isso trata formatos malformados como "-4:-40" corretamente como "-4:40"
+    const valorLimpo = valor.replace(/-/g, '');
+    
+    const [horasStr, minutosStr] = valorLimpo.split(':');
     const horas = parseInt(horasStr);
     const minutos = parseInt(minutosStr);
     

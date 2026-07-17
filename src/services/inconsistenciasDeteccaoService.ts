@@ -172,6 +172,9 @@ class InconsistenciasDeteccaoService {
       inconsistenciasDetectadas.push(...apontamentos);
       resultado.mensagens.push(`Apontamentos: ${apontamentos.length} inconsistências detectadas`);
 
+      // Enriquecer apontamentos com status do ticket correspondente
+      await this.enriquecerStatusApontamentos(apontamentos);
+
       // Detectar em tickets
       const tickets = await this.detectarInconsistenciasTickets();
       inconsistenciasDetectadas.push(...tickets);
@@ -490,6 +493,68 @@ class InconsistenciasDeteccaoService {
     } catch (error) {
       console.error('❌ [DETECCAO] Erro ao detectar em tickets:', error);
       return [];
+    }
+  }
+
+  /**
+   * Enriquece inconsistências de apontamentos com o status do ticket correspondente.
+   * Apontamentos não possuem campo 'status' próprio, mas o ticket associado (por nro_chamado) sim.
+   */
+  private async enriquecerStatusApontamentos(apontamentos: InconsistenciaDetectada[]): Promise<void> {
+    if (apontamentos.length === 0) return;
+
+    try {
+      // Extrair números de chamado únicos (sem prefixo tipo RF/IM/PM)
+      const nrosChamado = new Set<string>();
+      for (const apt of apontamentos) {
+        const nroLimpo = apt.nro_chamado.replace(/^(RF|IM|PM)\s*/, '').trim();
+        if (nroLimpo && nroLimpo !== 'N/A') {
+          nrosChamado.add(nroLimpo);
+        }
+      }
+
+      if (nrosChamado.size === 0) return;
+
+      // Buscar status dos tickets em lotes
+      const nrosArray = Array.from(nrosChamado);
+      const statusMap = new Map<string, string>();
+      const batchSize = 100;
+
+      for (let i = 0; i < nrosArray.length; i += batchSize) {
+        const batch = nrosArray.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('apontamentos_tickets_aranda' as any)
+          .select('nro_solicitacao, status')
+          .in('nro_solicitacao', batch);
+
+        if (error) {
+          console.error('❌ [DETECCAO] Erro ao buscar status de tickets para apontamentos:', error);
+          continue;
+        }
+
+        if (data) {
+          for (const ticket of data as any[]) {
+            if (ticket.nro_solicitacao && ticket.status) {
+              statusMap.set(ticket.nro_solicitacao, ticket.status);
+            }
+          }
+        }
+      }
+
+      // Aplicar status aos apontamentos
+      let enriched = 0;
+      for (const apt of apontamentos) {
+        const nroLimpo = apt.nro_chamado.replace(/^(RF|IM|PM)\s*/, '').trim();
+        const status = statusMap.get(nroLimpo);
+        if (status) {
+          apt.status_chamado = status;
+          enriched++;
+        }
+      }
+
+      console.log(`✅ [DETECCAO] ${enriched}/${apontamentos.length} apontamentos enriquecidos com status do ticket`);
+    } catch (error) {
+      console.error('❌ [DETECCAO] Erro ao enriquecer status de apontamentos:', error);
     }
   }
 

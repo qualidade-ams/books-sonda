@@ -37,12 +37,19 @@ interface BookConsumoProps {
 function formatarHorasSemSegundos(horasCompletas: string): string {
   if (!horasCompletas || horasCompletas === '--') return horasCompletas;
   
+  // Detectar se é negativo
+  const isNegativo = horasCompletas.startsWith('-');
+  
+  // Remover TODOS os sinais de menos para sanitizar valores malformados (ex: "-4:-40")
+  const horasLimpa = horasCompletas.replace(/-/g, '');
+  
   // Remove os segundos (pega apenas HH:MM) e garante zero à esquerda nos minutos
-  const partes = horasCompletas.split(':');
+  const partes = horasLimpa.split(':');
   if (partes.length >= 2) {
-    return `${partes[0]}:${partes[1].padStart(2, '0')}`;
+    const valorFormatado = `${partes[0]}:${partes[1].padStart(2, '0')}`;
+    return isNegativo ? `-${valorFormatado}` : valorFormatado;
   }
-  return horasCompletas;
+  return isNegativo ? `-${horasLimpa}` : horasLimpa;
 }
 
 /**
@@ -54,9 +61,10 @@ function parseHorasParaMinutos(horas: string): number {
   
   const valor = horas.trim();
   const isNegativo = valor.startsWith('-');
-  const valorSemSinal = isNegativo ? valor.substring(1) : valor;
+  // Sanitizar: remover TODOS os sinais de menos para tratar formatos malformados como "-4:-40"
+  const valorLimpo = valor.replace(/-/g, '');
   
-  const partes = valorSemSinal.split(':');
+  const partes = valorLimpo.split(':');
   const h = parseInt(partes[0] || '0', 10);
   const m = parseInt(partes[1] || '0', 10);
   const totalMinutos = h * 60 + m;
@@ -66,11 +74,15 @@ function parseHorasParaMinutos(horas: string): number {
 
 /**
  * Converte minutos totais para string HH:MM:SS
+ * Suporta valores negativos (ex: -220 minutos = "-03:40:00")
  */
 function minutosParaHoras(minutos: number): string {
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+  const isNegativo = minutos < 0;
+  const minutosAbs = Math.abs(minutos);
+  const h = Math.floor(minutosAbs / 60);
+  const m = minutosAbs % 60;
+  const formatado = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+  return isNegativo ? `-${formatado}` : formatado;
 }
 
 /**
@@ -1028,6 +1040,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     ? formatarHorasSemSegundos(ultimoMesBanco.consumo_total_horas)
     : null;
 
+  // Se o banco de horas indica consumo zero, os cards de Incidente e Solicitação devem ser
+  // zerados para manter consistência (evita mostrar 00:30 em incidente quando consumo = 00:00)
+  const consumoRealZero = horasConsumoReal !== null && parseHorasParaMinutos(horasConsumoReal) === 0;
+
   // Calcular variação percentual em relação ao mês anterior
   const calcularVariacaoMesAnterior = (): { percentual: number; tipo: 'aumento' | 'queda' | 'igual' } => {
     const historico = dadosGrafico;
@@ -1177,7 +1193,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
+                {consumoRealZero || data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
                   <CheckCircle2 className="h-4 w-4 text-blue-600" />
                 ) : (
                   <AlertCircle className="h-4 w-4 text-blue-600" />
@@ -1187,7 +1203,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
+            {consumoRealZero || data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
               <>
                 <div className="text-3xl font-bold text-black">{isTicket ? '0' : '00:00'}</div>
                 <div className="text-xs text-gray-600 mt-2">
@@ -1216,9 +1232,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{isTicket ? (ticketsConsumoReal !== null ? ticketsConsumoReal : Math.round(parseHorasParaMinutos(data.solicitacao) / 60)) : (formatarHorasSemSegundos(data.solicitacao) || '00:00')}</div>
+            <div className="text-3xl font-bold text-black">{consumoRealZero ? '00:00' : (isTicket ? (ticketsConsumoReal !== null ? ticketsConsumoReal : Math.round(parseHorasParaMinutos(data.solicitacao) / 60)) : (formatarHorasSemSegundos(data.solicitacao) || '00:00'))}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {t('books.bookContent.percentOfTotal', { percent: data.percentual_solicitacao || 0 })}
+              {t('books.bookContent.percentOfTotal', { percent: consumoRealZero ? 0 : (data.percentual_solicitacao || 0) })}
             </div>
           </CardContent>
         </Card>
@@ -1502,12 +1518,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 <thead>
                   {/* Primeira linha - Azul com meses */}
                   <tr className="bg-blue-600 text-white">
-                    <th className="px-4 py-3 text-left font-semibold">
+                    <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
                       {t('books.bookContent.periodTrimester')}
                     </th>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <th key={index} className="px-4 py-3 text-center font-semibold">
-                        {new Date(item.ano, item.mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
+                      <th key={index} className="px-4 py-3 text-center font-semibold whitespace-nowrap">
+                        {new Date(item.ano, item.mes - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace(/^\w/, c => c.toUpperCase()).replace('.', '')}/{String(item.ano).slice(-2)}
                       </th>
                     ))}
                   </tr>
@@ -1515,7 +1531,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 <tbody className="divide-y divide-gray-200">
                   {/* Banco Contratado / Tickets Contratados */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
-                    <td className="px-4 py-2 font-semibold">{isTicket ? 'Tickets Contratados' : t('books.bookContent.contractedBank')}</td>
+                    <td className="px-4 py-2 font-semibold whitespace-nowrap">{isTicket ? 'Tickets Contratados' : t('books.bookContent.contractedBank')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-semibold">
                         {formatarValorBanco(item.dados?.baseline_horas, item.dados?.baseline_tickets)}
@@ -1525,7 +1541,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Repasse mês anterior */}
                   <tr className="bg-gray-200">
-                    <td className="px-4 py-2">{t('books.bookContent.previousMonthCarryover')}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{t('books.bookContent.previousMonthCarryover')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClassValor(item.dados?.repasses_mes_anterior_horas, item.dados?.repasses_mes_anterior_tickets)}`}>
                         {formatarValorBanco(item.dados?.repasses_mes_anterior_horas, item.dados?.repasses_mes_anterior_tickets)}
@@ -1535,7 +1551,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Saldo a utilizar */}
                   <tr className="bg-gray-50">
-                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.balanceToUse')}</td>
+                    <td className="px-4 py-2 font-semibold whitespace-nowrap">{t('books.bookContent.balanceToUse')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClassValor(item.dados?.saldo_a_utilizar_horas, item.dados?.saldo_a_utilizar_tickets)}`}>
                         {formatarValorBanco(item.dados?.saldo_a_utilizar_horas, item.dados?.saldo_a_utilizar_tickets)}
@@ -1545,7 +1561,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Consumo Chamados */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2">{t('books.bookContent.ticketConsumption')}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{t('books.bookContent.ticketConsumption')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
                         {formatarValorBanco(item.dados?.consumo_horas, item.dados?.consumo_tickets)}
@@ -1555,7 +1571,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Requerimentos */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2">{t('books.bookContent.requirementsLabel')}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{t('books.bookContent.requirementsLabel')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
                         {formatarValorBanco(item.dados?.requerimentos_horas, item.dados?.requerimentos_tickets)}
@@ -1565,7 +1581,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Reajuste */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2">{t('books.bookContent.adjustment')}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{t('books.bookContent.adjustment')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClassValor(item.dados?.reajustes_horas, item.dados?.reajustes_tickets)}`}>
                         {formatarValorBanco(item.dados?.reajustes_horas, item.dados?.reajustes_tickets)}
@@ -1575,7 +1591,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Consumo Total */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.totalConsumptionLabel')}</td>
+                    <td className="px-4 py-2 font-semibold whitespace-nowrap">{t('books.bookContent.totalConsumptionLabel')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-bold">
                         {formatarValorBanco(item.dados?.consumo_total_horas, item.dados?.consumo_total_tickets)}
@@ -1585,7 +1601,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Saldo */}
                   <tr className="bg-gray-200">
-                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.balance')}</td>
+                    <td className="px-4 py-2 font-semibold whitespace-nowrap">{t('books.bookContent.balance')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClassValor(item.dados?.saldo_horas, item.dados?.saldo_tickets)}`}>
                         {formatarValorBanco(item.dados?.saldo_horas, item.dados?.saldo_tickets)}
@@ -1595,7 +1611,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Repasse */}
                   <tr className="bg-gray-50">
-                    <td className="px-4 py-2">{t('books.bookContent.carryover')} - {percentualRepasseEmpresa}%</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{t('books.bookContent.carryover')} - {percentualRepasseEmpresa}%</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClassValor(item.dados?.repasse_horas, item.dados?.repasse_tickets)}`}>
                         {formatarValorBanco(item.dados?.repasse_horas, item.dados?.repasse_tickets)}
@@ -1605,57 +1621,62 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Taxa/hora Excedente e Valor Total - LINHA ÚNICA */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
-                    <td className="px-4 py-2 font-semibold">{isTicket ? 'Taxa/ticket Excedente' : t('books.bookContent.surplusRate')}</td>
-                    {bancoHorasTrimestre.map((item, index) => {
-                      const isPenultima = index === bancoHorasTrimestre.length - 2;
-                      const isUltima = index === bancoHorasTrimestre.length - 1;
+                    <td className="px-4 py-2 font-semibold whitespace-nowrap">{isTicket ? 'Taxa/ticket Excedente' : t('books.bookContent.surplusRate')}</td>
+                    {(() => {
+                      const totalColunas = bancoHorasTrimestre.length;
+                      const taxaEspecifica = taxasEspecificas?.ticket_excedente_simples;
+                      const taxa = (taxaEspecifica && taxaEspecifica > 0) 
+                        ? taxaEspecifica 
+                        : (taxaPadraoEmpresa || 0);
                       
-                      if (isPenultima) {
-                        // Penúltima coluna: exibir "Valor Total"
-                        return (
-                          <td key={index} className="px-4 py-2 text-center font-semibold">
+                      // Coluna 1: exibir a taxa (uma única vez)
+                      // Colunas intermediárias: vazias (colspan)
+                      // Penúltima: "Valor Total"
+                      // Última: valor R$
+                      const cells = [];
+                      
+                      // Taxa - exibida apenas uma vez na primeira célula
+                      cells.push(
+                        <td key="taxa" className="px-4 py-2 text-center font-semibold">
+                          {taxa > 0 
+                            ? `R$ ${taxa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : ''
+                          }
+                        </td>
+                      );
+                      
+                      // Colunas vazias intermediárias (colSpan para preencher o espaço)
+                      if (totalColunas > 3) {
+                        cells.push(
+                          <td key="empty" className="px-4 py-2" colSpan={totalColunas - 3}></td>
+                        );
+                      }
+                      
+                      // Penúltima coluna: "Valor Total"
+                      if (totalColunas >= 2) {
+                        cells.push(
+                          <td key="label-total" className="px-4 py-2 text-center font-semibold">
                             {t('books.bookContent.totalValue')}
                           </td>
                         );
-                      } else if (isUltima) {
-                        // Última coluna: exibir valor total dos excedentes
-                        const valorExcedentes = isTicket 
-                          ? item.dados?.valor_excedentes_tickets 
-                          : item.dados?.valor_excedentes_horas;
-                        return (
-                          <td key={index} className="px-4 py-2 text-center font-semibold">
-                            {valorExcedentes 
-                              ? `R$ ${valorExcedentes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : 'R$ 0,00'
-                            }
-                          </td>
-                        );
-                      } else {
-                        // ✅ Exibir taxa usando MESMA LÓGICA do banco de horas
-                        const taxaEspecifica = taxasEspecificas?.ticket_excedente_simples;
-                        const taxa = (taxaEspecifica && taxaEspecifica > 0) 
-                          ? taxaEspecifica 
-                          : (taxaPadraoEmpresa || 0);
-                        
-                        console.log(`📊 [Tabela] Taxa mês ${item.mes}/${item.ano}:`, {
-                          taxasEspecificas,
-                          ticket_excedente_simples: taxaEspecifica,
-                          taxa_padrao_calculada: taxaPadraoEmpresa,
-                          taxa_final: taxa,
-                          vai_exibir: taxa > 0,
-                          origem: taxaEspecifica && taxaEspecifica > 0 ? 'taxa_especifica' : 'taxa_padrao_banco_horas'
-                        });
-                        
-                        return (
-                          <td key={index} className="px-4 py-2 text-center font-semibold">
-                            {taxa > 0 
-                              ? `R$ ${taxa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : ''
-                            }
-                          </td>
-                        );
                       }
-                    })}
+                      
+                      // Última coluna: valor dos excedentes
+                      const ultimoItem = bancoHorasTrimestre[totalColunas - 1];
+                      const valorExcedentes = isTicket 
+                        ? ultimoItem?.dados?.valor_excedentes_tickets 
+                        : ultimoItem?.dados?.valor_excedentes_horas;
+                      cells.push(
+                        <td key="valor-total" className="px-4 py-2 text-center font-semibold">
+                          {valorExcedentes 
+                            ? `R$ ${valorExcedentes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : 'R$ 0,00'
+                          }
+                        </td>
+                      );
+                      
+                      return cells;
+                    })()}
                   </tr>
                 </tbody>
               </table>

@@ -134,21 +134,27 @@ export interface VisaoConsolidadaProps {
 
 /**
  * Formats hours from HH:MM string to display format
- * Remove o sinal de menos para valores negativos (serão exibidos em vermelho)
+ * Preserva o sinal de menos para valores negativos (exibidos em vermelho com sinal)
+ * Sanitiza formatos malformados como "-4:-40" para "-4:40"
  */
 const formatarHoras = (horas?: string): string => {
   if (!horas || horas === '0:00' || horas === '00:00') return '';
   
-  // Remover sinal de menos se existir
-  const horasSemSinal = horas.startsWith('-') ? horas.substring(1) : horas;
+  // Detectar se é negativo
+  const isNegativo = horas.startsWith('-');
+  
+  // Remover TODOS os sinais de menos para sanitizar valores malformados (ex: "-4:-40")
+  const horasLimpa = horas.replace(/-/g, '');
   
   // Garantir formato HH:MM (remover segundos se existir e garantir zero à esquerda nos minutos)
-  const parts = horasSemSinal.split(':');
+  const parts = horasLimpa.split(':');
   if (parts.length >= 2) {
+    const horasNum = parts[0] || '0';
     const minutosFormatados = parts[1].padStart(2, '0');
-    return `${parts[0]}:${minutosFormatados}`;
+    const valorFormatado = `${horasNum}:${minutosFormatados}`;
+    return isNegativo ? `-${valorFormatado}` : valorFormatado;
   }
-  return horasSemSinal;
+  return isNegativo ? `-${horasLimpa}` : horasLimpa;
 };
 
 /**
@@ -211,10 +217,11 @@ const formatarMoeda = (valor?: number): string => {
 const horasParaMinutos = (horas: string): number => {
   // Verificar se é negativo
   const isNegativo = horas.startsWith('-');
-  const horasSemSinal = isNegativo ? horas.substring(1) : horas;
+  // Sanitizar: remover TODOS os sinais de menos para tratar formatos malformados como "-4:-40"
+  const horasLimpa = horas.replace(/-/g, '');
   
-  const [h, m] = horasSemSinal.split(':').map(Number);
-  const minutos = (h * 60) + m;
+  const [h, m] = horasLimpa.split(':').map(Number);
+  const minutos = (h * 60) + (m || 0);
   
   return isNegativo ? -minutos : minutos;
 };
@@ -575,6 +582,11 @@ export function VisaoConsolidada({
       t('bankHours.months.december'),
     ];
   }, [t]);
+
+  // Meses abreviados para cabeçalhos compactos da tabela (Jan, Fev, Mar...)
+  const MESES_ABREV = useMemo(() => {
+    return MESES.map(mes => mes.substring(0, 3));
+  }, [MESES]);
 
   // Calcular nome do período atual
   const nomePeriodoAtual = useMemo(() => {
@@ -1010,15 +1022,15 @@ export function VisaoConsolidada({
             <TableHeader>
               {/* Nova linha: Período */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableHead className="font-semibold text-white text-center">{labels.periodo}</TableHead>
-                <TableHead className="font-semibold text-white text-center" colSpan={calculosVisiveis.length}>
+                <TableHead className="font-semibold text-white text-center whitespace-nowrap">{labels.periodo}</TableHead>
+                <TableHead className="font-semibold text-white text-center whitespace-nowrap" colSpan={calculosVisiveis.length}>
                   {nomePeriodoAtual}
                 </TableHead>
               </TableRow>
               
               {/* Linha original: Mês */}
               <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
-                <TableHead className="text-white font-semibold text-center">{labels.mes}</TableHead>
+                <TableHead className="text-white font-semibold text-center whitespace-nowrap">{labels.mes}</TableHead>
                 {calculosVisiveis.map((calculo, index) => {
                   const indexReal = paginaMeses * MAX_COLUNAS_VISIVEIS + index;
                   // Usar meses do período se disponível, senão usar mês do cálculo
@@ -1034,8 +1046,8 @@ export function VisaoConsolidada({
                   const anoAbreviado = String(anoExibir).slice(-2);
                   
                   return (
-                    <TableHead key={indexReal} className="text-white font-semibold text-center">
-                      {MESES[mesExibir - 1]}/{anoAbreviado}
+                    <TableHead key={indexReal} className="text-white font-semibold text-center whitespace-nowrap">
+                      {MESES_ABREV[mesExibir - 1]}/{anoAbreviado}
                     </TableHead>
                   );
                 })}
@@ -1044,7 +1056,7 @@ export function VisaoConsolidada({
             <TableBody>
               {/* Banco Contratado (Baseline) */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-semibold text-white text-center">
+                <TableCell className="font-semibold text-white text-center whitespace-nowrap">
                   {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') ? labels.ticketsContratados : labels.bancoContratado}
                 </TableCell>
                 {calculosVisiveis.map((calculo, index) => (
@@ -1056,7 +1068,7 @@ export function VisaoConsolidada({
 
               {/* Repasse mês anterior */}
               <TableRow className="bg-gray-200 hover:bg-gray-200">
-                <TableCell className="font-medium text-gray-900 text-center">{labels.repasseMesAnterior}</TableCell>
+                <TableCell className="font-medium text-gray-900 text-center whitespace-nowrap">{labels.repasseMesAnterior}</TableCell>
                 {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}
@@ -1066,7 +1078,7 @@ export function VisaoConsolidada({
 
               {/* Saldo a utilizar */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">{labels.saldoAUtilizar}</TableCell>
+                <TableCell className="font-medium text-center whitespace-nowrap">{labels.saldoAUtilizar}</TableCell>
                 {calculosVisiveis.map((calculo, index) => (
                   <TableCell 
                     key={index} 
@@ -1079,7 +1091,7 @@ export function VisaoConsolidada({
 
               {/* Consumo Chamados */}
               <TableRow>
-                <TableCell className="font-medium text-center">{labels.consumoChamados}</TableCell>
+                <TableCell className="font-medium text-center whitespace-nowrap">{labels.consumoChamados}</TableCell>
                 {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.consumo_horas, calculo.consumo_tickets, tipoCobranca)}
@@ -1089,7 +1101,7 @@ export function VisaoConsolidada({
 
               {/* Requerimentos */}
               <TableRow>
-                <TableCell className="font-medium text-center">
+                <TableCell className="font-medium text-center whitespace-nowrap">
                   <span className="inline-flex items-center gap-0.5">
                     {labels.requerimentos}
                     {requerimentos && requerimentos.length > 0 && (
@@ -1106,7 +1118,7 @@ export function VisaoConsolidada({
 
               {/* Reajuste (botão com modal) */}
               <TableRow>
-                <TableCell className="font-medium text-center">{labels.reajuste}</TableCell>
+                <TableCell className="font-medium text-center whitespace-nowrap">{labels.reajuste}</TableCell>
                 {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center">
                     <BotaoReajusteHoras
@@ -1129,7 +1141,7 @@ export function VisaoConsolidada({
 
               {/* Consumo Total */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">{labels.consumoTotal}</TableCell>
+                <TableCell className="font-medium text-center whitespace-nowrap">{labels.consumoTotal}</TableCell>
                 {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.consumo_total_horas, calculo.consumo_total_tickets, tipoCobranca)}
@@ -1139,7 +1151,7 @@ export function VisaoConsolidada({
 
               {/* Saldo */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">{labels.saldo}</TableCell>
+                <TableCell className="font-medium text-center whitespace-nowrap">{labels.saldo}</TableCell>
                 {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}
@@ -1149,7 +1161,7 @@ export function VisaoConsolidada({
 
               {/* Repasse - Percentual Dinâmico */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">
+                <TableCell className="font-medium text-center whitespace-nowrap">
                   <div className="flex items-center justify-center gap-1">
                     <span>{labels.repasse} - {percentualRepasseMensal}%</span>
                     {empresaAtual?.tipo_repasse_especial === 'por_periodo' && (
@@ -1176,7 +1188,7 @@ export function VisaoConsolidada({
               {/* Excedente Trimestre */}
               {temExcedentes && (
                 <TableRow className="bg-gray-50">
-                  <TableCell className="font-medium text-center">{labels.excedenteTrimestreLabel}</TableCell>
+                  <TableCell className="font-medium text-center whitespace-nowrap">{labels.excedenteTrimestreLabel}</TableCell>
                   <TableCell className="text-center font-semibold text-green-600" colSpan={calculosVisiveis.length}>
                     {formatarHoras(calculoPrincipal.excedentes_horas)}
                   </TableCell>
@@ -1185,7 +1197,7 @@ export function VisaoConsolidada({
 
               {/* Taxa/hora Excedente e Valor Total na mesma linha */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-medium text-white text-center">
+                <TableCell className="font-medium text-white text-center whitespace-nowrap">
                   <div className="flex items-center justify-center gap-2">
                     <span>{labels.taxaHoraExcedente}</span>
                     {/* Tooltip específico para Exxonmobil */}
@@ -1214,7 +1226,7 @@ export function VisaoConsolidada({
                 <TableCell className="text-center font-semibold text-white">
                   {taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : ''}
                 </TableCell>
-                <TableCell className="font-medium text-center text-white" colSpan={calculosVisiveis.length > 1 ? calculosVisiveis.length - 2 : 1}>
+                <TableCell className="font-medium text-center text-white whitespace-nowrap" colSpan={calculosVisiveis.length > 1 ? calculosVisiveis.length - 2 : 1}>
                   {labels.valorTotal}
                 </TableCell>
                 <TableCell className="text-center font-semibold text-white">
