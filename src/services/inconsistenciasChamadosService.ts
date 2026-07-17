@@ -20,6 +20,62 @@ import type {
 export class InconsistenciasChamadosService {
 
   /**
+   * Enriquece inconsistências com o status atual do ticket (busca direto na tabela de tickets).
+   * Substitui o campo status_chamado pelo status mais recente da tabela apontamentos_tickets_aranda.
+   */
+  private async enriquecerComStatusTicket(inconsistencias: InconsistenciaChamado[]): Promise<InconsistenciaChamado[]> {
+    if (inconsistencias.length === 0) return inconsistencias;
+
+    try {
+      // Extrair números de chamado únicos (sem prefixo RF/IM/PM)
+      const nrosUnicos = new Set<string>();
+      for (const inc of inconsistencias) {
+        const nroLimpo = (inc.nro_chamado || '').replace(/^(RF|IM|PM)\s*/, '').trim();
+        if (nroLimpo && nroLimpo !== 'N/A') {
+          nrosUnicos.add(nroLimpo);
+        }
+      }
+
+      if (nrosUnicos.size === 0) return inconsistencias;
+
+      // Buscar status dos tickets em lotes
+      const nrosArray = Array.from(nrosUnicos);
+      const statusMap = new Map<string, string>();
+      const batchSize = 200;
+
+      for (let i = 0; i < nrosArray.length; i += batchSize) {
+        const batch = nrosArray.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('apontamentos_tickets_aranda' as any)
+          .select('nro_solicitacao, status')
+          .in('nro_solicitacao', batch);
+
+        if (error || !data) continue;
+
+        for (const ticket of data as any[]) {
+          if (ticket.nro_solicitacao && ticket.status) {
+            statusMap.set(ticket.nro_solicitacao, ticket.status);
+          }
+        }
+      }
+
+      // Aplicar status aos registros
+      for (const inc of inconsistencias) {
+        const nroLimpo = (inc.nro_chamado || '').replace(/^(RF|IM|PM)\s*/, '').trim();
+        const status = statusMap.get(nroLimpo);
+        if (status) {
+          inc.status_chamado = status;
+        }
+      }
+
+      return inconsistencias;
+    } catch (error) {
+      console.error('❌ Erro ao enriquecer com status do ticket:', error);
+      return inconsistencias;
+    }
+  }
+
+  /**
    * Busca inconsistências ativas (pendentes de correção)
    */
   async buscarInconsistencias(
@@ -32,7 +88,7 @@ export class InconsistenciasChamadosService {
         .from('inconsistencias_chamados' as any)
         .select('*')
         .eq('status', 'ativa')
-        .order('data_atividade', { ascending: false });
+        .order('data_abertura', { ascending: false });
 
       // Filtro por período (data_atividade)
       if (filtros?.data_inicio) {
@@ -73,7 +129,10 @@ export class InconsistenciasChamadosService {
       }
 
       console.log('✅ Inconsistências ativas encontradas:', data?.length || 0);
-      return (data as any[] || []) as InconsistenciaChamado[];
+      const inconsistencias = (data as any[] || []) as InconsistenciaChamado[];
+      
+      // Enriquecer com status atual do ticket (sempre busca da tabela de tickets)
+      return await this.enriquecerComStatusTicket(inconsistencias);
     } catch (error) {
       console.error('❌ Erro ao buscar inconsistências:', error);
       throw error;
@@ -134,7 +193,10 @@ export class InconsistenciasChamadosService {
       }
 
       console.log('✅ Inconsistências resolvidas encontradas:', data?.length || 0);
-      return (data as any[] || []) as InconsistenciaChamado[];
+      const resolvidas = (data as any[] || []) as InconsistenciaChamado[];
+      
+      // Enriquecer com status atual do ticket
+      return await this.enriquecerComStatusTicket(resolvidas);
     } catch (error) {
       console.error('❌ Erro ao buscar resolvidas:', error);
       throw error;
@@ -201,6 +263,61 @@ export class InconsistenciasChamadosService {
       return (data as any[]) || [];
     } catch (error) {
       console.error('❌ Erro ao buscar histórico de emails:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Arquiva uma inconsistência (muda status de 'ativa' para 'resolvida')
+   * Move o chamado da aba "Inconsistências Detectadas" para "Histórico de Inconsistências"
+   */
+  async arquivarInconsistencia(id: string): Promise<void> {
+    try {
+      console.log('📦 Arquivando inconsistência:', id);
+
+      const { error } = await supabase
+        .from('inconsistencias_chamados' as any)
+        .update({
+          status: 'resolvida',
+          data_resolucao: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ Erro ao arquivar inconsistência:', error);
+        throw error;
+      }
+
+      console.log('✅ Inconsistência arquivada com sucesso:', id);
+    } catch (error) {
+      console.error('❌ Erro ao arquivar inconsistência:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Arquiva múltiplas inconsistências de uma vez
+   */
+  async arquivarMultiplas(ids: string[]): Promise<void> {
+    try {
+      console.log('📦 Arquivando múltiplas inconsistências:', ids.length);
+
+      const { error } = await supabase
+        .from('inconsistencias_chamados' as any)
+        .update({
+          status: 'resolvida',
+          data_resolucao: new Date().toISOString()
+        })
+        .in('id', ids);
+
+      if (error) {
+        console.error('❌ Erro ao arquivar múltiplas inconsistências:', error);
+        throw error;
+      }
+
+      console.log('✅', ids.length, 'inconsistências arquivadas com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao arquivar múltiplas inconsistências:', error);
       throw error;
     }
   }

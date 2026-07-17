@@ -101,6 +101,7 @@ export default function AjustesRetroativos() {
   const [filtros, setFiltros] = useState({
     empresaId: 'all',
     consultor: 'all',
+    status: 'all',
   });
 
   // Estado de modais
@@ -148,6 +149,12 @@ export default function AjustesRetroativos() {
   const { empresas } = useEmpresas();
   const pendentesCount = useAjustesPendentesCount();
   const { ajustes, isLoading, refetch: refetchAjustes } = useAjustesRetroativos({
+    empresaId: filtros.empresaId !== 'all' ? filtros.empresaId : undefined,
+    status: filtros.status !== 'all' ? filtros.status : undefined,
+  });
+
+  // Buscar TODOS os ajustes (sem filtro de status) para as estatísticas dos cards
+  const { ajustes: ajustesParaEstatisticas } = useAjustesRetroativos({
     empresaId: filtros.empresaId !== 'all' ? filtros.empresaId : undefined,
   });
 
@@ -200,11 +207,11 @@ export default function AjustesRetroativos() {
 
   // Handlers
   const hasActiveFilters = () => {
-    return filtros.empresaId !== 'all' || filtros.consultor !== 'all';
+    return filtros.empresaId !== 'all' || filtros.consultor !== 'all' || filtros.status !== 'all';
   };
 
   const limparFiltros = () => {
-    setFiltros({ empresaId: 'all', consultor: 'all' });
+    setFiltros({ empresaId: 'all', consultor: 'all', status: 'all' });
   };
 
   const toggleExpandRow = (id: string) => {
@@ -251,18 +258,27 @@ export default function AjustesRetroativos() {
     return Array.from(consultores).sort();
   }, [ajustes]);
 
-  // Filtrar ajustes por consultor
+  // Filtrar ajustes por consultor e ordenar por nome abreviado da empresa
   const ajustesFiltrados = useMemo(() => {
-    if (filtros.consultor === 'all') return ajustes;
-    return ajustes.filter(ajuste => {
-      const detalhes = ajuste.detalhes_mudanca;
-      if (!detalhes) return false;
-      const verificarLista = (lista: any[]) => lista.some(item => item.analista_tarefa === filtros.consultor);
-      const temNovos = detalhes.novos && Array.isArray(detalhes.novos) && verificarLista(detalhes.novos);
-      const temRemovidos = detalhes.removidos && Array.isArray(detalhes.removidos) && verificarLista(detalhes.removidos);
-      return temNovos || temRemovidos;
+    let resultado = ajustes;
+    if (filtros.consultor !== 'all') {
+      resultado = resultado.filter(ajuste => {
+        const detalhes = ajuste.detalhes_mudanca;
+        if (!detalhes) return false;
+        const verificarLista = (lista: any[]) => lista.some(item => item.analista_tarefa === filtros.consultor);
+        const temNovos = detalhes.novos && Array.isArray(detalhes.novos) && verificarLista(detalhes.novos);
+        const temRemovidos = detalhes.removidos && Array.isArray(detalhes.removidos) && verificarLista(detalhes.removidos);
+        return temNovos || temRemovidos;
+      });
+    }
+    // Ordenar por nome abreviado da empresa (alfabeticamente)
+    resultado = [...resultado].sort((a, b) => {
+      const nomeA = (empresasMap.get(a.empresa_id) || '').toLowerCase();
+      const nomeB = (empresasMap.get(b.empresa_id) || '').toLowerCase();
+      return nomeA.localeCompare(nomeB, 'pt-BR');
     });
-  }, [ajustes, filtros.consultor]);
+    return resultado;
+  }, [ajustes, filtros.consultor, empresasMap]);
 
   // Obter itens selecionados como objetos DetalheItem
   const getItensSelecionados = (): DetalheItem[] => {
@@ -997,7 +1013,7 @@ Obrigado.`;
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="text-xl lg:text-2xl font-bold text-yellow-600">
-                  {pendentesCount}
+                  {ajustesParaEstatisticas.filter(a => a.status === 'pendente').length}
                 </div>
               </CardContent>
             </Card>
@@ -1013,7 +1029,7 @@ Obrigado.`;
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="text-xl lg:text-2xl font-bold text-green-600">
-                  {ajustes.filter(a => a.status === 'aprovado').length}
+                  {ajustesParaEstatisticas.filter(a => a.status === 'aprovado').length}
                 </div>
               </CardContent>
             </Card>
@@ -1029,7 +1045,7 @@ Obrigado.`;
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="text-xl lg:text-2xl font-bold text-red-600">
-                  {ajustes.filter(a => a.status === 'descartado').length}
+                  {ajustesParaEstatisticas.filter(a => a.status === 'descartado').length}
                 </div>
               </CardContent>
             </Card>
@@ -1072,7 +1088,7 @@ Obrigado.`;
               {/* Filtros expansíveis */}
               {showFilters && (
                 <div className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <div className="text-sm font-medium mb-2">{t('ajustesRetroativos.company')}</div>
                       <Select
@@ -1107,6 +1123,24 @@ Obrigado.`;
                           {consultoresUnicos.map(c => (
                             <SelectItem key={c} value={c}>{c}</SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-medium mb-2">Status</div>
+                      <Select
+                        value={filtros.status}
+                        onValueChange={(value) => setFiltros({ ...filtros, status: value })}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="pendente">Pendentes</SelectItem>
+                          <SelectItem value="aprovado">Aprovados</SelectItem>
+                          <SelectItem value="descartado">Descartados</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

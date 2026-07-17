@@ -20,11 +20,12 @@ import {
 } from '@/components/ui/table';
 import { 
   AlertTriangle, Calendar, Clock, Filter, X, Search, Download, Eye, Send,
-  ChevronLeft, ChevronRight, History, Mail, Paperclip, ClipboardList, Settings, CheckCircle
+  ChevronLeft, ChevronRight, History, Mail, Paperclip, ClipboardList, Settings, CheckCircle, Archive
 } from 'lucide-react';
 import { 
   useInconsistenciasChamados, useInconsistenciasEstatisticas,
-  useInconsistenciasResolvidas, useHistoricoEmailsInconsistencias, useEnviarNotificacao
+  useInconsistenciasResolvidas, useHistoricoEmailsInconsistencias, useEnviarNotificacao,
+  useArquivarInconsistencia
 } from '@/hooks/useInconsistenciasChamados';
 import type { InconsistenciasChamadosFiltros } from '@/types/inconsistenciasChamados';
 import { TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS } from '@/types/inconsistenciasChamados';
@@ -96,6 +97,7 @@ export default function InconsistenciaChamados() {
   const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtros);
   const { historico, isLoading: isLoadingHistorico } = useHistoricoEmailsInconsistencias(anoAtual);
   const { enviarNotificacao, isEnviando } = useEnviarNotificacao();
+  const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
 
   // Query para empresas cadastradas (validação visual)
   const { data: empresasCadastradas } = useQuery({
@@ -184,6 +186,36 @@ export default function InconsistenciaChamados() {
     });
   };
 
+  // Arquivar individual
+  const handleArquivar = (id: string) => {
+    arquivar(id, {
+      onSuccess: () => {
+        toast({ title: 'Inconsistência arquivada', description: 'O chamado foi movido para o Histórico de Inconsistências.' });
+        setSelectedIds(prev => prev.filter(sid => sid !== id));
+      },
+      onError: (error) => {
+        toast({ title: 'Erro ao arquivar', description: error instanceof Error ? error.message : 'Erro desconhecido', variant: 'destructive' });
+      }
+    });
+  };
+
+  // Arquivar múltiplos selecionados
+  const handleArquivarSelecionados = () => {
+    if (selectedIds.length === 0) {
+      toast({ title: 'Nenhum item selecionado', description: 'Selecione ao menos uma inconsistência para arquivar.', variant: 'destructive' });
+      return;
+    }
+    arquivarMultiplas(selectedIds, {
+      onSuccess: () => {
+        toast({ title: 'Inconsistências arquivadas', description: `${selectedIds.length} chamado(s) movido(s) para o Histórico de Inconsistências.` });
+        setSelectedIds([]);
+      },
+      onError: (error) => {
+        toast({ title: 'Erro ao arquivar', description: error instanceof Error ? error.message : 'Erro desconhecido', variant: 'destructive' });
+      }
+    });
+  };
+
   // Anexos
   const handleAnexoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -259,9 +291,14 @@ export default function InconsistenciaChamados() {
           <div className="flex space-x-2">
             <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-2" />{t('common.export')}</Button>
             {selectedIds.length > 0 && (
-              <Button size="sm" onClick={handleAbrirModalEmail} disabled={isEnviando} className="bg-sonda-blue hover:bg-sonda-dark-blue">
-                <Send className="h-4 w-4 mr-2" />{t('inconsistencias.sendEmail')} ({selectedIds.length})
-              </Button>
+              <>
+                <Button size="sm" variant="outline" onClick={handleArquivarSelecionados} disabled={isArquivandoMultiplas}>
+                  <Archive className="h-4 w-4 mr-2" />Arquivar ({selectedIds.length})
+                </Button>
+                <Button size="sm" onClick={handleAbrirModalEmail} disabled={isEnviando} className="bg-sonda-blue hover:bg-sonda-dark-blue">
+                  <Send className="h-4 w-4 mr-2" />{t('inconsistencias.sendEmail')} ({selectedIds.length})
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -348,7 +385,7 @@ export default function InconsistenciaChamados() {
                             <TableCell className="py-2"><Checkbox checked={selectedIds.includes(inc.id)} onCheckedChange={(checked) => handleSelectItem(inc.id, checked as boolean)} /></TableCell>
                             <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs">{inc.nro_tarefa || '-'}</span></TableCell>
-                            <TableCell className="text-center py-2"><Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado || '-'}</Badge></TableCell>
+                            <TableCell className="text-center py-2">{inc.status_chamado && inc.status_chamado.trim() !== '' ? <Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado}</Badge> : <span className="text-xs text-gray-400">-</span>}</TableCell>
                             <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_abertura)}>{formatarData(inc.data_abertura)}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_atividade)}>{formatarData(inc.data_atividade)}</span></TableCell>
@@ -356,7 +393,7 @@ export default function InconsistenciaChamados() {
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm font-medium">{inc.tempo_gasto_horas || '-'}</span></TableCell>
                             <TableCell className="text-center py-2 max-w-[120px]">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm">{inc.analista || '-'}</span></TableCell>
-                            <TableCell className="text-center py-2"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex justify-center gap-1"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => handleArquivar(inc.id)} disabled={isArquivando} title="Arquivar"><Archive className="h-3.5 w-3.5 text-orange-600" /></Button></div></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

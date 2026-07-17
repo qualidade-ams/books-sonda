@@ -109,6 +109,40 @@ export function useHistoricoInconsistencias(ano: number) {
 }
 
 /**
+ * Hook para arquivar inconsistências (mover para histórico)
+ */
+export function useArquivarInconsistencia() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (id: string) => 
+      inconsistenciasChamadosService.arquivarInconsistencia(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inconsistencias-chamados'] });
+      queryClient.invalidateQueries({ queryKey: ['inconsistencias-estatisticas'] });
+    }
+  });
+
+  const mutationMultiplas = useMutation({
+    mutationFn: (ids: string[]) => 
+      inconsistenciasChamadosService.arquivarMultiplas(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inconsistencias-chamados'] });
+      queryClient.invalidateQueries({ queryKey: ['inconsistencias-estatisticas'] });
+    }
+  });
+
+  return {
+    arquivar: mutation.mutate,
+    arquivarAsync: mutation.mutateAsync,
+    isArquivando: mutation.isPending,
+    arquivarMultiplas: mutationMultiplas.mutate,
+    arquivarMultiplasAsync: mutationMultiplas.mutateAsync,
+    isArquivandoMultiplas: mutationMultiplas.isPending
+  };
+}
+
+/**
  * Hook para enviar notificações por email
  */
 export function useEnviarNotificacao() {
