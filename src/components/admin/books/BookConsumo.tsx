@@ -122,6 +122,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const [taxaPadraoEmpresa, setTaxaPadraoEmpresa] = useState<number>(0);
   const [percentualRepasseEmpresa, setPercentualRepasseEmpresa] = useState<number>(50);
   const [tipoContratoEmpresa, setTipoContratoEmpresa] = useState<string>('horas');
+  // Início de vigência da empresa (formato YYYY-MM-DD) para zerar meses anteriores no gráfico
+  const [inicioVigenciaEmpresa, setInicioVigenciaEmpresa] = useState<string | null>(null);
   // Requerimentos descontados em tempo real (busca quando snapshot está vazio)
   const [requerimentosDescontadosReal, setRequerimentosDescontadosReal] = useState<RequerimentoDescontadoData[] | null>(null);
 
@@ -543,6 +545,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         const inicioVigencia = empresa?.inicio_vigencia;
         const percentualRepasse = empresa?.percentual_repasse_mensal ?? 50;
         setPercentualRepasseEmpresa(percentualRepasse);
+        setInicioVigenciaEmpresa(inicioVigencia || null);
         if (empresa?.tipo_contrato) {
           setTipoContratoEmpresa(empresa.tipo_contrato.toLowerCase());
         }
@@ -964,6 +967,28 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
       try {
         const { supabase } = await import('@/integrations/supabase/client');
 
+        // Buscar inicio_vigencia da empresa para zerar meses anteriores
+        let anoVigencia: number | null = null;
+        let mesVigencia: number | null = null;
+        
+        if (inicioVigenciaEmpresa) {
+          const partes = inicioVigenciaEmpresa.split('-').map(Number);
+          anoVigencia = partes[0];
+          mesVigencia = partes[1];
+        } else {
+          // Fallback: buscar direto se o estado ainda não foi populado
+          const { data: empresaData } = await supabase
+            .from('empresas_clientes')
+            .select('inicio_vigencia')
+            .eq('id', empresaId)
+            .single();
+          if (empresaData?.inicio_vigencia) {
+            const partes = empresaData.inicio_vigencia.split('-').map(Number);
+            anoVigencia = partes[0];
+            mesVigencia = partes[1];
+          }
+        }
+
         // Calcular os 6 meses esperados
         const meses6: { mesNum: number; anoNum: number; nome: string }[] = [];
         for (let i = 5; i >= 0; i--) {
@@ -975,6 +1000,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
         // Buscar todos os registros de banco_horas_calculos para essa empresa nos 6 meses
         const promessas = meses6.map(async ({ mesNum, anoNum }) => {
+          // Se o mês é anterior ao inicio_vigencia, não precisa buscar (será zero)
+          if (anoVigencia !== null && mesVigencia !== null) {
+            if (anoNum < anoVigencia || (anoNum === anoVigencia && mesNum < mesVigencia)) {
+              return { mesNum, anoNum, dados: null, anteriorVigencia: true };
+            }
+          }
           const { data: bancoData } = await supabase
             .from('banco_horas_calculos')
             .select('mes, ano, consumo_horas, requerimentos_horas, consumo_tickets, requerimentos_tickets')
@@ -982,7 +1013,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             .eq('mes', mesNum)
             .eq('ano', anoNum)
             .maybeSingle();
-          return { mesNum, anoNum, dados: bancoData };
+          return { mesNum, anoNum, dados: bancoData, anteriorVigencia: false };
         });
 
         const resultados = await Promise.all(promessas);
@@ -990,6 +1021,17 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         // Construir dados do gráfico
         const dadosGrafico = meses6.map(({ mesNum, anoNum, nome }, index) => {
           const resultado = resultados.find(r => r.mesNum === mesNum && r.anoNum === anoNum);
+
+          // Se o mês é anterior ao início da vigência da empresa, forçar zero
+          if (resultado?.anteriorVigencia) {
+            return {
+              mes: nome,
+              horas: isTicket ? '0' : '00:00',
+              valor_numerico: 0,
+              requerimentos_horas: isTicket ? '0' : '00:00',
+              requerimentos_valor_numerico: 0
+            };
+          }
 
           if (resultado?.dados) {
             if (isTicket) {
@@ -1047,7 +1089,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     };
 
     buscarDados6Meses();
-  }, [empresaId, mes, ano, isTicket]);
+  }, [empresaId, mes, ano, isTicket, inicioVigenciaEmpresa]);
 
   // Dados do gráfico: usar dados buscados dos 6 meses, ou fallback para snapshot
   const dadosGrafico = dadosGrafico6Meses || data.historico_consumo || [];
@@ -1089,9 +1131,106 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     ? formatarHorasSemSegundos(ultimoMesBanco.consumo_total_horas)
     : null;
 
+  // ✅ Para tipo ticket: calcular Incidente e Solicitação em tempo real
+  // Quando temos ticketsConsumoReal (fonte oficial), derivar incidente e solicitação
+  // usando os percentuais do snapshot para manter a proporção correta.
+  // Regra: Incidente + Solicitação DEVE ser = Tickets Consumo
+  const ticketsIncidenteReal = (() => {
+    if (!isTicket || ticketsConsumoReal === null) return null;
+    // Se consumo real é 0, incidente também é 0
+    if (ticketsConsumoReal === 0) return 0;
+    // Usar percentual do snapshot para calcular proporcionalmente
+    const percentIncidente = data.percentual_incidente || 0;
+    return Math.round((ticketsConsumoReal * percentIncidente) / 100);
+  })();
+
+  const ticketsSolicitacaoReal = (() => {
+    if (!isTicket || ticketsConsumoReal === null) return null;
+    // Se consumo real é 0, solicitação também é 0
+    if (ticketsConsumoReal === 0) return 0;
+    // Solicitação = Consumo Total - Incidente (garante que a soma bate)
+    if (ticketsIncidenteReal !== null) {
+      return ticketsConsumoReal - ticketsIncidenteReal;
+    }
+    return null;
+  })();
+
+  // ✅ Para tipo horas: calcular Incidente e Solicitação em tempo real
+  // Quando temos horasConsumoReal (fonte oficial do banco_horas_calculos), derivar
+  // incidente e solicitação usando os percentuais do snapshot.
+  // Regra: Incidente + Solicitação DEVE ser = Horas Consumo
+  const horasIncidenteReal = (() => {
+    if (isTicket || horasConsumoReal === null) return null;
+    const consumoMinutos = parseHorasParaMinutos(horasConsumoReal);
+    if (consumoMinutos === 0) return '00:00';
+    // Usar percentual do snapshot para calcular proporcionalmente
+    const percentIncidente = data.percentual_incidente || 0;
+    const incidenteMinutos = Math.round((consumoMinutos * percentIncidente) / 100);
+    const h = Math.floor(incidenteMinutos / 60);
+    const m = incidenteMinutos % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  })();
+
+  const horasSolicitacaoReal = (() => {
+    if (isTicket || horasConsumoReal === null) return null;
+    const consumoMinutos = parseHorasParaMinutos(horasConsumoReal);
+    if (consumoMinutos === 0) return '00:00';
+    // Solicitação = Consumo - Incidente (garante que a soma bate exatamente)
+    if (horasIncidenteReal !== null) {
+      const incidenteMinutos = parseHorasParaMinutos(horasIncidenteReal);
+      const solicitacaoMinutos = consumoMinutos - incidenteMinutos;
+      const h = Math.floor(Math.abs(solicitacaoMinutos) / 60);
+      const m = Math.abs(solicitacaoMinutos) % 60;
+      const resultado = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      return solicitacaoMinutos < 0 ? `-${resultado}` : resultado;
+    }
+    return null;
+  })();
+
+  // Recalcular percentuais para tipo horas
+  const percentualIncidenteHorasReal = (() => {
+    if (isTicket || horasConsumoReal === null) return null;
+    const consumoMinutos = parseHorasParaMinutos(horasConsumoReal);
+    if (consumoMinutos === 0) return 0;
+    if (horasIncidenteReal !== null) {
+      const incidenteMinutos = parseHorasParaMinutos(horasIncidenteReal);
+      return Math.round((incidenteMinutos / consumoMinutos) * 100);
+    }
+    return null;
+  })();
+
+  const percentualSolicitacaoHorasReal = (() => {
+    if (isTicket || horasConsumoReal === null) return null;
+    const consumoMinutos = parseHorasParaMinutos(horasConsumoReal);
+    if (consumoMinutos === 0) return 0;
+    if (horasSolicitacaoReal !== null) {
+      const solicitacaoMinutos = parseHorasParaMinutos(horasSolicitacaoReal);
+      return Math.round((solicitacaoMinutos / consumoMinutos) * 100);
+    }
+    return null;
+  })();
+
+  // Recalcular percentuais com base nos valores reais (quando disponíveis)
+  const percentualIncidenteReal = (() => {
+    if (!isTicket || ticketsConsumoReal === null || ticketsConsumoReal === 0) return null;
+    if (ticketsIncidenteReal !== null) {
+      return Math.round((ticketsIncidenteReal / ticketsConsumoReal) * 100);
+    }
+    return null;
+  })();
+
+  const percentualSolicitacaoReal = (() => {
+    if (!isTicket || ticketsConsumoReal === null || ticketsConsumoReal === 0) return null;
+    if (ticketsSolicitacaoReal !== null) {
+      return Math.round((ticketsSolicitacaoReal / ticketsConsumoReal) * 100);
+    }
+    return null;
+  })();
+
   // Se o banco de horas indica consumo zero, os cards de Incidente e Solicitação devem ser
   // zerados para manter consistência (evita mostrar 00:30 em incidente quando consumo = 00:00)
-  const consumoRealZero = horasConsumoReal !== null && parseHorasParaMinutos(horasConsumoReal) === 0;
+  const consumoRealZero = (horasConsumoReal !== null && parseHorasParaMinutos(horasConsumoReal) === 0) 
+    || (isTicket && ticketsConsumoReal !== null && ticketsConsumoReal === 0);
 
   // Calcular variação percentual em relação ao mês anterior
   const calcularVariacaoMesAnterior = (): { percentual: number; tipo: 'aumento' | 'queda' | 'igual' } => {
@@ -1261,9 +1400,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               </>
             ) : (
               <>
-                <div className="text-3xl font-bold text-black">{isTicket ? Math.round(parseHorasParaMinutos(data.incidente) / 60) : formatarHorasSemSegundos(data.incidente)}</div>
+                <div className="text-3xl font-bold text-black">{isTicket ? (ticketsIncidenteReal !== null ? ticketsIncidenteReal : Math.round(parseHorasParaMinutos(data.incidente) / 60)) : (horasIncidenteReal || formatarHorasSemSegundos(data.incidente))}</div>
                 <div className="text-xs text-gray-600 mt-2">
-                  {t('books.bookContent.percentOfTotal', { percent: data.percentual_incidente || 0 })}
+                  {t('books.bookContent.percentOfTotal', { percent: isTicket ? (percentualIncidenteReal !== null ? percentualIncidenteReal : (data.percentual_incidente || 0)) : (percentualIncidenteHorasReal !== null ? percentualIncidenteHorasReal : (data.percentual_incidente || 0)) })}
                 </div>
               </>
             )}
@@ -1281,9 +1420,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{consumoRealZero ? '00:00' : (isTicket ? (ticketsConsumoReal !== null ? ticketsConsumoReal : Math.round(parseHorasParaMinutos(data.solicitacao) / 60)) : (formatarHorasSemSegundos(data.solicitacao) || '00:00'))}</div>
+            <div className="text-3xl font-bold text-black">{consumoRealZero ? (isTicket ? '0' : '00:00') : (isTicket ? (ticketsSolicitacaoReal !== null ? ticketsSolicitacaoReal : Math.round(parseHorasParaMinutos(data.solicitacao) / 60)) : (horasSolicitacaoReal || formatarHorasSemSegundos(data.solicitacao) || '00:00'))}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {t('books.bookContent.percentOfTotal', { percent: consumoRealZero ? 0 : (data.percentual_solicitacao || 0) })}
+              {t('books.bookContent.percentOfTotal', { percent: consumoRealZero ? 0 : (isTicket ? (percentualSolicitacaoReal !== null ? percentualSolicitacaoReal : (data.percentual_solicitacao || 0)) : (percentualSolicitacaoHorasReal !== null ? percentualSolicitacaoHorasReal : (data.percentual_solicitacao || 0))) })}
             </div>
           </CardContent>
         </Card>
