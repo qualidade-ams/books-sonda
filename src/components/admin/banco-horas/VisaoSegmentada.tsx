@@ -37,6 +37,8 @@ interface VisaoSegmentadaProps {
   calculos?: Array<{ taxa_hora_utilizada?: number; taxa_ticket_utilizada?: number }>; // Adicionar calculos para buscar taxa
   tipoRepasseEspecial?: string;
   percentualEntrePeriodos?: number;
+  /** Empresa atual para dados de apuração customizada */
+  empresaAtual?: any;
 }
 
 /**
@@ -298,6 +300,7 @@ export function VisaoSegmentada({
   calculos = [],
   tipoRepasseEspecial,
   percentualEntrePeriodos,
+  empresaAtual,
 }: VisaoSegmentadaProps) {
   const { t, i18n } = useTranslation();
   
@@ -308,6 +311,9 @@ export function VisaoSegmentada({
     t('bankHours.months.july'), t('bankHours.months.august'), t('bankHours.months.september'),
     t('bankHours.months.october'), t('bankHours.months.november'), t('bankHours.months.december')
   ];
+  
+  // Meses abreviados para headers compactos
+  const MESES_ABREV = MESES.map(mes => mes.substring(0, 3));
   
   // Calcular nome do período atual (mesma lógica da Visão Consolidada)
   const uiLanguage = i18n.language === 'en' ? true : i18n.language === 'es' ? 'es' : false;
@@ -763,9 +769,31 @@ export function VisaoSegmentada({
                   <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
                     <TableHead className="text-white font-semibold text-center">{t('bankHours.monthLabel')}</TableHead>
                     {mesesDoPeriodo.map((mesAno, idx) => {
+                      // Verificar se empresa tem período de apuração customizado
+                      const diaInicio = (empresaAtual as any)?.dia_inicio_apuracao ?? 1;
+                      const diaFim = (empresaAtual as any)?.dia_fim_apuracao ?? 0;
+                      const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
+                      
+                      let headerMes: string;
+                      if (temApuracaoCustomizada) {
+                        const mesInicio = mesAno.mes;
+                        const anoInicio = mesAno.ano;
+                        let mesFim = mesInicio + 1;
+                        let anoFim = anoInicio;
+                        if (mesFim > 12) {
+                          mesFim = 1;
+                          anoFim += 1;
+                        }
+                        const anoInicioAbrev = String(anoInicio).slice(-2);
+                        const anoFimAbrev = String(anoFim).slice(-2);
+                        headerMes = `${diaInicio} ${MESES_ABREV[mesInicio - 1]}/${anoInicioAbrev} à ${diaFim} ${MESES_ABREV[mesFim - 1]}/${anoFimAbrev}`;
+                      } else {
+                        headerMes = `${MESES_ABREV[mesAno.mes - 1]}/${String(mesAno.ano).slice(-2)}`;
+                      }
+                      
                       return (
-                        <TableHead key={idx} className="text-white font-semibold text-center">
-                          {MESES[mesAno.mes - 1]}/{mesAno.ano}
+                        <TableHead key={idx} className="text-white font-semibold text-center whitespace-nowrap">
+                          {headerMes}
                         </TableHead>
                       );
                     })}

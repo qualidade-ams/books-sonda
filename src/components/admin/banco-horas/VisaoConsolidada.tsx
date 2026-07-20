@@ -1045,9 +1045,40 @@ export function VisaoConsolidada({
                   // Pegar apenas os 2 últimos dígitos do ano (ex: 2025 -> 25)
                   const anoAbreviado = String(anoExibir).slice(-2);
                   
+                  // Verificar se empresa tem período de apuração customizado (ex: dia 16 a dia 15)
+                  const diaInicio = (empresaAtual as any)?.dia_inicio_apuracao ?? 1;
+                  const diaFim = (empresaAtual as any)?.dia_fim_apuracao ?? 0;
+                  const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
+                  
+                  // Formatar header do período
+                  let headerMes: string;
+                  if (temApuracaoCustomizada) {
+                    // Formato: "16-Mai/26 à 15-Jun/26"
+                    // O mês de início é o mês atual, o mês de fim é o próximo mês
+                    const mesInicio = mesExibir;
+                    const anoInicio = anoExibir;
+                    
+                    // Calcular próximo mês para a data fim
+                    let mesFim = mesInicio + 1;
+                    let anoFim = anoInicio;
+                    if (mesFim > 12) {
+                      mesFim = 1;
+                      anoFim += 1;
+                    }
+                    
+                    const anoFimAbreviado = String(anoFim).slice(-2);
+                    const mesInicioAbrev = MESES_ABREV[mesInicio - 1];
+                    const mesFimAbrev = MESES_ABREV[mesFim - 1];
+                    
+                    headerMes = `${diaInicio} ${mesInicioAbrev}/${anoAbreviado} à ${diaFim} ${mesFimAbrev}/${anoFimAbreviado}`;
+                  } else {
+                    // Formato padrão: "Mai/26"
+                    headerMes = `${MESES_ABREV[mesExibir - 1]}/${anoAbreviado}`;
+                  }
+                  
                   return (
                     <TableHead key={indexReal} className="text-white font-semibold text-center whitespace-nowrap">
-                      {MESES_ABREV[mesExibir - 1]}/{anoAbreviado}
+                      {headerMes}
                     </TableHead>
                   );
                 })}
