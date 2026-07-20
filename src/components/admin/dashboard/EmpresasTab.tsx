@@ -17,6 +17,12 @@ import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { useEstatisticasEmpresas } from '@/hooks/useEstatisticasEmpresas';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Building2,
   Users,
   Settings,
@@ -113,6 +119,7 @@ type FiltroEmpresaType =
   | 'book_qualidade'
   | 'book_outros'
   | 'sem_book'
+  | 'outros_cobranca'
   | null;
 
 export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
@@ -173,6 +180,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
       case 'book_qualidade': return `${t('dashboardEmpresas.amsBookTypes')} - ${t('dashboardEmpresas.quality')}`;
       case 'book_outros': return `${t('dashboardEmpresas.amsBookTypes')} - ${t('dashboardEmpresas.others')}`;
       case 'sem_book': return `${t('dashboardEmpresas.amsBookTypes')} - ${t('dashboardEmpresas.noBook')}`;
+      case 'outros_cobranca': return 'Outros (Tipo Contrato)';
       default: return '';
     }
   };
@@ -263,6 +271,8 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         return empresas.filter(e => e.status === 'ativo' && e.tem_ams === true && e.tipo_book === 'outros');
       case 'sem_book':
         return empresas.filter(e => e.status === 'ativo' && e.tem_ams === true && (e.tipo_book === 'nao_tem_book' || e.tipo_book === null));
+      case 'outros_cobranca':
+        return empresas.filter(e => e.tipo_cobranca === 'outros' && e.status === 'ativo');
       default:
         return [];
     }
@@ -324,8 +334,9 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
 
   return (
     <div className="space-y-6">
-      {/* Cards principais */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* ===== SEÇÃO 1: VISÃO GERAL (TODAS AS EMPRESAS) ===== */}
+      {/* Cards principais - Visão Geral */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'ativas' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => handleFiltrar('ativas')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -334,6 +345,18 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
               <Building2 className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'inativas' ? 'ring-2 ring-red-500' : ''}`} onClick={() => handleFiltrar('inativas')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Empresas Inativas</p>
+              <p className="text-2xl font-bold text-red-600">{stats.empresasInativas}</p>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <AlertCircle className="h-4 w-4 text-red-600" />
             </div>
           </CardHeader>
         </Card>
@@ -363,7 +386,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         </Card>
       </div>
 
-      {/* Cards de Tipos de Cobrança e AMS */}
+      {/* Cards de Movimentação Anual */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'entraram_ano' ? 'ring-2 ring-green-500' : ''}`} onClick={() => handleFiltrar('entraram_ano')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -389,56 +412,20 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           </CardHeader>
         </Card>
 
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'banco_horas' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => handleFiltrar('banco_horas')}>
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'suspensas' ? 'ring-2 ring-yellow-500' : ''}`} onClick={() => handleFiltrar('suspensas')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.hoursBank')}</p>
-              <p className="text-2xl font-bold">{stats.empresasBancoHoras}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.suspended')}</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.empresasSuspensas}</p>
             </div>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <Clock className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'ticket' ? 'ring-2 ring-cyan-500' : ''}`} onClick={() => handleFiltrar('ticket')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.ticket')}</p>
-              <p className="text-2xl font-bold">{stats.empresasTicket}</p>
-            </div>
-            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
-              <CreditCard className="h-4 w-4 text-cyan-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'com_ams' ? 'ring-2 ring-purple-500' : ''}`} onClick={() => handleFiltrar('com_ams')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.withAms')}</p>
-              <p className="text-2xl font-bold">{stats.empresasComAms}</p>
-            </div>
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-              <CheckCircle className="h-4 w-4 text-purple-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'sem_ams' ? 'ring-2 ring-gray-500' : ''}`} onClick={() => handleFiltrar('sem_ams')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.withoutAms')}</p>
-              <p className="text-2xl font-bold">{stats.empresasSemAms}</p>
-            </div>
-            <div className="p-2 bg-gray-100 dark:bg-gray-900/20 rounded-lg">
-              <Settings className="h-4 w-4 text-gray-600" />
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
             </div>
           </CardHeader>
         </Card>
       </div>
 
-      {/* Gráficos de Status e AMS */}
+      {/* Gráfico de Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
@@ -585,6 +572,80 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         </Card>
       </div>
 
+      {/* ===== SEÇÃO 2: APENAS EMPRESAS ATIVAS ===== */}
+      {/* Separador visual */}
+      <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Building2 className="h-5 w-5 text-sonda-blue" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Apenas Empresas Ativas ({stats.empresasAtivas})
+          </h3>
+        </div>
+      </div>
+
+      {/* Cards de Tipo de Cobrança e AMS - Apenas Ativas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'banco_horas' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => handleFiltrar('banco_horas')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.hoursBank')}</p>
+              <p className="text-2xl font-bold">{stats.empresasBancoHoras}</p>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Clock className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'ticket' ? 'ring-2 ring-cyan-500' : ''}`} onClick={() => handleFiltrar('ticket')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.ticket')}</p>
+              <p className="text-2xl font-bold">{stats.empresasTicket}</p>
+            </div>
+            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
+              <CreditCard className="h-4 w-4 text-cyan-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'outros_cobranca' ? 'ring-2 ring-gray-500' : ''}`} onClick={() => handleFiltrar('outros_cobranca')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Outros (Tipo Contrato)</p>
+              <p className="text-2xl font-bold">{stats.empresasOutrosCobranca}</p>
+            </div>
+            <div className="p-2 bg-gray-100 dark:bg-gray-900/20 rounded-lg">
+              <FileText className="h-4 w-4 text-gray-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'com_ams' ? 'ring-2 ring-purple-500' : ''}`} onClick={() => handleFiltrar('com_ams')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.withAms')}</p>
+              <p className="text-2xl font-bold">{stats.empresasComAms}</p>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <CheckCircle className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'sem_ams' ? 'ring-2 ring-gray-500' : ''}`} onClick={() => handleFiltrar('sem_ams')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.withoutAms')}</p>
+              <p className="text-2xl font-bold">{stats.empresasSemAms}</p>
+            </div>
+            <div className="p-2 bg-gray-100 dark:bg-gray-900/20 rounded-lg">
+              <Settings className="h-4 w-4 text-gray-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
       {/* Cards de Produtos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'fiscal' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => handleFiltrar('fiscal')}>
@@ -624,44 +685,67 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         </Card>
       </div>
 
-      {/* Cards de Produtos Exclusivos */}
+      {/* Cards de Produtos Exclusivos - Apenas empresas com AMS */}
+      <TooltipProvider>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'somente_fiscal' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => handleFiltrar('somente_fiscal')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyFiscal')}</p>
-              <p className="text-2xl font-bold">{stats.empresasSomenteFiscal || 0}</p>
-            </div>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-        </Card>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'somente_fiscal' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => handleFiltrar('somente_fiscal')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyFiscal')}</p>
+                  <p className="text-2xl font-bold">{stats.empresasSomenteFiscal || 0}</p>
+                </div>
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </div>
+              </CardHeader>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Somente empresas com AMS</p>
+          </TooltipContent>
+        </UITooltip>
 
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'somente_gallery' ? 'ring-2 ring-green-500' : ''}`} onClick={() => handleFiltrar('somente_gallery')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyGallery')}</p>
-              <p className="text-2xl font-bold">{stats.empresasSomenteGallery || 0}</p>
-            </div>
-            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-              <Package className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-        </Card>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'somente_gallery' ? 'ring-2 ring-green-500' : ''}`} onClick={() => handleFiltrar('somente_gallery')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyGallery')}</p>
+                  <p className="text-2xl font-bold">{stats.empresasSomenteGallery || 0}</p>
+                </div>
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                  <Package className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Somente empresas com AMS</p>
+          </TooltipContent>
+        </UITooltip>
 
-        <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'somente_comex' ? 'ring-2 ring-cyan-500' : ''}`} onClick={() => handleFiltrar('somente_comex')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyComex')}</p>
-              <p className="text-2xl font-bold">{stats.empresasSomenteComex || 0}</p>
-            </div>
-            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
-              <Briefcase className="h-4 w-4 text-cyan-600" />
-            </div>
-          </CardHeader>
-        </Card>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <Card className={`bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all hover:shadow-md ${filtroAtivo === 'somente_comex' ? 'ring-2 ring-cyan-500' : ''}`} onClick={() => handleFiltrar('somente_comex')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyComex')}</p>
+                  <p className="text-2xl font-bold">{stats.empresasSomenteComex || 0}</p>
+                </div>
+                <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
+                  <Briefcase className="h-4 w-4 text-cyan-600" />
+                </div>
+              </CardHeader>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Somente empresas com AMS</p>
+          </TooltipContent>
+        </UITooltip>
       </div>
+      </TooltipProvider>
 
       {/* Gráficos de Produtos e Tipos de Book */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
