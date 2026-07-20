@@ -49,6 +49,8 @@ export interface ClientBooksVariaveis {
   'sistema.mesAtual': string;
   'sistema.mesNomeAtual': string; // Nome do mês atual em português
   'sistema.mesNomeAtualEn': string; // Nome do mês atual em inglês
+  'sistema.mesNomeAnterior': string; // Nome do mês anterior ao atual em português
+  'sistema.mesNomeAnteriorEn': string; // Nome do mês anterior ao atual em inglês
 }
 
 /**
@@ -159,6 +161,10 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
   const mesReferencia = disparo.mes === 1 ? 12 : disparo.mes - 1;
   const anoReferencia = disparo.mes === 1 ? disparo.ano - 1 : disparo.ano;
 
+  // Calcular mês anterior ao atual (para variável sistema.mesNomeAnterior)
+  const mesAtual = dataAtual.getMonth() + 1;
+  const mesAnteriorAoAtual = mesAtual === 1 ? 12 : mesAtual - 1;
+
   return {
     // Variáveis de empresa
     'empresa.nomeCompleto': empresa.nome_completo || '',
@@ -190,9 +196,11 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
     // Variáveis de sistema
     'sistema.dataAtual': formatarData(dataAtual),
     'sistema.anoAtual': String(dataAtual.getFullYear()),
-    'sistema.mesAtual': String(dataAtual.getMonth() + 1),
-    'sistema.mesNomeAtual': obterNomeMes(dataAtual.getMonth() + 1),
-    'sistema.mesNomeAtualEn': obterNomeMesIngles(dataAtual.getMonth() + 1),
+    'sistema.mesAtual': String(mesAtual),
+    'sistema.mesNomeAtual': obterNomeMes(mesAtual),
+    'sistema.mesNomeAtualEn': obterNomeMesIngles(mesAtual),
+    'sistema.mesNomeAnterior': obterNomeMes(mesAnteriorAoAtual),
+    'sistema.mesNomeAnteriorEn': obterNomeMesIngles(mesAnteriorAoAtual),
   };
 };
 
@@ -273,7 +281,9 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
       'sistema.anoAtual',
       'sistema.mesAtual',
       'sistema.mesNomeAtual',
-      'sistema.mesNomeAtualEn'
+      'sistema.mesNomeAtualEn',
+      'sistema.mesNomeAnterior',
+      'sistema.mesNomeAnteriorEn'
     ],
     'Elogios': [
       'elogio.mesNomeAno',

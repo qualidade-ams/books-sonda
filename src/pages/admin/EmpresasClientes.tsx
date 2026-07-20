@@ -160,8 +160,17 @@ const EmpresasClientes = () => {
         if (!empresa.tem_ams) return false;
         
         // Filtro Tipo de Contrato
-        if (filtroTipoContrato !== '__todos__' && empresa.tipo_contrato !== filtroTipoContrato) {
-          return false;
+        // "Ambos" deve aparecer quando filtro for "horas" ou "tickets"
+        if (filtroTipoContrato !== '__todos__') {
+          if (filtroTipoContrato === 'ambos') {
+            // Filtro "Ambos" selecionado: mostrar apenas empresas com tipo_contrato === 'ambos'
+            if (empresa.tipo_contrato !== 'ambos') return false;
+          } else {
+            // Filtro "Horas" ou "Tickets": mostrar empresas do tipo selecionado OU tipo "ambos"
+            if (empresa.tipo_contrato !== filtroTipoContrato && empresa.tipo_contrato !== 'ambos') {
+              return false;
+            }
+          }
         }
         
         // Filtro Período Apuração
