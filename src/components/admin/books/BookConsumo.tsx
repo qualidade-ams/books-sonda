@@ -430,16 +430,42 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         if (empresaId) {
           try {
             const { supabase } = await import('@/integrations/supabase/client');
-            const { data: empresa } = await supabase
+            
+            // ✅ CORREÇÃO: Buscar percentual vigente do histórico (mesma lógica do ControleBancoHoras)
+            const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+            const { data: percentualVigente } = await supabase
+              .rpc('get_percentual_repasse_vigente', {
+                p_empresa_id: empresaId,
+                p_data: dataReferencia
+              });
+            
+            if (percentualVigente && percentualVigente.length > 0 && percentualVigente[0].percentual != null) {
+              percentualRepasse = Number(percentualVigente[0].percentual);
+              console.log('✅ [BookConsumo] Usando percentual do histórico de vigências:', percentualRepasse);
+            } else {
+              // Fallback: buscar da tabela empresas_clientes
+              const { data: empresa } = await supabase
+                .from('empresas_clientes')
+                .select('percentual_repasse_mensal, tipo_contrato')
+                .eq('id', empresaId)
+                .single();
+              if (empresa?.percentual_repasse_mensal != null) {
+                percentualRepasse = empresa.percentual_repasse_mensal;
+              }
+              if (empresa?.tipo_contrato) {
+                setTipoContratoEmpresa(empresa.tipo_contrato.toLowerCase());
+              }
+              console.log('⚠️ [BookConsumo] Usando fallback da tabela empresas_clientes:', percentualRepasse);
+            }
+            
+            // Buscar tipo_contrato separadamente se não veio no fallback
+            const { data: empresaContrato } = await supabase
               .from('empresas_clientes')
-              .select('percentual_repasse_mensal, tipo_contrato')
+              .select('tipo_contrato')
               .eq('id', empresaId)
               .single();
-            if (empresa?.percentual_repasse_mensal != null) {
-              percentualRepasse = empresa.percentual_repasse_mensal;
-            }
-            if (empresa?.tipo_contrato) {
-              setTipoContratoEmpresa(empresa.tipo_contrato.toLowerCase());
+            if (empresaContrato?.tipo_contrato) {
+              setTipoContratoEmpresa(empresaContrato.tipo_contrato.toLowerCase());
             }
           } catch (e) {
             console.warn('⚠️ Erro ao buscar percentual da empresa, usando fallback 50%');
@@ -543,7 +569,23 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         
         const periodoApuracao = empresa?.periodo_apuracao || 3; // Default: trimestral
         const inicioVigencia = empresa?.inicio_vigencia;
-        const percentualRepasse = empresa?.percentual_repasse_mensal ?? 50;
+        
+        // ✅ CORREÇÃO: Buscar percentual vigente do histórico (mesma lógica do ControleBancoHoras)
+        let percentualRepasse = empresa?.percentual_repasse_mensal ?? 50;
+        const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+        const { data: percentualVigente } = await supabase
+          .rpc('get_percentual_repasse_vigente', {
+            p_empresa_id: empresaId,
+            p_data: dataReferencia
+          });
+        
+        if (percentualVigente && percentualVigente.length > 0 && percentualVigente[0].percentual != null) {
+          percentualRepasse = Number(percentualVigente[0].percentual);
+          console.log('✅ [BookConsumo] Usando percentual do histórico de vigências:', percentualRepasse);
+        } else {
+          console.log('⚠️ [BookConsumo] Usando fallback da tabela empresas_clientes:', percentualRepasse);
+        }
+        
         setPercentualRepasseEmpresa(percentualRepasse);
         setInicioVigenciaEmpresa(inicioVigencia || null);
         if (empresa?.tipo_contrato) {
