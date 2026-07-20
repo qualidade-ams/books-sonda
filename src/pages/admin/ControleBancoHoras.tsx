@@ -1232,6 +1232,7 @@ export default function ControleBancoHoras() {
                   calculos={calculos}
                   tipoRepasseEspecial={(empresaAtual as any)?.tipo_repasse_especial}
                   percentualEntrePeriodos={(empresaAtual as any)?.percentual_entre_periodos}
+                  empresaAtual={empresaAtual}
                 />
               </TabsContent>
             </Tabs>

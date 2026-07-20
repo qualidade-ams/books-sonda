@@ -124,6 +124,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const [tipoContratoEmpresa, setTipoContratoEmpresa] = useState<string>('horas');
   // Início de vigência da empresa (formato YYYY-MM-DD) para zerar meses anteriores no gráfico
   const [inicioVigenciaEmpresa, setInicioVigenciaEmpresa] = useState<string | null>(null);
+  // Dias de apuração customizados (ex: dia 16 a dia 15)
+  const [diaInicioApuracao, setDiaInicioApuracao] = useState<number>(1);
+  const [diaFimApuracao, setDiaFimApuracao] = useState<number>(0);
   // Requerimentos descontados em tempo real (busca quando snapshot está vazio)
   const [requerimentosDescontadosReal, setRequerimentosDescontadosReal] = useState<RequerimentoDescontadoData[] | null>(null);
 
@@ -461,12 +464,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             // Buscar tipo_contrato separadamente se não veio no fallback
             const { data: empresaContrato } = await supabase
               .from('empresas_clientes')
-              .select('tipo_contrato')
+              .select('tipo_contrato, dia_inicio_apuracao, dia_fim_apuracao')
               .eq('id', empresaId)
               .single();
             if (empresaContrato?.tipo_contrato) {
               setTipoContratoEmpresa(empresaContrato.tipo_contrato.toLowerCase());
             }
+            setDiaInicioApuracao((empresaContrato as any)?.dia_inicio_apuracao ?? 1);
+            setDiaFimApuracao((empresaContrato as any)?.dia_fim_apuracao ?? 0);
           } catch (e) {
             console.warn('⚠️ Erro ao buscar percentual da empresa, usando fallback 50%');
           }
@@ -556,7 +561,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         // 1. Buscar dados da empresa para pegar periodo_apuracao e inicio_vigencia
         const { data: empresa, error: empresaError } = await supabase
           .from('empresas_clientes')
-          .select('periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, tipo_contrato')
+          .select('periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, tipo_contrato, dia_inicio_apuracao, dia_fim_apuracao')
           .eq('id', empresaId)
           .single();
         
@@ -588,6 +593,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         
         setPercentualRepasseEmpresa(percentualRepasse);
         setInicioVigenciaEmpresa(inicioVigencia || null);
+        setDiaInicioApuracao((empresa as any)?.dia_inicio_apuracao ?? 1);
+        setDiaFimApuracao((empresa as any)?.dia_fim_apuracao ?? 0);
         if (empresa?.tipo_contrato) {
           setTipoContratoEmpresa(empresa.tipo_contrato.toLowerCase());
         }
@@ -1751,11 +1758,32 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
                       {t('books.bookContent.periodTrimester')}
                     </th>
-                    {bancoHorasTrimestre.map((item, index) => (
-                      <th key={index} className="px-4 py-3 text-center font-semibold whitespace-nowrap">
-                        {new Date(item.ano, item.mes - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace(/^\w/, c => c.toUpperCase()).replace('.', '')}/{String(item.ano).slice(-2)}
-                      </th>
-                    ))}
+                    {bancoHorasTrimestre.map((item, index) => {
+                      const temApuracaoCustomizada = diaInicioApuracao !== 1 && diaFimApuracao !== 0;
+                      const mesAbrev = new Date(item.ano, item.mes - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace(/^\w/, c => c.toUpperCase()).replace('.', '');
+                      const anoAbrev = String(item.ano).slice(-2);
+                      
+                      let headerMes: string;
+                      if (temApuracaoCustomizada) {
+                        let mesFim = item.mes + 1;
+                        let anoFim = item.ano;
+                        if (mesFim > 12) {
+                          mesFim = 1;
+                          anoFim += 1;
+                        }
+                        const mesFimAbrev = new Date(anoFim, mesFim - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace(/^\w/, c => c.toUpperCase()).replace('.', '');
+                        const anoFimAbrev = String(anoFim).slice(-2);
+                        headerMes = `${diaInicioApuracao} ${mesAbrev}/${anoAbrev} à ${diaFimApuracao} ${mesFimAbrev}/${anoFimAbrev}`;
+                      } else {
+                        headerMes = `${mesAbrev}/${anoAbrev}`;
+                      }
+                      
+                      return (
+                        <th key={index} className="px-4 py-3 text-center font-semibold whitespace-nowrap">
+                          {headerMes}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">

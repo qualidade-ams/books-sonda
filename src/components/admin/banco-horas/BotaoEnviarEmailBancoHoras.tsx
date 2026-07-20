@@ -109,7 +109,9 @@ function gerarTabelaBancoHoras(
   calculos: BancoHorasCalculo[],
   tipoCobranca: string,
   percentualRepasse: number,
-  nomePeriodo: string
+  nomePeriodo: string,
+  diaInicioApuracao?: number,
+  diaFimApuracao?: number
 ): string {
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   
@@ -146,6 +148,24 @@ function gerarTabelaBancoHoras(
 
   const headerMeses = calculos.map(c => {
     const anoAbrev = String(c.ano).slice(-2);
+    const diaInicio = diaInicioApuracao ?? 1;
+    const diaFim = diaFimApuracao ?? 0;
+    const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
+    
+    if (temApuracaoCustomizada) {
+      // Formato: "16-Mai/26 à 15-Jun/26"
+      const mesInicio = c.mes;
+      let mesFim = mesInicio + 1;
+      let anoFim = c.ano;
+      if (mesFim > 12) {
+        mesFim = 1;
+        anoFim += 1;
+      }
+      const anoFimAbrev = String(anoFim).slice(-2);
+      const mesInicioAbrev = MESES_PT[mesInicio - 1].substring(0, 3);
+      const mesFimAbrev = MESES_PT[mesFim - 1].substring(0, 3);
+      return `<th style="${headerBlue}">${diaInicio} ${mesInicioAbrev}/${anoAbrev} à ${diaFim} ${mesFimAbrev}/${anoFimAbrev}</th>`;
+    }
     return `<th style="${headerBlue}">${MESES_PT[c.mes - 1]}/${anoAbrev}</th>`;
   }).join('');
 
@@ -388,10 +408,12 @@ function gerarHtmlSaldoParcial(
   nomePeriodo: string,
   requerimentos: Requerimento[],
   requerimentosEmDesenvolvimento: Requerimento[],
-  observacoes: Observacao[]
+  observacoes: Observacao[],
+  diaInicioApuracao: number = 1,
+  diaFimApuracao: number = 0
 ): string {
   const saudacao = getSaudacao();
-  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo);
+  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
   const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
   const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
   const secaoObs = gerarSecaoObservacoes(observacoes);
@@ -443,7 +465,9 @@ function gerarHtmlSaldoMes(
   nomePeriodo: string,
   requerimentos: Requerimento[],
   requerimentosEmDesenvolvimento: Requerimento[],
-  observacoes: Observacao[]
+  observacoes: Observacao[],
+  diaInicioApuracao: number = 1,
+  diaFimApuracao: number = 0
 ): string {
   const saudacao = getSaudacao();
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
@@ -462,7 +486,7 @@ function gerarHtmlSaldoMes(
     return (calculoRef?.saldo_horas || '00:00').startsWith('-') ? '#ef4444' : '#10b981';
   })();
 
-  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo);
+  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
   const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
   const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
   const secaoObs = gerarSecaoObservacoes(observacoes);
@@ -641,7 +665,7 @@ export function BotaoEnviarEmailBancoHoras({
 
   // Gera apenas o HTML das tabelas (para renderizar como imagem)
   const gerarHtmlTabelas = () => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
     const secaoObs = gerarSecaoObservacoes(observacoes);
@@ -651,7 +675,7 @@ export function BotaoEnviarEmailBancoHoras({
 
   // Gera o HTML final combinando texto editável + tabelas
   const gerarHtmlFinal = (texto: string, tipo: TipoEmailBancoHoras) => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
     const secaoObs = gerarSecaoObservacoes(observacoes);
