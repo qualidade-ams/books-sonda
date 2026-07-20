@@ -631,6 +631,9 @@ export function RequerimentoForm({
         if (ling === 'DBA') {
           return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
         }
+        if (ling === 'Gestor') {
+          return 'Gestor';
+        }
         return null;
       };
 
@@ -1562,6 +1565,7 @@ export function RequerimentoForm({
                           <SelectContent>
                             <SelectItem value="ABAP">ABAP</SelectItem>
                             <SelectItem value="DBA">DBA</SelectItem>
+                            <SelectItem value="Gestor">Gestor</SelectItem>
                             <SelectItem value="PL/SQL">PL/SQL</SelectItem>
                             <SelectItem value="Técnico">Técnico</SelectItem>
                           </SelectContent>

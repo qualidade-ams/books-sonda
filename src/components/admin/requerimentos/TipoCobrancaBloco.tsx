@@ -213,6 +213,10 @@ export function TipoCobrancaBloco({
         // Se linguagem é DBA, usar linha DBA ou DBA / Basis
         return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
       }
+      if (ling === 'Gestor') {
+        // Se linguagem é Gestor, usar linha Gestor
+        return 'Gestor';
+      }
       // Fallback para Funcional se linguagem não reconhecida
       return 'Funcional';
     };
@@ -661,6 +665,7 @@ export function TipoCobrancaBloco({
                 <SelectContent>
                   <SelectItem value="ABAP">ABAP</SelectItem>
                   <SelectItem value="DBA">DBA</SelectItem>
+                  <SelectItem value="Gestor">Gestor</SelectItem>
                   <SelectItem value="PL/SQL">PL/SQL</SelectItem>
                   <SelectItem value="Técnico">Técnico</SelectItem>
                 </SelectContent>
