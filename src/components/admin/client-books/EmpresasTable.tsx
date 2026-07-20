@@ -150,6 +150,43 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     );
   };
 
+  const getTipoContratoBadge = (tipoContrato: string | null) => {
+    // Se não tem tipo_contrato definido, exibir como "Outros" (outline)
+    const tipo = tipoContrato || 'outros';
+
+    const variants = {
+      horas: 'default',
+      tickets: 'secondary',
+      ambos: 'outline',
+      outros: 'outline'
+    } as const;
+
+    const labels = {
+      horas: 'Horas',
+      tickets: 'Ticket',
+      ambos: 'Ambos',
+      outros: 'Outros'
+    };
+
+    const customClasses = {
+      horas: 'bg-sonda-blue text-white border-sonda-blue hover:bg-sonda-dark-blue',
+      tickets: 'bg-sonda-blue text-white border-sonda-blue hover:bg-sonda-dark-blue',
+      ambos: 'bg-sonda-blue text-white border-sonda-blue hover:bg-sonda-dark-blue',
+      outros: 'bg-white text-sonda-blue border-sonda-blue hover:bg-blue-50'
+    };
+
+    return (
+      <div className="flex justify-center">
+        <Badge
+          variant={variants[tipo as keyof typeof variants] || 'default'}
+          className={`text-xs px-2 py-1 ${customClasses[tipo as keyof typeof customClasses] || ''}`}
+        >
+          {labels[tipo as keyof typeof labels] || tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+        </Badge>
+      </div>
+    );
+  };
+
   const getTipoCobrancaBadge = (tipoCobranca: string | null) => {
     if (!tipoCobranca) return '-';
 
@@ -567,7 +604,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {getTipoCobrancaBadge(empresa.tipo_cobranca)}
+                      {getTipoContratoBadge(empresa.tipo_contrato)}
                     </TableCell>
                     <TableCell className="text-center">
                       <span className="text-sm">
