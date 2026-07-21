@@ -111,6 +111,7 @@ export function RequerimentoMultiploForm({
       tipo_cobranca: 'Banco de Horas', // Será atualizado pelo useEffect
       horas_funcional: 0,
       horas_tecnico: 0,
+      horas_gestor: 0,
       linguagem: ''
     }
   ]);
@@ -178,6 +179,7 @@ export function RequerimentoMultiploForm({
       tipo_cobranca: getTipoCobrancaPadrao(),
       horas_funcional: 0,
       horas_tecnico: 0,
+      horas_gestor: 0,
       linguagem: ''
     };
     setBlocos([...blocos, novoBloco]);
@@ -404,8 +406,10 @@ export function RequerimentoMultiploForm({
       tipo_cobranca: bloco.tipo_cobranca,
       horas_funcional: bloco.horas_funcional,
       horas_tecnico: bloco.horas_tecnico,
+      horas_gestor: bloco.horas_gestor,
       valor_hora_funcional: bloco.valor_hora_funcional,
       valor_hora_tecnico: bloco.valor_hora_tecnico,
+      valor_hora_gestor: bloco.valor_hora_gestor,
       tipo_hora_extra: bloco.tipo_hora_extra,
       quantidade_tickets: bloco.quantidade_tickets,
       horas_analise_ef: bloco.horas_analise_ef,

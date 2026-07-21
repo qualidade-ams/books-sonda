@@ -20,8 +20,10 @@ export interface TipoCobrancaBlocoData {
   tipo_cobranca: string;
   horas_funcional: string | number;
   horas_tecnico: string | number;
+  horas_gestor: string | number;
   valor_hora_funcional?: number;
   valor_hora_tecnico?: number;
+  valor_hora_gestor?: number;
   tipo_hora_extra?: string;
   quantidade_tickets?: number;
   horas_analise_ef?: string | number;
@@ -77,22 +79,26 @@ export function TipoCobrancaBloco({
   // Ref para controlar se valores foram editados manualmente (não causa re-render)
   const valoresEditadosManualmenteRef = useRef({
     funcional: false,
-    tecnico: false
+    tecnico: false,
+    gestor: false
   });
   
   // Estado para controlar indicadores visuais de edição manual
   const [valoresEditadosManualmente, setValoresEditadosManualmente] = useState({
     funcional: false,
-    tecnico: false
+    tecnico: false,
+    gestor: false
   });
   
   // Ref para rastrear valores anteriores e evitar loop infinito
   const valoresAnterioresRef = useRef<{
     funcional: number | undefined;
     tecnico: number | undefined;
+    gestor: number | undefined;
   }>({
     funcional: undefined,
-    tecnico: undefined
+    tecnico: undefined,
+    gestor: undefined
   });
 
   // useEffect para buscar taxa vigente quando cliente ou tipo de cobrança mudar
@@ -355,6 +361,31 @@ export function TipoCobrancaBloco({
       } else {
         console.log('⏭️ Valor técnico editado manualmente, mantendo:', valorAtualTecnico);
       }
+
+      // Preencher valor gestor automaticamente usando linha 'Gestor' da taxa
+      if (!valoresEditadosManualmenteRef.current.gestor && horasGestorDecimal > 0) {
+        const funcaoGestor: TipoFuncao = 'Gestor';
+        const valorFuncaoGestor = valoresParaUsar?.find(v => v.funcao === funcaoGestor);
+        if (valorFuncaoGestor) {
+          let valorHoraGestor = 0;
+          if (bloco.tipo_cobranca === 'Faturado') {
+            valorHoraGestor = valorFuncaoGestor.valor_base;
+          } else if (bloco.tipo_cobranca === 'Hora Extra') {
+            if (bloco.tipo_hora_extra === '17h30-19h30') {
+              valorHoraGestor = valorFuncaoGestor.valor_17h30_19h30;
+            } else if (bloco.tipo_hora_extra === 'apos_19h30') {
+              valorHoraGestor = valorFuncaoGestor.valor_apos_19h30;
+            } else if (bloco.tipo_hora_extra === 'fim_semana') {
+              valorHoraGestor = valorFuncaoGestor.valor_fim_semana;
+            }
+          } else if (bloco.tipo_cobranca === 'Sobreaviso') {
+            valorHoraGestor = valorFuncaoGestor.valor_standby;
+          }
+          const valorHoraGestorArredondado = Math.round(valorHoraGestor * 100) / 100;
+          console.log('✅ PREENCHENDO valor_hora_gestor (automático):', valorHoraGestorArredondado);
+          onUpdate(bloco.id, 'valor_hora_gestor', valorHoraGestorArredondado);
+        }
+      }
     
       console.log('='.repeat(80));
       console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO (TipoCobrancaBloco)');
@@ -363,10 +394,10 @@ export function TipoCobrancaBloco({
 
     // Cleanup do timeout
     return () => clearTimeout(timeoutId);
-  }, [taxaVigente, bloco.linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial]); // Removido bloco.id e onUpdate das dependências
+  }, [taxaVigente, bloco.linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial, bloco.horas_gestor]); // Removido bloco.id e onUpdate das dependências
 
   // Função para marcar valor como editado manualmente
-  const handleValorEditadoManualmente = (campo: 'funcional' | 'tecnico') => {
+  const handleValorEditadoManualmente = (campo: 'funcional' | 'tecnico' | 'gestor') => {
     console.log('🔥🔥🔥 VALOR EDITADO MANUALMENTE NO BLOCO 🔥🔥🔥');
     console.log('   Campo:', campo);
     console.log('   Bloco ID:', bloco.id);
@@ -472,23 +503,32 @@ export function TipoCobrancaBloco({
     ? converterParaHorasDecimal(bloco.horas_tecnico)
     : bloco.horas_tecnico || 0;
 
-  const horasTotalDecimal = horasFuncionalDecimal + horasTecnicoDecimal;
+  const horasGestorDecimal = typeof bloco.horas_gestor === 'string'
+    ? converterParaHorasDecimal(bloco.horas_gestor)
+    : bloco.horas_gestor || 0;
+
+  const horasTotalDecimal = horasFuncionalDecimal + horasTecnicoDecimal + horasGestorDecimal;
   
   // Converter para string HH:MM para exibição
   const horasFuncionalStr = typeof bloco.horas_funcional === 'string' 
     ? bloco.horas_funcional 
-    : bloco.horas_funcional.toString();
+    : (bloco.horas_funcional ?? '').toString();
   
   const horasTecnicoStr = typeof bloco.horas_tecnico === 'string'
     ? bloco.horas_tecnico
-    : bloco.horas_tecnico.toString();
+    : (bloco.horas_tecnico ?? '').toString();
   
-  const horasTotalStr = somarHoras(horasFuncionalStr, horasTecnicoStr);
+  const horasGestorStr = typeof bloco.horas_gestor === 'string'
+    ? bloco.horas_gestor
+    : (bloco.horas_gestor ?? '').toString();
+  
+  const horasTotalStr = somarHoras(somarHoras(horasFuncionalStr, horasTecnicoStr), horasGestorStr);
 
   // Calcular valor total
   const valorTotal = mostrarCamposValor
     ? (horasFuncionalDecimal * (bloco.valor_hora_funcional || 0)) +
-      (horasTecnicoDecimal * (bloco.valor_hora_tecnico || 0))
+      (horasTecnicoDecimal * (bloco.valor_hora_tecnico || 0)) +
+      (horasGestorDecimal * (bloco.valor_hora_gestor || 0))
     : 0;
 
   // Cores para tipos de cobrança
@@ -531,7 +571,7 @@ export function TipoCobrancaBloco({
         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
           📊 {t('reqForm.hoursControl')}
         </h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>
               {t('reqForm.functionalHours')} <span className="text-red-500">*</span>
@@ -551,6 +591,17 @@ export function TipoCobrancaBloco({
               value={bloco.horas_tecnico}
               onChange={(valorString) => onUpdate(bloco.id, 'horas_tecnico', valorString)}
               placeholder="Ex: 20:00"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Horas Gestor
+            </Label>
+            <InputHoras
+              value={bloco.horas_gestor}
+              onChange={(valorString) => onUpdate(bloco.id, 'horas_gestor', valorString)}
+              placeholder="Ex: 5:00"
             />
           </div>
 
@@ -665,7 +716,6 @@ export function TipoCobrancaBloco({
                 <SelectContent>
                   <SelectItem value="ABAP">ABAP</SelectItem>
                   <SelectItem value="DBA">DBA</SelectItem>
-                  <SelectItem value="Gestor">Gestor</SelectItem>
                   <SelectItem value="PL/SQL">PL/SQL</SelectItem>
                   <SelectItem value="Técnico">Técnico</SelectItem>
                 </SelectContent>
@@ -709,7 +759,7 @@ export function TipoCobrancaBloco({
           <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
             💰 Valores por Hora
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>
                 Valor/Hora Funcional <span className="text-red-500">*</span>
@@ -773,6 +823,36 @@ export function TipoCobrancaBloco({
                     handleValorEditadoManualmente('tecnico');
                     // Depois atualizar o valor
                     onUpdate(bloco.id, 'valor_hora_tecnico', parseFloat(e.target.value) || 0);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Valor/Hora Gestor
+                {valoresEditadosManualmente.gestor && (
+                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                )}
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  R$
+                </span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  className="pl-8"
+                  value={(() => {
+                    const valor = bloco.valor_hora_gestor;
+                    const valorFormatado = valor === undefined || valor === null ? '' : valor.toString();
+                    return valorFormatado;
+                  })()}
+                  onChange={(e) => {
+                    handleValorEditadoManualmente('gestor');
+                    onUpdate(bloco.id, 'valor_hora_gestor', parseFloat(e.target.value) || 0);
                   }}
                 />
               </div>

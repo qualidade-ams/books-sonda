@@ -91,13 +91,15 @@ export function RequerimentoForm({
   // Ref para controlar se valores foram editados manualmente (não causa re-render)
   const valoresEditadosManualmenteRef = useRef({
     funcional: false,
-    tecnico: false
+    tecnico: false,
+    gestor: false
   });
   
   // Estado para controlar indicadores visuais de edição manual
   const [valoresEditadosManualmente, setValoresEditadosManualmente] = useState({
     funcional: false,
-    tecnico: false
+    tecnico: false,
+    gestor: false
   });
   
   // Estado para controlar se houve tentativa de submissão (para mostrar erros visuais)
@@ -135,6 +137,7 @@ export function RequerimentoForm({
       data_aprovacao: requerimento?.data_aprovacao || '', // Deixar em branco por padrão
       horas_funcional: requerimento?.horas_funcional || 0,
       horas_tecnico: requerimento?.horas_tecnico || 0,
+      horas_gestor: requerimento?.horas_gestor || 0,
       linguagem: (requerimento?.linguagem || '') as LinguagemType,
       tipo_cobranca: requerimento?.tipo_cobranca || 'Banco de Horas',
       mes_cobranca: requerimento?.mes_cobranca || '',
@@ -142,6 +145,7 @@ export function RequerimentoForm({
       // Campos de valor/hora
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
+      valor_hora_gestor: requerimento?.valor_hora_gestor || undefined,
       // Campo de tipo de hora extra - mantém o valor existente ao editar (converter null para undefined)
       tipo_hora_extra: (requerimento?.tipo_hora_extra || undefined) as TipoHoraExtraType | undefined,
       // Campos de ticket
@@ -180,10 +184,12 @@ export function RequerimentoForm({
   // Watch para calcular horas total e valores automaticamente
   const horasFuncional = form.watch('horas_funcional');
   const horasTecnico = form.watch('horas_tecnico');
+  const horasGestor = form.watch('horas_gestor');
   const tipoCobranca = form.watch('tipo_cobranca');
   const clienteId = form.watch('cliente_id');
   const valorHoraFuncional = form.watch('valor_hora_funcional');
   const valorHoraTecnico = form.watch('valor_hora_tecnico');
+  const valorHoraGestor = form.watch('valor_hora_gestor');
   const tipoHoraExtra = form.watch('tipo_hora_extra');
   const horasAnaliseEF = form.watch('horas_analise_ef');
   const atendimentoPresencial = form.watch('atendimento_presencial');
@@ -344,6 +350,39 @@ export function RequerimentoForm({
       }
     }
   }, [tipoCobranca, form]);
+
+  // useEffect para zerar valor/hora quando as horas correspondentes são zeradas
+  useEffect(() => {
+    const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    if (!tipoCobranca || !tiposComValorHora.includes(tipoCobranca)) return;
+
+    const hFuncStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
+    const hTecStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+    const hGestStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
+
+    const hFuncDec = converterParaHorasDecimal(hFuncStr);
+    const hTecDec = converterParaHorasDecimal(hTecStr);
+    const hGestDec = converterParaHorasDecimal(hGestStr);
+
+    // Zerar valor/hora funcional se horas funcionais são 0
+    if (hFuncDec === 0 && form.getValues('valor_hora_funcional')) {
+      form.setValue('valor_hora_funcional', 0, { shouldValidate: true, shouldDirty: true });
+      valoresEditadosManualmenteRef.current.funcional = false;
+      setValoresEditadosManualmente(prev => ({ ...prev, funcional: false }));
+    }
+    // Zerar valor/hora técnico se horas técnicas são 0
+    if (hTecDec === 0 && form.getValues('valor_hora_tecnico')) {
+      form.setValue('valor_hora_tecnico', 0, { shouldValidate: true, shouldDirty: true });
+      valoresEditadosManualmenteRef.current.tecnico = false;
+      setValoresEditadosManualmente(prev => ({ ...prev, tecnico: false }));
+    }
+    // Zerar valor/hora gestor se horas gestor são 0
+    if (hGestDec === 0 && form.getValues('valor_hora_gestor')) {
+      form.setValue('valor_hora_gestor', 0, { shouldValidate: true, shouldDirty: true });
+      valoresEditadosManualmenteRef.current.gestor = false;
+      setValoresEditadosManualmente(prev => ({ ...prev, gestor: false }));
+    }
+  }, [horasFuncional, horasTecnico, horasGestor, tipoCobranca, form]);
 
   // useEffect para preencher valores automaticamente baseado na taxa vigente
   useEffect(() => {
@@ -529,31 +568,69 @@ export function RequerimentoForm({
       editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
     });
     
-    // Preencher valor funcional se não foi editado manualmente
+    // Preencher valor funcional se não foi editado manualmente E tem horas funcionais
+    const hFuncAutoStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
+    const hTecAutoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+    const hFuncAutoDec = converterParaHorasDecimal(hFuncAutoStr);
+    const hTecAutoDec = converterParaHorasDecimal(hTecAutoStr);
+
     if (!valoresEditadosManualmenteRef.current.funcional) {
-      console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
-      form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, { shouldValidate: false });
-      console.log('✅ Valor preenchido com sucesso!');
+      if (hFuncAutoDec > 0) {
+        console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
+        form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, { shouldValidate: false });
+      } else {
+        form.setValue('valor_hora_funcional', 0, { shouldValidate: false });
+      }
     } else {
       console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
     }
     
-    // Preencher valor técnico se não foi editado manualmente
+    // Preencher valor técnico se não foi editado manualmente E tem horas técnicas
     if (!valoresEditadosManualmenteRef.current.tecnico) {
-      console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
-      form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado, { shouldValidate: false });
-      console.log('✅ Valor preenchido com sucesso!');
+      if (hTecAutoDec > 0) {
+        console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
+        form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado, { shouldValidate: false });
+      } else {
+        form.setValue('valor_hora_tecnico', 0, { shouldValidate: false });
+      }
     } else {
       console.log('⏭️ Valor técnico editado manualmente, mantendo:', valorAtualTecnico);
+    }
+
+    // Preencher valor gestor automaticamente usando linha 'Gestor' da taxa
+    if (!valoresEditadosManualmenteRef.current.gestor) {
+      const horasGestorStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
+      const horasGestorDec = converterParaHorasDecimal(horasGestorStr);
+      if (horasGestorDec > 0 && valoresParaUsar) {
+        const funcaoGestor: TipoFuncao = 'Gestor';
+        const valorFuncaoGestor = valoresParaUsar.find(v => v.funcao === funcaoGestor);
+        if (valorFuncaoGestor) {
+          let valorHoraGestor = 0;
+          if (tipoCobranca === 'Faturado') {
+            valorHoraGestor = valorFuncaoGestor.valor_base;
+          } else if (tipoCobranca === 'Hora Extra') {
+            if (tipoHoraExtra === '17h30-19h30') valorHoraGestor = valorFuncaoGestor.valor_17h30_19h30;
+            else if (tipoHoraExtra === 'apos_19h30') valorHoraGestor = valorFuncaoGestor.valor_apos_19h30;
+            else if (tipoHoraExtra === 'fim_semana') valorHoraGestor = valorFuncaoGestor.valor_fim_semana;
+          } else if (tipoCobranca === 'Sobreaviso') {
+            valorHoraGestor = valorFuncaoGestor.valor_standby;
+          }
+          const valorHoraGestorArredondado = Math.round(valorHoraGestor * 100) / 100;
+          if (valorHoraGestorArredondado > 0) {
+            console.log('✅ PREENCHENDO valor_hora_gestor (automático):', valorHoraGestorArredondado);
+            form.setValue('valor_hora_gestor', valorHoraGestorArredondado, { shouldValidate: false });
+          }
+        }
+      }
     }
     
     console.log('='.repeat(80));
     console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO');
     console.log('='.repeat(80));
-  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, atendimentoPresencial, form]); // Removido valoresEditadosManualmente das dependências
+  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, atendimentoPresencial, horasGestor, horasFuncional, horasTecnico, form]); // Removido valoresEditadosManualmente das dependências
 
   // Função para marcar valor como editado manualmente
-  const handleValorEditadoManualmente = useCallback((campo: 'funcional' | 'tecnico') => {
+  const handleValorEditadoManualmente = useCallback((campo: 'funcional' | 'tecnico' | 'gestor') => {
     console.log('✏️ Valor editado manualmente:', campo);
     // Atualizar ref (não causa re-render)
     valoresEditadosManualmenteRef.current = {
@@ -567,26 +644,35 @@ export function RequerimentoForm({
     }));
   }, []);
 
-  // Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar
-  // CORREÇÃO: Não resetar flags ao editar registros existentes - só resetar quando contexto realmente mudar
+  // Resetar flags de edição manual quando contexto principal mudar
   useEffect(() => {
-    // Só resetar se não estiver editando um requerimento existente
     if (!requerimento) {
       console.log('🔄 Resetando flags de edição manual devido a mudança de contexto (novo requerimento)');
-      // Resetar ref
       valoresEditadosManualmenteRef.current = {
         funcional: false,
-        tecnico: false
+        tecnico: false,
+        gestor: false
       };
-      // Resetar estado para indicadores visuais
       setValoresEditadosManualmente({
         funcional: false,
-        tecnico: false
+        tecnico: false,
+        gestor: false
       });
     } else {
-      console.log('⏭️ Mantendo flags de edição manual (editando requerimento existente)');
+      // Na edição, resetar flags quando linguagem ou cliente mudar para permitir recalcular
+      console.log('🔄 Resetando flags na edição - linguagem ou contexto mudou');
+      valoresEditadosManualmenteRef.current = {
+        funcional: false,
+        tecnico: false,
+        gestor: false
+      };
+      setValoresEditadosManualmente({
+        funcional: false,
+        tecnico: false,
+        gestor: false
+      });
     }
-  }, [clienteId, linguagem, tipoCobranca, requerimento]); // Adicionado requerimento para controlar comportamento
+  }, [clienteId, linguagem, tipoCobranca, requerimento]);
 
   // CORREÇÃO: Forçar sobrescrita de valores manuais quando tipo de hora extra mudar em "Hora Extra"
   useEffect(() => {
@@ -595,7 +681,8 @@ export function RequerimentoForm({
       // Resetar flags para permitir preenchimento automático
       valoresEditadosManualmenteRef.current = {
         funcional: false,
-        tecnico: false
+        tecnico: false,
+        gestor: false
       };
       // Resetar estado visual
       setValoresEditadosManualmente({
@@ -708,13 +795,15 @@ export function RequerimentoForm({
           // Marcar como editados manualmente APENAS os que foram realmente alterados
           valoresEditadosManualmenteRef.current = {
             funcional: funcionalEditado,
-            tecnico: tecnicoEditado
+            tecnico: tecnicoEditado,
+            gestor: false
           };
           
           // Atualizar estado visual
           setValoresEditadosManualmente({
             funcional: funcionalEditado,
-            tecnico: tecnicoEditado
+            tecnico: tecnicoEditado,
+            gestor: false
           });
           
           console.log('✅ FLAGS INTELIGENTES DEFINIDAS (ANÁLISE APRIMORADA):', valoresEditadosManualmenteRef.current);
@@ -734,29 +823,32 @@ export function RequerimentoForm({
       
       valoresEditadosManualmenteRef.current = {
         funcional: funcionalEditado,
-        tecnico: tecnicoEditado
+        tecnico: tecnicoEditado,
+        gestor: false
       };
       setValoresEditadosManualmente({
         funcional: funcionalEditado,
-        tecnico: tecnicoEditado
+        tecnico: tecnicoEditado,
+        gestor: false
       });
       
       console.log('✅ FLAGS FALLBACK DEFINIDAS (APRIMORADO):', valoresEditadosManualmenteRef.current);
     }
-  }, [requerimento, taxaVigente, linguagem]); // Dependências necessárias para comparação
+  }, [requerimento, taxaVigente]); // Só roda quando requerimento ou taxa carregam (não quando linguagem muda)
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
     try {
       const funcionalStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
       const tecnicoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+      const gestorStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
 
-      const totalFormatado = somarHoras(funcionalStr, tecnicoStr);
+      const totalFormatado = somarHoras(somarHoras(funcionalStr, tecnicoStr), gestorStr);
       return totalFormatado;
     } catch (error) {
       return '0:00';
     }
-  }, [horasFuncional, horasTecnico]);
+  }, [horasFuncional, horasTecnico, horasGestor]);
 
   // Cálculos automáticos de valores (suporta formato HH:MM)
   const valoresCalculados = useMemo(() => {
@@ -764,6 +856,7 @@ export function RequerimentoForm({
       return {
         valorTotalFuncional: 0,
         valorTotalTecnico: 0,
+        valorTotalGestor: 0,
         valorTotalGeral: 0
       };
     }
@@ -772,29 +865,35 @@ export function RequerimentoForm({
       // Converter horas para decimal para cálculos monetários
       const funcionalStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
       const tecnicoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+      const gestorStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
 
       const hFunc = converterParaHorasDecimal(funcionalStr);
       const hTec = converterParaHorasDecimal(tecnicoStr);
+      const hGest = converterParaHorasDecimal(gestorStr);
       const vFunc = Number(valorHoraFuncional) || 0;
       const vTec = Number(valorHoraTecnico) || 0;
+      const vGest = Number(valorHoraGestor) || 0;
 
       const valorTotalFuncional = hFunc * vFunc;
       const valorTotalTecnico = hTec * vTec;
-      const valorTotalGeral = valorTotalFuncional + valorTotalTecnico;
+      const valorTotalGestor = hGest * vGest;
+      const valorTotalGeral = valorTotalFuncional + valorTotalTecnico + valorTotalGestor;
 
       return {
         valorTotalFuncional,
         valorTotalTecnico,
+        valorTotalGestor,
         valorTotalGeral
       };
     } catch (error) {
       return {
         valorTotalFuncional: 0,
         valorTotalTecnico: 0,
+        valorTotalGestor: 0,
         valorTotalGeral: 0
       };
     }
-  }, [horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico, mostrarCamposValor]);
+  }, [horasFuncional, horasTecnico, horasGestor, valorHoraFuncional, valorHoraTecnico, valorHoraGestor, mostrarCamposValor]);
 
   // Validação customizada para habilitar/desabilitar botão
   const validationStatus = useMemo(() => {
@@ -1325,7 +1424,7 @@ export function RequerimentoForm({
                 {t('reqForm.hoursControl')}
               </h4>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Horas Funcionais */}
                 <FormField
                   control={form.control}
@@ -1366,6 +1465,30 @@ export function RequerimentoForm({
                             field.onChange(valorString);
                           }}
                           placeholder="Ex: 80:45 ou 80"
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Horas Gestor */}
+                <FormField
+                  control={form.control}
+                  name="horas_gestor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Horas Gestor
+                      </FormLabel>
+                      <FormControl>
+                        <InputHoras
+                          value={field.value || 0}
+                          onChange={(valorString) => {
+                            field.onChange(valorString);
+                          }}
+                          placeholder="Ex: 5:00"
                           disabled={isLoading}
                         />
                       </FormControl>
@@ -1565,7 +1688,6 @@ export function RequerimentoForm({
                           <SelectContent>
                             <SelectItem value="ABAP">ABAP</SelectItem>
                             <SelectItem value="DBA">DBA</SelectItem>
-                            <SelectItem value="Gestor">Gestor</SelectItem>
                             <SelectItem value="PL/SQL">PL/SQL</SelectItem>
                             <SelectItem value="Técnico">Técnico</SelectItem>
                           </SelectContent>
@@ -1594,7 +1716,7 @@ export function RequerimentoForm({
                     </OptimizedTooltip>
                   </h4>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Valor Hora Funcional */}
                     <FormField
                       control={form.control}
@@ -1664,6 +1786,44 @@ export function RequerimentoForm({
                                   field.onChange(value === '' ? undefined : parseFloat(value) || 0);
                                   // Marcar como editado manualmente
                                   handleValorEditadoManualmente('tecnico');
+                                }}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Valor Hora Gestor */}
+                    <FormField
+                      control={form.control}
+                      name="valor_hora_gestor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Valor/Hora Gestor
+                            {valoresEditadosManualmente.gestor && (
+                              <span className="ml-1 text-xs text-blue-600" title={t('reqForm.editedManually')}>✏️</span>
+                            )}
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                R$
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="99999.99"
+                                placeholder="0,00"
+                                className="pl-8"
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  field.onChange(value === '' ? undefined : parseFloat(value) || 0);
+                                  handleValorEditadoManualmente('gestor');
                                 }}
                               />
                             </div>
