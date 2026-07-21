@@ -70,6 +70,9 @@ export class RequerimentosService {
       data_aprovacao: data.data_aprovacao?.trim() || null,
       horas_funcional: horasFuncionalDecimal,
       horas_tecnico: horasTecnicoDecimal,
+      horas_gestor: typeof data.horas_gestor === 'string'
+        ? converterParaHorasDecimal(data.horas_gestor)
+        : (data.horas_gestor || 0),
       linguagem: data.linguagem?.trim() || (horasFuncionalDecimal > 0 && !horasTecnicoDecimal ? 'Funcional' : null),
       tipo_cobranca: data.tipo_cobranca,
       mes_cobranca: data.mes_cobranca?.trim() || null,
@@ -77,6 +80,7 @@ export class RequerimentosService {
       // Campos de valor/hora (incluir apenas se fornecidos)
       valor_hora_funcional: data.valor_hora_funcional || null,
       valor_hora_tecnico: data.valor_hora_tecnico || null,
+      valor_hora_gestor: data.valor_hora_gestor || null,
       // Campo de tipo de hora extra (para tipo Hora Extra)
       tipo_hora_extra: data.tipo_hora_extra || null,
       // Campos de ticket (para Banco de Horas - automático baseado na empresa)
@@ -468,6 +472,11 @@ export class RequerimentosService {
         ? converterParaHorasDecimal(data.horas_tecnico)
         : data.horas_tecnico;
     }
+    if (data.horas_gestor !== undefined) {
+      updateData.horas_gestor = typeof data.horas_gestor === 'string'
+        ? converterParaHorasDecimal(data.horas_gestor)
+        : (data.horas_gestor || 0);
+    }
     if (data.linguagem) {
       updateData.linguagem = data.linguagem;
     } else if (data.horas_funcional !== undefined || data.horas_tecnico !== undefined) {
@@ -481,6 +490,7 @@ export class RequerimentosService {
     // Campos de valor/hora
     if (data.valor_hora_funcional !== undefined) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
     if (data.valor_hora_tecnico !== undefined) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
+    if (data.valor_hora_gestor !== undefined) updateData.valor_hora_gestor = data.valor_hora_gestor || null;
     // Campo de tipo de hora extra
     if (data.tipo_hora_extra !== undefined) updateData.tipo_hora_extra = data.tipo_hora_extra || null;
     // Campos de ticket (automático baseado na empresa)
@@ -1102,10 +1112,17 @@ export class RequerimentosService {
       ? converterDeHorasDecimal(data.horas_tecnico)
       : data.horas_tecnico;
 
-    // Calcular total das horas
+    const horasGestor = typeof data.horas_gestor === 'number'
+      ? converterDeHorasDecimal(data.horas_gestor)
+      : data.horas_gestor;
+
+    // Calcular total das horas (funcional + técnico + gestor)
     const horasTotal = somarHoras(
-      horasFuncional?.toString() || '0',
-      horasTecnico?.toString() || '0'
+      somarHoras(
+        horasFuncional?.toString() || '0',
+        horasTecnico?.toString() || '0'
+      ),
+      horasGestor?.toString() || '0'
     );
 
     return {
@@ -1122,6 +1139,7 @@ export class RequerimentosService {
       data_aprovacao: data.data_aprovacao,
       horas_funcional: horasFuncional,
       horas_tecnico: horasTecnico,
+      horas_gestor: horasGestor,
       horas_total: horasTotal,
       linguagem: data.linguagem,
       tipo_cobranca: data.tipo_cobranca,
@@ -1136,8 +1154,10 @@ export class RequerimentosService {
       // Campos de valor/hora
       valor_hora_funcional: data.valor_hora_funcional,
       valor_hora_tecnico: data.valor_hora_tecnico,
+      valor_hora_gestor: data.valor_hora_gestor,
       valor_total_funcional: data.valor_total_funcional,
       valor_total_tecnico: data.valor_total_tecnico,
+      valor_total_gestor: data.valor_total_gestor,
       valor_total_geral: data.valor_total_geral,
       // Campo de tipo de hora extra
       tipo_hora_extra: data.tipo_hora_extra,

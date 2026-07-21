@@ -12,6 +12,7 @@ export interface Requerimento {
   data_aprovacao?: string; // Opcional
   horas_funcional: number | string; // Suporta formato HH:MM
   horas_tecnico: number | string; // Suporta formato HH:MM
+  horas_gestor?: number | string; // Suporta formato HH:MM
   horas_total: number | string;
   linguagem: LinguagemType;
   tipo_cobranca: TipoCobrancaType;
@@ -20,8 +21,10 @@ export interface Requerimento {
   // Campos de valor/hora (para tipos específicos)
   valor_hora_funcional?: number;
   valor_hora_tecnico?: number;
+  valor_hora_gestor?: number;
   valor_total_funcional?: number;
   valor_total_tecnico?: number;
+  valor_total_gestor?: number;
   valor_total_geral?: number;
   // Campo para tipo de hora extra (quando tipo_cobranca === 'Hora Extra')
   tipo_hora_extra?: TipoHoraExtraType;
@@ -44,7 +47,7 @@ export interface Requerimento {
 
 // Tipos para opções de select
 export type ModuloType = '' | 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
-export type LinguagemType = '' | 'ABAP' | 'DBA' | 'PL/SQL' | 'Técnico' | 'Funcional' | 'Gestor';
+export type LinguagemType = '' | 'ABAP' | 'DBA' | 'PL/SQL' | 'Técnico' | 'Funcional';
 export type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
 export type TipoHoraExtraType = '17h30-19h30' | 'apos_19h30' | 'fim_semana';
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
@@ -64,7 +67,6 @@ export const LINGUAGEM_OPTIONS: { value: LinguagemType; label: string }[] = [
   { value: 'ABAP', label: 'ABAP' },
   { value: 'DBA', label: 'DBA' },
   { value: 'Funcional', label: 'Funcional' },
-  { value: 'Gestor', label: 'Gestor' },
   { value: 'PL/SQL', label: 'PL/SQL' },
   { value: 'Técnico', label: 'Técnico' }
 ];
@@ -112,6 +114,7 @@ export interface RequerimentoFormData {
   data_aprovacao?: string; // Opcional
   horas_funcional: number | string; // Suporta formato HH:MM
   horas_tecnico: number | string; // Suporta formato HH:MM
+  horas_gestor?: number | string; // Suporta formato HH:MM
   linguagem: LinguagemType;
   tipo_cobranca: TipoCobrancaType;
   mes_cobranca: string; // Formato MM/YYYY
@@ -119,6 +122,7 @@ export interface RequerimentoFormData {
   // Campos de valor/hora (condicionais)
   valor_hora_funcional?: number;
   valor_hora_tecnico?: number;
+  valor_hora_gestor?: number;
   // Campo de tipo de hora extra (para tipo Hora Extra - opcional)
   tipo_hora_extra?: TipoHoraExtraType;
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)

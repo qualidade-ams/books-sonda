@@ -146,6 +146,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
     try {
       const horasFuncional = requerimento.horas_funcional?.toString() || '0';
       const horasTecnico = requerimento.horas_tecnico?.toString() || '0';
+      const horasGestor = requerimento.horas_gestor?.toString() || '0';
 
       if (!horasFuncional || horasFuncional === 'null' || horasFuncional === 'undefined') {
         return '0';
@@ -155,7 +156,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
         return '0';
       }
 
-      const resultado = somarHoras(horasFuncional, horasTecnico);
+      const resultado = somarHoras(somarHoras(horasFuncional, horasTecnico), horasGestor);
 
       if (!resultado || resultado === 'NaN' || resultado.includes('NaN')) {
         return '0';
@@ -193,10 +194,14 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
         return null;
       }
 
+      const horasGestorStr = requerimento.horas_gestor?.toString() || '0';
+      const horasGestorDecimal = converterParaHorasDecimal(horasGestorStr);
+
       const valorFuncional = (requerimento.valor_hora_funcional || 0) * horasFuncionalDecimal;
       const valorTecnico = (requerimento.valor_hora_tecnico || 0) * horasTecnicoDecimal;
+      const valorGestor = (requerimento.valor_hora_gestor || 0) * horasGestorDecimal;
 
-      const total = valorFuncional + valorTecnico;
+      const total = valorFuncional + valorTecnico + valorGestor;
 
       if (isNaN(total)) {
         return null;
@@ -254,6 +259,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
             <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
             <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
+            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H. Gestor</TableHead>
             <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
             <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
             <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.approvalDate')}</TableHead>
@@ -361,6 +367,12 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 <TableCell className="text-center py-3">
                   <span className="text-xs sm:text-sm lg:text-base font-medium">
                     {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
+                  </span>
+                </TableCell>
+
+                <TableCell className="text-center py-3">
+                  <span className="text-xs sm:text-sm lg:text-base font-medium">
+                    {formatarHorasParaExibicao(requerimento.horas_gestor?.toString() || '0', 'HHMM')}
                   </span>
                 </TableCell>
 

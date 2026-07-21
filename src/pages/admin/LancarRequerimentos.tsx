@@ -50,6 +50,8 @@ import { cn } from '@/lib/utils';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAccessibility } from '@/hooks/useAccessibility';
 import { useDebounceSearch, useMemoizedFilter, useVirtualPagination } from '@/utils/requerimentosPerformance';
+import { verificarMesFechado, processarRetificacao } from '@/services/retificacaoService';
+import { supabase } from '@/integrations/supabase/client';
 
 import {
     useRequerimentosNaoEnviados,
@@ -58,7 +60,8 @@ import {
     useUpdateRequerimento,
     useDeleteRequerimento,
     useEstatisticasRequerimentos,
-    useEnviarMultiplosParaFaturamento
+    useEnviarMultiplosParaFaturamento,
+    useClientesRequerimentos
 } from '@/hooks/useRequerimentos';
 
 import {
@@ -89,6 +92,15 @@ const LancarRequerimentos = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
+
+    // Estados para modal de retificação (mês fechado)
+    const [showRetificacaoModal, setShowRetificacaoModal] = useState(false);
+    const [retificacaoPendente, setRetificacaoPendente] = useState<{
+      tipo: 'multiplo' | 'edicao';
+      dados: RequerimentoFormData | RequerimentoFormData[];
+      mesesFechados: string[]; // ex: ["01/2026 - CLIENTE X"]
+      clienteNome: string;
+    } | null>(null);
 
     // Estado para controlar a aba ativa
     const [activeTab, setActiveTab] = useState('nao-enviados');
@@ -164,6 +176,7 @@ const LancarRequerimentos = () => {
     const updateRequerimento = useUpdateRequerimento();
     const deleteRequerimento = useDeleteRequerimento();
     const enviarMultiplos = useEnviarMultiplosParaFaturamento();
+    const { data: clientes = [] } = useClientesRequerimentos();
 
     // Determinar qual lista e filtros usar baseado na aba ativa
     const currentRequerimentos = activeTab === 'nao-enviados' ? requerimentos : requerimentosEnviados;
@@ -416,8 +429,41 @@ const LancarRequerimentos = () => {
     const handleCreateMultiplo = useCallback(async (requerimentos: RequerimentoFormData[]) => {
         console.log('🏠 PÁGINA - handleCreateMultiplo recebeu:', requerimentos.length, 'requerimentos');
         
+        // Verificar se algum mês de cobrança está fechado
+        const mesesFechados: string[] = [];
+        for (const data of requerimentos) {
+            if (data.mes_cobranca && data.cliente_id) {
+                const resultado = await verificarMesFechado(data.cliente_id, data.mes_cobranca);
+                if (resultado.fechado) {
+                    const clienteInfo = clientes.find(c => c.id === data.cliente_id);
+                    const info = `${data.mes_cobranca} - ${clienteInfo?.nome_abreviado || 'Cliente'}`;
+                    if (!mesesFechados.includes(info)) {
+                        mesesFechados.push(info);
+                    }
+                }
+            }
+        }
+
+        if (mesesFechados.length > 0) {
+            // Mês fechado encontrado - mostrar modal de confirmação
+            const clienteInfo = clientes.find(c => c.id === requerimentos[0].cliente_id);
+            setRetificacaoPendente({
+                tipo: 'multiplo',
+                dados: requerimentos,
+                mesesFechados,
+                clienteNome: clienteInfo?.nome_abreviado || 'Cliente'
+            });
+            setShowRetificacaoModal(true);
+            return; // Não salva ainda - espera confirmação
+        }
+
+        // Mês não fechado - salvar normalmente
+        await executarCriacaoMultipla(requerimentos);
+    }, [createRequerimento, screenReader]);
+
+    // Função que efetivamente cria os requerimentos múltiplos
+    const executarCriacaoMultipla = useCallback(async (requerimentos: RequerimentoFormData[]) => {
         try {
-            // Criar cada requerimento sequencialmente
             for (const data of requerimentos) {
                 console.log('🏠 PÁGINA - Criando requerimento:', data.tipo_cobranca);
                 await createRequerimento.mutateAsync(data);
@@ -428,7 +474,7 @@ const LancarRequerimentos = () => {
         } catch (error) {
             console.error('🏠 PÁGINA - Erro ao criar requerimentos:', error);
             screenReader.announceError('Erro ao criar requerimentos');
-            throw error; // Propagar erro para o formulário
+            throw error;
         }
     }, [createRequerimento, screenReader]);
 
@@ -448,9 +494,34 @@ const LancarRequerimentos = () => {
         console.log('🏠 PÁGINA - Horas análise EF:', data.horas_analise_ef);
         
         if (!selectedRequerimento) return;
+
+        // Verificar se mês de cobrança está fechado APENAS se houve mudança no mes_cobranca
+        const mesCobrancaMudou = data.mes_cobranca !== (selectedRequerimento.mes_cobranca || '');
+        
+        if (mesCobrancaMudou && data.mes_cobranca && data.cliente_id) {
+            const resultado = await verificarMesFechado(data.cliente_id, data.mes_cobranca);
+            if (resultado.fechado) {
+                const clienteInfo = clientes.find(c => c.id === data.cliente_id);
+                setRetificacaoPendente({
+                    tipo: 'edicao',
+                    dados: data,
+                    mesesFechados: [`${data.mes_cobranca} - ${clienteInfo?.nome_abreviado || 'Cliente'}`],
+                    clienteNome: clienteInfo?.nome_abreviado || 'Cliente'
+                });
+                setShowRetificacaoModal(true);
+                return; // Espera confirmação
+            }
+        }
+
+        // Mês não fechado - salvar normalmente
+        await executarAtualizacao(data);
+    };
+
+    // Função que efetivamente atualiza o requerimento
+    const executarAtualizacao = async (data: RequerimentoFormData) => {
+        if (!selectedRequerimento) return;
         
         try {
-            // Atualizar o requerimento principal
             console.log('🏠 PÁGINA - Atualizando requerimento principal...');
             await updateRequerimento.mutateAsync({
                 id: selectedRequerimento.id,
@@ -498,6 +569,70 @@ const LancarRequerimentos = () => {
             console.error('🏠 PÁGINA - Erro ao atualizar:', error);
             screenReader.announceError('Erro ao atualizar requerimento');
         }
+    };
+
+    // Handler para confirmar retificação (mês fechado)
+    const handleConfirmarRetificacao = async () => {
+        if (!retificacaoPendente) return;
+
+        // Obter nome do usuário logado
+        const { data: { user } } = await supabase.auth.getUser();
+        const nomeUsuario = user?.user_metadata?.full_name || user?.email || 'Usuário não identificado';
+
+        try {
+            if (retificacaoPendente.tipo === 'multiplo') {
+                const requerimentos = retificacaoPendente.dados as RequerimentoFormData[];
+                await executarCriacaoMultipla(requerimentos);
+
+                // Processar retificação para cada requerimento com mês fechado
+                for (const data of requerimentos) {
+                    if (data.mes_cobranca && data.cliente_id) {
+                        const resultado = await verificarMesFechado(data.cliente_id, data.mes_cobranca);
+                        if (resultado.fechado) {
+                            const clienteInfo = clientes.find(c => c.id === data.cliente_id);
+                            await processarRetificacao({
+                                chamado: data.chamado,
+                                clienteNome: clienteInfo?.nome_abreviado || 'Cliente',
+                                clienteId: data.cliente_id,
+                                mesCobranca: data.mes_cobranca,
+                                tipoCobranca: data.tipo_cobranca,
+                                autorNome: nomeUsuario
+                            });
+                        }
+                    }
+                }
+                toast.success('Requerimento(s) criado(s). Email de retificação enviado.');
+            } else {
+                const data = retificacaoPendente.dados as RequerimentoFormData;
+                await executarAtualizacao(data);
+
+                // Processar retificação
+                if (data.mes_cobranca && data.cliente_id) {
+                    const clienteInfo = clientes.find(c => c.id === data.cliente_id);
+                    await processarRetificacao({
+                        chamado: data.chamado,
+                        clienteNome: clienteInfo?.nome_abreviado || 'Cliente',
+                        clienteId: data.cliente_id,
+                        mesCobranca: data.mes_cobranca,
+                        tipoCobranca: data.tipo_cobranca,
+                        autorNome: nomeUsuario
+                    });
+                }
+                toast.success('Requerimento atualizado. Email de retificação enviado.');
+            }
+        } catch (error) {
+            console.error('Erro ao processar retificação:', error);
+            toast.error('Erro ao processar requerimento');
+        } finally {
+            setShowRetificacaoModal(false);
+            setRetificacaoPendente(null);
+        }
+    };
+
+    // Handler para cancelar retificação
+    const handleCancelarRetificacao = () => {
+        setShowRetificacaoModal(false);
+        setRetificacaoPendente(null);
     };
 
     // Handler para confirmar modal de Reprovado
@@ -1245,6 +1380,43 @@ const LancarRequerimentos = () => {
                                 className="bg-red-600 hover:bg-red-700"
                             >
                                 {deleteRequerimento.isPending ? t('common.loading') : t('common.delete')}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Modal de Confirmação de Retificação (Mês Fechado) */}
+                <AlertDialog open={showRetificacaoModal} onOpenChange={setShowRetificacaoModal}>
+                    <AlertDialogContent className="sm:max-w-[500px]">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-orange-600 flex items-center gap-2">
+                                ⚠️ Mês já fechado (Book enviado)
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="space-y-3">
+                                <p>
+                                    O período selecionado já está fechado. O book já foi gerado e enviado para o cliente.
+                                </p>
+                                {retificacaoPendente && (
+                                    <div className="bg-orange-50 border border-orange-200 rounded-md p-3 mt-2">
+                                        <p className="text-sm font-medium text-orange-800 mb-1">Períodos fechados:</p>
+                                        <ul className="text-sm text-orange-700 list-disc pl-4">
+                                            {retificacaoPendente.mesesFechados.map((mes, i) => (
+                                                <li key={i}>{mes}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={handleCancelarRetificacao}>
+                                Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={handleConfirmarRetificacao}
+                                className="bg-orange-600 hover:bg-orange-700"
+                            >
+                                Confirmar e Notificar
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
