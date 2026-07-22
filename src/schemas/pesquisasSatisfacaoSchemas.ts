@@ -21,8 +21,8 @@ export const PesquisaFormSchemaBase = z.object({
   
   // Campos opcionais
   categoria: z.string()
-    .min(1, 'Categoria é obrigatória')
-    .max(100, 'Categoria deve ter no máximo 100 caracteres'),
+    .min(1, 'Grupo é obrigatório')
+    .max(100, 'Grupo deve ter no máximo 100 caracteres'),
   
   grupo: z.string()
     .max(100, 'Grupo deve ter no máximo 100 caracteres')

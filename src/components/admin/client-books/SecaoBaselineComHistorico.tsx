@@ -30,10 +30,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 
 // Função auxiliar para formatar data sem problemas de timezone
-const formatarDataLocal = (dataString: string): string => {
-  // Adiciona 'T00:00:00' para forçar interpretação como data local
-  const data = new Date(dataString + 'T00:00:00');
-  return format(data, 'dd/MM/yyyy', { locale: ptBR });
+const formatarDataLocal = (dataString: string | null | undefined): string => {
+  if (!dataString || dataString.trim() === '') return '-';
+  
+  try {
+    // Extrair apenas a parte da data (YYYY-MM-DD) caso venha com 'T' ou timezone
+    const dataParte = dataString.split('T')[0];
+    const data = new Date(dataParte + 'T00:00:00');
+    
+    // Verificar se a data é válida antes de formatar
+    if (isNaN(data.getTime())) return '-';
+    
+    return format(data, 'dd/MM/yyyy', { locale: ptBR });
+  } catch {
+    return '-';
+  }
 };
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';

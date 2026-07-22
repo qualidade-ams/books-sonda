@@ -42,6 +42,19 @@ import type { BaselineHistorico } from '@/types/baselineHistorico';
 import ModalNovoBaseline from './ModalNovoBaseline';
 import ModalEditarBaseline from './ModalEditarBaseline';
 
+// Função auxiliar para formatar data com proteção contra valores inválidos
+const formatarDataSegura = (dataString: string | null | undefined): string => {
+  if (!dataString || dataString.trim() === '') return '-';
+  try {
+    const dataParte = dataString.split('T')[0];
+    const data = new Date(dataParte + 'T00:00:00');
+    if (isNaN(data.getTime())) return '-';
+    return format(data, 'dd/MM/yyyy', { locale: ptBR });
+  } catch {
+    return '-';
+  }
+};
+
 interface GerenciadorBaselineHistoricoProps {
   empresaId: string;
   empresaNome: string;
@@ -149,7 +162,7 @@ export default function GerenciadorBaselineHistorico({
                     )}
                   </div>
                   <Badge className="bg-green-100 text-green-800">
-                    Vigente desde {format(new Date(baselineAtual.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
+                    Vigente desde {formatarDataSegura(baselineAtual.data_inicio)}
                   </Badge>
                 </div>
               </AlertDescription>
@@ -185,13 +198,13 @@ export default function GerenciadorBaselineHistorico({
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-gray-500" />
                               <span className="text-sm font-medium text-gray-700">
-                                {format(new Date(baseline.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
+                                {formatarDataSegura(baseline.data_inicio)}
                               </span>
                               {baseline.data_fim && (
                                 <>
                                   <span className="text-gray-400">→</span>
                                   <span className="text-sm font-medium text-gray-700">
-                                    {format(new Date(baseline.data_fim), 'dd/MM/yyyy', { locale: ptBR })}
+                                    {formatarDataSegura(baseline.data_fim)}
                                   </span>
                                 </>
                               )}

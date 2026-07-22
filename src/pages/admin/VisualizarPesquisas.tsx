@@ -51,7 +51,7 @@ import {
 } from '@/hooks/usePesquisasSatisfacao';
 import { useCacheManager } from '@/hooks/useCacheManager';
 import { useEmpresas } from '@/hooks/useEmpresas';
-import { useCategorias, useGruposPorCategoria, useGrupoPorCategoria } from '@/hooks/useDeParaCategoria';
+import { useCategorias, useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
 import { useEspecialistasIdsPesquisa, useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
@@ -132,7 +132,27 @@ function VisualizarPesquisas() {
   // Hooks para dados de seleção
   const { empresas } = useEmpresas();
   const { data: categorias = [] } = useCategorias();
+  const { data: deParaCategorias = [] } = useDeParaCategoria();
   
+  // Função para converter valor salvo na pesquisa para grupo_book
+  // Pesquisas do SQL Server: grupo = código de resolução (ex: "AMS APL - E-DOCS - N2")
+  // Pesquisas manuais: categoria pode já ser o grupo_book
+  const converterParaGrupoBook = (valorCategoria: string, valorGrupo: string): string => {
+    // Prioridade 1: Se grupo tem valor, buscar grupo_book correspondente
+    if (valorGrupo) {
+      // Se já é um grupo_book válido (está na lista do select), retornar direto
+      if (categorias.some(cat => cat.value === valorGrupo)) return valorGrupo;
+      // Buscar na tabela de_para_categoria: grupo → grupo_book
+      const encontrado = deParaCategorias.find(dp => dp.grupo === valorGrupo);
+      if (encontrado?.grupo_book) return encontrado.grupo_book;
+    }
+    // Prioridade 2: Se categoria tem valor, verificar se é um grupo_book válido
+    if (valorCategoria) {
+      if (categorias.some(cat => cat.value === valorCategoria)) return valorCategoria;
+    }
+    // Fallback
+    return valorCategoria || valorGrupo || '';
+  };
   // Filtrar categorias baseado na busca
   const categoriasFiltradas = useMemo(() => {
     if (!searchCategoria.trim()) {
@@ -153,12 +173,6 @@ function VisualizarPesquisas() {
       return palavras.some(palavra => palavra.startsWith(termoBusca));
     });
   }, [searchCategoria, categorias]);
-  
-  // Observar mudanças na categoria selecionada para buscar grupos
-  const { data: grupos = [] } = useGruposPorCategoria(dadosEdicao.categoria);
-
-  // Buscar grupo correspondente à categoria da pesquisa selecionada (para visualização)
-  const { data: grupoDeParaVisualizacao } = useGrupoPorCategoria(pesquisaSelecionada?.categoria);
 
   // Buscar especialistas relacionados à pesquisa (para edição) - RETORNA { ids, isLoading }
   const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisaEditando?.id) as { ids: string[]; isLoading: boolean };
@@ -203,26 +217,6 @@ function VisualizarPesquisas() {
 
   // Debug removido para evitar logs excessivos no console
 
-  // Preencher grupo automaticamente quando categoria for selecionada
-  useEffect(() => {
-    if (dadosEdicao.categoria && grupos.length > 0) {
-      // Se há apenas um grupo para a categoria, seleciona automaticamente
-      if (grupos.length === 1) {
-        setDadosEdicao(prev => ({ ...prev, grupo: grupos[0].value }));
-      }
-      // Se o grupo atual não está na lista de grupos válidos, limpa o campo
-      else {
-        const grupoValido = grupos.find(g => g.value === dadosEdicao.grupo);
-        if (!grupoValido) {
-          setDadosEdicao(prev => ({ ...prev, grupo: '' }));
-        }
-      }
-    } else if (!dadosEdicao.categoria) {
-      // Se categoria foi limpa, limpa o grupo também
-      setDadosEdicao(prev => ({ ...prev, grupo: '' }));
-    }
-  }, [dadosEdicao.categoria, grupos]);
-
   // Preencher especialistas quando pesquisa for carregada - AGUARDAR LOADING
   useEffect(() => {
     console.log('🔄 [VisualizarPesquisas useEffect] === EXECUÇÃO ===');
@@ -266,7 +260,7 @@ function VisualizarPesquisas() {
       email_cliente: pesquisa.email_cliente || '',
       prestador: pesquisa.prestador || '',
       solicitante: pesquisa.solicitante || '',
-      categoria: pesquisa.categoria || '',
+      categoria: converterParaGrupoBook(pesquisa.categoria || '', pesquisa.grupo || ''),
       grupo: pesquisa.grupo || '',
       tipo_caso: pesquisa.tipo_caso || '',
       nro_caso: pesquisa.nro_caso || '',
@@ -843,17 +837,9 @@ function VisualizarPesquisas() {
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Categorização</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                      <Input
-                        value={pesquisaSelecionada.categoria || ''}
-                        disabled
-                        className="bg-gray-50 text-gray-900"
-                      />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
                       <Input
-                        value={grupoDeParaVisualizacao || pesquisaSelecionada.grupo || ''}
+                        value={converterParaGrupoBook(pesquisaSelecionada.categoria || '', pesquisaSelecionada.grupo || '')}
                         disabled
                         className="bg-gray-50 text-gray-900"
                       />
@@ -1100,7 +1086,7 @@ function VisualizarPesquisas() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Categoria <span className="text-black">*</span>
+                        Grupo <span className="text-black">*</span>
                       </label>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -1111,38 +1097,38 @@ function VisualizarPesquisas() {
                           >
                             {dadosEdicao.categoria
                               ? categorias.find((cat) => cat.value === dadosEdicao.categoria)?.label
-                              : "Selecione a categoria"}
+                              : "Selecione o grupo"}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-full p-0" align="start">
                           <Command shouldFilter={false}>
                             <CommandInput 
-                              placeholder="Buscar categoria..." 
+                              placeholder="Buscar grupo..." 
                               value={searchCategoria}
                               onValueChange={setSearchCategoria}
                             />
                             <CommandList>
-                              <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                              <CommandEmpty>Nenhum grupo encontrado.</CommandEmpty>
                               <CommandGroup>
-                                {categoriasFiltradas.map((categoria) => (
+                                {categoriasFiltradas.map((grupo) => (
                                   <CommandItem
-                                    key={categoria.value}
-                                    value={categoria.value}
+                                    key={grupo.value}
+                                    value={grupo.value}
                                     onSelect={() => {
-                                      setDadosEdicao(prev => ({ ...prev, categoria: categoria.value, grupo: '' }));
+                                      setDadosEdicao(prev => ({ ...prev, categoria: grupo.value }));
                                       setSearchCategoria('');
                                     }}
                                   >
                                     <Check
                                       className={cn(
                                         "mr-2 h-4 w-4",
-                                        categoria.value === dadosEdicao.categoria
+                                        grupo.value === dadosEdicao.categoria
                                           ? "opacity-100"
                                           : "opacity-0"
                                       )}
                                     />
-                                    {categoria.label}
+                                    {grupo.label}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -1150,39 +1136,6 @@ function VisualizarPesquisas() {
                           </Command>
                         </PopoverContent>
                       </Popover>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
-                      {grupos.length === 1 ? (
-                        // Quando há apenas um grupo, mostra como campo readonly
-                        <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
-                          {grupos[0].label}
-                        </div>
-                      ) : (
-                        // Quando há múltiplos grupos, mostra como select
-                        <Select 
-                          value={dadosEdicao.grupo} 
-                          onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, grupo: value }))}
-                          disabled={!dadosEdicao.categoria || grupos.length === 0}
-                        >
-                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                            <SelectValue placeholder={
-                              !dadosEdicao.categoria 
-                                ? "Selecione uma categoria primeiro" 
-                                : grupos.length === 0 
-                                ? "Nenhum grupo disponível" 
-                                : "Selecione o grupo"
-                            } />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {grupos.map(grupo => (
-                              <SelectItem key={grupo.value} value={grupo.value}>
-                                {grupo.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
                     </div>
                   </div>
                 </div>

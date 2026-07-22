@@ -72,9 +72,21 @@ import type { PercentualRepasseHistorico } from '@/types/percentualRepasseHistor
 import { useAuth } from '@/hooks/useAuth';
 
 // Função auxiliar para formatar data sem problemas de timezone
-const formatarDataLocal = (dataString: string): string => {
-  const data = new Date(dataString + 'T00:00:00');
-  return format(data, 'dd/MM/yyyy', { locale: ptBR });
+const formatarDataLocal = (dataString: string | null | undefined): string => {
+  if (!dataString || dataString.trim() === '') return '-';
+  
+  try {
+    // Extrair apenas a parte da data (YYYY-MM-DD) caso venha com 'T' ou timezone
+    const dataParte = dataString.split('T')[0];
+    const data = new Date(dataParte + 'T00:00:00');
+    
+    // Verificar se a data é válida antes de formatar
+    if (isNaN(data.getTime())) return '-';
+    
+    return format(data, 'dd/MM/yyyy', { locale: ptBR });
+  } catch {
+    return '-';
+  }
 };
 
 interface SecaoPercentualRepasseComHistoricoProps {
@@ -256,8 +268,9 @@ export default function SecaoPercentualRepasseComHistorico({
                 // Verificar se está realmente vigente (data_inicio <= hoje)
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
-                const dataInicio = new Date(percentualAtual.data_inicio + 'T00:00:00');
-                const isRealmenteVigente = dataInicio <= hoje;
+                const dataInicioStr = percentualAtual.data_inicio || '';
+                const dataInicio = new Date(dataInicioStr.split('T')[0] + 'T00:00:00');
+                const isRealmenteVigente = !isNaN(dataInicio.getTime()) && dataInicio <= hoje;
                 
                 return (
                   <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -315,8 +328,9 @@ export default function SecaoPercentualRepasseComHistorico({
                   const hoje = new Date();
                   hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de data
                   
-                  const dataInicio = new Date(percentual.data_inicio + 'T00:00:00');
-                  const isVigente = !percentual.data_fim && dataInicio <= hoje;
+                  const dataInicioStr = percentual.data_inicio || '';
+                  const dataInicio = new Date(dataInicioStr.split('T')[0] + 'T00:00:00');
+                  const isVigente = !percentual.data_fim && !isNaN(dataInicio.getTime()) && dataInicio <= hoje;
 
                   return (
                     <Card key={percentual.id} className={isVigente ? 'border-sonda-blue' : 'border-gray-200'}>
@@ -545,7 +559,7 @@ export default function SecaoPercentualRepasseComHistorico({
                   <Label className="text-sm font-medium">Data Início *</Label>
                   <Input
                     type="date"
-                    defaultValue={percentualSelecionado.data_inicio.split('T')[0]}
+                    defaultValue={(percentualSelecionado.data_inicio || '').split('T')[0]}
                     onChange={(e) => setPercentualSelecionado({
                       ...percentualSelecionado,
                       data_inicio: e.target.value
