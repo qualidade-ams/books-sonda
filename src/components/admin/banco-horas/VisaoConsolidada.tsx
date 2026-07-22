@@ -722,7 +722,8 @@ export function VisaoConsolidada({
     return mesAno.mes === mesAtual && mesAno.ano === anoAtual;
   }, [mesAno]);
 
-  // Paginação de meses: exibir 6 por vez quando periodoApuracao > 6
+  // Paginação de meses: dividir equilibradamente quando periodoApuracao > 6
+  // Ex: 8 meses → 4+4, 10 meses → 5+5, 12 meses → 6+6, 9 meses → 5+4
   const MAX_COLUNAS_VISIVEIS = 6;
   const [paginaMeses, setPaginaMeses] = useState(0);
   
@@ -731,22 +732,29 @@ export function VisaoConsolidada({
     setPaginaMeses(0);
   }, [calculos.length, periodoApuracao, mesAno.mes, mesAno.ano]);
   
-  const totalPaginas = Math.ceil(calculos.length / MAX_COLUNAS_VISIVEIS);
   const precisaPaginacao = calculos.length > MAX_COLUNAS_VISIVEIS;
+  // Dividir em 2 páginas equilibradas: primeira página pega metade arredondada para cima
+  const totalPaginas = precisaPaginacao ? 2 : 1;
+  const colunasPrimeiraPagina = precisaPaginacao ? Math.ceil(calculos.length / 2) : calculos.length;
+  const colunasSegundaPagina = precisaPaginacao ? calculos.length - colunasPrimeiraPagina : 0;
   
   // Calculos visíveis na página atual
   const calculosVisiveis = useMemo(() => {
     if (!precisaPaginacao) return calculos;
-    const inicio = paginaMeses * MAX_COLUNAS_VISIVEIS;
-    return calculos.slice(inicio, inicio + MAX_COLUNAS_VISIVEIS);
-  }, [calculos, paginaMeses, precisaPaginacao]);
+    if (paginaMeses === 0) {
+      return calculos.slice(0, colunasPrimeiraPagina);
+    }
+    return calculos.slice(colunasPrimeiraPagina);
+  }, [calculos, paginaMeses, precisaPaginacao, colunasPrimeiraPagina]);
   
   // Meses do período visíveis na página atual
   const mesesDoPeriodoVisiveis = useMemo(() => {
     if (!mesesDoPeriodo || !precisaPaginacao) return mesesDoPeriodo;
-    const inicio = paginaMeses * MAX_COLUNAS_VISIVEIS;
-    return mesesDoPeriodo.slice(inicio, inicio + MAX_COLUNAS_VISIVEIS);
-  }, [mesesDoPeriodo, paginaMeses, precisaPaginacao]);
+    if (paginaMeses === 0) {
+      return mesesDoPeriodo.slice(0, colunasPrimeiraPagina);
+    }
+    return mesesDoPeriodo.slice(colunasPrimeiraPagina);
+  }, [mesesDoPeriodo, paginaMeses, precisaPaginacao, colunasPrimeiraPagina]);
 
   // Função para limpar filtro (voltar ao mês atual)
   const handleLimparFiltro = () => {
@@ -999,7 +1007,7 @@ export function VisaoConsolidada({
                 className={`text-xs ${paginaMeses === 0 ? 'bg-sonda-blue text-white hover:bg-sonda-blue' : ''}`}
               >
                 <ChevronLeft className="h-3 w-3 mr-1" />
-                {t('bankHours.firstSemester')}
+                {t('bankHours.pageLabel', { page: 1, months: colunasPrimeiraPagina })}
               </Button>
               <span className="text-xs text-gray-500">
                 {paginaMeses + 1} / {totalPaginas}
@@ -1011,7 +1019,7 @@ export function VisaoConsolidada({
                 disabled={paginaMeses === totalPaginas - 1}
                 className={`text-xs ${paginaMeses === 1 ? 'bg-sonda-blue text-white hover:bg-sonda-blue' : ''}`}
               >
-                {t('bankHours.secondSemester')}
+                {t('bankHours.pageLabel', { page: 2, months: colunasSegundaPagina })}
                 <ChevronRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
