@@ -110,6 +110,8 @@ export interface EmpresaFormData {
   // Periodicidade de apuração (ex: Samarco 15 a 14)
   dia_inicio_apuracao?: number;
   dia_fim_apuracao?: number;
+  // Empresa Consolidadora - quando preenchido, esta empresa não aparece nas telas de disparo
+  empresaConsolidadoraId?: string | null;
 }
 
 export interface ClienteFormData {
