@@ -78,6 +78,7 @@ export class EmpresasClientesService {
       tipo_cobranca: data.tipoCobranca || 'banco_horas',
       book_personalizado: data.bookPersonalizado || false,
       anexo: data.anexo || false,
+      empresa_consolidadora_id: data.empresaConsolidadoraId || null,
       vigencia_inicial: data.vigenciaInicial || null,
       vigencia_final: data.vigenciaFinal || null,
       observacao: data.observacao || null,
@@ -514,6 +515,9 @@ export class EmpresasClientesService {
       // Incluir campos de book personalizado e anexo
       if (data.bookPersonalizado !== undefined) updateData.book_personalizado = data.bookPersonalizado;
       if (data.anexo !== undefined) updateData.anexo = data.anexo;
+      
+      // Empresa Consolidadora
+      if (data.empresaConsolidadoraId !== undefined) updateData.empresa_consolidadora_id = data.empresaConsolidadoraId || null;
       
       // Incluir campo de observação
       if (data.observacao !== undefined) updateData.observacao = data.observacao || null;

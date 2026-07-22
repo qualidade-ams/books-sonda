@@ -54,6 +54,7 @@ class BooksDisparoService {
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
         .eq('book_personalizado', false)
+        .is('empresa_consolidadora_id', null)
         .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
@@ -266,6 +267,7 @@ class BooksDisparoService {
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
         .eq('book_personalizado', false)
+        .is('empresa_consolidadora_id', null)
         .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
@@ -504,6 +506,7 @@ class BooksDisparoService {
         `)
         .eq('status', 'ativo')
         .eq('book_personalizado', true)
+        .is('empresa_consolidadora_id', null)
         .eq('controle_mensal.mes', mes)
         .eq('controle_mensal.ano', ano)
         .order('nome_abreviado');
@@ -654,6 +657,7 @@ class BooksDisparoService {
         .select('*')
         .eq('status', 'ativo')
         .eq('book_personalizado', true)
+        .is('empresa_consolidadora_id', null)
         .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
@@ -862,6 +866,7 @@ class BooksDisparoService {
         .in('id', empresaIds)
         .eq('status', 'ativo')
         .eq('book_personalizado', true)
+        .is('empresa_consolidadora_id', null)
         .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
@@ -1342,6 +1347,7 @@ class BooksDisparoService {
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
         .eq('book_personalizado', false)
+        .is('empresa_consolidadora_id', null)
         .eq('controle_mensal.mes', mes)
         .eq('controle_mensal.ano', ano)
         .order('nome_abreviado');

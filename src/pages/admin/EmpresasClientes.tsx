@@ -382,6 +382,7 @@ const EmpresasClientes = () => {
       vigenciaFinal: empresa.vigencia_final || '',
       bookPersonalizado: empresa.book_personalizado || false,
       anexo: empresa.anexo || false,
+      empresaConsolidadoraId: (empresa as any).empresa_consolidadora_id || null,
       observacao: empresa.observacao || '',
       // NOVO: Parâmetros de Banco de Horas
       tipo_contrato: empresa.tipo_contrato as any || undefined,

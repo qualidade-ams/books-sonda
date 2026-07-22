@@ -37,6 +37,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { inativarTaxasCliente } from '@/services/taxasClientesService';
 import { useEmpresaAnexos } from '@/hooks/useEmpresaAnexos';
 import { empresaAnexosService } from '@/services/empresaAnexosService';
+import { useEmpresas } from '@/hooks/useEmpresas';
 import { SegmentacaoBaselineForm } from './SegmentacaoBaselineForm';
 import SecaoBaselineComHistorico from './SecaoBaselineComHistorico';
 import SecaoPercentualRepasseComHistorico from './SecaoPercentualRepasseComHistorico';
@@ -139,6 +140,8 @@ const empresaSchema = z.object({
       ordem: z.number().int().min(1),
     }))
   }).optional(),
+  // Empresa Consolidadora
+  empresaConsolidadoraId: z.string().nullable().optional(),
 }).refine((data) => {
   // Validação condicional para descrição do status
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
@@ -305,6 +308,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Hook para buscar lista de empresas (usado no select Empresa Consolidadora)
+  const { empresas: todasEmpresas } = useEmpresas({ status: ['ativo'] }) as any;
+
   // Hook para gerenciamento de anexos
   const {
     anexosSalvos,
@@ -1053,6 +1059,53 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     )}
                   />
                 </div>
+
+                {/* Empresa Consolidadora */}
+                <FormField
+                  control={form.control}
+                  name="empresaConsolidadoraId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1">
+                        Empresa Consolidadora
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger type="button" tabIndex={-1}>
+                              <Info className="h-4 w-4 text-gray-400 hover:text-sonda-blue cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs text-sm">
+                              Quando preenchido, esta empresa não aparecerá nas telas de Disparo e Disparo Personalizado (seu book é enviado junto com a consolidadora).
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
+                        value={field.value || '__none__'}
+                        disabled={isFieldDisabled}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Nenhuma (aparece nos disparos)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nenhuma (aparece nos disparos)</SelectItem>
+                          {todasEmpresas
+                            ?.filter((e: any) => e.id !== initialData?.id && e.status === 'ativo')
+                            .sort((a: any, b: any) => (a.nome_abreviado || a.nome_completo || '').localeCompare(b.nome_abreviado || b.nome_completo || '', 'pt-BR'))
+                            .map((e: any) => (
+                              <SelectItem key={e.id} value={e.id}>
+                                {e.nome_abreviado || e.nome_completo}
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
