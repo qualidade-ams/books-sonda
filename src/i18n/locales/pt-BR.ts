@@ -1012,6 +1012,7 @@ const ptBR = {
     zeroConsumptionDescription: 'Se você sabe que existem apontamentos para este período, clique no botão "Forçar Recálculo" acima para atualizar os valores.',
     firstSemester: '1º Semestre',
     secondSemester: '2º Semestre',
+    pageLabel: 'Parte {{page}} ({{months}} meses)',
     consumptionDataLabel: 'Dados de Consumo Chamados:',
     consumptionDataSyncMsg: 'Os dados são equivalentes à última sincronização realizada em',
     consumptionDataNoSync: 'Não foi possível verificar a data da última sincronização.',

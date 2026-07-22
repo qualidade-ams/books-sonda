@@ -1012,6 +1012,7 @@ const en = {
     zeroConsumptionDescription: 'If you know there are entries for this period, click the "Force Recalculate" button above to update the values.',
     firstSemester: '1st Semester',
     secondSemester: '2nd Semester',
+    pageLabel: 'Part {{page}} ({{months}} months)',
     consumptionDataLabel: 'Ticket Consumption Data:',
     consumptionDataSyncMsg: 'Data is equivalent to the last sync performed on',
     consumptionDataNoSync: 'Could not verify the date of the last sync.',

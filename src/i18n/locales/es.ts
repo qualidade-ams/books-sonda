@@ -1012,6 +1012,7 @@ const es = {
     zeroConsumptionDescription: 'Si sabe que existen registros para este período, haga clic en el botón "Forzar Recálculo" arriba para actualizar los valores.',
     firstSemester: '1er Semestre',
     secondSemester: '2do Semestre',
+    pageLabel: 'Parte {{page}} ({{months}} meses)',
     consumptionDataLabel: 'Datos de Consumo Llamados:',
     consumptionDataSyncMsg: 'Los datos son equivalentes a la última sincronización realizada el',
     consumptionDataNoSync: 'No fue posible verificar la fecha de la última sincronización.',
