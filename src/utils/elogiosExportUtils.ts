@@ -25,24 +25,24 @@ interface EmpresaMapping {
 }
 
 /**
- * Função para fazer de-para da categoria para grupo
+ * Função para fazer de-para do grupo para grupo_book
  */
 const obterGrupoPorCategoria = (categoria: string, deParaCategorias: DeParaCategoria[]): string => {
   if (!categoria) return '-';
   
-  // Busca exata primeiro
+  // Busca exata primeiro (caso_grupo → grupo → grupo_book)
   let deParaEncontrado = deParaCategorias.find(
-    dp => dp.categoria === categoria
+    dp => dp.grupo && dp.grupo === categoria
   );
   
   // Se não encontrar, tentar busca parcial (mais flexível)
   if (!deParaEncontrado) {
     deParaEncontrado = deParaCategorias.find(
-      dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+      dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
     );
   }
   
-  return deParaEncontrado?.grupo || '-';
+  return deParaEncontrado?.grupo_book || '-';
 };
 
 /**

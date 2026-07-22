@@ -50,7 +50,7 @@ import { getPesquisaFormSchema } from '@/schemas/pesquisasSatisfacaoSchemas';
 import type { PesquisaFormData, Pesquisa } from '@/types/pesquisasSatisfacao';
 import { MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
 import { useEmpresas } from '@/hooks/useEmpresas';
-import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
+import { useCategorias, useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
 import { useEspecialistasIdsPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
@@ -70,10 +70,24 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   
   // Buscar categorias e grupos da tabela DE-PARA
   const { data: categorias = [], isLoading: categoriasLoading } = useCategorias();
+  const { data: deParaCategorias = [] } = useDeParaCategoria();
   
-  console.log('🔍 [PesquisaForm] Categorias carregadas:', categorias);
-  console.log('🔍 [PesquisaForm] Categorias loading:', categoriasLoading);
-  console.log('🔍 [PesquisaForm] Quantidade de categorias:', categorias.length);
+  console.log('🔍 [PesquisaForm] Grupos carregados:', categorias);
+  console.log('🔍 [PesquisaForm] Grupos loading:', categoriasLoading);
+  console.log('🔍 [PesquisaForm] Quantidade de grupos:', categorias.length);
+
+  // Função para converter valor salvo na pesquisa para grupo_book
+  const converterParaGrupoBook = (valorCategoria: string, valorGrupo: string): string => {
+    if (valorGrupo) {
+      if (categorias.some(cat => cat.value === valorGrupo)) return valorGrupo;
+      const encontrado = deParaCategorias.find(dp => dp.grupo === valorGrupo);
+      if (encontrado?.grupo_book) return encontrado.grupo_book;
+    }
+    if (valorCategoria) {
+      if (categorias.some(cat => cat.value === valorCategoria)) return valorCategoria;
+    }
+    return valorCategoria || valorGrupo || '';
+  };
 
   // Estado para armazenar consultores manuais
   const [consultoresManuais, setConsultoresManuais] = React.useState<Array<{ label: string; value: string; email?: string }>>([]);
@@ -100,12 +114,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       especialistas_ids: []
     }
   });
-
-  // Observar mudanças na categoria selecionada
-  const categoriaSelecionada = form.watch('categoria');
-  
-  // Buscar grupos baseado na categoria selecionada
-  const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
 
   // Buscar especialistas relacionados à pesquisa (para edição)
   const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisa?.id) as { ids: string[]; isLoading: boolean };
@@ -185,7 +193,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       const dadosReset = {
         empresa: empresaValue || '',
         cliente: pesquisa.cliente,
-        categoria: pesquisa.categoria || '',
+        categoria: converterParaGrupoBook(pesquisa.categoria || '', pesquisa.grupo || ''),
         grupo: pesquisa.grupo || undefined,
         email_cliente: pesquisa.email_cliente || '',
         prestador: pesquisa.prestador || '',
@@ -203,8 +211,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       
       console.log('✅ [PesquisaForm useEffect reset] Dados para reset:', dadosReset);
       
-      // Verificar se a categoria existe na lista de categorias disponíveis
-      const categoriaExiste = categorias.some(cat => cat.value === pesquisa.categoria);
+      // Verificar se o grupo_book convertido existe na lista
+      const grupoBookConvertido = converterParaGrupoBook(pesquisa.categoria || '', pesquisa.grupo || '');
+      const categoriaExiste = categorias.some(cat => cat.value === grupoBookConvertido);
       
       // Resetar formulário
       form.reset(dadosReset, {
@@ -223,14 +232,14 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       console.log('✅ [PesquisaForm useEffect reset] Reset executado');
       
       // Forçar atualização do campo categoria especificamente
-      if (pesquisa.categoria && categoriaExiste) {
-        form.setValue('categoria', pesquisa.categoria, {
+      if (grupoBookConvertido && categoriaExiste) {
+        form.setValue('categoria', grupoBookConvertido, {
           shouldValidate: true,
           shouldDirty: false,
           shouldTouch: false
         });
       } else if (pesquisa.categoria && !categoriaExiste) {
-        console.warn('⚠️ [PesquisaForm useEffect reset] Categoria não encontrada na lista:', pesquisa.categoria);
+        console.warn('⚠️ [PesquisaForm useEffect reset] Grupo_book não encontrado na lista:', grupoBookConvertido);
       }
     } else {
       console.log('⚠️ [PesquisaForm useEffect reset] Condições não atendidas, pulando reset');
@@ -417,27 +426,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
     processamentoEmAndamento.current = false;
     setConsultoresManuais([]); // Limpar consultores manuais ao trocar de pesquisa
   }, [pesquisa?.id]);
-
-  // Preencher grupo automaticamente quando categoria for selecionada
-  useEffect(() => {
-    if (categoriaSelecionada && grupos.length > 0) {
-      // Se há apenas um grupo para a categoria, seleciona automaticamente
-      if (grupos.length === 1) {
-        form.setValue('grupo', grupos[0].value);
-      }
-      // Se o grupo atual não está na lista de grupos válidos, limpa o campo
-      else {
-        const grupoAtual = form.getValues('grupo');
-        const grupoValido = grupos.find(g => g.value === grupoAtual);
-        if (!grupoValido) {
-          form.setValue('grupo', undefined);
-        }
-      }
-    } else if (!categoriaSelecionada) {
-      // Se categoria foi limpa, limpa o grupo também
-      form.setValue('grupo', undefined);
-    }
-  }, [categoriaSelecionada, grupos, form]);
 
   const handleSubmit = async (dados: PesquisaFormData) => {
     console.log('📝 [PesquisaForm handleSubmit] === INÍCIO ===');
@@ -715,36 +703,33 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               control={form.control}
               name="categoria"
               render={({ field, fieldState }) => {
-                console.log('🎨 [PesquisaForm render categoria] field.value:', field.value);
-                console.log('🎨 [PesquisaForm render categoria] fieldState.error:', fieldState.error);
-                
                 // Estado local para controlar a busca
-                const [searchCategoria, setSearchCategoria] = React.useState('');
+                const [searchGrupo, setSearchGrupo] = React.useState('');
                 
-                // Filtrar categorias baseado na busca
-                const categoriasFiltradas = React.useMemo(() => {
-                  if (!searchCategoria.trim()) {
+                // Filtrar grupos baseado na busca
+                const gruposFiltrados = React.useMemo(() => {
+                  if (!searchGrupo.trim()) {
                     return categorias;
                   }
                   
-                  const termoBusca = searchCategoria.toLowerCase().trim();
+                  const termoBusca = searchGrupo.toLowerCase().trim();
                   
-                  return categorias.filter((categoria) => {
-                    const labelLower = categoria.label.toLowerCase();
+                  return categorias.filter((grupo) => {
+                    const labelLower = grupo.label.toLowerCase();
                     
                     // Busca genérica: verifica se o termo aparece em qualquer parte do label
                     if (labelLower.includes(termoBusca)) return true;
                     
                     // Buscar por início de palavras individuais
-                    const palavras = labelLower.split(/[.\s&]+/);
+                    const palavras = labelLower.split(/[\s\-&]+/);
                     
                     return palavras.some(palavra => palavra.startsWith(termoBusca));
                   });
-                }, [searchCategoria, categorias]);
+                }, [searchGrupo, categorias]);
                 
                 return (
                   <FormItem className="flex flex-col">
-                    <FormLabel>{t('lancarPesquisas.form.categoryLabel')} <span className="text-foreground">*</span></FormLabel>
+                    <FormLabel>{t('lancarPesquisas.form.groupLabel')} <span className="text-foreground">*</span></FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -758,8 +743,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                             )}
                           >
                             {field.value
-                              ? categorias.find((categoria) => categoria.value === field.value)?.label
-                              : t('lancarPesquisas.form.selectCategory')}
+                              ? categorias.find((grupo) => grupo.value === field.value)?.label
+                              : "Selecione o grupo"}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
@@ -767,32 +752,31 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                       <PopoverContent className="w-full p-0" align="start">
                         <Command shouldFilter={false}>
                           <CommandInput 
-                            placeholder={t('lancarPesquisas.form.searchCategory')}
-                            value={searchCategoria}
-                            onValueChange={setSearchCategoria}
+                            placeholder="Buscar grupo..."
+                            value={searchGrupo}
+                            onValueChange={setSearchGrupo}
                           />
                           <CommandList>
-                            <CommandEmpty>{t('lancarPesquisas.form.noCategoryFound')}</CommandEmpty>
+                            <CommandEmpty>Nenhum grupo encontrado</CommandEmpty>
                             <CommandGroup>
-                              {categoriasFiltradas.map((categoria) => (
+                              {gruposFiltrados.map((grupo) => (
                                 <CommandItem
-                                  key={categoria.value}
-                                  value={categoria.value}
+                                  key={grupo.value}
+                                  value={grupo.value}
                                   onSelect={() => {
-                                    console.log('📝 [PesquisaForm categoria onChange] Novo valor:', categoria.value);
-                                    field.onChange(categoria.value);
-                                    setSearchCategoria(''); // Limpar busca após seleção
+                                    field.onChange(grupo.value);
+                                    setSearchGrupo('');
                                   }}
                                 >
                                   <Check
                                     className={cn(
                                       "mr-2 h-4 w-4",
-                                      categoria.value === field.value
+                                      grupo.value === field.value
                                         ? "opacity-100"
                                         : "opacity-0"
                                     )}
                                   />
-                                  {categoria.label}
+                                  {grupo.label}
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -804,55 +788,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                   </FormItem>
                 );
               }}
-            />
-
-            <FormField
-              control={form.control}
-              name="grupo"
-              render={({ field, fieldState }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>{t('lancarPesquisas.form.groupLabel')}</FormLabel>
-                  {grupos.length === 1 ? (
-                    // Quando há apenas um grupo, mostra como campo readonly
-                    <FormControl>
-                      <div className={cn(
-                        "flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm",
-                        fieldState.error && "border-red-500"
-                      )}>
-                        {grupos[0].label}
-                      </div>
-                    </FormControl>
-                  ) : (
-                    // Quando há múltiplos grupos, mostra como select
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={!categoriaSelecionada || grupos.length === 0}
-                    >
-                      <FormControl>
-                        <SelectTrigger className={cn(
-                          fieldState.error && "border-red-500 focus:border-red-500"
-                        )}>
-                          <SelectValue placeholder={
-                            !categoriaSelecionada 
-                              ? t('lancarPesquisas.form.selectCategoryFirst')
-                              : grupos.length === 0 
-                              ? t('lancarPesquisas.form.noGroupAvailable')
-                              : t('lancarPesquisas.form.selectGroup')
-                          } />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {grupos.map(grupo => (
-                          <SelectItem key={grupo.value} value={grupo.value}>
-                            {grupo.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </FormItem>
-              )}
             />
           </div>
         </div>

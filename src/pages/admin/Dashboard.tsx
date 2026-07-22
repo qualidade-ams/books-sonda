@@ -161,26 +161,26 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Hook para buscar pesquisas de satisfação (para cálculo de crescimento por grupo)
   const { data: pesquisasCrescimento = [] } = useTodasPesquisasSatisfacao({});
 
-  // Função para fazer de-para da categoria para grupo
+  // Função para fazer de-para do grupo para grupo_book
   const obterGrupoPorCategoria = (categoria: string): string => {
     if (!categoria) return '';
     
-    // Busca exata primeiro
+    // Busca exata primeiro (caso_grupo → grupo → grupo_book)
     let deParaEncontrado = deParaCategorias.find(
-      dp => dp.categoria === categoria
+      dp => dp.grupo && dp.grupo === categoria
     );
     
     // Se não encontrar, tentar busca parcial (mais flexível)
     if (!deParaEncontrado) {
       deParaEncontrado = deParaCategorias.find(
-        dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+        dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
       );
     }
     
     if (deParaEncontrado) {
-      return deParaEncontrado.grupo;
+      return deParaEncontrado.grupo_book || '';
     } else {
-      return categoria; // Fallback para categoria original
+      return categoria; // Fallback para valor original
     }
   };
 
@@ -453,16 +453,16 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   {(() => {
-                    // Função para obter grupo da categoria usando de_para_categoria
+                    // Função para obter grupo_book usando de_para_categoria
                     const obterGrupoDaCategoria = (categoria: string): string => {
                       if (!categoria) return 'OUTROS';
-                      let encontrado = deParaCategorias.find(dp => dp.categoria === categoria);
+                      let encontrado = deParaCategorias.find(dp => dp.grupo && dp.grupo === categoria);
                       if (!encontrado) {
                         encontrado = deParaCategorias.find(
-                          dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+                          dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
                         );
                       }
-                      return encontrado?.grupo || 'OUTROS';
+                      return encontrado?.grupo_book || 'OUTROS';
                     };
 
                     // Extrair parte ANTES do " - " (ex: "COMEX - Importação" → "COMEX")
@@ -642,16 +642,16 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   {(() => {
-                    // Função para obter grupo da categoria usando de_para_categoria
+                    // Função para obter grupo_book usando de_para_categoria
                     const obterGrupoDaCategoriaModulo = (categoria: string): string => {
                       if (!categoria) return 'OUTROS';
-                      let encontrado = deParaCategorias.find(dp => dp.categoria === categoria);
+                      let encontrado = deParaCategorias.find(dp => dp.grupo && dp.grupo === categoria);
                       if (!encontrado) {
                         encontrado = deParaCategorias.find(
-                          dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+                          dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
                         );
                       }
-                      return encontrado?.grupo || 'OUTROS';
+                      return encontrado?.grupo_book || 'OUTROS';
                     };
                     
                     // Extrair parte DEPOIS do " - " (ex: "COMEX - Importação" → "Importação")
@@ -1646,32 +1646,26 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Hook para buscar empresas
   const { empresas } = useEmpresas();
 
-  // Função para fazer de-para da categoria para grupo
+  // Função para fazer de-para do grupo para grupo_book
   const obterGrupoPorCategoria = (categoria: string): string => {
     if (!categoria) return '';
     
     // Busca exata primeiro
     let deParaEncontrado = deParaCategorias.find(
-      dp => dp.categoria === categoria
+      dp => dp.grupo && dp.grupo === categoria
     );
     
     // Se não encontrar, tentar busca parcial (mais flexível)
     if (!deParaEncontrado) {
       deParaEncontrado = deParaCategorias.find(
-        dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+        dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
       );
     }
     
     if (deParaEncontrado) {
-      console.log('✅ De-para encontrado:', {
-        categoria,
-        grupoMapeado: deParaEncontrado.grupo
-      });
-      return deParaEncontrado.grupo;
+      return deParaEncontrado.grupo_book || '';
     } else {
-      console.log('❌ De-para NÃO encontrado para categoria:', categoria);
-      console.log('📋 Categorias disponíveis:', deParaCategorias.map(dp => dp.categoria));
-      return categoria; // Fallback para categoria original
+      return categoria; // Fallback para valor original
     }
   };
 
@@ -3653,11 +3647,13 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       planosFiltrados = planosFiltrados.filter(plano => plano.pesquisa?.prestador === consultorFiltrado);
     }
     
-    // Filtrar por grupo (categoria → de_para_categoria → grupo)
+    // Filtrar por grupo (grupo → de_para_categoria → grupo_book)
     if (grupoFiltro) {
-      const categoriaParaGrupoMap = new Map<string, string>();
+      const grupoParaGrupoBookMap = new Map<string, string>();
       deParaCategoriasDash.forEach(item => {
-        categoriaParaGrupoMap.set(item.categoria, item.grupo);
+        if (item.grupo && item.grupo_book) {
+          grupoParaGrupoBookMap.set(item.grupo, item.grupo_book);
+        }
       });
       const agrupar = (grupo: string): string => {
         if (grupo.startsWith('COMEX')) return 'COMEX';
@@ -3671,11 +3667,10 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         return 'OUTROS';
       };
       planosFiltrados = planosFiltrados.filter(plano => {
-        const categoria = plano.pesquisa?.categoria;
-        if (!categoria) return grupoFiltro === 'OUTROS';
-        const grupo = categoriaParaGrupoMap.get(categoria);
-        if (!grupo) return grupoFiltro === 'OUTROS';
-        return agrupar(grupo) === grupoFiltro;
+        const grupoValue = plano.pesquisa?.grupo || plano.pesquisa?.categoria;
+        if (!grupoValue) return grupoFiltro === 'OUTROS';
+        const grupoBook = grupoParaGrupoBookMap.get(grupoValue) || grupoValue;
+        return agrupar(grupoBook) === grupoFiltro;
       });
     }
     
@@ -3844,10 +3839,12 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Calcular distribuição por grupo (COMEX, Fiscal, T&M, PROJETO, INTERNOS, GERENTE)
   // Mapeia a categoria de cada plano para o grupo correspondente na tabela de_para_categoria
   const distribuicaoPorGrupo = useMemo(() => {
-    // Criar mapa de categoria → grupo
-    const categoriaParaGrupo = new Map<string, string>();
+    // Criar mapa de grupo → grupo_book
+    const grupoParaGrupoBook = new Map<string, string>();
     deParaCategoriasDash.forEach(item => {
-      categoriaParaGrupo.set(item.categoria, item.grupo);
+      if (item.grupo && item.grupo_book) {
+        grupoParaGrupoBook.set(item.grupo, item.grupo_book);
+      }
     });
 
     // Função para agrupar subgrupos no grupo principal
@@ -3877,15 +3874,13 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     };
 
     planosAcaoCompletos.forEach(plano => {
-      const categoria = plano.pesquisa?.categoria;
-      if (categoria) {
-        const grupo = categoriaParaGrupo.get(categoria);
-        if (grupo) {
-          const grupoAgrupado = agruparGrupo(grupo);
-          contagem[grupoAgrupado] = (contagem[grupoAgrupado] || 0) + 1;
-        } else {
-          contagem['OUTROS'] = (contagem['OUTROS'] || 0) + 1;
-        }
+      const grupoValue = plano.pesquisa?.grupo || plano.pesquisa?.categoria;
+      if (grupoValue) {
+        const grupoBook = grupoParaGrupoBook.get(grupoValue) || grupoValue;
+        const grupoAgrupado = agruparGrupo(grupoBook);
+        contagem[grupoAgrupado] = (contagem[grupoAgrupado] || 0) + 1;
+      } else {
+        contagem['OUTROS'] = (contagem['OUTROS'] || 0) + 1;
       }
     });
 

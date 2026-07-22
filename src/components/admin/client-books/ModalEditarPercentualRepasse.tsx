@@ -61,8 +61,11 @@ const formSchema = z.object({
   observacao: z.string().optional(),
 }).refine(
   (data) => {
-    if (data.data_fim && data.data_inicio) {
-      return new Date(data.data_fim) >= new Date(data.data_inicio);
+    if (data.data_fim && data.data_fim.trim() !== '' && data.data_inicio && data.data_inicio.trim() !== '') {
+      const dataFim = new Date(data.data_fim);
+      const dataInicio = new Date(data.data_inicio);
+      if (isNaN(dataFim.getTime()) || isNaN(dataInicio.getTime())) return true;
+      return dataFim >= dataInicio;
     }
     return true;
   },
@@ -102,8 +105,8 @@ export default function ModalEditarPercentualRepasse({
     resolver: zodResolver(formSchema),
     defaultValues: {
       percentual: percentualRepasse.percentual,
-      data_inicio: percentualRepasse.data_inicio.split('T')[0],
-      data_fim: percentualRepasse.data_fim?.split('T')[0] || '',
+      data_inicio: (percentualRepasse.data_inicio || '').split('T')[0],
+      data_fim: (percentualRepasse.data_fim || '').split('T')[0] || '',
       motivo: percentualRepasse.motivo || '',
       observacao: percentualRepasse.observacao || '',
     },
@@ -113,8 +116,8 @@ export default function ModalEditarPercentualRepasse({
   useEffect(() => {
     form.reset({
       percentual: percentualRepasse.percentual,
-      data_inicio: percentualRepasse.data_inicio.split('T')[0],
-      data_fim: percentualRepasse.data_fim?.split('T')[0] || '',
+      data_inicio: (percentualRepasse.data_inicio || '').split('T')[0],
+      data_fim: (percentualRepasse.data_fim || '').split('T')[0] || '',
       motivo: percentualRepasse.motivo || '',
       observacao: percentualRepasse.observacao || '',
     });

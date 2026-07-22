@@ -37,7 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 import type { ElogioCompleto } from '@/types/elogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
-import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
+import { useCategorias } from '@/hooks/useDeParaCategoria';
 import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
 import { useEspecialistasIdsElogio } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
@@ -103,12 +103,6 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     }
   });
 
-  // Observar mudanças na categoria selecionada
-  const categoriaSelecionada = form.watch('categoria');
-  
-  // Buscar grupos baseado na categoria selecionada
-  const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
-
   // Buscar especialistas relacionados ao elogio (para edição)
   const especialistasIdsRelacionados = useEspecialistasIdsElogio(elogio?.id);
   
@@ -132,8 +126,6 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   console.log('🔍 [ElogioForm] Especialistas IDs relacionados:', especialistasIdsRelacionados);
   console.log('🔍 [ElogioForm] Especialistas IDs correlacionados:', especialistasIdsCorrelacionados);
   console.log('🔍 [ElogioForm] Especialistas IDs finais:', especialistasIds);
-  console.log('🔍 [ElogioForm] Categoria selecionada:', categoriaSelecionada);
-  console.log('🔍 [ElogioForm] Grupos disponíveis:', grupos);
 
   const tiposChamado = [
     { value: 'IM', label: 'IM - Incidente' },
@@ -213,44 +205,6 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   }, [especialistasIds, elogio, loadingCorrelacao]); // Removido 'form' da dependência para evitar loops
 
   // Preencher grupo automaticamente quando categoria for selecionada
-  useEffect(() => {
-    console.log('🔄 [ELOGIOS] === INÍCIO DO PREENCHIMENTO AUTOMÁTICO ===');
-    console.log('🔄 [ELOGIOS] Categoria selecionada:', categoriaSelecionada);
-    console.log('🔄 [ELOGIOS] Grupos disponíveis:', grupos);
-    console.log('🔄 [ELOGIOS] Quantidade de grupos:', grupos.length);
-    
-    if (categoriaSelecionada && grupos.length > 0) {
-      console.log('✅ [ELOGIOS] Condições atendidas para preenchimento automático');
-      
-      // Se há apenas um grupo para a categoria, seleciona automaticamente
-      if (grupos.length === 1) {
-        console.log('✅ [ELOGIOS] Apenas 1 grupo disponível, preenchendo automaticamente:', grupos[0].value);
-        form.setValue('grupo', grupos[0].value);
-      }
-      // Se há múltiplos grupos, verifica se o atual é válido
-      else {
-        const grupoAtual = form.getValues('grupo');
-        const grupoValido = grupos.find(g => g.value === grupoAtual);
-        console.log('🔍 [ELOGIOS] Múltiplos grupos disponíveis');
-        console.log('🔍 [ELOGIOS] Grupo atual:', grupoAtual);
-        console.log('🔍 [ELOGIOS] Grupo válido:', !!grupoValido);
-        
-        if (!grupoValido && grupoAtual) {
-          console.log('🧹 [ELOGIOS] Limpando grupo inválido:', grupoAtual);
-          form.setValue('grupo', undefined);
-        }
-      }
-    } else if (!categoriaSelecionada) {
-      // Se categoria foi limpa, limpa o grupo também
-      console.log('🧹 [ELOGIOS] Categoria não selecionada, limpando grupo');
-      form.setValue('grupo', undefined);
-    } else {
-      console.log('⏭️ [ELOGIOS] Condições não atendidas - categoria:', !!categoriaSelecionada, 'grupos:', grupos.length);
-    }
-    
-    console.log('🔄 [ELOGIOS] === FIM DO PREENCHIMENTO AUTOMÁTICO ===');
-  }, [categoriaSelecionada, grupos, form]);
-
   const handleSubmit = async (dados: ElogioFormData) => {
     // Validação manual: comentário obrigatório para elogios (sempre manuais)
     if (!dados.comentario_pesquisa || dados.comentario_pesquisa.trim() === '') {
@@ -417,72 +371,24 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
               name="categoria"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Categoria</FormLabel>
+                  <FormLabel>Grupo</FormLabel>
                   <Select
                     value={field.value || ''}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a categoria" />
+                        <SelectValue placeholder="Selecione o grupo" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categorias.map(categoria => (
-                        <SelectItem key={categoria.value} value={categoria.value}>
-                          {categoria.label}
+                      {categorias.map(grupo => (
+                        <SelectItem key={grupo.value} value={grupo.value}>
+                          {grupo.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="grupo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Grupo</FormLabel>
-                  {grupos.length === 1 ? (
-                    // Quando há apenas um grupo, mostra como campo readonly
-                    <FormControl>
-                      <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
-                        {grupos[0].label}
-                      </div>
-                    </FormControl>
-                  ) : (
-                    // Quando há múltiplos grupos, mostra como select
-                    <Select
-                      value={field.value || ''}
-                      onValueChange={(value) => {
-                        console.log('🔄 [ELOGIOS] Grupo selecionado manualmente:', value);
-                        field.onChange(value);
-                      }}
-                      disabled={!categoriaSelecionada || grupos.length === 0}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={
-                            !categoriaSelecionada 
-                              ? "Selecione uma categoria primeiro" 
-                              : grupos.length === 0 
-                              ? "Nenhum grupo disponível" 
-                              : "Selecione o grupo"
-                          } />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {grupos.map(grupo => (
-                          <SelectItem key={grupo.value} value={grupo.value}>
-                            {grupo.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}

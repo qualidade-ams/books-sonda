@@ -23,7 +23,7 @@ export function useDeParaCategoria() {
           .from('de_para_categoria')
           .select('*')
           .eq('status', 'ativa')
-          .order('categoria')
+          .order('grupo')
           .range(from, to);
 
         if (error) {
@@ -46,17 +46,18 @@ export function useDeParaCategoria() {
 }
 
 /**
- * Hook para buscar lista única de categorias ativas
- * Usa paginação para buscar TODOS os registros (Supabase limita a 1000 por query)
+ * Hook para buscar lista única de grupo_book ativos
+ * Para o formulário de novas pesquisas - exibe valores únicos de grupo_book
+ * Mantém o nome useCategorias para compatibilidade com imports existentes
  */
 export function useCategorias() {
   return useQuery({
-    queryKey: ['categorias'],
+    queryKey: ['grupo-book-unicos'],
     queryFn: async () => {
-      console.log('🔍 [HOOK] Buscando categorias (com paginação)...');
+      console.log('🔍 [HOOK] Buscando grupo_book únicos (com paginação)...');
       
       const PAGE_SIZE = 1000;
-      let allData: { categoria: string }[] = [];
+      let allData: { grupo_book: string }[] = [];
       let page = 0;
       let hasMore = true;
 
@@ -66,13 +67,14 @@ export function useCategorias() {
 
         const { data, error } = await supabase
           .from('de_para_categoria')
-          .select('categoria')
+          .select('grupo_book')
           .eq('status', 'ativa')
-          .order('categoria')
+          .not('grupo_book', 'is', null)
+          .order('grupo_book')
           .range(from, to);
 
         if (error) {
-          console.error('❌ [HOOK] Erro ao buscar categorias:', error);
+          console.error('❌ [HOOK] Erro ao buscar grupo_book:', error);
           throw error;
         }
 
@@ -88,95 +90,46 @@ export function useCategorias() {
       console.log('📊 [HOOK] Total de registros buscados:', allData.length);
 
       // Remover duplicatas, trim de espaços e criar array de opções
-      const categoriasUnicas = Array.from(
-        new Set(allData.map((item) => item.categoria.trim()))
-      );
+      const gruposBookUnicos = Array.from(
+        new Set(allData.map((item) => item.grupo_book.trim()).filter(g => g.length > 0))
+      ).sort();
 
-      const categoriasOptions = categoriasUnicas.map((categoria) => ({
-        value: categoria,
-        label: categoria,
-      })) as CategoriaOption[];
-
-      console.log('✅ [HOOK] Categorias únicas processadas:', categoriasOptions.length);
-      
-      return categoriasOptions;
-    },
-  });
-}
-
-/**
- * Hook para buscar grupos baseado na categoria selecionada
- */
-export function useGruposPorCategoria(categoria?: string) {
-  return useQuery({
-    queryKey: ['grupos', categoria],
-    queryFn: async () => {
-      console.log('🔍 [HOOK] Buscando grupos para categoria:', categoria);
-      
-      if (!categoria) {
-        console.log('⏭️ [HOOK] Categoria não fornecida, retornando array vazio');
-        return [] as GrupoOption[];
-      }
-
-      const { data, error } = await supabase
-        .from('de_para_categoria')
-        .select('grupo')
-        .eq('categoria', categoria)
-        .eq('status', 'ativa')
-        .order('grupo');
-
-      if (error) {
-        console.error('❌ [HOOK] Erro ao buscar grupos:', error);
-        throw error;
-      }
-
-      console.log('📊 [HOOK] Dados brutos retornados:', data);
-
-      // Remover duplicatas, trim de espaços e criar array de opções
-      const gruposUnicos = Array.from(
-        new Set(data.map((item) => item.grupo.trim()))
-      );
-
-      const gruposOptions = gruposUnicos.map((grupo) => ({
+      const gruposOptions = gruposBookUnicos.map((grupo) => ({
         value: grupo,
         label: grupo,
-      })) as GrupoOption[];
+      })) as CategoriaOption[];
 
-      console.log('✅ [HOOK] Grupos únicos processados:', gruposOptions);
+      console.log('✅ [HOOK] Grupo_book únicos processados:', gruposOptions.length);
       
       return gruposOptions;
     },
-    enabled: !!categoria, // Só executa se categoria estiver definida
   });
 }
 
 /**
- * Hook para buscar o grupo correspondente a uma categoria
- * Útil para preencher automaticamente o campo grupo ao selecionar categoria
+ * @deprecated Não há mais dependência categoria → grupo. Usar useCategorias() que retorna grupos diretamente.
+ * Mantido para compatibilidade - retorna array vazio.
+ */
+export function useGruposPorCategoria(categoria?: string) {
+  return useQuery({
+    queryKey: ['grupos-por-categoria-deprecated', categoria],
+    queryFn: async () => {
+      return [] as GrupoOption[];
+    },
+    enabled: false,
+  });
+}
+
+/**
+ * @deprecated Usar useCategorias() que retorna grupos diretamente.
+ * Mantido para compatibilidade.
  */
 export function useGrupoPorCategoria(categoria?: string) {
   return useQuery({
-    queryKey: ['grupo-por-categoria', categoria],
+    queryKey: ['grupo-por-categoria-deprecated', categoria],
     queryFn: async () => {
-      if (!categoria) {
-        return null;
-      }
-
-      const { data, error } = await supabase
-        .from('de_para_categoria')
-        .select('grupo')
-        .eq('categoria', categoria)
-        .eq('status', 'ativa')
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.error('Erro ao buscar grupo por categoria:', error);
-        return null;
-      }
-
-      return data?.grupo || null;
+      return null;
     },
-    enabled: !!categoria,
+    enabled: false,
   });
 }
