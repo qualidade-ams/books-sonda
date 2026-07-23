@@ -161,27 +161,93 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Hook para buscar pesquisas de satisfação (para cálculo de crescimento por grupo)
   const { data: pesquisasCrescimento = [] } = useTodasPesquisasSatisfacao({});
 
+  // Mapeamento de prefixo de categoria (formato "CE+.SUSTENTAÇÃO.IMPORTAÇÃO")
+  // para grupo_book correspondente, espelhando os grupo_book da tabela de_para_categoria
+  const mapearCategoriaPorPrefixoVG = (categoria: string): string => {
+    if (!categoria) return '';
+
+    const cat = categoria.toUpperCase();
+    const partes = categoria.split('.');
+    const prefixo = (partes[0] || '').trim().toUpperCase();
+    const submodulo = (partes[2] || '').trim().toUpperCase();
+
+    if (prefixo === 'CE+') {
+      if (submodulo.includes('IMPORTA')) return 'COMEX - Importação';
+      if (submodulo.includes('EXPORT')) return 'COMEX - Exportação';
+      if (submodulo.includes('CÂMBIO') || submodulo.includes('CAMBIO')) return 'COMEX - Câmbio';
+      if (submodulo.includes('DRAWBACK')) return 'COMEX - Drawback';
+      if (submodulo.includes('RECOF')) return 'COMEX - RECOF';
+      if (submodulo.includes('SAPC')) return 'COMEX - SAPC';
+      if (submodulo.includes('FCI')) return 'COMEX - FCI';
+      if (submodulo.includes('LEGEM')) return 'COMEX - LEGEM';
+      if (submodulo.includes('VENDOR')) return 'COMEX - VENDOR';
+      if (submodulo.includes('CATÁLOGO') || submodulo.includes('CATALOGO')) return 'COMEX - Catálogo de Produtos';
+      if (submodulo.includes('TP')) return 'COMEX - TP One';
+      if (submodulo.includes('FLUXO')) return 'COMEX - Fluxo de Caixa';
+      if (submodulo.includes('ABAP')) return 'COMEX - ABAP';
+      if (submodulo.includes('ORÇAMENTO') || submodulo.includes('ORCAMENTO')) return 'COMEX - Orçamentos';
+      if (submodulo.includes('ICS')) return 'COMEX - ICS Inativos';
+      return 'COMEX - Importação';
+    }
+
+    if (cat.startsWith('COMPLY E-DOCS')) return 'FISCAL - COMPLY e-DOCS';
+
+    if (prefixo === 'COMPLY') {
+      if (submodulo.includes('SPED CONTAB') || submodulo.includes('ECD')) return 'FISCAL - ECD/ECF';
+      if (submodulo.includes('SPED FISCAL') || submodulo.includes('EFD ICMS')) return 'FISCAL - EFD ICMS';
+      if (submodulo.includes('SPED CONTRIBUI') || submodulo.includes('SPED PIS') || submodulo.includes('EFD CONTRIBUI')) return 'FISCAL - EFD Contribuições';
+      if (submodulo.includes('SPED REINF') || submodulo.includes('REINF')) return 'FISCAL - EFD Contribuições';
+      if (submodulo.includes('CADASTROS')) return 'FISCAL - Cadastros Básicos';
+      if (submodulo.includes('FRAMEWORK') || submodulo.includes('SAAS')) return 'FISCAL - Infraestrutura';
+      if (submodulo.includes('INTEGRA')) return 'FISCAL - Integração Indiretos';
+      if (submodulo.includes('INDIRETO') || submodulo.includes('TRIBUTAÇÃO') || submodulo.includes('TRIBUTACAO') || submodulo.includes('CIAP')) return 'FISCAL - Indiretos';
+      if (submodulo.includes('CONTABILIZA')) return 'FISCAL - Contabilização';
+      if (submodulo.includes('ATUALIZA')) return 'FISCAL - Atualização Ambientes';
+      if (submodulo.includes('ANALYTICS')) return 'FISCAL - COMPLY Analytics';
+      if (submodulo.includes('CONCILIA')) return 'FISCAL - Conciliação';
+      if (submodulo.includes('CONTROLE DE TERCEIRO')) return 'FISCAL - Controle de Terceiros';
+      if (submodulo.includes('CICLO DE VIDA')) return 'FISCAL - Ciclo de Vida';
+      if (submodulo.includes('DBA')) return 'FISCAL - DBA';
+      if (submodulo.includes('OBRIG')) return 'FISCAL - Obrigações Estaduais';
+      if (submodulo.includes('APURAÇÃO RETIDO') || submodulo.includes('APURACAO RETIDO')) return 'FISCAL - EFD Contribuições';
+      return 'FISCAL - EFD ICMS';
+    }
+
+    if (prefixo === 'GALLERY' || prefixo === 'GALLERY TDF') return 'FISCAL GALLERY';
+    if (prefixo === 'PW_SATI' || prefixo.startsWith('PW_SPED')) return 'FISCAL - EFD ICMS';
+    if (prefixo === 'BPO') return 'BPO';
+    if (prefixo === 'T&M') return 'T&M';
+    if (prefixo === 'PROJETO') return 'PROJETO';
+    if (prefixo === 'INTERNOS' || prefixo === 'ADMINISTRAÇÃO' || prefixo === 'ADMINISTRACAO') return 'INTERNOS';
+    if (prefixo === 'CUSTOMER SUCCESS') return 'CUSTOMER SUCCESS';
+    if (prefixo === 'APP&D') return 'PROJETO';
+    if (prefixo === 'QUALIDADE E PROCESSO') return 'QUALIDADE AMS';
+
+    return categoria;
+  };
+
   // Função para fazer de-para do grupo para grupo_book
   const obterGrupoPorCategoria = (categoria: string): string => {
     if (!categoria) return '';
-    
-    // Busca exata primeiro (caso_grupo → grupo → grupo_book)
+
+    // 1. Busca exata na tabela de_para_categoria
     let deParaEncontrado = deParaCategorias.find(
       dp => dp.grupo && dp.grupo === categoria
     );
-    
-    // Se não encontrar, tentar busca parcial (mais flexível)
+
+    // 2. Busca parcial na tabela de_para_categoria
     if (!deParaEncontrado) {
       deParaEncontrado = deParaCategorias.find(
         dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
       );
     }
-    
-    if (deParaEncontrado) {
-      return deParaEncontrado.grupo_book || '';
-    } else {
-      return categoria; // Fallback para valor original
+
+    if (deParaEncontrado?.grupo_book) {
+      return deParaEncontrado.grupo_book;
     }
+
+    // 3. Mapeamento por prefixo para categorias no formato "CE+.SUSTENTAÇÃO.IMPORTAÇÃO"
+    return mapearCategoriaPorPrefixoVG(categoria);
   };
 
   // Função para obter nome abreviado da empresa
@@ -462,7 +528,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                           dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
                         );
                       }
-                      return encontrado?.grupo_book || 'OUTROS';
+                      if (encontrado?.grupo_book) return encontrado.grupo_book;
+                      // Mapeamento por prefixo quando não encontra na tabela de_para
+                      return mapearCategoriaPorPrefixoVG(categoria) || 'OUTROS';
                     };
 
                     // Extrair parte ANTES do " - " (ex: "COMEX - Importação" → "COMEX")
@@ -651,7 +719,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                           dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
                         );
                       }
-                      return encontrado?.grupo_book || 'OUTROS';
+                      if (encontrado?.grupo_book) return encontrado.grupo_book;
+                      // Mapeamento por prefixo quando não encontra na tabela de_para
+                      return mapearCategoriaPorPrefixoVG(categoria) || 'OUTROS';
                     };
                     
                     // Extrair parte DEPOIS do " - " (ex: "COMEX - Importação" → "Importação")
@@ -1621,7 +1691,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 }) => {
   const { t } = useTranslation();
   // Estado para controlar expansão das áreas
-  const [areasExpandido, setAreasExpandido] = useState(true);
+  const [areasExpandido, setAreasExpandido] = useState(false);
   
   // Estados para controlar seleção e detalhes (similar à aba Visão Geral)
   const [itemSelecionado, setItemSelecionado] = useState<{
@@ -1646,27 +1716,112 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Hook para buscar empresas
   const { empresas } = useEmpresas();
 
+  // Mapeamento de prefixo de categoria (formato "CE+.SUSTENTAÇÃO.IMPORTAÇÃO")
+  // para grupo_book correspondente, espelhando os grupo_book da tabela de_para_categoria
+  const mapearCategoriaPorPrefixo = (categoria: string): string => {
+    if (!categoria) return '';
+
+    const cat = categoria.toUpperCase();
+    const partes = categoria.split('.');
+    const prefixo = (partes[0] || '').trim().toUpperCase();
+    const submodulo = (partes[2] || '').trim().toUpperCase();
+
+    // CE+ → COMEX com subgrupo pelo detalhe
+    if (prefixo === 'CE+') {
+      if (submodulo.includes('IMPORTA')) return 'COMEX - Importação';
+      if (submodulo.includes('EXPORT')) return 'COMEX - Exportação';
+      if (submodulo.includes('CÂMBIO EXPORT') || submodulo.includes('CAMBIO EXPORT')) return 'COMEX - Câmbio';
+      if (submodulo.includes('CÂMBIO IMPORT') || submodulo.includes('CAMBIO IMPORT')) return 'COMEX - Câmbio';
+      if (submodulo.includes('CÂMBIO FINANC') || submodulo.includes('CAMBIO FINANC')) return 'COMEX - Câmbio';
+      if (submodulo.includes('CÂMBIO') || submodulo.includes('CAMBIO')) return 'COMEX - Câmbio';
+      if (submodulo.includes('DRAWBACK')) return 'COMEX - Drawback';
+      if (submodulo.includes('RECOF')) return 'COMEX - RECOF';
+      if (submodulo.includes('SAPC')) return 'COMEX - SAPC';
+      if (submodulo.includes('FCI')) return 'COMEX - FCI';
+      if (submodulo.includes('LEGEM')) return 'COMEX - LEGEM';
+      if (submodulo.includes('VENDOR')) return 'COMEX - VENDOR';
+      if (submodulo.includes('CATÁLOGO') || submodulo.includes('CATALOGO')) return 'COMEX - Catálogo de Produtos';
+      if (submodulo.includes('TP ONE') || submodulo.includes('TP ')) return 'COMEX - TP One';
+      if (submodulo.includes('FLUXO DE CAIXA') || submodulo.includes('FC ')) return 'COMEX - Fluxo de Caixa';
+      if (submodulo.includes('ABAP')) return 'COMEX - ABAP';
+      if (submodulo.includes('ORÇAMENTO') || submodulo.includes('ORCAMENTO')) return 'COMEX - Orçamentos';
+      if (submodulo.includes('ICS')) return 'COMEX - ICS Inativos';
+      return 'COMEX - Importação'; // fallback CE+
+    }
+
+    // COMPLY E-DOCS → FISCAL - COMPLY e-DOCS
+    if (cat.startsWith('COMPLY E-DOCS')) {
+      return 'FISCAL - COMPLY e-DOCS';
+    }
+
+    // COMPLY → FISCAL com subgrupo pelo detalhe
+    if (prefixo === 'COMPLY') {
+      if (submodulo.includes('SPED CONTAB') || submodulo.includes('ECD')) return 'FISCAL - ECD/ECF';
+      if (submodulo.includes('SPED FISCAL') || submodulo.includes('EFD ICMS')) return 'FISCAL - EFD ICMS';
+      if (submodulo.includes('SPED CONTRIBUI') || submodulo.includes('SPED PIS') || submodulo.includes('EFD CONTRIBUI')) return 'FISCAL - EFD Contribuições';
+      if (submodulo.includes('SPED REINF') || submodulo.includes('REINF')) return 'FISCAL - EFD Contribuições';
+      if (submodulo.includes('CADASTROS')) return 'FISCAL - Cadastros Básicos';
+      if (submodulo.includes('FRAMEWORK')) return 'FISCAL - Infraestrutura';
+      if (submodulo.includes('SAAS')) return 'FISCAL - Infraestrutura';
+      if (submodulo.includes('INTEGRA')) return 'FISCAL - Integração Indiretos';
+      if (submodulo.includes('INDIRETO') || submodulo.includes('TRIBUTAÇÃO') || submodulo.includes('TRIBUTACAO') || submodulo.includes('CIAP')) return 'FISCAL - Indiretos';
+      if (submodulo.includes('CONTABILIZA')) return 'FISCAL - Contabilização';
+      if (submodulo.includes('ATUALIZA')) return 'FISCAL - Atualização Ambientes';
+      if (submodulo.includes('ANALYTICS')) return 'FISCAL - COMPLY Analytics';
+      if (submodulo.includes('CONCILIA')) return 'FISCAL - Conciliação';
+      if (submodulo.includes('CONTROLE DE TERCEIRO')) return 'FISCAL - Controle de Terceiros';
+      if (submodulo.includes('CICLO DE VIDA')) return 'FISCAL - Ciclo de Vida';
+      if (submodulo.includes('DBA')) return 'FISCAL - DBA';
+      if (submodulo.includes('OBRIG') && submodulo.includes('ESTADO')) return 'FISCAL - Obrigações Estaduais';
+      if (submodulo.includes('OBRIG') && submodulo.includes('FEDER')) return 'FISCAL - EFD Contribuições';
+      if (submodulo.includes('APURAÇÃO RETIDO') || submodulo.includes('APURACAO RETIDO')) return 'FISCAL - EFD Contribuições';
+      return 'FISCAL - EFD ICMS'; // fallback COMPLY
+    }
+
+    // GALLERY → FISCAL GALLERY
+    if (prefixo === 'GALLERY' || prefixo === 'GALLERY TDF') {
+      return 'FISCAL GALLERY';
+    }
+
+    // PW_SATI / PW_SPED → FISCAL
+    if (prefixo === 'PW_SATI' || prefixo.startsWith('PW_SPED')) {
+      return 'FISCAL - EFD ICMS';
+    }
+
+    // Outros prefixos que já são grupos_book diretos
+    if (prefixo === 'BPO') return 'BPO';
+    if (prefixo === 'T&M') return 'T&M';
+    if (prefixo === 'PROJETO') return 'PROJETO';
+    if (prefixo === 'INTERNOS' || prefixo === 'ADMINISTRAÇÃO' || prefixo === 'ADMINISTRACAO') return 'INTERNOS';
+    if (prefixo === 'CUSTOMER SUCCESS') return 'CUSTOMER SUCCESS';
+    if (prefixo === 'APP&D') return 'PROJETO';
+    if (prefixo === 'QUALIDADE E PROCESSO') return 'QUALIDADE AMS';
+
+    return categoria; // fallback absoluto
+  };
+
   // Função para fazer de-para do grupo para grupo_book
   const obterGrupoPorCategoria = (categoria: string): string => {
     if (!categoria) return '';
-    
-    // Busca exata primeiro
+
+    // 1. Busca exata na tabela de_para_categoria
     let deParaEncontrado = deParaCategorias.find(
       dp => dp.grupo && dp.grupo === categoria
     );
-    
-    // Se não encontrar, tentar busca parcial (mais flexível)
+
+    // 2. Busca parcial na tabela de_para_categoria (quando há correspondência de texto)
     if (!deParaEncontrado) {
       deParaEncontrado = deParaCategorias.find(
         dp => dp.grupo && dp.grupo_book && (categoria.includes(dp.grupo) || dp.grupo.includes(categoria))
       );
     }
-    
-    if (deParaEncontrado) {
-      return deParaEncontrado.grupo_book || '';
-    } else {
-      return categoria; // Fallback para valor original
+
+    if (deParaEncontrado?.grupo_book) {
+      return deParaEncontrado.grupo_book;
     }
+
+    // 3. Mapeamento por prefixo para categorias no formato "CE+.SUSTENTAÇÃO.IMPORTAÇÃO"
+    return mapearCategoriaPorPrefixo(categoria);
   };
 
   // Função para obter nome abreviado da empresa
