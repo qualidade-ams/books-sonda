@@ -3282,7 +3282,9 @@ class BooksDataCollectorService {
             for (const r of reajustes) {
               const p = String(r.valor_reajuste_horas || '00:00').split(':');
               const mins = (parseInt(p[0] || '0') * 60) + parseInt(p[1] || '0');
-              reajuste += r.tipo_reajuste === 'entrada' ? mins : -mins;
+              // ✅ CORREÇÃO: Saída AUMENTA consumo (positivo), Entrada DIMINUI consumo (negativo)
+              // Alinhado com: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
+              reajuste += r.tipo_reajuste === 'saida' ? mins : -mins;
             }
           }
 

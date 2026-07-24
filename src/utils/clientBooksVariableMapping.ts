@@ -51,6 +51,10 @@ export interface ClientBooksVariaveis {
   'sistema.mesNomeAtualEn': string; // Nome do mês atual em inglês
   'sistema.mesNomeAnterior': string; // Nome do mês anterior ao atual em português
   'sistema.mesNomeAnteriorEn': string; // Nome do mês anterior ao atual em inglês
+  
+  // Variáveis de banco de horas (geradas condicionalmente - apenas se template usar)
+  'bancoHoras.imagemUrl'?: string; // URL da imagem PNG do quadro de banco de horas
+  'bancoHoras.imagem'?: string; // Tag <img> completa do quadro de banco de horas (vazia se não houver dados)
 }
 
 /**
@@ -201,6 +205,9 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
     'sistema.mesNomeAtualEn': obterNomeMesIngles(mesAtual),
     'sistema.mesNomeAnterior': obterNomeMes(mesAnteriorAoAtual),
     'sistema.mesNomeAnteriorEn': obterNomeMesIngles(mesAnteriorAoAtual),
+    
+    // Variáveis de banco de horas (NÃO preenchidas aqui - processadas pelo booksDisparoService após processarTemplate)
+    // Mantidas na interface para tipagem, mas com valores que NÃO serão substituídos automaticamente
   };
 };
 
@@ -220,8 +227,12 @@ export const substituirVariaveisClientBooks = (
     // Garantir que o valor seja uma string
     let valorProcessado = typeof valor === 'string' ? valor : String(valor || '');
 
+    // Variáveis que contêm HTML bruto — não escapar
+    const variaveisHtmlBruto = ['bancoHoras.imagem'];
+    const isHtmlBruto = variaveisHtmlBruto.includes(chave);
+
     // Processar quebras de linha para HTML se necessário
-    if (/<[^>]+>/.test(template)) {
+    if (!isHtmlBruto && /<[^>]+>/.test(template)) {
       // É um template HTML
       if (valorProcessado.includes('\n')) {
         valorProcessado = valorProcessado.replace(/\n/g, '<br>');
@@ -285,6 +296,10 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
       'sistema.mesNomeAnterior',
       'sistema.mesNomeAnteriorEn'
     ],
+    'Banco de Horas': [
+      'bancoHoras.imagemUrl',
+      'bancoHoras.imagem'
+    ],
     'Elogios': [
       'elogio.mesNomeAno',
       'elogio.primeiro',
@@ -338,6 +353,9 @@ const VARIAVEIS_EXTERNAS = new Set([
   'elogio.mensagem',
   'elogio.cliente',
   'elogio.empresa',
+  // Variáveis de banco de horas (processadas pelo booksDisparoService)
+  'bancoHoras.imagemUrl',
+  'bancoHoras.imagem',
 ]);
 
 /**

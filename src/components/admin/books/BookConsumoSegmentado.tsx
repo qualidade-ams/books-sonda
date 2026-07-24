@@ -359,7 +359,9 @@ export default function BookConsumoSegmentado({
             if (reajustes) {
               for (const r of reajustes) {
                 const mins = converterHorasParaMinutos(r.valor_reajuste_horas || '00:00');
-                totalReajuste += r.tipo_reajuste === 'entrada' ? mins : -mins;
+                // ✅ CORREÇÃO: Saída AUMENTA consumo (positivo), Entrada DIMINUI consumo (negativo)
+                // Alinhado com: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
+                totalReajuste += r.tipo_reajuste === 'saida' ? mins : -mins;
               }
             }
             reajustesTemp[emp.nome][chave] = totalReajuste;

@@ -258,9 +258,16 @@ class InconsistenciasDeteccaoService {
 
       // 5. Inserir novas inconsistências (em lotes de 100)
       if (novasInconsistencias.length > 0) {
+        // Deduplicar por chave_unica para evitar erro "ON CONFLICT DO UPDATE cannot affect row a second time"
+        const mapaDeduplicado = new Map<string, any>();
+        for (const item of novasInconsistencias) {
+          mapaDeduplicado.set(item.chave_unica, item);
+        }
+        const inconsistenciasDeduplicadas = Array.from(mapaDeduplicado.values());
+
         const batchSize = 100;
-        for (let i = 0; i < novasInconsistencias.length; i += batchSize) {
-          const batch = novasInconsistencias.slice(i, i + batchSize);
+        for (let i = 0; i < inconsistenciasDeduplicadas.length; i += batchSize) {
+          const batch = inconsistenciasDeduplicadas.slice(i, i + batchSize);
           const { error: erroInsert } = await supabase
             .from('inconsistencias_chamados' as any)
             .upsert(batch, { onConflict: 'chave_unica' });
@@ -270,8 +277,8 @@ class InconsistenciasDeteccaoService {
             resultado.mensagens.push(`Erro ao inserir lote: ${erroInsert.message}`);
           }
         }
-        resultado.novas = novasInconsistencias.length;
-        console.log(`✅ [DETECCAO] ${novasInconsistencias.length} novas inconsistências inseridas`);
+        resultado.novas = inconsistenciasDeduplicadas.length;
+        console.log(`✅ [DETECCAO] ${inconsistenciasDeduplicadas.length} novas inconsistências inseridas (${novasInconsistencias.length - inconsistenciasDeduplicadas.length} duplicatas removidas)`);
       }
 
       // 6. Marcar resolvidas (em lotes de 100)
