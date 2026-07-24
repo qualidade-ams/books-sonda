@@ -25,6 +25,7 @@ import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
 import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
+import { gerarImagemBancoHoras } from './bancoHorasTableService';
 
 class BooksDisparoService {
   /** Utilitário de sleep para rate limiting */
@@ -1854,6 +1855,51 @@ class BooksDisparoService {
         clienteReferencia as any,
         { mes, ano, dataDisparo: new Date() }
       );
+
+      // ===== Geração condicional da imagem do Banco de Horas =====
+      // Só gera se o template usar {{bancoHoras.imagemUrl}} ou {{bancoHoras.imagem}}
+      const templateUsaBancoHoras = 
+        (template.corpo || '').includes('{{bancoHoras.imagemUrl}}') || 
+        (template.corpo || '').includes('{{bancoHoras.imagem}}');
+
+      if (templateUsaBancoHoras) {
+        try {
+          const empresaNome = empresa.nome_abreviado || empresa.nome_completo || '';
+          console.log(`📊 Template usa banco de horas - gerando imagem para ${empresaNome}...`);
+
+          const resultadoImagem = await gerarImagemBancoHoras({
+            empresaId: empresa.id,
+            empresaNome,
+            mes,
+            ano
+          });
+
+          if (resultadoImagem.sucesso && resultadoImagem.imagemUrl) {
+            // Substituir variáveis de banco de horas no corpo processado
+            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" style="width:100%;max-width:910px;height:auto;display:block;border:0;margin:16px 0;" />`;
+            
+            templateProcessado.corpo = templateProcessado.corpo
+              .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, resultadoImagem.imagemUrl)
+              .replace(/\{\{bancoHoras\.imagem\}\}/g, imgTag);
+
+            console.log(`✅ Imagem do banco de horas inserida no template`);
+          } else {
+            // Remover variáveis não preenchidas para não aparecer {{...}} no email
+            templateProcessado.corpo = templateProcessado.corpo
+              .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, '')
+              .replace(/\{\{bancoHoras\.imagem\}\}/g, '');
+
+            console.warn(`⚠️ Não foi possível gerar imagem do banco de horas: ${resultadoImagem.erro || 'sem dados'}`);
+          }
+        } catch (bancoHorasError) {
+          // Não bloquear envio do book por erro na imagem do banco de horas
+          templateProcessado.corpo = templateProcessado.corpo
+            .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, '')
+            .replace(/\{\{bancoHoras\.imagem\}\}/g, '');
+
+          console.warn(`⚠️ Erro ao gerar imagem do banco de horas (não bloqueia envio):`, bancoHorasError);
+        }
+      }
 
       // Coletar todos os e-mails dos clientes para o campo "Para"
       const emailsClientes = clientes.map(cliente => cliente.email).filter(email => email);

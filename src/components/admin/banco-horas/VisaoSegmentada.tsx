@@ -444,16 +444,20 @@ export function VisaoSegmentada({
             continue;
           }
           
-          // Somar todos os reajustes (entrada = positivo, saida = negativo)
+          // Somar todos os reajustes (saida = positivo, entrada = negativo)
+          // ✅ CORREÇÃO: Alinhado com a visão consolidada (bancoHorasService.ts)
+          // Fórmula: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
+          // - Reajustes de SAÍDA aumentam o consumo (horas gastas/debitadas) → positivo
+          // - Reajustes de ENTRADA diminuem o consumo (horas devolvidas) → negativo
           let totalReajusteMinutos = 0;
           
           if (reajustes && reajustes.length > 0) {
             for (const reajuste of reajustes) {
               const valorMinutos = converterHorasParaMinutos(reajuste.valor_reajuste_horas || '00:00');
               
-              if (reajuste.tipo_reajuste === 'entrada') {
+              if (reajuste.tipo_reajuste === 'saida') {
                 totalReajusteMinutos += valorMinutos;
-              } else if (reajuste.tipo_reajuste === 'saida') {
+              } else if (reajuste.tipo_reajuste === 'entrada') {
                 totalReajusteMinutos -= valorMinutos;
               }
             }
@@ -650,8 +654,10 @@ export function VisaoSegmentada({
         const reajuste = reajustesPorEmpresaMes[empresa.nome]?.[chave] || 0;
         
         // Consumo total = consumo chamados + requerimentos + reajuste
-        // IMPORTANTE: Reajuste de "entrada" aumenta o consumo (positivo)
-        //             Reajuste de "saída" diminui o consumo (negativo)
+        // IMPORTANTE: Reajuste já vem com o sinal correto:
+        //             Saída = positivo (aumenta consumo)
+        //             Entrada = negativo (diminui consumo)
+        // Alinhado com: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
         const consumoTotal = consumoChamados + requerimentosMinutos + reajuste;
         
         // Saldo = saldo a utilizar - consumo total (pode ser negativo)
@@ -874,7 +880,7 @@ export function VisaoSegmentada({
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell 
                         key={idx} 
-                        className={`text-center font-semibold ${getColorClass(mesDados.reajuste)}`}
+                        className={`text-center font-semibold ${getColorClass(-mesDados.reajuste)}`}
                       >
                         {converterMinutosParaHoras(Math.abs(mesDados.reajuste))}
                       </TableCell>
