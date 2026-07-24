@@ -174,30 +174,26 @@ async function calcularConsumoSegmentadoPorMes(
       empresaNome: empresa.nome_abreviado || empresa.nome_completo
     });
     
-    // Construir query base (MESMA LÓGICA DO BACKEND)
+    // Construir query base (ALINHADA com bancoHorasIntegracaoService.buscarConsumo)
+    const nomeCompleto = empresa.nome_completo;
+    
+    if (!nomeCompleto) {
+      console.error('❌ Nome completo da empresa não cadastrado. Obrigatório para buscar apontamentos.');
+      return 0;
+    }
+    
     let query = supabase
       .from('apontamentos_aranda' as any)
       .select('tempo_gasto_horas, tempo_gasto_minutos, item_configuracao, data_atividade, data_sistema')
       .eq('ativi_interna', 'Não')
       .neq('item_configuracao', '000000 - PROJETOS APL')  // Excluir projetos APL
-      .neq('tipo_chamado', 'PM')  // Excluir tipo PM
+      .in('tipo_chamado', ['IM', 'RF', 'PM'])  // ✅ CORREÇÃO: Mesmos tipos do consolidado
+      .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%')  // ✅ CORREÇÃO: Filtro de caso_grupo igual ao consolidado
       .gte('data_atividade', dataInicio.toISOString())
-      .lte('data_atividade', dataFim.toISOString());
-    
-    // Adicionar filtro de empresa (nome abreviado OU nome completo)
-    const nomeAbreviado = empresa.nome_abreviado;
-    const nomeCompleto = empresa.nome_completo;
-    
-    if (nomeAbreviado && nomeCompleto) {
-      query = query.or(`org_us_final.ilike.%${nomeAbreviado}%,org_us_final.ilike.%${nomeCompleto}%`);
-    } else if (nomeAbreviado) {
-      query = query.ilike('org_us_final', `%${nomeAbreviado}%`);
-    } else if (nomeCompleto) {
-      query = query.ilike('org_us_final', `%${nomeCompleto}%`);
-    }
-    
-    // Adicionar filtro de códigos de resolução
-    query = query.in('cod_resolucao', codigosResolucaoValidos);
+      .lte('data_atividade', dataFim.toISOString())
+      .ilike('org_us_final', nomeCompleto)  // ✅ CORREÇÃO: Match exato sem wildcards (%) igual ao consolidado
+      .in('cod_resolucao', codigosResolucaoValidos)
+      .limit(10000);  // ✅ CORREÇÃO: Mesmo limite do consolidado
     
     // Executar query
     const { data: apontamentos, error: apontamentosError } = await query as any;
@@ -211,16 +207,18 @@ async function calcularConsumoSegmentadoPorMes(
     
     // Filtrar apontamentos baseado no item_configuracao (FILTRO ADICIONAL DA SEGMENTAÇÃO)
     const apontamentosFiltrados = (apontamentos || []).filter(apt => {
-      // Validar que data_atividade e data_sistema estão no mesmo mês (REGRA DO BACKEND)
+      // ✅ CORREÇÃO: Mesma lógica do bancoHorasIntegracaoService.buscarConsumo
+      // Excluir APENAS quando data_sistema é POSTERIOR à data_atividade (apontamento retroativo)
+      // Manter quando data_sistema é anterior ou igual ao mês da atividade
       if (apt.data_atividade && apt.data_sistema) {
         const dataAtividade = new Date(apt.data_atividade);
         const dataSistema = new Date(apt.data_sistema);
         
-        if (
-          dataAtividade.getMonth() !== dataSistema.getMonth() ||
-          dataAtividade.getFullYear() !== dataSistema.getFullYear()
-        ) {
-          return false; // Excluir se meses diferentes
+        const mesAtividade = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
+        const mesSistema = dataSistema.getFullYear() * 12 + dataSistema.getMonth();
+        
+        if (mesSistema > mesAtividade) {
+          return false; // Excluir apenas se data_sistema é posterior (retroativo)
         }
       }
       

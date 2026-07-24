@@ -81,10 +81,10 @@ export function gerarTabelaBancoHoras(
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   };
 
-  // Estilos base - fonte Inter, peso 600 (semi-bold), tamanho 10pt
-  const cellBase = 'padding:10px 16px;text-align:center;font-size:10pt;font-family:Inter,sans-serif;border:none;font-weight:600;';
-  const headerDark = `padding:10px 16px;text-align:center;font-size:10pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;`;
-  const headerBlue = `padding:10px 16px;text-align:center;font-size:10pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;`;
+  // Estilos base - fonte Inter, peso 600 (semi-bold), tamanho 8pt (compacto para email)
+  const cellBase = 'padding:6px 10px;text-align:center;font-size:8pt;font-family:Inter,sans-serif;border:none;font-weight:600;';
+  const headerDark = `padding:6px 10px;text-align:center;font-size:8pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;`;
+  const headerBlue = `padding:6px 10px;text-align:center;font-size:8pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;`;
   const cellNormal = `${cellBase}color:#111827;border-bottom:1px solid #e5e7eb;`;
   const cellGreen = `${cellBase}color:#16a34a;border-bottom:1px solid #e5e7eb;`;
   const cellRed = `${cellBase}color:#dc2626;border-bottom:1px solid #e5e7eb;`;
@@ -689,7 +689,7 @@ export async function gerarImagemBancoHoras(
       };
     }
 
-    // 2. Preparar HTML completo para renderização
+    // 2. Preparar HTML completo para renderização (max 600px para caber no email)
     const htmlParaRenderizar = `
       <!DOCTYPE html>
       <html>
@@ -701,7 +701,7 @@ export async function gerarImagemBancoHoras(
         </style>
       </head>
       <body>
-        <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
+        <div style="font-family:Calibri,sans-serif;max-width:600px;width:600px;margin:0;padding:12px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:9pt;">
           ${resultado.html}
         </div>
       </body>
@@ -712,7 +712,7 @@ export async function gerarImagemBancoHoras(
     const response = await fetch('/api/email/render-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html: htmlParaRenderizar, width: 1100 })
+      body: JSON.stringify({ html: htmlParaRenderizar, width: 600 })
     });
 
     if (!response.ok) {

@@ -1876,7 +1876,7 @@ class BooksDisparoService {
 
           if (resultadoImagem.sucesso && resultadoImagem.imagemUrl) {
             // Substituir variáveis de banco de horas no corpo processado
-            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" style="width:100%;max-width:910px;height:auto;display:block;border:0;margin:16px 0;" />`;
+            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" style="max-width:600px;width:100%;height:auto;display:block;border:0;margin:16px auto;" />`;
             
             templateProcessado.corpo = templateProcessado.corpo
               .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, resultadoImagem.imagemUrl)
