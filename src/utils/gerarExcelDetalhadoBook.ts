@@ -24,6 +24,7 @@ interface TicketAranda {
   nro_solicitacao: string | null;
   cod_tipo: string | null;
   ticket_externo: string | null;
+  numero_pai: string | null;
   organizacao: string | null;
   empresa: string | null;
   categoria: string | null;
@@ -202,7 +203,7 @@ function calcularPeriodo(mes: number, ano: number, diaInicioApuracao: number, di
 async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', `%${nomeCompleto}%`)
     .gte('data_abertura', dataInicio.toISOString())
     .lte('data_abertura', dataFim.toISOString())
@@ -415,7 +416,7 @@ function ticketParaRow(t: TicketAranda): any[] {
   ];
 }
 
-/** Cria sheet de tickets (usado para Abertos, Fechados, Backlog) */
+/** Cria sheet de tickets (usado para Fechados, Backlog) */
 function criarSheetTickets(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
   if (tickets.length === 0) {
     const sheet = criarSheetSemDados(TICKET_HEADERS, mesNome, ano);
@@ -428,6 +429,57 @@ function criarSheetTickets(tickets: TicketAranda[], mesNome: string, ano: number
   const sheet = XLSX.utils.aoa_to_sheet(sheetData);
   aplicarHeaderStyle(sheet, TICKET_HEADERS.length);
   sheet['!cols'] = TICKET_COL_WIDTHS;
+  return sheet;
+}
+
+/** Cria sheet específica de Abertos com colunas adicionais */
+function criarSheetAbertos(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
+  const ABERTOS_HEADERS = [
+    'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
+    'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
+    'RESPONSÁVEL', 'SOLICITANTE', 'TICKET EXTERNO', 'STATUS TDS',
+    'NÚMERO PAI', 'PRIORIDADE', 'VIOLADO',
+    'DATA ABERTURA', 'DATA SOLUÇÃO',
+  ];
+
+  const ABERTOS_COL_WIDTHS = [
+    { width: 12 }, { width: 35 }, { width: 40 }, { width: 35 },
+    { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
+    { width: 25 }, { width: 25 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 12 }, { width: 10 },
+    { width: 14 }, { width: 14 },
+  ];
+
+  if (tickets.length === 0) {
+    const sheet = criarSheetSemDados(ABERTOS_HEADERS, mesNome, ano);
+    sheet['!cols'] = ABERTOS_COL_WIDTHS;
+    return sheet;
+  }
+
+  const rows = tickets.map(t => [
+    t.nro_solicitacao || '',
+    t.cod_resolucao || '',
+    t.organizacao || '',
+    t.item_configuracao || '',
+    t.categoria || '',
+    t.status || '',
+    t.cod_tipo || '',
+    t.nome_grupo || '',
+    t.nome_responsavel || '',
+    t.solicitante || '',
+    t.ticket_externo || '',
+    t.tds_cumprido || '',
+    t.numero_pai || '',
+    t.prioridade || '',
+    t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
+    formatarData(t.data_abertura),
+    formatarData(t.data_solucao),
+  ]);
+
+  const sheetData = [ABERTOS_HEADERS, ...rows];
+  const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+  aplicarHeaderStyle(sheet, ABERTOS_HEADERS.length);
+  sheet['!cols'] = ABERTOS_COL_WIDTHS;
   return sheet;
 }
 
@@ -697,7 +749,7 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
     // Criar workbook com as 8 abas
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsAbertos, mesNome, ano), 'Abertos');
+    XLSX.utils.book_append_sheet(workbook, criarSheetAbertos(ticketsAbertos, mesNome, ano), 'Abertos');
     XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsFechados, mesNome, ano), 'Fechados');
     XLSX.utils.book_append_sheet(workbook, criarSheetSLA(ticketsSLA, mesNome, ano), 'SLA');
     XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsBacklog, mesNome, ano), 'Backlog');
