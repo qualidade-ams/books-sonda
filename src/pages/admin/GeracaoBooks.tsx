@@ -65,6 +65,7 @@ import { Label } from '@/components/ui/label';
 import { useBooksProcessing } from '@/contexts/BooksProcessingContext';
 import { useConsumoHorasFechados } from '@/hooks/useConsumoHorasFechados';
 import { exportarConsumoHorasExcel, exportarConsumoHorasPDF } from '@/utils/consumoHorasExportUtils';
+import { gerarExcelDetalhadoBook } from '@/utils/gerarExcelDetalhadoBook';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /**
@@ -439,26 +440,79 @@ export default function GeracaoBooks() {
         throw new Error('Erro ao gerar URL pública do PDF');
       }
 
-      // 5. Enviar email
+      // 5. Gerar Excel detalhado (8 abas)
+      let excelAnexo: { url: string; nome: string; tipo: string; tamanho: number; token: string } | null = null;
+      try {
+        const excelFile = await gerarExcelDetalhadoBook({
+          empresaId: book.empresa_id,
+          empresaNome: nomeAbreviado,
+          mes: mesReferencia,
+          ano: anoReferencia,
+          diaInicioApuracao: book.dia_inicio_apuracao ?? 1,
+          diaFimApuracao: book.dia_fim_apuracao ?? 0,
+        });
+
+        if (excelFile) {
+          // Upload do Excel no Storage
+          const excelStorageName = sanitizarNomeArquivo(excelFile.name);
+          const excelStoragePath = `books-temp/${anoReferencia}/${mesFormatado}/${excelStorageName}`;
+
+          const { error: excelUploadError } = await supabase.storage
+            .from('anexos-temporarios')
+            .upload(excelStoragePath, excelFile, {
+              contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              upsert: true
+            });
+
+          if (!excelUploadError) {
+            const { data: excelUrlData } = supabase.storage
+              .from('anexos-temporarios')
+              .getPublicUrl(excelStoragePath);
+
+            if (excelUrlData?.publicUrl) {
+              excelAnexo = {
+                url: excelUrlData.publicUrl,
+                nome: excelFile.name,
+                tipo: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                tamanho: excelFile.size,
+                token: ''
+              };
+            }
+          } else {
+            console.warn('⚠️ Erro no upload do Excel:', excelUploadError);
+          }
+        }
+      } catch (excelError) {
+        console.warn('⚠️ Erro ao gerar Excel detalhado (não bloqueia envio):', excelError);
+      }
+
+      // 6. Enviar email com PDF + Excel
+      const arquivosAnexos = [
+        {
+          url: publicUrlData.publicUrl,
+          nome: nomeArquivo,
+          tipo: 'application/pdf',
+          tamanho: pdfBlob.size,
+          token: ''
+        }
+      ];
+      if (excelAnexo) {
+        arquivosAnexos.push(excelAnexo);
+      }
+
       const emailResult = await emailService.sendEmail({
         to: ['willian.faria@sonda.com'],
         subject: assunto,
         html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
         anexos: {
-          totalArquivos: 1,
-          tamanhoTotal: pdfBlob.size,
-          arquivos: [{
-            url: publicUrlData.publicUrl,
-            nome: nomeArquivo,
-            tipo: 'application/pdf',
-            tamanho: pdfBlob.size,
-            token: ''
-          }]
+          totalArquivos: arquivosAnexos.length,
+          tamanhoTotal: arquivosAnexos.reduce((sum, a) => sum + a.tamanho, 0),
+          arquivos: arquivosAnexos
         }
       });
 
       if (emailResult.success) {
-        // 6. Registrar envio no versionamento
+        // 7. Registrar envio no versionamento
         await booksVersioningService.registrarEnvio(
           bookGerado.book_id!,
           ['willian.faria@sonda.com']
