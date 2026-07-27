@@ -229,7 +229,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
 
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', `%${nomeCompleto}%`)
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
@@ -384,18 +384,18 @@ async function buscarApontamentosHoras(
 // GERAÇÃO DAS ABAS
 // ============================================================================
 
-/** Headers padrão para abas de tickets (Abertos, Fechados, SLA, Backlog) */
+/** Headers padrão para aba Backlog */
 const TICKET_HEADERS = [
   'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
-  'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'SERVIÇO TAREFA',
-  'DATA SISTEMA', 'DATA ATIVIDADE', 'DATA ABERTURA', 'DATA SOLUÇÃO',
+  'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
+  'DATA ABERTURA', 'DATA SOLUÇÃO',
 ];
 
 /** Larguras para colunas de tickets */
 const TICKET_COL_WIDTHS = [
   { width: 12 }, { width: 35 }, { width: 40 }, { width: 35 },
-  { width: 30 }, { width: 12 }, { width: 12 }, { width: 35 },
-  { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
+  { width: 14 }, { width: 14 },
 ];
 
 /** Converte ticket em linha para Excel */
@@ -409,8 +409,6 @@ function ticketParaRow(t: TicketAranda): any[] {
     t.status || '',
     t.cod_tipo || '',
     t.nome_grupo || '',
-    formatarData(t.data_abertura),
-    formatarData(t.data_solucao),
     formatarData(t.data_abertura),
     formatarData(t.data_solucao),
   ];
@@ -439,7 +437,7 @@ function criarSheetAbertos(tickets: TicketAranda[], mesNome: string, ano: number
     'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
     'RESPONSÁVEL', 'SOLICITANTE', 'TICKET EXTERNO', 'STATUS TDS',
     'NÚMERO PAI', 'PRIORIDADE', 'VIOLADO',
-    'DATA ABERTURA', 'DATA SOLUÇÃO',
+    'DATA ABERTURA', 'DATA SOLUÇÃO', 'DESCRIÇÃO',
   ];
 
   const ABERTOS_COL_WIDTHS = [
@@ -447,7 +445,7 @@ function criarSheetAbertos(tickets: TicketAranda[], mesNome: string, ano: number
     { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
     { width: 25 }, { width: 25 }, { width: 14 }, { width: 14 },
     { width: 14 }, { width: 12 }, { width: 10 },
-    { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 60 },
   ];
 
   if (tickets.length === 0) {
@@ -474,12 +472,65 @@ function criarSheetAbertos(tickets: TicketAranda[], mesNome: string, ano: number
     t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
     formatarData(t.data_abertura),
     formatarData(t.data_solucao),
+    t.resumo || '',
   ]);
 
   const sheetData = [ABERTOS_HEADERS, ...rows];
   const sheet = XLSX.utils.aoa_to_sheet(sheetData);
   aplicarHeaderStyle(sheet, ABERTOS_HEADERS.length);
   sheet['!cols'] = ABERTOS_COL_WIDTHS;
+  return sheet;
+}
+
+/** Cria sheet específica de Fechados (mesmo layout de Abertos) */
+function criarSheetFechados(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
+  const FECHADOS_HEADERS = [
+    'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
+    'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
+    'RESPONSÁVEL', 'SOLICITANTE', 'TICKET EXTERNO', 'STATUS TDS',
+    'NÚMERO PAI', 'PRIORIDADE', 'VIOLADO',
+    'DATA ABERTURA', 'DATA SOLUÇÃO', 'DESCRIÇÃO',
+  ];
+
+  const FECHADOS_COL_WIDTHS = [
+    { width: 12 }, { width: 35 }, { width: 40 }, { width: 35 },
+    { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
+    { width: 25 }, { width: 25 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 12 }, { width: 10 },
+    { width: 14 }, { width: 14 }, { width: 60 },
+  ];
+
+  if (tickets.length === 0) {
+    const sheet = criarSheetSemDados(FECHADOS_HEADERS, mesNome, ano);
+    sheet['!cols'] = FECHADOS_COL_WIDTHS;
+    return sheet;
+  }
+
+  const rows = tickets.map(t => [
+    t.nro_solicitacao || '',
+    t.cod_resolucao || '',
+    t.organizacao || '',
+    t.item_configuracao || '',
+    t.categoria || '',
+    t.status || '',
+    t.cod_tipo || '',
+    t.nome_grupo || '',
+    t.nome_responsavel || '',
+    t.solicitante || '',
+    t.ticket_externo || '',
+    t.tds_cumprido || '',
+    t.numero_pai || '',
+    t.prioridade || '',
+    t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
+    formatarData(t.data_abertura),
+    formatarData(t.data_solucao),
+    t.resumo || '',
+  ]);
+
+  const sheetData = [FECHADOS_HEADERS, ...rows];
+  const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+  aplicarHeaderStyle(sheet, FECHADOS_HEADERS.length);
+  sheet['!cols'] = FECHADOS_COL_WIDTHS;
   return sheet;
 }
 
@@ -750,7 +801,7 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
     const workbook = XLSX.utils.book_new();
 
     XLSX.utils.book_append_sheet(workbook, criarSheetAbertos(ticketsAbertos, mesNome, ano), 'Abertos');
-    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsFechados, mesNome, ano), 'Fechados');
+    XLSX.utils.book_append_sheet(workbook, criarSheetFechados(ticketsFechados, mesNome, ano), 'Fechados');
     XLSX.utils.book_append_sheet(workbook, criarSheetSLA(ticketsSLA, mesNome, ano), 'SLA');
     XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsBacklog, mesNome, ano), 'Backlog');
     XLSX.utils.book_append_sheet(workbook, criarSheetHoras(apontamentosHoras, mesNome, ano), 'Horas');
