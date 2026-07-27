@@ -309,6 +309,10 @@ class InconsistenciasDeteccaoService {
       // 7.1 Atualizar status_chamado das inconsistências mantidas (tickets podem ter mudado de status)
       await this.atualizarStatusChamados(inconsistenciasDetectadas, ativasMap);
 
+      // 7.2 Atualizar tempo_gasto_horas e tempo_gasto_minutos das inconsistências mantidas
+      // (para refletir o valor correto calculado a partir de tempo_gasto_minutos)
+      await this.atualizarTempoGasto(inconsistenciasDetectadas, ativasMap);
+
       resultado.sucesso = true;
       resultado.mensagens.push(
         `Resultado: ${resultado.novas} novas, ${resultado.resolvidas} resolvidas, ${resultado.mantidas} mantidas`
@@ -355,7 +359,7 @@ class InconsistenciasDeteccaoService {
         const tipos = this.detectarTiposInconsistencia(
           apt.data_atividade,
           apt.data_sistema,
-          apt.tempo_gasto_horas,
+          apt.tempo_gasto_minutos,
           null // IC 999999 apenas em tickets
         );
 
@@ -376,13 +380,15 @@ class InconsistenciasDeteccaoService {
               tipo,
               apt.data_atividade,
               apt.data_sistema,
-              apt.tempo_gasto_horas,
+              apt.tempo_gasto_minutos,
               apt.item_configuracao
             ),
             data_abertura: apt.data_abertura || null,
             data_atividade: apt.data_atividade,
             data_sistema: apt.data_sistema,
-            tempo_gasto_horas: apt.tempo_gasto_horas,
+            tempo_gasto_horas: apt.tempo_gasto_minutos != null
+              ? `${String(Math.floor(apt.tempo_gasto_minutos / 60)).padStart(2, '0')}:${String(apt.tempo_gasto_minutos % 60).padStart(2, '0')}`
+              : apt.tempo_gasto_horas,
             tempo_gasto_minutos: apt.tempo_gasto_minutos,
             empresa: empresaAbreviada,
             analista: apt.analista_tarefa,
@@ -434,7 +440,7 @@ class InconsistenciasDeteccaoService {
         const tipos = this.detectarTiposInconsistencia(
           ticket.data_abertura,
           null, // Tickets não têm data_sistema
-          null, // Tickets não têm tempo_gasto_horas para essa validação
+          null, // Tickets não têm tempo_gasto_minutos para essa validação
           ticket.item_configuracao
         );
 
@@ -612,13 +618,66 @@ class InconsistenciasDeteccaoService {
   }
 
   /**
+   * Atualiza o campo tempo_gasto_horas e tempo_gasto_minutos das inconsistências ativas
+   * com base nos dados detectados. Isso garante que o valor exibido na interface
+   * reflita corretamente a conversão de tempo_gasto_minutos para formato HH:MM.
+   */
+  private async atualizarTempoGasto(
+    inconsistenciasDetectadas: InconsistenciaDetectada[],
+    ativasMap: Map<string, string>
+  ): Promise<void> {
+    try {
+      // Mapear chave_unica -> tempo_gasto dos dados detectados
+      const tempoPorChave = new Map<string, { tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null }>();
+      for (const inc of inconsistenciasDetectadas) {
+        if (inc.tempo_gasto_minutos != null || inc.tempo_gasto_horas != null) {
+          tempoPorChave.set(inc.chave_unica, {
+            tempo_gasto_horas: inc.tempo_gasto_horas,
+            tempo_gasto_minutos: inc.tempo_gasto_minutos
+          });
+        }
+      }
+
+      // Atualizar apenas as que têm chave no ativasMap (existiam antes)
+      const updates: { id: string; tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null }[] = [];
+      for (const [chave, id] of ativasMap.entries()) {
+        const tempo = tempoPorChave.get(chave);
+        if (tempo) {
+          updates.push({ id, ...tempo });
+        }
+      }
+
+      if (updates.length === 0) return;
+
+      // Atualizar em lotes
+      const batchSize = 100;
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize);
+        for (const item of batch) {
+          await supabase
+            .from('inconsistencias_chamados' as any)
+            .update({
+              tempo_gasto_horas: item.tempo_gasto_horas,
+              tempo_gasto_minutos: item.tempo_gasto_minutos
+            })
+            .eq('id', item.id);
+        }
+      }
+
+      console.log(`✅ [DETECCAO] ${updates.length} tempo_gasto atualizados`);
+    } catch (error) {
+      console.error('❌ [DETECCAO] Erro ao atualizar tempo_gasto:', error);
+    }
+  }
+
+  /**
    * Valida se as inconsistências realmente foram resolvidas verificando os dados originais.
    * Retorna apenas os IDs das inconsistências que realmente foram corrigidas.
    * 
    * Para cada tipo de inconsistência, verifica no registro original se a condição
    * que gerou a inconsistência ainda existe:
    * - mes_diferente: verifica se data_atividade e data_sistema agora estão no mesmo mês
-   * - tempo_excessivo: verifica se tempo_gasto_horas agora é <= 10h
+   * - tempo_excessivo: verifica se tempo_gasto_minutos convertido em horas agora é <= 10h
    * - ic_999999: verifica se item_configuracao não começa mais com 999999
    * - sem_atualizacao: verifica se o ticket foi atualizado nos últimos 16 dias
    */
@@ -676,7 +735,7 @@ class InconsistenciasDeteccaoService {
         // Buscar o apontamento original com a mesma data_atividade
         let query = supabase
           .from('apontamentos_aranda' as any)
-          .select('data_atividade, data_sistema, tempo_gasto_horas, item_configuracao')
+          .select('data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, item_configuracao')
           .eq('nro_chamado', nroLimpo);
 
         // Se temos data_atividade, usar para filtrar o registro específico
@@ -746,7 +805,7 @@ class InconsistenciasDeteccaoService {
    */
   private verificarCorrecao(
     tipoInconsistencia: string,
-    registro: { data_atividade: string | null; data_sistema: string | null; tempo_gasto_horas: string | null; item_configuracao: string | null }
+    registro: { data_atividade: string | null; data_sistema: string | null; tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null; item_configuracao: string | null }
   ): boolean {
     switch (tipoInconsistencia) {
       case 'mes_diferente': {
@@ -759,10 +818,10 @@ class InconsistenciasDeteccaoService {
       }
 
       case 'tempo_excessivo': {
-        if (!registro.tempo_gasto_horas) return true;
-        const [horas] = registro.tempo_gasto_horas.split(':').map(Number);
+        if (!registro.tempo_gasto_minutos) return true;
+        const horasConvertidas = registro.tempo_gasto_minutos / 60;
         // Resolvida se agora é <= 10 horas
-        return horas <= 10;
+        return horasConvertidas <= 10;
       }
 
       case 'ic_999999': {
@@ -820,7 +879,7 @@ class InconsistenciasDeteccaoService {
   private detectarTiposInconsistencia(
     dataAtividade: string | null,
     dataSistema: string | null,
-    tempoGastoHoras: string | null,
+    tempoGastoMinutos: number | null,
     itemConfiguracao: string | null
   ): ('mes_diferente' | 'tempo_excessivo' | 'ic_999999' | 'sem_atualizacao')[] {
     const tipos: ('mes_diferente' | 'tempo_excessivo' | 'ic_999999' | 'sem_atualizacao')[] = [];
@@ -846,10 +905,10 @@ class InconsistenciasDeteccaoService {
       tipos.push('mes_diferente');
     }
 
-    // Regra: Tempo excessivo (> 10 horas)
-    if (tempoGastoHoras) {
-      const [horas] = tempoGastoHoras.split(':').map(Number);
-      if (horas > 10) {
+    // Regra: Tempo excessivo (> 10 horas) - usa tempo_gasto_minutos convertido em horas
+    if (tempoGastoMinutos != null && tempoGastoMinutos > 0) {
+      const horasConvertidas = tempoGastoMinutos / 60;
+      if (horasConvertidas > 10) {
         tipos.push('tempo_excessivo');
       }
     }
@@ -864,7 +923,7 @@ class InconsistenciasDeteccaoService {
     tipo: string,
     dataAtividade: string | null,
     dataSistema: string | null,
-    tempoGastoHoras: string | null,
+    tempoGastoMinutos: number | null,
     itemConfiguracao: string | null = null,
     dataUltimoComentario: string | null = null,
     status: string | null = null
@@ -878,8 +937,12 @@ class InconsistenciasDeteccaoService {
         return `Data Atividade (${fmtAtividade}) e Data Sistema (${fmtSistema}) em meses diferentes`;
       }
 
-      case 'tempo_excessivo':
-        return `Tempo gasto (${tempoGastoHoras}) excede o limite de 10 horas`;
+      case 'tempo_excessivo': {
+        const horas = tempoGastoMinutos ? Math.floor(tempoGastoMinutos / 60) : 0;
+        const minutos = tempoGastoMinutos ? tempoGastoMinutos % 60 : 0;
+        const tempoFormatado = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+        return `Tempo gasto (${tempoFormatado}) excede o limite de 10 horas`;
+      }
 
       case 'ic_999999':
         return `Item de Configuração inválido: ${itemConfiguracao}`;
