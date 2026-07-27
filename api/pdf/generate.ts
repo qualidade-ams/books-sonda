@@ -46,6 +46,24 @@ const BROWSER_PATHS = {
 };
 
 function findLocalBrowser(): string | null {
+  // Prioridade 1: Variável de ambiente BROWSER_PATH
+  const envPath = process.env.BROWSER_PATH;
+  if (envPath) {
+    // Remover aspas caso venham da configuração
+    const cleanPath = envPath.replace(/^["']|["']$/g, '');
+    try {
+      if (existsSync(cleanPath)) {
+        console.log('✅ Navegador via BROWSER_PATH:', cleanPath);
+        return cleanPath;
+      } else {
+        console.warn('⚠️ BROWSER_PATH definido mas arquivo não encontrado:', cleanPath);
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao verificar BROWSER_PATH:', e);
+    }
+  }
+
+  // Prioridade 2: Buscar em caminhos padrão do SO
   const platform = process.platform as keyof typeof BROWSER_PATHS;
   const paths = BROWSER_PATHS[platform] || [];
 
@@ -90,18 +108,49 @@ export default async function handler(
 
     console.log('🚀 Iniciando geração de PDF...');
     console.log('📦 Tamanho do HTML:', body.html?.length || 0, 'caracteres');
+    console.log('🔍 BROWSER_PATH env:', process.env.BROWSER_PATH || '(não definido)');
+    console.log('🔍 Platform:', process.platform);
 
     const puppeteer = await import('puppeteer-core');
 
     // Tentar browser local primeiro (dev), senão usar @sparticuz/chromium (produção/Vercel)
-    const localBrowser = findLocalBrowser();
+    let localBrowser = findLocalBrowser();
+
+    // Fallback hardcoded para Windows dev quando findLocalBrowser falha
+    if (!localBrowser && process.platform === 'win32') {
+      const fallbackPaths = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      ];
+      for (const fp of fallbackPaths) {
+        try {
+          // Testar se o arquivo existe via spawn rápido
+          const { execSync } = await import('child_process');
+          execSync(`"${fp}" --version`, { timeout: 5000, stdio: 'pipe' });
+          localBrowser = fp;
+          console.log('✅ Navegador encontrado via fallback Windows:', fp);
+          break;
+        } catch {
+          // Ignorar - próximo path
+        }
+      }
+    }
 
     if (localBrowser) {
       console.log('🔧 Usando browser local:', localBrowser);
       browser = await puppeteer.launch({
         executablePath: localBrowser,
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-background-networking',
+          '--no-first-run',
+          '--disable-default-apps',
+        ],
       });
     } else {
       console.log('🔧 Usando @sparticuz/chromium (Vercel)...');

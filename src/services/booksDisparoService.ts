@@ -24,7 +24,7 @@ import type {
 import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
-import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
+import { gerarExcelDetalhadoBook } from '@/utils/gerarExcelDetalhadoBook';
 import { gerarImagemBancoHoras } from './bancoHorasTableService';
 
 class BooksDisparoService {
@@ -1912,7 +1912,7 @@ class BooksDisparoService {
         };
       }
 
-      // Gerar Excel de detalhamento de consumo de horas para anexar ao email
+      // Gerar Excel detalhado (8 abas) para anexar ao email
       let excelAttachment: { filename: string; content: string; contentType: string } | null = null;
       try {
         // Calcular mês de referência (mês anterior ao mês de disparo)
@@ -1920,101 +1920,16 @@ class BooksDisparoService {
         const anoRef = mes === 1 ? ano - 1 : ano;
         const empresaNome = empresa.nome_abreviado || empresa.nome_completo || '';
 
-        console.log(`📊 Gerando Excel de consumo para ${empresaNome} (${mesRef}/${anoRef})...`);
+        console.log(`📊 Gerando Excel detalhado para ${empresaNome} (${mesRef}/${anoRef})...`);
 
-        // Buscar requerimentos do período
-        const mesCobranca = `${String(mesRef).padStart(2, '0')}/${anoRef}`;
-        const { data: requerimentosData } = await supabase
-          .from('requerimentos')
-          .select('*')
-          .eq('cliente_id', empresa.id)
-          .eq('mes_cobranca', mesCobranca)
-          .in('status', ['enviado_faturamento', 'faturado', 'concluido', 'em_desenvolvimento']);
-
-        // Buscar observações manuais do período
-        const { data: observacoesManuais } = await (supabase
-          .from('banco_horas_observacoes' as any)
-          .select('*')
-          .eq('empresa_id', empresa.id)
-          .eq('mes', mesRef)
-          .eq('ano', anoRef)
-          .order('created_at', { ascending: false }) as any);
-
-        // Buscar reajustes com observações do período
-        const { data: reajustesData } = await (supabase
-          .from('banco_horas_reajustes' as any)
-          .select('id, mes, ano, observacao, tipo_reajuste, valor_reajuste_horas, valor_reajuste_tickets, created_by, created_at')
-          .eq('empresa_id', empresa.id)
-          .eq('mes', mesRef)
-          .eq('ano', anoRef)
-          .eq('ativo', true)
-          .not('observacao', 'is', null)
-          .neq('observacao', '')
-          .order('created_at', { ascending: false }) as any);
-
-        // Buscar nomes dos usuários
-        const allObs = [...(observacoesManuais || []), ...(reajustesData || [])];
-        const userIds = [...new Set(allObs.map((o: any) => o.created_by).filter(Boolean))];
-        let profilesMap = new Map<string, any>();
-        if (userIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .in('id', userIds);
-          profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-        }
-
-        // Formatar observações
-        const observacoesFormatadas = [
-          ...(observacoesManuais || []).map((obs: any) => ({
-            tipo: 'manual',
-            mes: obs.mes,
-            ano: obs.ano,
-            texto: obs.observacao || '',
-            usuario_nome: profilesMap.get(obs.created_by)?.full_name || '',
-            created_at: obs.created_at || '',
-            tipo_ajuste: '',
-            valor_horas: '',
-          })),
-          ...(reajustesData || []).map((rea: any) => ({
-            tipo: 'ajuste',
-            mes: rea.mes,
-            ano: rea.ano,
-            texto: rea.observacao || '',
-            usuario_nome: profilesMap.get(rea.created_by)?.full_name || '',
-            created_at: rea.created_at || '',
-            tipo_ajuste: rea.tipo_reajuste || '',
-            valor_horas: rea.valor_reajuste_horas || '',
-          })),
-        ];
-
-        // Formatar requerimentos
-        const requerimentosFormatados = (requerimentosData || []).map((req: any) => ({
-          chamado: req.chamado || '',
-          cliente_nome: empresaNome,
-          modulo: req.modulo || '',
-          descricao: req.descricao || '',
-          horas_funcional: req.horas_funcional || '',
-          horas_tecnico: req.horas_tecnico || '',
-          horas_total: req.horas_total || '',
-          tipo_cobranca: req.tipo_cobranca || '',
-          data_envio: req.data_envio_faturamento || '',
-          data_aprovacao: req.data_aprovacao || '',
-          mes_cobranca: req.mes_cobranca || '',
-          valor_total_geral: req.valor_total_geral || '',
-          observacao: req.observacao || '',
-        }));
-
-        const excelFile = await gerarExcelConsumoHoras(
-          empresa.id,
+        const excelFile = await gerarExcelDetalhadoBook({
+          empresaId: empresa.id,
           empresaNome,
-          mesRef,
-          anoRef,
-          requerimentosFormatados.length > 0 ? requerimentosFormatados : undefined,
-          observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined,
-          (empresa as any).dia_inicio_apuracao ?? 1,
-          (empresa as any).dia_fim_apuracao ?? 0
-        );
+          mes: mesRef,
+          ano: anoRef,
+          diaInicioApuracao: (empresa as any).dia_inicio_apuracao ?? 1,
+          diaFimApuracao: (empresa as any).dia_fim_apuracao ?? 0,
+        });
 
         if (excelFile) {
           // Converter File para base64
@@ -2031,10 +1946,10 @@ class BooksDisparoService {
 
           console.log(`✅ Excel gerado: ${excelFile.name} (${(excelFile.size / 1024).toFixed(1)} KB)`);
         } else {
-          console.log(`⚠️ Nenhum apontamento encontrado para gerar Excel de ${empresaNome}`);
+          console.log(`⚠️ Não foi possível gerar Excel detalhado para ${empresaNome}`);
         }
       } catch (excelError) {
-        console.warn(`⚠️ Erro ao gerar Excel de consumo (não bloqueia envio):`, excelError);
+        console.warn(`⚠️ Erro ao gerar Excel detalhado (não bloqueia envio):`, excelError);
         // Não falhar o envio do book por erro no Excel
       }
 
