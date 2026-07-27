@@ -253,7 +253,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
 async function buscarTicketsBacklog(nomeCompleto: string, dataFim: Date): Promise<TicketAranda[]> {
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', `%${nomeCompleto}%`)
     .lte('data_abertura', dataFim.toISOString())
     .not('status', 'in', '("Closed","Resolved","Canceled")')
@@ -279,7 +279,7 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
 
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', `%${nomeCompleto}%`)
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
@@ -386,37 +386,49 @@ async function buscarApontamentosHoras(
 // GERAÇÃO DAS ABAS
 // ============================================================================
 
-/** Headers padrão para aba Backlog */
+/** Headers padrão para abas de tickets (Abertos, Fechados, SLA, Backlog) - todos 18 colunas */
 const TICKET_HEADERS = [
-  'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
-  'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
-  'DATA ABERTURA', 'DATA SOLUÇÃO',
+  'TIPO TAREFA', 'CHAMADO', 'EMPRESA', 'CÓDIGO RESOLUÇÃO',
+  'ITEM CONFIGURAÇÃO', 'CATEGORIA', 'ESTADO', 'GRUPO DE SOLUÇÃO',
+  'DATA ABERTURA', 'DATA SOLUÇÃO', 'RESPONSÁVEL', 'SOLICITANTE',
+  'TICKET EXTERNO', 'STATUS TDS', 'NÚMERO PAI', 'PRIORIDADE',
+  'VIOLADO', 'DESCRIÇÃO',
 ];
 
 /** Larguras para colunas de tickets */
 const TICKET_COL_WIDTHS = [
-  { width: 12 }, { width: 35 }, { width: 40 }, { width: 35 },
-  { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
-  { width: 14 }, { width: 14 },
+  { width: 12 }, { width: 12 }, { width: 40 }, { width: 35 },
+  { width: 35 }, { width: 30 }, { width: 12 }, { width: 25 },
+  { width: 14 }, { width: 14 }, { width: 25 }, { width: 25 },
+  { width: 14 }, { width: 14 }, { width: 14 }, { width: 12 },
+  { width: 10 }, { width: 60 },
 ];
 
-/** Converte ticket em linha para Excel */
+/** Converte ticket em linha para Excel (ordem nova) */
 function ticketParaRow(t: TicketAranda): any[] {
   return [
+    t.cod_tipo || '',
     t.nro_solicitacao || '',
-    t.cod_resolucao || '',
     t.organizacao || '',
+    t.cod_resolucao || '',
     t.item_configuracao || '',
     t.categoria || '',
     t.status || '',
-    t.cod_tipo || '',
     t.nome_grupo || '',
     formatarData(t.data_abertura),
     formatarData(t.data_solucao),
+    t.nome_responsavel || '',
+    t.solicitante || '',
+    t.ticket_externo || '',
+    t.tds_cumprido || '',
+    t.numero_pai || '',
+    t.prioridade || '',
+    t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
+    t.resumo || '',
   ];
 }
 
-/** Cria sheet de tickets (usado para Fechados, Backlog) */
+/** Cria sheet de tickets (usado para Abertos, Fechados, SLA, Backlog) */
 function criarSheetTickets(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
   if (tickets.length === 0) {
     const sheet = criarSheetSemDados(TICKET_HEADERS, mesNome, ano);
@@ -432,172 +444,28 @@ function criarSheetTickets(tickets: TicketAranda[], mesNome: string, ano: number
   return sheet;
 }
 
-/** Cria sheet específica de Abertos com colunas adicionais */
-function criarSheetAbertos(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
-  const ABERTOS_HEADERS = [
-    'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
-    'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
-    'RESPONSÁVEL', 'SOLICITANTE', 'TICKET EXTERNO', 'STATUS TDS',
-    'NÚMERO PAI', 'PRIORIDADE', 'VIOLADO',
-    'DATA ABERTURA', 'DATA SOLUÇÃO', 'DESCRIÇÃO',
-  ];
-
-  const ABERTOS_COL_WIDTHS = [
-    { width: 12 }, { width: 35 }, { width: 40 }, { width: 35 },
-    { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 14 }, { width: 14 },
-    { width: 14 }, { width: 12 }, { width: 10 },
-    { width: 14 }, { width: 14 }, { width: 60 },
-  ];
-
-  if (tickets.length === 0) {
-    const sheet = criarSheetSemDados(ABERTOS_HEADERS, mesNome, ano);
-    sheet['!cols'] = ABERTOS_COL_WIDTHS;
-    return sheet;
-  }
-
-  const rows = tickets.map(t => [
-    t.nro_solicitacao || '',
-    t.cod_resolucao || '',
-    t.organizacao || '',
-    t.item_configuracao || '',
-    t.categoria || '',
-    t.status || '',
-    t.cod_tipo || '',
-    t.nome_grupo || '',
-    t.nome_responsavel || '',
-    t.solicitante || '',
-    t.ticket_externo || '',
-    t.tds_cumprido || '',
-    t.numero_pai || '',
-    t.prioridade || '',
-    t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
-    formatarData(t.data_abertura),
-    formatarData(t.data_solucao),
-    t.resumo || '',
-  ]);
-
-  const sheetData = [ABERTOS_HEADERS, ...rows];
-  const sheet = XLSX.utils.aoa_to_sheet(sheetData);
-  aplicarHeaderStyle(sheet, ABERTOS_HEADERS.length);
-  sheet['!cols'] = ABERTOS_COL_WIDTHS;
-  return sheet;
-}
-
-/** Cria sheet específica de Fechados (mesmo layout de Abertos) */
-function criarSheetFechados(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
-  const FECHADOS_HEADERS = [
-    'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
-    'CATEGORIA', 'ESTADO', 'TIPO TAREFA', 'GRUPO DE SOLUÇÃO',
-    'RESPONSÁVEL', 'SOLICITANTE', 'TICKET EXTERNO', 'STATUS TDS',
-    'NÚMERO PAI', 'PRIORIDADE', 'VIOLADO',
-    'DATA ABERTURA', 'DATA SOLUÇÃO', 'DESCRIÇÃO',
-  ];
-
-  const FECHADOS_COL_WIDTHS = [
-    { width: 12 }, { width: 35 }, { width: 40 }, { width: 35 },
-    { width: 30 }, { width: 12 }, { width: 12 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 14 }, { width: 14 },
-    { width: 14 }, { width: 12 }, { width: 10 },
-    { width: 14 }, { width: 14 }, { width: 60 },
-  ];
-
-  if (tickets.length === 0) {
-    const sheet = criarSheetSemDados(FECHADOS_HEADERS, mesNome, ano);
-    sheet['!cols'] = FECHADOS_COL_WIDTHS;
-    return sheet;
-  }
-
-  const rows = tickets.map(t => [
-    t.nro_solicitacao || '',
-    t.cod_resolucao || '',
-    t.organizacao || '',
-    t.item_configuracao || '',
-    t.categoria || '',
-    t.status || '',
-    t.cod_tipo || '',
-    t.nome_grupo || '',
-    t.nome_responsavel || '',
-    t.solicitante || '',
-    t.ticket_externo || '',
-    t.tds_cumprido || '',
-    t.numero_pai || '',
-    t.prioridade || '',
-    t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
-    formatarData(t.data_abertura),
-    formatarData(t.data_solucao),
-    t.resumo || '',
-  ]);
-
-  const sheetData = [FECHADOS_HEADERS, ...rows];
-  const sheet = XLSX.utils.aoa_to_sheet(sheetData);
-  aplicarHeaderStyle(sheet, FECHADOS_HEADERS.length);
-  sheet['!cols'] = FECHADOS_COL_WIDTHS;
-  return sheet;
-}
-
-/** Cria sheet de SLA (incidentes com info de violação) */
+/** Cria sheet de SLA (mesmo layout das outras abas de tickets) */
 function criarSheetSLA(tickets: TicketAranda[], mesNome: string, ano: number): XLSX.WorkSheet {
-  const SLA_HEADERS = [
-    'CHAMADO', 'TICKET EXTERNO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
-    'CATEGORIA', 'GRUPO', 'RESPONSÁVEL', 'PRIORIDADE',
-    'DATA ABERTURA', 'DATA SOLUÇÃO', 'CÓDIGO RESOLUÇÃO',
-    'TDS CUMPRIDO', 'STATUS SLA',
-  ];
-
-  const SLA_COL_WIDTHS = [
-    { width: 12 }, { width: 14 }, { width: 40 }, { width: 35 },
-    { width: 30 }, { width: 25 }, { width: 25 }, { width: 12 },
-    { width: 14 }, { width: 14 }, { width: 35 },
-    { width: 14 }, { width: 14 },
-  ];
-
-  if (tickets.length === 0) {
-    const sheet = criarSheetSemDados(SLA_HEADERS, mesNome, ano);
-    sheet['!cols'] = SLA_COL_WIDTHS;
-    return sheet;
-  }
-
-  const rows = tickets.map(t => [
-    t.nro_solicitacao || '',
-    t.ticket_externo || '',
-    t.organizacao || '',
-    t.item_configuracao || '',
-    t.categoria || '',
-    t.nome_grupo || '',
-    t.nome_responsavel || '',
-    t.prioridade || '',
-    formatarData(t.data_abertura),
-    formatarData(t.data_solucao),
-    t.cod_resolucao || '',
-    t.tds_cumprido || '',
-    t.tds_cumprido === 'TDS Vencido' ? 'VIOLADO' : 'NO PRAZO',
-  ]);
-
-  const sheetData = [SLA_HEADERS, ...rows];
-  const sheet = XLSX.utils.aoa_to_sheet(sheetData);
-  aplicarHeaderStyle(sheet, SLA_HEADERS.length);
-  sheet['!cols'] = SLA_COL_WIDTHS;
-  return sheet;
+  return criarSheetTickets(tickets, mesNome, ano);
 }
 
 /** Cria sheet de Horas (Consumo) */
 function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano: number): XLSX.WorkSheet {
   const HORAS_HEADERS = [
-    'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'ITEM CONFIGURAÇÃO',
-    'CATEGORIA', 'ESTADO', 'TAREFA', 'TIPO TAREFA',
-    'SERVIÇO TAREFA', 'DATA SISTEMA', 'DATA ATIVIDADE', 'DATA ABERTURA',
+    'CHAMADO', 'TIPO TAREFA', 'TAREFA', 'SERVIÇO TAREFA',
+    'HORAS', 'TEMPO (MINUTOS)', 'ATIVIDADE INTERNA', 'EMPRESA',
+    'CÓDIGO RESOLUÇÃO', 'ITEM CONFIGURAÇÃO', 'CATEGORIA', 'ESTADO',
+    'GRUPO SOLUÇÃO', 'DATA SISTEMA', 'DATA ATIVIDADE', 'DATA ABERTURA',
     'DATA SOLUÇÃO', 'ANALISTA', 'RESPONSÁVEL PELO CHAMADO', 'SOLICITANTE',
-    'HORAS', 'TEMPO (MINUTOS)', 'ATIVIDADE INTERNA', 'GRUPO SOLUÇÃO',
     'DESCRIÇÃO TAREFA',
   ];
 
   const HORAS_COL_WIDTHS = [
-    { width: 12 }, { width: 35 }, { width: 30 }, { width: 35 },
-    { width: 30 }, { width: 10 }, { width: 14 }, { width: 12 },
-    { width: 35 }, { width: 14 }, { width: 14 }, { width: 14 },
-    { width: 14 }, { width: 30 }, { width: 30 }, { width: 30 },
+    { width: 12 }, { width: 12 }, { width: 14 }, { width: 35 },
     { width: 10 }, { width: 16 }, { width: 16 }, { width: 30 },
+    { width: 35 }, { width: 35 }, { width: 30 }, { width: 10 },
+    { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 30 }, { width: 30 }, { width: 30 },
     { width: 60 },
   ];
 
@@ -609,14 +477,18 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
 
   const rows = apontamentos.map(apt => [
     apt.nro_chamado || '',
-    apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(Banco.*$/i, '') : '',
+    apt.tipo_chamado || '',
+    apt.nro_tarefa || '',
+    apt.item_configuracao || '',
+    horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
+    apt.tempo_gasto_minutos || 0,
+    apt.ativi_interna || '',
     apt.org_us_final || '',
+    apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(Banco.*$/i, '') : '',
     apt.item_configuracao || '',
     apt.categoria || '',
     apt.caso_estado || '',
-    apt.nro_tarefa || '',
-    apt.tipo_chamado || '',
-    apt.item_configuracao || '',
+    apt.grupo_tarefa || '',
     formatarData(apt.data_sistema),
     formatarData(apt.data_atividade),
     formatarData(apt.data_abertura),
@@ -624,10 +496,6 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
     apt.analista_tarefa || '',
     apt.analista_caso || apt.analista_tarefa || '',
     apt.solicitante || '',
-    horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
-    apt.tempo_gasto_minutos || 0,
-    apt.ativi_interna || '',
-    apt.grupo_tarefa || '',
     apt.descricao_tarefa || '',
   ]);
 
@@ -682,17 +550,17 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
 /** Cria sheet de pesquisas (genérica - usada para as 3 abas de pesquisas) */
 function criarSheetPesquisas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'CHAMADO', 'TIPO', 'EMPRESA', 'CATEGORIA',
-    'GRUPO DE SOLUÇÃO', 'SERVIÇO', 'ITEM DE CONFIGURAÇÃO', 'CLIENTE',
-    'SOLICITANTE', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DATA RESPOSTA',
-    'RESPOSTA', 'PERGUNTA', 'COMENTÁRIO DA PERGUNTA', 'DESCRIÇÃO',
+    'TIPO', 'CHAMADO', 'EMPRESA', 'ITEM DE CONFIGURAÇÃO',
+    'CATEGORIA', 'GRUPO DE SOLUÇÃO', 'SERVIÇO', 'CLIENTE',
+    'SOLICITANTE', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
+    'DATA RESPOSTA', 'PERGUNTA', 'COMENTÁRIO DA PERGUNTA', 'RESPOSTA',
   ];
 
   const PESQ_COL_WIDTHS = [
-    { width: 12 }, { width: 12 }, { width: 40 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 30 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 16 }, { width: 16 },
-    { width: 20 }, { width: 40 }, { width: 50 }, { width: 50 },
+    { width: 12 }, { width: 12 }, { width: 40 }, { width: 30 },
+    { width: 25 }, { width: 25 }, { width: 25 }, { width: 25 },
+    { width: 25 }, { width: 25 }, { width: 16 }, { width: 50 },
+    { width: 16 }, { width: 40 }, { width: 50 }, { width: 20 },
   ];
 
   if (pesquisas.length === 0) {
@@ -702,22 +570,22 @@ function criarSheetPesquisas(pesquisas: PesquisaSatisfacao[], mesNome: string, a
   }
 
   const rows = pesquisas.map(p => [
-    p.nro_caso || '',
     p.tipo_caso || '',
+    p.nro_caso || '',
     p.empresa || '',
+    '', // ITEM DE CONFIGURAÇÃO - não existe na tabela pesquisas_satisfacao
     p.categoria || '',
     p.grupo || '',
     p.servico || '',
-    '', // ITEM DE CONFIGURAÇÃO - não existe na tabela pesquisas_satisfacao
     p.cliente || '',
     p.solicitante || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
+    p.descricao || '',
     formatarData(p.data_resposta),
-    p.resposta || '',
     p.pergunta || '',
     p.comentario_pesquisa || '',
-    p.descricao || '',
+    p.resposta || '',
   ]);
 
   const sheetData = [PESQ_HEADERS, ...rows];
@@ -805,8 +673,8 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
     // Criar workbook com as 8 abas
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, criarSheetAbertos(ticketsAbertos, mesNome, ano), 'Abertos');
-    XLSX.utils.book_append_sheet(workbook, criarSheetFechados(ticketsFechados, mesNome, ano), 'Fechados');
+    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsAbertos, mesNome, ano), 'Abertos');
+    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsFechados, mesNome, ano), 'Fechados');
     XLSX.utils.book_append_sheet(workbook, criarSheetSLA(ticketsSLA, mesNome, ano), 'SLA');
     XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsBacklog, mesNome, ano), 'Backlog');
     XLSX.utils.book_append_sheet(workbook, criarSheetHoras(apontamentosHoras, mesNome, ano), 'Horas');
