@@ -150,6 +150,7 @@ export default async function handler(
           '--disable-background-networking',
           '--no-first-run',
           '--disable-default-apps',
+          '--remote-debugging-port=0',
         ],
       });
     } else {
