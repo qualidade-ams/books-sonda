@@ -56,6 +56,8 @@ interface PesquisaSatisfacao {
   comentario_pesquisa: string | null;
   categoria: string | null;
   servico: string | null;
+  pergunta: string | null;
+  descricao: string | null;
 }
 
 interface ApontamentoHoras {
@@ -302,7 +304,7 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
 
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
-    .select('nro_caso, tipo_caso, empresa, grupo, cliente, prestador, solicitante, data_fechamento, data_resposta, resposta, comentario_pesquisa, categoria, servico')
+    .select('nro_caso, tipo_caso, empresa, grupo, cliente, prestador, solicitante, data_fechamento, data_resposta, resposta, comentario_pesquisa, categoria, servico, pergunta, descricao')
     .eq('empresa', nomeCompleto)
     .gte('data_fechamento', dataInicio.toISOString())
     .lte('data_fechamento', dataFim.toISOString())
@@ -681,16 +683,16 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
 function criarSheetPesquisas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
   const PESQ_HEADERS = [
     'CHAMADO', 'TIPO', 'EMPRESA', 'CATEGORIA',
-    'GRUPO', 'SERVIÇO', 'CLIENTE', 'SOLICITANTE',
-    'PRESTADOR', 'DATA FECHAMENTO', 'DATA RESPOSTA',
-    'RESPOSTA', 'COMENTÁRIO',
+    'GRUPO DE SOLUÇÃO', 'SERVIÇO', 'ITEM DE CONFIGURAÇÃO', 'CLIENTE',
+    'SOLICITANTE', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DATA RESPOSTA',
+    'RESPOSTA', 'PERGUNTA', 'COMENTÁRIO DA PERGUNTA', 'DESCRIÇÃO',
   ];
 
   const PESQ_COL_WIDTHS = [
     { width: 12 }, { width: 12 }, { width: 40 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 25 }, { width: 25 },
-    { width: 25 }, { width: 16 }, { width: 16 },
-    { width: 20 }, { width: 50 },
+    { width: 25 }, { width: 25 }, { width: 30 }, { width: 25 },
+    { width: 25 }, { width: 25 }, { width: 16 }, { width: 16 },
+    { width: 20 }, { width: 40 }, { width: 50 }, { width: 50 },
   ];
 
   if (pesquisas.length === 0) {
@@ -706,13 +708,16 @@ function criarSheetPesquisas(pesquisas: PesquisaSatisfacao[], mesNome: string, a
     p.categoria || '',
     p.grupo || '',
     p.servico || '',
+    '', // ITEM DE CONFIGURAÇÃO - não existe na tabela pesquisas_satisfacao
     p.cliente || '',
     p.solicitante || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
     formatarData(p.data_resposta),
     p.resposta || '',
+    p.pergunta || '',
     p.comentario_pesquisa || '',
+    p.descricao || '',
   ]);
 
   const sheetData = [PESQ_HEADERS, ...rows];
