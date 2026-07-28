@@ -454,18 +454,18 @@ async function buscarTicketsConsumo(nomeCompleto: string, mes: number, ano: numb
 
 /** Headers padrão para abas de tickets (Abertos, Fechados, SLA, Backlog) */
 const TICKET_HEADERS = [
-  'TIPO', 'CHAMADO', 'CÓDIGO RESOLUÇÃO',
-  'CATEGORIA', 'ESTADO', 'GRUPO DE SOLUÇÃO',
-  'DATA ABERTURA', 'DATA SOLUÇÃO', 'RESPONSÁVEL', 'SOLICITANTE',
-  'TICKET EXTERNO', 'STATUS TDS', 'NÚMERO PAI',
+  'TIPO', 'CHAMADO', 'SOLICITANTE', 'CATEGORIA',
+  'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'CÓDIGO RESOLUÇÃO',
+  'ESTADO', 'DATA ABERTURA', 'DATA SOLUÇÃO',
+  'TICKET EXTERNO', 'NÚMERO PAI', 'STATUS TDS',
   'VIOLADO', 'DESCRIÇÃO',
 ];
 
 /** Larguras para colunas de tickets */
 const TICKET_COL_WIDTHS = [
-  { width: 12 }, { width: 12 }, { width: 35 },
-  { width: 30 }, { width: 12 }, { width: 25 },
-  { width: 14 }, { width: 14 }, { width: 25 }, { width: 25 },
+  { width: 12 }, { width: 12 }, { width: 25 }, { width: 30 },
+  { width: 25 }, { width: 25 }, { width: 35 },
+  { width: 12 }, { width: 14 }, { width: 14 },
   { width: 14 }, { width: 14 }, { width: 14 },
   { width: 10 }, { width: 60 },
 ];
@@ -480,17 +480,17 @@ function ticketParaRow(t: TicketAranda): any[] {
   return [
     t.cod_tipo || '',
     t.nro_solicitacao || '',
-    codResolucaoLimpo,
+    t.solicitante || '',
     t.categoria || '',
-    t.status || '',
     t.nome_grupo || '',
+    t.nome_responsavel || '',
+    codResolucaoLimpo,
+    t.status || '',
     formatarData(t.data_abertura),
     formatarData(t.data_solucao),
-    t.nome_responsavel || '',
-    t.solicitante || '',
     t.ticket_externo || '',
-    t.tds_cumprido || '',
     t.numero_pai || '',
+    t.tds_cumprido || '',
     t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
     t.resumo || '',
   ];
@@ -538,20 +538,18 @@ function traduzirTipoChamado(tipo: string | null): string {
 /** Cria sheet de Horas (Consumo) */
 function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano: number): XLSX.WorkSheet {
   const HORAS_HEADERS = [
-    'CHAMADO', 'TIPO', 'TAREFA',
-    'HORAS', 'TEMPO (MINUTOS)',
-    'CÓDIGO RESOLUÇÃO', 'CATEGORIA', 'ESTADO',
-    'GRUPO SOLUÇÃO', 'DATA SISTEMA', 'DATA ATIVIDADE', 'DATA ABERTURA',
-    'DATA SOLUÇÃO', 'ANALISTA', 'RESPONSÁVEL PELO CHAMADO', 'SOLICITANTE',
+    'TIPO', 'CHAMADO', 'TAREFA', 'SOLICITANTE',
+    'CATEGORIA', 'GRUPO DE SOLUÇÃO', 'ANALISTA', 'RESPONSÁVEL PELO CHAMADO',
+    'CÓDIGO RESOLUÇÃO', 'ESTADO', 'DATA SISTEMA', 'DATA ATIVIDADE',
+    'DATA ABERTURA', 'DATA SOLUÇÃO', 'HORAS', 'TEMPO (MINUTOS)',
     'DESCRIÇÃO TAREFA',
   ];
 
   const HORAS_COL_WIDTHS = [
-    { width: 12 }, { width: 14 }, { width: 14 },
-    { width: 10 }, { width: 16 },
-    { width: 35 }, { width: 30 }, { width: 10 },
-    { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 },
-    { width: 14 }, { width: 30 }, { width: 30 }, { width: 30 },
+    { width: 14 }, { width: 12 }, { width: 14 }, { width: 25 },
+    { width: 30 }, { width: 25 }, { width: 30 }, { width: 30 },
+    { width: 35 }, { width: 10 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 10 }, { width: 16 },
     { width: 60 },
   ];
 
@@ -569,22 +567,22 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
   });
 
   const rows = apontamentosOrdenados.map(apt => [
-    apt.nro_chamado || '',
     traduzirTipoChamado(apt.tipo_chamado),
+    apt.nro_chamado || '',
     apt.nro_tarefa || '',
-    horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
-    apt.tempo_gasto_minutos || 0,
-    apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(.*\)$/, '').trim() : '',
+    apt.solicitante || '',
     apt.categoria || '',
-    apt.caso_estado || '',
     apt.grupo_tarefa || '',
+    apt.analista_tarefa || '',
+    apt.analista_caso || apt.analista_tarefa || '',
+    apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(.*\)$/, '').trim() : '',
+    apt.caso_estado || '',
     formatarData(apt.data_sistema),
     formatarData(apt.data_atividade),
     formatarData(apt.data_abertura),
     formatarData(apt.data_fechamento),
-    apt.analista_tarefa || '',
-    apt.analista_caso || apt.analista_tarefa || '',
-    apt.solicitante || '',
+    horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
+    apt.tempo_gasto_minutos || 0,
     apt.descricao_tarefa || '',
   ]);
 
@@ -639,15 +637,15 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
 /** Cria sheet de Tickets (consumo por ticket - empresas com contrato tipo ticket) */
 function criarSheetTicketsConsumo(tickets: TicketConsumo[], mesNome: string, ano: number): XLSX.WorkSheet {
   const TICKETS_HEADERS = [
-    'TIPO', 'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'CATEGORIA',
-    'ESTADO', 'GRUPO SOLUÇÃO', 'DATA ABERTURA', 'DATA FECHAMENTO',
-    'ANALISTA', 'SOLICITANTE', 'CLIENTE',
+    'TIPO', 'CHAMADO', 'SOLICITANTE', 'CLIENTE',
+    'CATEGORIA', 'GRUPO SOLUÇÃO', 'ANALISTA', 'RESPONSÁVEL PELO CHAMADO',
+    'CÓDIGO RESOLUÇÃO', 'ESTADO', 'DATA ABERTURA', 'DATA FECHAMENTO',
   ];
 
   const TICKETS_COL_WIDTHS = [
-    { width: 14 }, { width: 12 }, { width: 35 }, { width: 30 },
-    { width: 12 }, { width: 25 }, { width: 14 }, { width: 14 },
-    { width: 25 }, { width: 25 }, { width: 25 },
+    { width: 14 }, { width: 12 }, { width: 25 }, { width: 25 },
+    { width: 30 }, { width: 25 }, { width: 25 }, { width: 30 },
+    { width: 35 }, { width: 12 }, { width: 14 }, { width: 14 },
   ];
 
   if (tickets.length === 0) {
@@ -666,15 +664,16 @@ function criarSheetTicketsConsumo(tickets: TicketConsumo[], mesNome: string, ano
   const rows = ticketsOrdenados.map(t => [
     traduzirTipoChamado(t.cod_tipo),
     t.nro_solicitacao || '',
-    t.cod_resolucao ? t.cod_resolucao.replace(/\s*\(.*\)$/, '').trim() : '',
-    t.categoria || '',
-    t.status || '',
-    t.nome_grupo || '',
-    formatarData(t.data_abertura),
-    formatarData(t.data_fechamento),
-    t.nome_responsavel || '',
     t.solicitante || '',
     t.cliente || '',
+    t.categoria || '',
+    t.nome_grupo || '',
+    t.nome_responsavel || '',
+    t.nome_responsavel || '',
+    t.cod_resolucao ? t.cod_resolucao.replace(/\s*\(.*\)$/, '').trim() : '',
+    t.status || '',
+    formatarData(t.data_abertura),
+    formatarData(t.data_fechamento),
   ]);
 
   const sheetData = [TICKETS_HEADERS, ...rows];
@@ -687,8 +686,8 @@ function criarSheetTicketsConsumo(tickets: TicketConsumo[], mesNome: string, ano
 /** Cria sheet de Pesquisas Enviadas (sem DATA RESPOSTA, COMENTÁRIO DA PERGUNTA, RESPOSTA) */
 function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'TIPO', 'CHAMADO', 'GRUPO DE SOLUÇÃO', 'CLIENTE',
-    'SOLICITANTE', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
+    'TIPO', 'CHAMADO', 'CLIENTE', 'SOLICITANTE',
+    'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
     'PERGUNTA',
   ];
 
@@ -714,9 +713,9 @@ function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: s
   const rows = pesquisasOrdenadas.map(p => [
     traduzirTipoChamado(p.tipo_caso),
     p.nro_caso || '',
-    p.grupo || '',
     p.cliente || '',
     p.solicitante || '',
+    p.grupo || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
     p.descricao || '',
@@ -733,8 +732,8 @@ function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: s
 /** Cria sheet de Pesquisas Respondidas (mantém DATA RESPOSTA, PERGUNTA, COMENTÁRIO, RESPOSTA) */
 function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'TIPO', 'CHAMADO', 'GRUPO DE SOLUÇÃO', 'CLIENTE',
-    'SOLICITANTE', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
+    'TIPO', 'CHAMADO', 'CLIENTE', 'SOLICITANTE',
+    'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
     'DATA RESPOSTA', 'PERGUNTA', 'COMENTÁRIO DA PERGUNTA', 'RESPOSTA',
   ];
 
@@ -760,9 +759,9 @@ function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome
   const rows = pesquisasOrdenadas.map(p => [
     traduzirTipoChamado(p.tipo_caso),
     p.nro_caso || '',
-    p.grupo || '',
     p.cliente || '',
     p.solicitante || '',
+    p.grupo || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
     p.descricao || '',
@@ -782,8 +781,8 @@ function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome
 /** Cria sheet de Pesquisas Enviadas e Não Respondidas (sem DATA RESPOSTA, COMENTÁRIO, RESPOSTA) */
 function criarSheetPesquisasNaoRespondidas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'TIPO', 'CHAMADO', 'GRUPO DE SOLUÇÃO', 'CLIENTE',
-    'SOLICITANTE', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
+    'TIPO', 'CHAMADO', 'CLIENTE', 'SOLICITANTE',
+    'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
     'PERGUNTA',
   ];
 
@@ -809,9 +808,9 @@ function criarSheetPesquisasNaoRespondidas(pesquisas: PesquisaSatisfacao[], mesN
   const rows = pesquisasOrdenadas.map(p => [
     traduzirTipoChamado(p.tipo_caso),
     p.nro_caso || '',
-    p.grupo || '',
     p.cliente || '',
     p.solicitante || '',
+    p.grupo || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
     p.descricao || '',
