@@ -81,10 +81,10 @@ export function gerarTabelaBancoHoras(
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   };
 
-  // Estilos base - fonte Inter, peso 600 (semi-bold), tamanho 8pt (compacto para email)
-  const cellBase = 'padding:6px 10px;text-align:center;font-size:8pt;font-family:Inter,sans-serif;border:none;font-weight:600;';
-  const headerDark = `padding:6px 10px;text-align:center;font-size:8pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;`;
-  const headerBlue = `padding:6px 10px;text-align:center;font-size:8pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;`;
+  // Estilos base - fonte Inter, peso 600, tamanho ultra-compacto 5pt
+  const cellBase = 'padding:1px 3px;text-align:center;font-size:5pt;font-family:Inter,sans-serif;border:none;font-weight:600;';
+  const headerDark = `padding:1px 3px;text-align:center;font-size:5pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;`;
+  const headerBlue = `padding:1px 3px;text-align:center;font-size:5pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;`;
   const cellNormal = `${cellBase}color:#111827;border-bottom:1px solid #e5e7eb;`;
   const cellGreen = `${cellBase}color:#16a34a;border-bottom:1px solid #e5e7eb;`;
   const cellRed = `${cellBase}color:#dc2626;border-bottom:1px solid #e5e7eb;`;
@@ -227,13 +227,13 @@ export function gerarTabelaRequerimentos(
   const totalFormatado = `${String(totalHoras).padStart(2, '0')}:${String(totalMinutos).padStart(2, '0')}`;
 
   const badgeTotalStyle = isDesenvolvimento 
-    ? 'background:#fed7aa;color:#9a3412;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:600;font-family:Inter,sans-serif;'
-    : 'background:#dbeafe;color:#1e40af;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:600;font-family:Inter,sans-serif;';
+    ? 'background:#fed7aa;color:#9a3412;padding:1px 4px;border-radius:6px;font-size:6px;font-weight:600;font-family:Inter,sans-serif;'
+    : 'background:#dbeafe;color:#1e40af;padding:1px 4px;border-radius:6px;font-size:6px;font-weight:600;font-family:Inter,sans-serif;';
 
-  const thStyle = 'padding:10px 12px;text-align:center;font-size:12px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:2px solid #e5e7eb;';
-  const tdStyle = 'padding:14px 10px;text-align:center;font-size:13px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;';
-  const tdBold = 'padding:14px 10px;text-align:center;font-size:13px;font-family:Inter,sans-serif;color:#111827;font-weight:700;border-bottom:1px solid #e5e7eb;';
-  const tdGray = 'padding:14px 10px;text-align:center;font-size:12px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
+  const thStyle = 'padding:2px 3px;text-align:center;font-size:6px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
+  const tdStyle = 'padding:3px 2px;text-align:center;font-size:6.5px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;';
+  const tdBold = 'padding:3px 2px;text-align:center;font-size:6.5px;font-family:Inter,sans-serif;color:#111827;font-weight:700;border-bottom:1px solid #e5e7eb;';
+  const tdGray = 'padding:3px 2px;text-align:center;font-size:6px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
 
   const linhas = requerimentos.map(req => {
     const hFunc = typeof req.horas_funcional === 'string' 
@@ -253,16 +253,16 @@ export function gerarTabelaRequerimentos(
     return `
       <tr style="background:${isDesenvolvimento ? '#fffdfa' : '#ffffff'};">
         <td style="${tdStyle};white-space:nowrap;">
-          <div style="font-weight:500;font-size:13px;color:#111827;white-space:nowrap;">🏛️ ${req.chamado || '-'}</div>
-          <div style="margin-top:5px;"><span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;display:inline-block;white-space:nowrap;">${tipoCobranca}</span></div>
+          <div style="font-weight:500;font-size:6.5px;color:#111827;white-space:nowrap;">🏛️ ${req.chamado || '-'}</div>
+          <div style="margin-top:1px;"><span style="background:#3b82f6;color:#fff;padding:1px 3px;border-radius:4px;font-size:5px;font-family:Inter,sans-serif;display:inline-block;white-space:nowrap;">${tipoCobranca}</span></div>
         </td>
         <td style="${tdStyle};font-weight:600;white-space:nowrap;">${req.cliente_nome || '-'}</td>
-        <td style="${tdStyle};white-space:nowrap;"><span style="border:1px solid ${isDesenvolvimento ? '#fdba74' : '#93c5fd'};color:${isDesenvolvimento ? '#ea580c' : '#2563eb'};padding:2px 8px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;white-space:nowrap;">${req.modulo || '-'}</span></td>
+        <td style="${tdStyle};white-space:nowrap;"><span style="border:1px solid ${isDesenvolvimento ? '#fdba74' : '#93c5fd'};color:${isDesenvolvimento ? '#ea580c' : '#2563eb'};padding:1px 3px;border-radius:4px;font-size:5px;font-family:Inter,sans-serif;white-space:nowrap;">${req.modulo || '-'}</span></td>
         <td style="${tdStyle}">${formatarHorasDecimal(hFunc)}</td>
         <td style="${tdStyle}">${formatarHorasDecimal(hTec)}</td>
-        <td style="${isDesenvolvimento ? 'padding:14px 10px;text-align:center;font-size:13px;font-family:Inter,sans-serif;color:#ea580c;font-weight:700;border-bottom:1px solid #e5e7eb;' : tdBold}">${formatarHorasDecimal(total)}</td>
-        <td style="${tdGray}">${isDesenvolvimento ? (req.data_envio ? dataEnvio : '<span style="display:inline-block;white-space:nowrap;background:#f3f4f6;color:#6b7280;padding:4px 12px;border-radius:12px;font-size:11px;line-height:1.4;font-family:Inter,sans-serif;">Não enviado</span>') : dataEnvio}</td>
-        <td style="${tdGray}">${isDesenvolvimento ? '<span style="display:inline-block;white-space:nowrap;background:#fed7aa;color:#9a3412;padding:4px 12px;border-radius:12px;font-size:11px;line-height:1.4;font-weight:600;font-family:Inter,sans-serif;">Em desenvolvimento</span>' : dataAprov}</td>
+        <td style="${isDesenvolvimento ? 'padding:3px 2px;text-align:center;font-size:6.5px;font-family:Inter,sans-serif;color:#ea580c;font-weight:700;border-bottom:1px solid #e5e7eb;' : tdBold}">${formatarHorasDecimal(total)}</td>
+        <td style="${tdGray}">${isDesenvolvimento ? (req.data_envio ? dataEnvio : '<span style="display:inline-block;white-space:nowrap;background:#f3f4f6;color:#6b7280;padding:1px 3px;border-radius:6px;font-size:5px;line-height:1.4;font-family:Inter,sans-serif;">Não enviado</span>') : dataEnvio}</td>
+        <td style="${tdGray}">${isDesenvolvimento ? '<span style="display:inline-block;white-space:nowrap;background:#fed7aa;color:#9a3412;padding:1px 3px;border-radius:6px;font-size:5px;line-height:1.4;font-weight:600;font-family:Inter,sans-serif;">Em desenvolvimento</span>' : dataAprov}</td>
         <td style="${tdGray}">${valorTotal}</td>
         <td style="${tdGray}">${periodo}</td>
       </tr>
@@ -271,18 +271,18 @@ export function gerarTabelaRequerimentos(
 
   const tituloIcone = '📋';
   const asteriscoHtml = isDesenvolvimento 
-    ? '<span style="display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid #ea580c;color:#ea580c;font-size:10px;text-align:center;line-height:14px;margin-left:4px;font-weight:700;">!</span>' 
-    : '<span style="color:#2563eb;font-size:14px;margin-left:4px;">*</span>';
+    ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:1px solid #ea580c;color:#ea580c;font-size:5px;text-align:center;line-height:7px;margin-left:2px;font-weight:700;">!</span>' 
+    : '<span style="color:#2563eb;font-size:7px;margin-left:2px;">*</span>';
 
   return `
-    <div style="margin-top:28px;">
+    <div style="margin-top:8px;">
       <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
-        <span style="font-size:14px;">${tituloIcone}</span>
-        <span style="font-size:14px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:6px;">${titulo}</span>
+        <span style="font-size:7px;">${tituloIcone}</span>
+        <span style="font-size:7px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:2px;">${titulo}</span>
         ${asteriscoHtml}
-        <span style="${badgeTotalStyle};margin-left:10px;">${totalFormatado}</span>
+        <span style="${badgeTotalStyle};margin-left:4px;">${totalFormatado}</span>
       </td></tr></table>
-      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:12px;">
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:8px;">
         <thead>
           <tr${isDesenvolvimento ? ' style="background:#fff7ed;"' : ''}>
             <th style="${thStyle}">Chamado</th>
@@ -311,9 +311,9 @@ export function gerarTabelaRequerimentos(
 export function gerarSecaoObservacoes(observacoes: Observacao[]): string {
   if (!observacoes || observacoes.length === 0) return '';
 
-  const thStyle = 'padding:10px 12px;text-align:center;font-size:12px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:2px solid #e5e7eb;';
-  const tdStyle = 'padding:12px 10px;text-align:center;font-size:13px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;';
-  const tdGray = 'padding:12px 10px;text-align:center;font-size:12px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
+  const thStyle = 'padding:2px 3px;text-align:center;font-size:6px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
+  const tdStyle = 'padding:3px 2px;text-align:center;font-size:6.5px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;';
+  const tdGray = 'padding:3px 2px;text-align:center;font-size:6px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
 
   const linhas = observacoes.map(obs => {
     const periodo = obs.mes && obs.ano ? `${MESES_PT[(obs.mes || 1) - 1]}/${obs.ano}` : '-';
@@ -322,11 +322,11 @@ export function gerarSecaoObservacoes(observacoes: Observacao[]): string {
     
     let tipoBadge = '';
     if (obs.tipo === 'manual') {
-      tipoBadge = '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;">Manual</span>';
+      tipoBadge = '<span style="background:#dbeafe;color:#1e40af;padding:1px 3px;border-radius:4px;font-size:5px;font-family:Inter,sans-serif;">Manual</span>';
     } else {
-      tipoBadge = '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;">Ajuste</span>';
+      tipoBadge = '<span style="background:#dcfce7;color:#166534;padding:1px 3px;border-radius:4px;font-size:5px;font-family:Inter,sans-serif;">Ajuste</span>';
       if (obs.valor_horas && obs.valor_horas !== '00:00') {
-        tipoBadge += `<br/><span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:8px;font-size:10px;font-family:Inter,sans-serif;margin-top:3px;display:inline-block;">🕐 ${obs.tipo_ajuste === 'entrada' ? '+' : '-'}${obs.valor_horas}</span>`;
+        tipoBadge += `<br/><span style="background:#dbeafe;color:#1e40af;padding:1px 2px;border-radius:3px;font-size:4.5px;font-family:Inter,sans-serif;margin-top:1px;display:inline-block;">🕐 ${obs.tipo_ajuste === 'entrada' ? '+' : '-'}${obs.valor_horas}</span>`;
       }
     }
 
@@ -342,12 +342,12 @@ export function gerarSecaoObservacoes(observacoes: Observacao[]): string {
   }).join('');
 
   return `
-    <div style="margin-top:28px;">
+    <div style="margin-top:8px;">
       <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
-        <span style="font-size:14px;">💬</span>
-        <span style="font-size:14px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:6px;">Observações</span>
+        <span style="font-size:7px;">💬</span>
+        <span style="font-size:7px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:2px;">Observações</span>
       </td></tr></table>
-      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:12px;">
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:3px;">
         <thead>
           <tr>
             <th style="${thStyle}">Tipo</th>
@@ -689,7 +689,7 @@ export async function gerarImagemBancoHoras(
       };
     }
 
-    // 2. Preparar HTML completo para renderização (max 600px para caber no email)
+    // 2. Preparar HTML completo para renderização (500px para tabela compacta legível)
     const htmlParaRenderizar = `
       <!DOCTYPE html>
       <html>
@@ -701,7 +701,7 @@ export async function gerarImagemBancoHoras(
         </style>
       </head>
       <body>
-        <div style="font-family:Calibri,sans-serif;max-width:600px;width:600px;margin:0;padding:12px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:9pt;">
+        <div style="font-family:Calibri,sans-serif;max-width:500px;width:500px;margin:0;padding:4px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:5pt;">
           ${resultado.html}
         </div>
       </body>
@@ -712,7 +712,7 @@ export async function gerarImagemBancoHoras(
     const response = await fetch('/api/email/render-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html: htmlParaRenderizar, width: 600 })
+      body: JSON.stringify({ html: htmlParaRenderizar, width: 500 })
     });
 
     if (!response.ok) {
