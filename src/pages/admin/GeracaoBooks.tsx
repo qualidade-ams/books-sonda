@@ -188,6 +188,7 @@ export default function GeracaoBooks() {
   const [showAtualizarDialog, setShowAtualizarDialog] = useState(false);
   const [bookVisualizando, setBookVisualizando] = useState<BookListItem | null>(null);
   const [downloadingBookId, setDownloadingBookId] = useState<string | null>(null);
+  const [downloadingExcelBookId, setDownloadingExcelBookId] = useState<string | null>(null);
   
   // Estados para retificação
   const [showRetificacaoDialog, setShowRetificacaoDialog] = useState(false);
@@ -373,6 +374,61 @@ export default function GeracaoBooks() {
       });
     } finally {
       setDownloadingBookId(null);
+    }
+  };
+
+  const handleDownloadExcel = async (book: BookListItem) => {
+    if (!book.id) return;
+
+    try {
+      setDownloadingExcelBookId(book.id);
+      const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome;
+
+      toast({
+        title: 'Gerando detalhamento...',
+        description: `Preparando Excel detalhado de ${nomeEmpresa}`,
+      });
+
+      const excelFile = await gerarExcelDetalhadoBook({
+        empresaId: book.empresa_id,
+        empresaNome: nomeEmpresa,
+        mes: book.mes,
+        ano: book.ano,
+        diaInicioApuracao: book.dia_inicio_apuracao ?? 1,
+        diaFimApuracao: book.dia_fim_apuracao ?? 0,
+      });
+
+      if (excelFile) {
+        // Criar link para download
+        const url = URL.createObjectURL(excelFile);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = excelFile.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: 'Download concluído',
+          description: `Detalhamento de ${nomeEmpresa} baixado com sucesso.`,
+        });
+      } else {
+        toast({
+          title: 'Erro ao gerar detalhamento',
+          description: 'Não foi possível gerar o arquivo Excel.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao baixar Excel detalhado:', error);
+      toast({
+        title: 'Erro ao gerar detalhamento',
+        description: error instanceof Error ? error.message : 'Erro desconhecido.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingExcelBookId(null);
     }
   };
 
@@ -1002,7 +1058,7 @@ export default function GeracaoBooks() {
 
                           {/* Botões de Ação */}
                           <div className="flex gap-1">
-                            {/* Books ENVIADOS: Visualizar, Download, Histórico, Retificar */}
+                            {/* Books ENVIADOS: Visualizar, Download (PDF/Excel), Histórico, Retificar */}
                             {book.status === 'enviado' && (
                               <>
                                 <Button
@@ -1014,20 +1070,33 @@ export default function GeracaoBooks() {
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => handleDownloadPDF(book)}
-                                  disabled={downloadingBookId === book.id}
-                                  title={t("books.downloadPDF")}
-                                >
-                                  {downloadingBookId === book.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Download className="h-4 w-4" />
-                                  )}
-                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      disabled={downloadingBookId === book.id || downloadingExcelBookId === book.id}
+                                      title="Download"
+                                    >
+                                      {(downloadingBookId === book.id || downloadingExcelBookId === book.id) ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Download className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleDownloadPDF(book)}>
+                                      <FileDown className="h-4 w-4 mr-2" />
+                                      Baixar PDF
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDownloadExcel(book)}>
+                                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                      Baixar Detalhamento
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1051,7 +1120,7 @@ export default function GeracaoBooks() {
                                 </Button>
                               </>
                             )}
-                            {/* Books GERADOS: Visualizar, Download, e Histórico se v2+ */}
+                            {/* Books GERADOS: Visualizar, Download (PDF/Excel), e Histórico se v2+ */}
                             {book.status === 'gerado' && (
                               <>
                                 <Button
@@ -1063,20 +1132,33 @@ export default function GeracaoBooks() {
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => handleDownloadPDF(book)}
-                                  disabled={downloadingBookId === book.id}
-                                  title={t("books.downloadPDF")}
-                                >
-                                  {downloadingBookId === book.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Download className="h-4 w-4" />
-                                  )}
-                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      disabled={downloadingBookId === book.id || downloadingExcelBookId === book.id}
+                                      title="Download"
+                                    >
+                                      {(downloadingBookId === book.id || downloadingExcelBookId === book.id) ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Download className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleDownloadPDF(book)}>
+                                      <FileDown className="h-4 w-4 mr-2" />
+                                      Baixar PDF
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDownloadExcel(book)}>
+                                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                      Baixar Detalhamento
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                                 {/* Botão Histórico - aparece se tem versões anteriores */}
                                 {book.versao_atual && book.versao_atual > 1 && (
                                   <Button
@@ -1094,7 +1176,7 @@ export default function GeracaoBooks() {
                                 )}
                               </>
                             )}
-                            {/* Books DESATUALIZADOS (retificados): Regenerar, Visualizar, Download, Histórico */}
+                            {/* Books DESATUALIZADOS (retificados): Regenerar, Visualizar, Download (PDF/Excel), Histórico */}
                             {book.status === 'desatualizado' && (
                               <>
                                 <Button
@@ -1120,20 +1202,33 @@ export default function GeracaoBooks() {
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => handleDownloadPDF(book)}
-                                  disabled={downloadingBookId === book.id}
-                                  title={t("books.downloadPDF")}
-                                >
-                                  {downloadingBookId === book.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Download className="h-4 w-4" />
-                                  )}
-                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      disabled={downloadingBookId === book.id || downloadingExcelBookId === book.id}
+                                      title="Download"
+                                    >
+                                      {(downloadingBookId === book.id || downloadingExcelBookId === book.id) ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Download className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleDownloadPDF(book)}>
+                                      <FileDown className="h-4 w-4 mr-2" />
+                                      Baixar PDF
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDownloadExcel(book)}>
+                                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                      Baixar Detalhamento
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Button
                                   variant="outline"
                                   size="sm"

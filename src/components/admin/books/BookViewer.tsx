@@ -21,8 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { BookListItem, BookData } from '@/types/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
-import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
-import { supabase } from '@/integrations/supabase/client';
+import { gerarExcelDetalhadoBook } from '@/utils/gerarExcelDetalhadoBook';
 
 // Importar componentes das abas
 import BookCapa from './BookCapa';
@@ -197,108 +196,22 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
 
       toast({
         title: 'Gerando Excel...',
-        description: `Preparando detalhamento de consumo para ${empresaNome}`,
+        description: `Preparando detalhamento de ${empresaNome}`,
       });
 
-      // Buscar requerimentos do período
-      const mesCobranca = `${String(book.mes).padStart(2, '0')}/${book.ano}`;
-      const { data: requerimentosData } = await supabase
-        .from('requerimentos')
-        .select('*')
-        .eq('cliente_id', book.empresa_id)
-        .eq('mes_cobranca', mesCobranca)
-        .in('status', ['enviado_faturamento', 'faturado', 'concluido', 'em_desenvolvimento']);
-
-      // Buscar observações manuais do período
-      const { data: observacoesManuais } = await (supabase
-        .from('banco_horas_observacoes' as any)
-        .select('*')
-        .eq('empresa_id', book.empresa_id)
-        .eq('mes', book.mes)
-        .eq('ano', book.ano)
-        .order('created_at', { ascending: false }) as any);
-
-      // Buscar reajustes com observações do período
-      const { data: reajustesData } = await (supabase
-        .from('banco_horas_reajustes' as any)
-        .select('id, mes, ano, observacao, tipo_reajuste, valor_reajuste_horas, valor_reajuste_tickets, created_by, created_at')
-        .eq('empresa_id', book.empresa_id)
-        .eq('mes', book.mes)
-        .eq('ano', book.ano)
-        .eq('ativo', true)
-        .not('observacao', 'is', null)
-        .neq('observacao', '')
-        .order('created_at', { ascending: false }) as any);
-
-      // Buscar nomes dos usuários para observações
-      const allObs = [...(observacoesManuais || []), ...(reajustesData || [])];
-      const userIds = [...new Set(allObs.map((o: any) => o.created_by).filter(Boolean))];
-      let profilesMap = new Map<string, any>();
-      
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', userIds);
-        profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      }
-
-      // Unificar observações manuais + reajustes no formato esperado pelo Excel
-      const observacoesFormatadas = [
-        ...(observacoesManuais || []).map((obs: any) => ({
-          tipo: 'manual',
-          mes: obs.mes,
-          ano: obs.ano,
-          texto: obs.observacao || '',
-          usuario_nome: profilesMap.get(obs.created_by)?.full_name || '',
-          created_at: obs.created_at || '',
-          tipo_ajuste: '',
-          valor_horas: '',
-        })),
-        ...(reajustesData || []).map((rea: any) => ({
-          tipo: 'ajuste',
-          mes: rea.mes,
-          ano: rea.ano,
-          texto: rea.observacao || '',
-          usuario_nome: profilesMap.get(rea.created_by)?.full_name || '',
-          created_at: rea.created_at || '',
-          tipo_ajuste: rea.tipo_reajuste || '',
-          valor_horas: rea.valor_reajuste_horas || '',
-        })),
-      ];
-
-      // Formatar requerimentos para o formato esperado pelo Excel
-      const requerimentosFormatados = (requerimentosData || []).map((req: any) => ({
-        chamado: req.chamado || '',
-        cliente_nome: empresaNome,
-        modulo: req.modulo || '',
-        descricao: req.descricao || '',
-        horas_funcional: req.horas_funcional || '',
-        horas_tecnico: req.horas_tecnico || '',
-        horas_total: req.horas_total || '',
-        tipo_cobranca: req.tipo_cobranca || '',
-        data_envio: req.data_envio_faturamento || '',
-        data_aprovacao: req.data_aprovacao || '',
-        mes_cobranca: req.mes_cobranca || '',
-        valor_total_geral: req.valor_total_geral || '',
-        observacao: req.observacao || '',
-      }));
-
-      const excelFile = await gerarExcelConsumoHoras(
-        book.empresa_id,
+      const excelFile = await gerarExcelDetalhadoBook({
+        empresaId: book.empresa_id,
         empresaNome,
-        book.mes,
-        book.ano,
-        requerimentosFormatados.length > 0 ? requerimentosFormatados : undefined,
-        observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined,
-        book.dia_inicio_apuracao ?? 1,
-        book.dia_fim_apuracao ?? 0
-      );
+        mes: book.mes,
+        ano: book.ano,
+        diaInicioApuracao: book.dia_inicio_apuracao ?? 1,
+        diaFimApuracao: book.dia_fim_apuracao ?? 0,
+      });
 
       if (!excelFile) {
         toast({
-          title: 'Nenhum dado encontrado',
-          description: 'Não há apontamentos de consumo para gerar o Excel neste período.',
+          title: 'Erro ao gerar detalhamento',
+          description: 'Não foi possível gerar o arquivo Excel.',
           variant: 'destructive',
         });
         return;
