@@ -78,7 +78,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({ template, dadosPersonalizad
           title="Preview do E-mail"
           className="w-full border-0"
           style={{ height: `${iframeHeight}px`, minHeight: '400px' }}
-          sandbox="allow-same-origin"
+          sandbox="allow-same-origin allow-scripts"
         />
       </div>
     </div>

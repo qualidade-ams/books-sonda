@@ -208,7 +208,7 @@ const TesteVariaveisElogios = ({ template }: TesteVariaveisElogiosProps) => {
               title="Preview Elogios"
               className="w-full border-0"
               style={{ height: '300px', minHeight: '200px' }}
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts"
             />
           </div>
         </CardContent>
