@@ -121,17 +121,13 @@ export default async function handler(
     await page.evaluateHandle('document.fonts.ready');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Medir a altura real do conteúdo usando o bounding box do container principal
-    // Isso evita incluir espaço em branco extra do viewport
+    // Medir a altura real do conteúdo completo
     const contentHeight = await page.evaluate(() => {
-      // Tentar pegar a altura do primeiro filho do body (o container div)
-      const container = document.body.firstElementChild;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        return Math.ceil(rect.height);
-      }
-      // Fallback: usar offsetHeight do body
-      return document.body.offsetHeight;
+      // Usar scrollHeight do body que captura TODO o conteúdo incluindo margins/paddings
+      const bodyHeight = document.body.scrollHeight;
+      // Também verificar documentElement para pegar qualquer overflow
+      const docHeight = document.documentElement.scrollHeight;
+      return Math.ceil(Math.max(bodyHeight, docHeight));
     });
 
     // Redimensionar viewport para a altura exata do conteúdo

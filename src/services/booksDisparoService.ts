@@ -1876,7 +1876,7 @@ class BooksDisparoService {
 
           if (resultadoImagem.sucesso && resultadoImagem.imagemUrl) {
             // Substituir variáveis de banco de horas no corpo processado
-            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" style="max-width:500px;width:100%;height:auto;display:block;border:0;margin:8px 0;" />`;
+            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" style="max-width:100%;width:100%;height:auto;display:block;border:0;margin:8px 0;" />`;
             
             templateProcessado.corpo = templateProcessado.corpo
               .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, resultadoImagem.imagemUrl)
@@ -1899,6 +1899,88 @@ class BooksDisparoService {
 
           console.warn(`⚠️ Erro ao gerar imagem do banco de horas (não bloqueia envio):`, bancoHorasError);
         }
+      }
+
+      // ===== Renderização do Email Completo como Imagem =====
+      // Renderiza o template processado inteiro como screenshot para garantir
+      // visual idêntico em qualquer cliente de email (Outlook, Gmail, etc.)
+      try {
+        console.log(`🖼️ Renderizando email completo como imagem...`);
+        
+        // Extrair o link do SharePoint do corpo processado
+        const linkMatch = templateProcessado.corpo.match(/href="([^"]*linkSharepoint[^"]*|https?:\/\/[^"]*sharepoint[^"]*|https?:\/\/[^"]*\.com[^"]*)"/i);
+        // Buscar link direto da empresa se não encontrar no corpo
+        const sharepointLink = (empresa as any).link_sharepoint || (linkMatch ? linkMatch[1] : '#');
+        
+        // Renderizar o HTML completo do email como imagem
+        const emailRenderResponse = await fetch('/api/email/render-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: templateProcessado.corpo, width: 1100 })
+        });
+        
+        if (emailRenderResponse.ok) {
+          const emailRenderData = await emailRenderResponse.json();
+          
+          if (emailRenderData.success && emailRenderData.image) {
+            // Upload da imagem do email para Supabase Storage
+            const byteCharacters = atob(emailRenderData.image);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' });
+            
+            const empresaNomeSlug = (empresa.nome_abreviado || empresa.nome_completo || '').replace(/[^a-zA-Z0-9-]/g, '-');
+            const emailImgFileName = `email-book-${empresaNomeSlug}-${mes}-${ano}-${Date.now()}.png`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from('email-images')
+              .upload(emailImgFileName, blob, { contentType: 'image/png', upsert: false });
+            
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from('email-images').getPublicUrl(emailImgFileName);
+              
+              if (urlData?.publicUrl) {
+                // Substituir todo o corpo por uma imagem clicável com link do SharePoint
+                templateProcessado.corpo = `
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                  </head>
+                  <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,sans-serif;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f1f5f9;padding:20px 0;">
+                      <tr>
+                        <td align="center">
+                          <a href="${sharepointLink}" target="_blank" style="display:block;text-decoration:none;">
+                            <img src="${urlData.publicUrl}" alt="Book Mensal - ${empresa.nome_abreviado || empresa.nome_completo}" width="1100" style="display:block;border:0;outline:none;max-width:1100px;width:1100px;height:auto;" />
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </body>
+                  </html>
+                `;
+                
+                console.log(`✅ Email renderizado como imagem com link: ${sharepointLink}`);
+              } else {
+                console.warn(`⚠️ Não foi possível obter URL pública da imagem do email`);
+              }
+            } else {
+              console.warn(`⚠️ Erro no upload da imagem do email: ${uploadError.message}`);
+            }
+          } else {
+            console.warn(`⚠️ Resposta inválida ao renderizar email como imagem`);
+          }
+        } else {
+          console.warn(`⚠️ Falha ao renderizar email como imagem (HTTP ${emailRenderResponse.status})`);
+        }
+      } catch (emailImgError) {
+        console.warn(`⚠️ Erro ao renderizar email como imagem (não bloqueia envio):`, emailImgError);
+        // Se falhar, envia o HTML normalmente como fallback
       }
 
       // Coletar todos os e-mails dos clientes para o campo "Para"
