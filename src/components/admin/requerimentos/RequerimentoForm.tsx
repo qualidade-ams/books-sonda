@@ -397,14 +397,22 @@ export function RequerimentoForm({
       editandoRequerimento: !!requerimento
     });
     
-    if (!taxaVigente || !linguagem || !tipoCobranca) {
-      console.log('❌ Faltam dados para preencher valores automaticamente');
+    if (!taxaVigente || !tipoCobranca) {
+      console.log('❌ Faltam dados para preencher valores automaticamente (taxa ou tipo de cobrança)');
       return;
     }
     
     if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(tipoCobranca)) {
       console.log('❌ Tipo de cobrança não requer preenchimento automático:', tipoCobranca);
       return;
+    }
+
+    // Se há horas técnicas, linguagem é obrigatória para calcular valor técnico
+    // Mas NÃO deve bloquear o preenchimento do valor funcional
+    const hTecCheckStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+    const hTecCheckDec = converterParaHorasDecimal(hTecCheckStr);
+    if (hTecCheckDec > 0 && !linguagem) {
+      console.log('⚠️ Há horas técnicas mas linguagem não foi selecionada - valor técnico não será preenchido');
     }
 
     // CORREÇÃO CRÍTICA: Não preencher automaticamente quando editando requerimento existente
@@ -445,17 +453,12 @@ export function RequerimentoForm({
       return null;
     };
 
-    const funcaoTecnico = mapearLinguagemParaFuncao(linguagem);
+    const funcaoTecnico = linguagem ? mapearLinguagemParaFuncao(linguagem) : null;
     console.log('🎯 Funções mapeadas:', {
       funcaoFuncional,
       funcaoTecnico,
       linguagem
     });
-    
-    if (!funcaoTecnico) {
-      console.log('❌ Não foi possível mapear linguagem para função');
-      return;
-    }
 
     // Determinar se deve usar valores locais ou remotos
     const usarValoresLocais = atendimentoPresencial || false;
@@ -468,7 +471,7 @@ export function RequerimentoForm({
     console.log('📊 Estrutura completa da taxa:', JSON.stringify(taxaVigente, null, 2));
     
     const valorFuncaoFuncional = valoresParaUsar?.find(v => v.funcao === funcaoFuncional);
-    const valorFuncaoTecnico = valoresParaUsar?.find(v => v.funcao === funcaoTecnico);
+    const valorFuncaoTecnico = funcaoTecnico ? valoresParaUsar?.find(v => v.funcao === funcaoTecnico) : null;
 
     console.log('💰 Valores encontrados:', {
       valorFuncaoFuncional,
@@ -478,17 +481,19 @@ export function RequerimentoForm({
     console.log('💰 Detalhes do valor funcional:', JSON.stringify(valorFuncaoFuncional, null, 2));
     console.log('💰 Detalhes do valor técnico:', JSON.stringify(valorFuncaoTecnico, null, 2));
 
-    if (!valorFuncaoFuncional || !valorFuncaoTecnico) {
-      console.log('❌ ERRO: Valores não encontrados na taxa!');
+    if (!valorFuncaoFuncional) {
+      console.log('❌ ERRO: Valor funcional não encontrado na taxa!');
       console.log('❌ Tipo de valor:', tipoValor);
-      console.log('❌ Funções procuradas:', { funcaoFuncional, funcaoTecnico });
+      console.log('❌ Função procurada:', funcaoFuncional);
       console.log('❌ Funções disponíveis:', valoresParaUsar?.map(v => v.funcao));
       return;
     }
     
-    console.log('✅ SUCESSO: Valores encontrados!');
+    console.log('✅ SUCESSO: Valor funcional encontrado!');
     console.log('✅ Valor Funcional completo:', valorFuncaoFuncional);
-    console.log('✅ Valor Técnico completo:', valorFuncaoTecnico);
+    if (valorFuncaoTecnico) {
+      console.log('✅ Valor Técnico completo:', valorFuncaoTecnico);
+    }
 
     // Preparar array com todas as funções para cálculos
     const todasFuncoes = taxaVigente.valores_remota?.map(v => ({
@@ -499,8 +504,10 @@ export function RequerimentoForm({
     // Calcular valores para Funcional
     const valoresCalculadosFuncional = calcularValores(valorFuncaoFuncional.valor_base, funcaoFuncional, todasFuncoes);
     
-    // Calcular valores para Técnico (baseado na linguagem)
-    const valoresCalculadosTecnico = calcularValores(valorFuncaoTecnico.valor_base, funcaoTecnico, todasFuncoes);
+    // Calcular valores para Técnico (baseado na linguagem) - só se tiver linguagem e valor
+    const valoresCalculadosTecnico = (funcaoTecnico && valorFuncaoTecnico) 
+      ? calcularValores(valorFuncaoTecnico.valor_base, funcaoTecnico, todasFuncoes) 
+      : null;
 
     let valorHoraFuncional = 0;
     let valorHoraTecnico = 0;
@@ -509,24 +516,24 @@ export function RequerimentoForm({
     if (tipoCobranca === 'Faturado') {
       // Hora Normal - Seg-Sex 08h30-17h30 (valor base)
       valorHoraFuncional = valoresCalculadosFuncional.valor_base;
-      valorHoraTecnico = valoresCalculadosTecnico.valor_base;
+      valorHoraTecnico = valoresCalculadosTecnico?.valor_base || 0;
       console.log('📊 Usando valores de Hora Normal (Seg-Sex 08h30-17h30)');
     } else if (tipoCobranca === 'Hora Extra') {
       // Hora Extra - depende do tipo selecionado
       if (tipoHoraExtra === '17h30-19h30') {
         // Seg-Sex 17h30-19h30
         valorHoraFuncional = valoresCalculadosFuncional.valor_17h30_19h30;
-        valorHoraTecnico = valoresCalculadosTecnico.valor_17h30_19h30;
+        valorHoraTecnico = valoresCalculadosTecnico?.valor_17h30_19h30 || 0;
         console.log('📊 Usando valores de Hora Extra (Seg-Sex 17h30-19h30)');
       } else if (tipoHoraExtra === 'apos_19h30') {
         // Seg-Sex Após 19h30
         valorHoraFuncional = valoresCalculadosFuncional.valor_apos_19h30;
-        valorHoraTecnico = valoresCalculadosTecnico.valor_apos_19h30;
+        valorHoraTecnico = valoresCalculadosTecnico?.valor_apos_19h30 || 0;
         console.log('📊 Usando valores de Hora Extra (Seg-Sex Após 19h30)');
       } else if (tipoHoraExtra === 'fim_semana') {
         // Sáb/Dom/Feriados
         valorHoraFuncional = valoresCalculadosFuncional.valor_fim_semana;
-        valorHoraTecnico = valoresCalculadosTecnico.valor_fim_semana;
+        valorHoraTecnico = valoresCalculadosTecnico?.valor_fim_semana || 0;
         console.log('📊 Usando valores de Hora Extra (Sáb/Dom/Feriados)');
       } else {
         console.log('⚠️ Tipo de hora extra não selecionado, deixando campos em branco');
@@ -536,7 +543,7 @@ export function RequerimentoForm({
     } else if (tipoCobranca === 'Sobreaviso') {
       // Sobreaviso - Stand By
       valorHoraFuncional = valoresCalculadosFuncional.valor_standby;
-      valorHoraTecnico = valoresCalculadosTecnico.valor_standby;
+      valorHoraTecnico = valoresCalculadosTecnico?.valor_standby || 0;
       console.log('📊 Usando valores de Sobreaviso (Stand By)');
     }
 
@@ -585,9 +592,9 @@ export function RequerimentoForm({
       console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
     }
     
-    // Preencher valor técnico se não foi editado manualmente E tem horas técnicas
+    // Preencher valor técnico se não foi editado manualmente E tem horas técnicas E linguagem selecionada
     if (!valoresEditadosManualmenteRef.current.tecnico) {
-      if (hTecAutoDec > 0) {
+      if (hTecAutoDec > 0 && linguagem && valorHoraTecnicoArredondado > 0) {
         console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
         form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado, { shouldValidate: false });
       } else {

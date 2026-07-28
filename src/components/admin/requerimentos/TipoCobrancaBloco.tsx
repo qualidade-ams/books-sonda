@@ -169,10 +169,11 @@ export function TipoCobrancaBloco({
         return;
       }
       
-      // Se há horas técnicas, linguagem é obrigatória
-      if (horasTecnicoDecimal > 0 && !bloco.linguagem) {
-        console.log('❌ Há horas técnicas mas linguagem não foi selecionada');
-        return;
+      // Se há horas técnicas, linguagem é obrigatória para preencher valor técnico
+      // Mas NÃO deve bloquear o preenchimento do valor funcional
+      const linguagemPendenteParaTecnico = horasTecnicoDecimal > 0 && !bloco.linguagem;
+      if (linguagemPendenteParaTecnico) {
+        console.log('⚠️ Há horas técnicas mas linguagem não foi selecionada - valor técnico não será preenchido');
       }
       
       if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(bloco.tipo_cobranca)) {
@@ -342,22 +343,28 @@ export function TipoCobrancaBloco({
       editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
     });
     
-      // Preencher valor funcional se não foi editado manualmente
+      // Preencher valor funcional se não foi editado manualmente E tem horas funcionais
       if (!valoresEditadosManualmenteRef.current.funcional) {
-        console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
-        console.log('🔧 Chamando onUpdate com:', { id: bloco.id, campo: 'valor_hora_funcional', valor: valorHoraFuncionalArredondado });
-        onUpdate(bloco.id, 'valor_hora_funcional', valorHoraFuncionalArredondado);
-        console.log('✅ Valor funcional preenchido com sucesso!');
-        console.log('📊 Valor atual no bloco após preenchimento:', bloco.valor_hora_funcional);
+        if (horasFuncionalDecimal > 0) {
+          console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
+          onUpdate(bloco.id, 'valor_hora_funcional', valorHoraFuncionalArredondado);
+        } else {
+          console.log('⏭️ Sem horas funcionais informadas, mantendo valor zerado');
+          onUpdate(bloco.id, 'valor_hora_funcional', 0);
+        }
       } else {
         console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
       }
       
-      // Preencher valor técnico se não foi editado manualmente
+      // Preencher valor técnico se não foi editado manualmente E tem horas técnicas E linguagem selecionada
       if (!valoresEditadosManualmenteRef.current.tecnico) {
-        console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
-        onUpdate(bloco.id, 'valor_hora_tecnico', valorHoraTecnicoArredondado);
-        console.log('✅ Valor técnico preenchido com sucesso!');
+        if (horasTecnicoDecimal > 0 && bloco.linguagem) {
+          console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
+          onUpdate(bloco.id, 'valor_hora_tecnico', valorHoraTecnicoArredondado);
+        } else {
+          console.log('⏭️ Sem horas técnicas ou linguagem não selecionada, mantendo valor zerado');
+          onUpdate(bloco.id, 'valor_hora_tecnico', 0);
+        }
       } else {
         console.log('⏭️ Valor técnico editado manualmente, mantendo:', valorAtualTecnico);
       }
@@ -394,7 +401,7 @@ export function TipoCobrancaBloco({
 
     // Cleanup do timeout
     return () => clearTimeout(timeoutId);
-  }, [taxaVigente, bloco.linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial, bloco.horas_gestor]); // Removido bloco.id e onUpdate das dependências
+  }, [taxaVigente, bloco.linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial, bloco.horas_gestor, bloco.horas_funcional, bloco.horas_tecnico]); // Adicionado horas_funcional e horas_tecnico para reagir quando horas são informadas
 
   // Função para marcar valor como editado manualmente
   const handleValorEditadoManualmente = (campo: 'funcional' | 'tecnico' | 'gestor') => {
