@@ -1876,7 +1876,8 @@ class BooksDisparoService {
 
           if (resultadoImagem.sucesso && resultadoImagem.imagemUrl) {
             // Substituir variáveis de banco de horas no corpo processado
-            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" style="max-width:100%;width:100%;height:auto;display:block;border:0;margin:8px 0;" />`;
+            const imgWidth = resultadoImagem.largura || 700;
+            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" width="${imgWidth}" style="display:block;width:100%;max-width:${imgWidth}px;height:auto;border:0;margin:8px 0;" />`;
             
             templateProcessado.corpo = templateProcessado.corpo
               .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, resultadoImagem.imagemUrl)
@@ -1932,7 +1933,8 @@ class BooksDisparoService {
             });
 
             if (resultadoImg.sucesso && resultadoImg.imagemUrl) {
-              const imgTag = `<img src="${resultadoImg.imagemUrl}" alt="Banco de Horas - ${empEspecifica.nome}" style="max-width:100%;width:100%;height:auto;display:block;border:0;margin:8px 0;" />`;
+              const imgWidth = resultadoImg.largura || 700;
+              const imgTag = `<img src="${resultadoImg.imagemUrl}" alt="Banco de Horas - ${empEspecifica.nome}" width="${imgWidth}" style="display:block;width:100%;max-width:${imgWidth}px;height:auto;border:0;margin:8px 0;" />`;
               
               templateProcessado.corpo = templateProcessado.corpo
                 .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), resultadoImg.imagemUrl)
