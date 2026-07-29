@@ -55,6 +55,12 @@ export interface ClientBooksVariaveis {
   // Variáveis de banco de horas (geradas condicionalmente - apenas se template usar)
   'bancoHoras.imagemUrl'?: string; // URL da imagem PNG do quadro de banco de horas
   'bancoHoras.imagem'?: string; // Tag <img> completa do quadro de banco de horas (vazia se não houver dados)
+  
+  // Variáveis específicas Novo Nordisk (geradas condicionalmente)
+  'bancoHorasNovoNordisk.imagemUrl'?: string;
+  'bancoHorasNovoNordisk.imagem'?: string;
+  'bancoHorasNovoNordiskMOC.imagemUrl'?: string;
+  'bancoHorasNovoNordiskMOC.imagem'?: string;
 }
 
 /**
@@ -228,7 +234,7 @@ export const substituirVariaveisClientBooks = (
     let valorProcessado = typeof valor === 'string' ? valor : String(valor || '');
 
     // Variáveis que contêm HTML bruto — não escapar
-    const variaveisHtmlBruto = ['bancoHoras.imagem'];
+    const variaveisHtmlBruto = ['bancoHoras.imagem', 'bancoHorasNovoNordisk.imagem', 'bancoHorasNovoNordiskMOC.imagem'];
     const isHtmlBruto = variaveisHtmlBruto.includes(chave);
 
     // Processar quebras de linha para HTML se necessário
@@ -298,7 +304,11 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
     ],
     'Banco de Horas': [
       'bancoHoras.imagemUrl',
-      'bancoHoras.imagem'
+      'bancoHoras.imagem',
+      'bancoHorasNovoNordisk.imagemUrl',
+      'bancoHorasNovoNordisk.imagem',
+      'bancoHorasNovoNordiskMOC.imagemUrl',
+      'bancoHorasNovoNordiskMOC.imagem'
     ],
     'Elogios': [
       'elogio.mesNomeAno',

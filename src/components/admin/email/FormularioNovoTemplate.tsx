@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -49,6 +50,7 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
     nome: '',
     descricao: '',
     tipo: 'book' as 'book' | 'elogios', // Tipo padrão: book
+    converter_em_imagem: false, // Padrão: NÃO converter em imagem
     assunto: 'Book | {{razaoSocial}} | {{mes}} - {{ano}}',
     corpo: `<!DOCTYPE html>
 	<html lang="pt-BR">
@@ -133,7 +135,8 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
         corpo: formData.corpo,
         tipo: formData.tipo,
         ativo: true,
-        vinculado_formulario: formData.tipo === 'book' // Apenas templates de book são vinculados ao formulário
+        vinculado_formulario: formData.tipo === 'book', // Apenas templates de book são vinculados ao formulário
+        converter_em_imagem: formData.converter_em_imagem
       });
 
       if (result.success) {
@@ -313,6 +316,23 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Switch para converter em imagem */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="converter_em_imagem" className="text-sm font-medium text-gray-700">
+                Converter em imagem antes de enviar
+              </Label>
+              <p className="text-xs text-gray-500">
+                Quando ativado, o conteúdo do email será convertido em imagem PNG antes do envio
+              </p>
+            </div>
+            <Switch
+              id="converter_em_imagem"
+              checked={formData.converter_em_imagem}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, converter_em_imagem: checked }))}
+            />
           </div>
 
           {/* Exibir erro de validação */}

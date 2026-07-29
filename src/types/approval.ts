@@ -48,6 +48,7 @@ export interface EmailTemplate {
   vinculado_formulario: boolean;
   formulario?: FormularioType | null;
   modalidade?: string | null;
+  converter_em_imagem: boolean;
   created_at?: string;
   updated_at?: string;
 }

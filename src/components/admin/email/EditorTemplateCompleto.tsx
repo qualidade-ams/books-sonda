@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -91,6 +92,7 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
     nome: template.nome,
     descricao: template.descricao || '',
     tipo: template.tipo || 'book' as 'book' | 'elogios',
+    converter_em_imagem: template.converter_em_imagem ?? false,
     assunto: template.assunto,
     corpo: template.corpo
   });
@@ -100,6 +102,7 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
       nome: template.nome,
       descricao: template.descricao || '',
       tipo: template.tipo || 'book' as 'book' | 'elogios',
+      converter_em_imagem: template.converter_em_imagem ?? false,
       assunto: template.assunto,
       corpo: template.corpo
     });
@@ -128,7 +131,8 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
         descricao: formData.descricao || null,
         tipo: formData.tipo,
         assunto: formData.assunto,
-        corpo: formData.corpo
+        corpo: formData.corpo,
+        converter_em_imagem: formData.converter_em_imagem
       });
 
       if (result.success) {
@@ -213,6 +217,23 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Switch para converter em imagem */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="converter_em_imagem_edit" className="text-sm font-medium text-gray-700">
+                Converter em imagem antes de enviar
+              </Label>
+              <p className="text-xs text-gray-500">
+                Quando ativado, o conteúdo do email será convertido em imagem PNG antes do envio
+              </p>
+            </div>
+            <Switch
+              id="converter_em_imagem_edit"
+              checked={formData.converter_em_imagem}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, converter_em_imagem: checked }))}
+            />
           </div>
 
           {/* Exibir erro de validação */}

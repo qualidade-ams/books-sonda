@@ -1901,9 +1901,66 @@ class BooksDisparoService {
         }
       }
 
+      // ===== Geração condicional das imagens Novo Nordisk =====
+      const empresasEspecificas = [
+        { 
+          varPrefix: 'bancoHorasNovoNordisk', 
+          empresaId: '736f75b8-7067-43e2-844b-5d1360148e12', 
+          nome: 'NOVO NORDISK' 
+        },
+        { 
+          varPrefix: 'bancoHorasNovoNordiskMOC', 
+          empresaId: 'b45d433e-89c1-45fe-9e93-4757c0d39d91', 
+          nome: 'NOVO NORDISK MOC' 
+        }
+      ];
+
+      for (const empEspecifica of empresasEspecificas) {
+        const templateUsaEsta = 
+          (templateProcessado.corpo || '').includes(`{{${empEspecifica.varPrefix}.imagemUrl}}`) || 
+          (templateProcessado.corpo || '').includes(`{{${empEspecifica.varPrefix}.imagem}}`);
+
+        if (templateUsaEsta) {
+          try {
+            console.log(`📊 Template usa ${empEspecifica.varPrefix} - gerando imagem para ${empEspecifica.nome}...`);
+
+            const resultadoImg = await gerarImagemBancoHoras({
+              empresaId: empEspecifica.empresaId,
+              empresaNome: empEspecifica.nome,
+              mes,
+              ano
+            });
+
+            if (resultadoImg.sucesso && resultadoImg.imagemUrl) {
+              const imgTag = `<img src="${resultadoImg.imagemUrl}" alt="Banco de Horas - ${empEspecifica.nome}" style="max-width:100%;width:100%;height:auto;display:block;border:0;margin:8px 0;" />`;
+              
+              templateProcessado.corpo = templateProcessado.corpo
+                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), resultadoImg.imagemUrl)
+                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), imgTag);
+
+              console.log(`✅ Imagem ${empEspecifica.varPrefix} inserida no template`);
+            } else {
+              templateProcessado.corpo = templateProcessado.corpo
+                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), '')
+                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), '');
+
+              console.warn(`⚠️ Não foi possível gerar imagem ${empEspecifica.varPrefix}: ${resultadoImg.erro || 'sem dados'}`);
+            }
+          } catch (empError) {
+            templateProcessado.corpo = templateProcessado.corpo
+              .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), '')
+              .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), '');
+
+            console.warn(`⚠️ Erro ao gerar imagem ${empEspecifica.varPrefix} (não bloqueia envio):`, empError);
+          }
+        }
+      }
+
       // ===== Renderização do Email Completo como Imagem =====
       // Renderiza o template processado inteiro como screenshot para garantir
       // visual idêntico em qualquer cliente de email (Outlook, Gmail, etc.)
+      // Só renderiza como imagem se o template estiver configurado para isso
+      if ((template as any).converter_em_imagem) {
       try {
         console.log(`🖼️ Renderizando email completo como imagem...`);
         
@@ -1981,6 +2038,9 @@ class BooksDisparoService {
       } catch (emailImgError) {
         console.warn(`⚠️ Erro ao renderizar email como imagem (não bloqueia envio):`, emailImgError);
         // Se falhar, envia o HTML normalmente como fallback
+      }
+      } else {
+        console.log(`📧 Template configurado para enviar como HTML (sem conversão em imagem)`);
       }
 
       // Coletar todos os e-mails dos clientes para o campo "Para"
