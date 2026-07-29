@@ -395,6 +395,7 @@ export interface BancoHorasImagemParams {
 export interface BancoHorasImagemResult {
   sucesso: boolean;
   imagemUrl?: string;
+  largura?: number;
   erro?: string;
 }
 
@@ -807,7 +808,8 @@ export async function gerarImagemBancoHoras(
 
     return {
       sucesso: true,
-      imagemUrl: urlData.publicUrl
+      imagemUrl: urlData.publicUrl,
+      largura: viewportWidth
     };
   } catch (error) {
     console.error(`❌ Erro ao gerar imagem do banco de horas:`, error);
