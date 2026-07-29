@@ -17,6 +17,7 @@ const mapSupabaseToEmailTemplate = (data: any): EmailTemplate => {
     vinculado_formulario: data.vinculado_formulario !== undefined ? data.vinculado_formulario : true,
     formulario: data.formulario as FormularioType | null,
     modalidade: data.modalidade as ModalidadeType,
+    converter_em_imagem: data.converter_em_imagem !== undefined ? data.converter_em_imagem : false,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -160,6 +161,7 @@ export const useEmailTemplates = () => {
         vinculado_formulario: template.vinculado_formulario !== undefined ? template.vinculado_formulario : true,
         formulario: template.formulario || 'book',
         modalidade: template.modalidade === 'todas' ? null : template.modalidade,
+        converter_em_imagem: template.converter_em_imagem !== undefined ? template.converter_em_imagem : false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -228,6 +230,9 @@ export const useEmailTemplates = () => {
       }
       if (template.modalidade !== undefined) {
         updateData.modalidade = template.modalidade === 'todas' ? null : template.modalidade;
+      }
+      if (template.converter_em_imagem !== undefined) {
+        updateData.converter_em_imagem = template.converter_em_imagem;
       }
 
       const { error } = await supabase

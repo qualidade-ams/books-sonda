@@ -66,7 +66,7 @@ interface BooksProcessingContextType {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const BooksProcessingContext = createContext<BooksProcessingContextType | undefined>(undefined);
+export const BooksProcessingContext = createContext<BooksProcessingContextType | undefined>(undefined);
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 

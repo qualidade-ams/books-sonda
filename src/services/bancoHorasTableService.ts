@@ -60,6 +60,18 @@ export function gerarTabelaBancoHoras(
   diaInicioApuracao?: number,
   diaFimApuracao?: number
 ): string {
+  // Se mais de 6 meses, dividir em duas tabelas (ex: 12 meses = 6 + 6, 8 meses = 4 + 4)
+  if (calculos.length > 6) {
+    const metade = Math.ceil(calculos.length / 2);
+    const primeiraParte = calculos.slice(0, metade);
+    const segundaParte = calculos.slice(metade);
+    
+    const tabela1 = gerarTabelaBancoHoras(primeiraParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (1/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao);
+    const tabela2 = gerarTabelaBancoHoras(segundaParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (2/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao);
+    
+    return `${tabela1}<div style="margin-top:12px;"></div>${tabela2}`;
+  }
+
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   
   const fmtVal = (horas: string | null | undefined, tickets: number | null | undefined, removerNegativo: boolean = false) => {
@@ -700,7 +712,17 @@ export async function gerarImagemBancoHoras(
       };
     }
 
-    // 2. Preparar HTML completo para renderização (500px para tabela compacta legível)
+    // 2. Calcular largura ideal baseado no número de meses/colunas visíveis por tabela
+    // Com a divisão automática em 2 tabelas para >6 meses, max 6 colunas por tabela
+    const numColunas = Math.min(resultado.calculos.length, 6); // máximo 6 por tabela após split
+    let viewportWidth = 600; // padrão para até 3 meses
+    if (numColunas >= 6) {
+      viewportWidth = 800;
+    } else if (numColunas >= 4) {
+      viewportWidth = 700;
+    }
+
+    // Preparar HTML completo para renderização
     const htmlParaRenderizar = `
       <!DOCTYPE html>
       <html>
@@ -712,7 +734,7 @@ export async function gerarImagemBancoHoras(
         </style>
       </head>
       <body>
-        <div style="font-family:Calibri,sans-serif;max-width:600px;width:600px;margin:0;padding:6px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:7pt;">
+        <div style="font-family:Calibri,sans-serif;max-width:${viewportWidth}px;width:${viewportWidth}px;margin:0;padding:6px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:7pt;">
           ${resultado.html}
         </div>
       </body>
@@ -723,7 +745,7 @@ export async function gerarImagemBancoHoras(
     const response = await fetch('/api/email/render-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html: htmlParaRenderizar, width: 600 })
+      body: JSON.stringify({ html: htmlParaRenderizar, width: viewportWidth })
     });
 
     if (!response.ok) {

@@ -11,7 +11,7 @@
  * - Última data de execução por tabela
  */
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Loader2, X, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, 
   Database, Clock, ScrollText 
@@ -19,11 +19,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useSyncProcessing } from '@/contexts/SyncProcessingContext';
-import { useBooksProcessing } from '@/contexts/BooksProcessingContext';
+import { BooksProcessingContext } from '@/contexts/BooksProcessingContext';
 
 export function SyncProcessingIndicator() {
   const { syncProgress, isSyncing, ultimaExecucao, resetSync } = useSyncProcessing();
-  const { isProcessing: isBooksProcessing, progress: booksProgress } = useBooksProcessing();
+  
+  // Usar useContext diretamente para evitar throw se provider não estiver disponível
+  const booksContext = React.useContext(BooksProcessingContext);
+  const isBooksProcessing = booksContext?.isProcessing ?? false;
+  const booksProgress = booksContext?.progress ?? { total: 0 };
   const [minimized, setMinimized] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [showDates, setShowDates] = useState(false);

@@ -104,7 +104,23 @@ export default function EnviarElogios() {
       const htmlTemplate = await gerarRelatorioElogios(templateParaUsar);
       setCorpoEmail(htmlTemplate);
       
-      // Renderizar HTML como imagem via Puppeteer
+      // Verificar se o template está configurado para converter em imagem
+      let deveConverterEmImagem = false;
+      if (templateParaUsar && templateParaUsar !== 'template_elogios_padrao') {
+        try {
+          const { data: templateData } = await supabase
+            .from('email_templates')
+            .select('converter_em_imagem')
+            .eq('id', templateParaUsar)
+            .single();
+          deveConverterEmImagem = templateData?.converter_em_imagem ?? false;
+        } catch (err) {
+          console.warn('⚠️ Não foi possível verificar converter_em_imagem do template:', err);
+        }
+      }
+
+      // Renderizar HTML como imagem via Puppeteer (apenas se configurado)
+      if (deveConverterEmImagem) {
       setGerandoImagem(true);
       setCorpoEmailImagem(null);
       setCorpoEmailImagemUrl(null);
@@ -163,6 +179,12 @@ export default function EnviarElogios() {
         console.warn('⚠️ Erro ao gerar imagem do email, será enviado como HTML:', imgError);
       } finally {
         setGerandoImagem(false);
+      }
+      } else {
+        // Não converter em imagem - limpar estados de imagem
+        setCorpoEmailImagem(null);
+        setCorpoEmailImagemUrl(null);
+        console.log('📧 Template configurado para enviar como HTML (sem conversão em imagem)');
       }
       
       console.log('✅ Template regenerado com sucesso');
