@@ -33,6 +33,38 @@ class BooksDisparoService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /** Obtém o ID do usuário autenticado na sessão atual */
+  private async getUsuarioLogadoId(): Promise<string | null> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.user?.id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Registra log de auditoria para disparos de books */
+  private async registrarAuditLog(
+    action: 'INSERT' | 'UPDATE' | 'DELETE',
+    recordId: string,
+    newValues: Record<string, any>,
+    userId: string | null
+  ): Promise<void> {
+    try {
+      await supabase.from('permission_audit_logs').insert({
+        table_name: 'historico_disparos',
+        record_id: recordId,
+        action,
+        new_values: newValues as any,
+        changed_by: userId,
+        changed_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      // Não bloquear o processo principal por erro de auditoria
+      console.warn('⚠️ Erro ao registrar audit log de disparo:', error);
+    }
+  }
+
   /**
    * Dispara books mensais para todas as empresas ativas
    */
@@ -446,10 +478,14 @@ class BooksDisparoService {
    */
   async agendarDisparo(agendamento: AgendamentoDisparo): Promise<void> {
     try {
+      // Obter ID do usuário logado para registrar no histórico
+      const usuarioLogadoId = await this.getUsuarioLogadoId();
+
       // Registrar agendamentos no histórico
       const agendamentos: HistoricoDisparoInsert[] = agendamento.clienteIds.map(clienteId => ({
         empresa_id: agendamento.empresaId,
         cliente_id: clienteId,
+        colaborador_id: usuarioLogadoId,
         template_id: agendamento.templateId,
         status: 'agendado',
         data_agendamento: agendamento.dataAgendamento.toISOString(),
@@ -463,6 +499,14 @@ class BooksDisparoService {
       if (error) {
         throw new Error(`Erro ao agendar disparo: ${error.message}`);
       }
+
+      // Registrar audit log do agendamento
+      await this.registrarAuditLog('INSERT', agendamento.empresaId, {
+        empresa_id: agendamento.empresaId,
+        status: 'agendado',
+        data_agendamento: agendamento.dataAgendamento.toISOString(),
+        clientes_count: agendamento.clienteIds.length,
+      }, usuarioLogadoId);
 
       // Atualizar controle mensal se necessário
       const mes = agendamento.dataAgendamento.getMonth() + 1;
@@ -643,6 +687,9 @@ class BooksDisparoService {
    */
   async dispararBooksPersonalizados(mes: number, ano: number): Promise<DisparoResult> {
     try {
+      // Obter ID do usuário logado para registrar no histórico
+      const usuarioLogadoId = await this.getUsuarioLogadoId();
+
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
@@ -1018,6 +1065,7 @@ class BooksDisparoService {
                   const historicoFalhaData: HistoricoDisparoInsert = {
                     empresa_id: empresa.id,
                     cliente_id: clientes[0].id, // Cliente de referência
+                    colaborador_id: usuarioLogadoId,
                     template_id: template.id,
                     status: 'falhou',
                     data_disparo: new Date().toISOString(),
@@ -1029,6 +1077,12 @@ class BooksDisparoService {
                   };
 
                   await supabase.from('historico_disparos').insert(historicoFalhaData);
+
+                  // Registrar audit log da falha personalizada
+                  await this.registrarAuditLog('INSERT', historicoFalhaData.empresa_id || '', {
+                    ...historicoFalhaData,
+                    empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+                  }, usuarioLogadoId);
 
                   console.log(`📝 Falha personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoDisparo.erro}`);
                 }
@@ -1087,6 +1141,7 @@ class BooksDisparoService {
                 const historicoExcecaoData: HistoricoDisparoInsert = {
                   empresa_id: empresa.id,
                   cliente_id: clientes[0].id, // Cliente de referência
+                  colaborador_id: usuarioLogadoId,
                   template_id: template.id,
                   status: 'falhou',
                   data_disparo: new Date().toISOString(),
@@ -1098,6 +1153,12 @@ class BooksDisparoService {
                 };
 
                 await supabase.from('historico_disparos').insert(historicoExcecaoData);
+
+                // Registrar audit log da exceção personalizada
+                await this.registrarAuditLog('INSERT', historicoExcecaoData.empresa_id || '', {
+                  ...historicoExcecaoData,
+                  empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+                }, usuarioLogadoId);
 
                 console.log(`📝 Exceção personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
               }
@@ -1799,6 +1860,9 @@ class BooksDisparoService {
     // Declarar anexosWebhook no escopo da função para estar disponível em todos os blocos
     let anexosWebhook: AnexoWebhookData[] = [];
 
+    // Obter ID do usuário logado para registrar no histórico
+    const usuarioLogadoId = await this.getUsuarioLogadoId();
+
     try {
       if (clientes.length === 0) {
         return {
@@ -2045,6 +2109,55 @@ class BooksDisparoService {
         console.log(`📧 Template configurado para enviar como HTML (sem conversão em imagem)`);
       }
 
+      // ===== Resolução condicional da imagem de fundo da sidebar =====
+      // Se o template usa {{sidebar.imagemFundo}}, mede a altura do conteúdo
+      // e escolhe a imagem apropriada (menor ou maior que 768px)
+      if (templateProcessado.corpo.includes('{{sidebar.imagemFundo}}') || templateProcessado.corpo.includes('{{sidebar.alturaConteudo}}')) {
+        let alturaConteudo = 750; // fallback padrão
+        try {
+          console.log('📐 Medindo altura do conteúdo para escolher imagem da sidebar...');
+          const measureResponse = await fetch('/api/email/render-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ html: templateProcessado.corpo, width: 1000 })
+          });
+
+          if (measureResponse.ok) {
+            const measureData = await measureResponse.json();
+            if (measureData.success && measureData.image) {
+              // Calcular altura a partir do base64 PNG
+              // O header PNG contém dimensões nos bytes 16-23 (width) e 24-31 (height)
+              const binaryStr = atob(measureData.image.substring(0, 100));
+              // PNG height está nos bytes 20-23 (big-endian uint32)
+              const heightBytes = [
+                binaryStr.charCodeAt(20),
+                binaryStr.charCodeAt(21),
+                binaryStr.charCodeAt(22),
+                binaryStr.charCodeAt(23)
+              ];
+              const imgHeight = (heightBytes[0] << 24) | (heightBytes[1] << 16) | (heightBytes[2] << 8) | heightBytes[3];
+              // deviceScaleFactor é 2, então a altura real é metade
+              alturaConteudo = Math.round(imgHeight / 2);
+              console.log(`📐 Altura medida do conteúdo: ${alturaConteudo}px (imagem: ${imgHeight}px com scale 2x)`);
+            }
+          }
+        } catch (measureError) {
+          console.warn('⚠️ Erro ao medir altura (usando fallback 750px):', measureError);
+        }
+
+        // Escolher imagem baseado na altura
+        const imagemFundo = alturaConteudo < 768
+          ? 'https://books-sonda.vercel.app/images/book_fundo_novo_nordisk.jpg'
+          : 'https://books-sonda.vercel.app/images/book_fundo_novo_nordisk_2.jpg';
+
+        console.log(`🖼️ Altura: ${alturaConteudo}px → Usando imagem: ${alturaConteudo < 768 ? 'pequena' : 'grande'}`);
+
+        // Substituir variáveis
+        templateProcessado.corpo = templateProcessado.corpo
+          .replace(/\{\{sidebar\.imagemFundo\}\}/g, imagemFundo)
+          .replace(/\{\{sidebar\.alturaConteudo\}\}/g, String(alturaConteudo));
+      }
+
       // Coletar todos os e-mails dos clientes para o campo "Para"
       const emailsClientes = clientes.map(cliente => cliente.email).filter(email => email);
 
@@ -2135,6 +2248,7 @@ class BooksDisparoService {
         const historicoData: HistoricoDisparoInsert = {
           empresa_id: empresa.id,
           cliente_id: clienteReferencia.id, // Cliente de referência
+          colaborador_id: usuarioLogadoId,
           template_id: template.id,
           status: 'enviado',
           data_disparo: new Date().toISOString(),
@@ -2146,6 +2260,13 @@ class BooksDisparoService {
         };
 
         await supabase.from('historico_disparos').insert(historicoData);
+
+        // Registrar audit log do disparo
+        await this.registrarAuditLog('INSERT', historicoData.empresa_id || '', {
+          ...historicoData,
+          empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+          clientes_count: emailsClientes.length,
+        }, usuarioLogadoId);
 
         console.log(`✅ Histórico registrado - Empresa: ${empresa.nome_completo}, Clientes: ${emailsClientes.length}, Anexos: ${anexosWebhook.length}`);
 
@@ -2180,6 +2301,7 @@ class BooksDisparoService {
           const historicoFalhaData: HistoricoDisparoInsert = {
             empresa_id: empresa.id,
             cliente_id: clienteReferencia.id, // Cliente de referência
+            colaborador_id: usuarioLogadoId,
             template_id: template.id,
             status: 'falhou',
             data_disparo: new Date().toISOString(),
@@ -2191,6 +2313,12 @@ class BooksDisparoService {
           };
 
           await supabase.from('historico_disparos').insert(historicoFalhaData);
+
+          // Registrar audit log da falha
+          await this.registrarAuditLog('INSERT', historicoFalhaData.empresa_id || '', {
+            ...historicoFalhaData,
+            empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+          }, usuarioLogadoId);
 
           console.log(`📝 Falha registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
         } catch (historicoError) {
@@ -2249,6 +2377,7 @@ class BooksDisparoService {
           const historicoExcecaoData: HistoricoDisparoInsert = {
             empresa_id: empresa.id,
             cliente_id: clienteReferenciaId,
+            colaborador_id: usuarioLogadoId,
             template_id: templateId,
             status: 'falhou',
             data_disparo: new Date().toISOString(),
@@ -2260,6 +2389,12 @@ class BooksDisparoService {
           };
 
           await supabase.from('historico_disparos').insert(historicoExcecaoData);
+
+          // Registrar audit log da exceção
+          await this.registrarAuditLog('INSERT', historicoExcecaoData.empresa_id || '', {
+            ...historicoExcecaoData,
+            empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+          }, usuarioLogadoId);
 
           console.log(`📝 Exceção registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
         }
