@@ -32,6 +32,7 @@ export interface InconsistenciaChamado {
   analista: string | null;
   tipo_chamado: string | null;
   item_configuracao: string | null;
+  cod_resolucao: string | null;
   
   // Inconsistência detectada
   tipo_inconsistencia: TipoInconsistencia;

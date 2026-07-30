@@ -51,6 +51,7 @@ export default function InconsistenciaChamados() {
   // Estado de período (ano e mês)
   const [anoAtual, setAnoAtual] = useState(Math.max(new Date().getFullYear(), 2024));
   const [mesAtual, setMesAtual] = useState<string>('all');
+  const [filtroCodResolucao, setFiltroCodResolucao] = useState<string>('all');
   
   // Estado de filtros
   const [filtros, setFiltros] = useState<InconsistenciasChamadosFiltros>({
@@ -123,6 +124,11 @@ export default function InconsistenciaChamados() {
     new Set(inconsistencias.map(inc => inc.analista).filter(a => a && a.trim() !== ''))
   ).sort() as string[];
 
+  // Lista de códigos de resolução únicos (já formatados sem sufixo)
+  const codResolucaoUnicos = Array.from(
+    new Set(inconsistencias.map(inc => inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '').filter(c => c !== ''))
+  ).sort() as string[];
+
   // Navegação de ano (mínimo: 2024)
   const navegarAnoAnterior = () => {
     if (anoAtual > 2024) { setAnoAtual(anoAtual - 1); setCurrentPage(1); }
@@ -132,10 +138,11 @@ export default function InconsistenciaChamados() {
   // Filtros ativos
   const hasActiveFilters = () => {
     return filtros.busca !== '' || filtros.tipo_inconsistencia !== 'all' ||
-      filtros.origem !== 'all' || filtros.analista !== '' || mesAtual !== 'all';
+      filtros.origem !== 'all' || filtros.analista !== '' || mesAtual !== 'all' || filtroCodResolucao !== 'all';
   };
   const limparFiltros = () => {
     setMesAtual('all');
+    setFiltroCodResolucao('all');
     setFiltros(prev => ({ ...prev, busca: '', tipo_inconsistencia: 'all', origem: 'all', analista: '' }));
   };
 
@@ -238,11 +245,17 @@ export default function InconsistenciaChamados() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // Paginação - Detectadas
-  const totalPages = Math.ceil(inconsistencias.length / itemsPerPage);
+  // Paginação - Detectadas (aplica filtro local de cod_resolucao)
+  const inconsistenciasFiltradas = filtroCodResolucao === 'all'
+    ? inconsistencias
+    : inconsistencias.filter(inc => {
+        const codFormatado = inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '';
+        return codFormatado === filtroCodResolucao;
+      });
+  const totalPages = Math.ceil(inconsistenciasFiltradas.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedInconsistencias = inconsistencias.slice(startIndex, endIndex);
+  const paginatedInconsistencias = inconsistenciasFiltradas.slice(startIndex, endIndex);
 
   // Paginação - Resolvidas
   const totalPagesResolvidas = Math.ceil(resolvidas.length / itemsPerPage);
@@ -266,6 +279,12 @@ export default function InconsistenciaChamados() {
     const d = new Date(data);
     if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  // Formatar código de resolução (remove sufixo "(Banco=..." )
+  const formatarCodResolucao = (cod: string | null) => {
+    if (!cod) return '-';
+    return cod.replace(/\s*\(Banco.*$/, '').trim() || cod;
   };
 
   // Render empresa cell helper
@@ -346,12 +365,13 @@ export default function InconsistenciaChamados() {
                 </div>
                 {showFilters && (
                   <div className="space-y-4 pt-4 border-t">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                       <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
                       <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => setFiltros({ ...filtros, tipo_inconsistencia: value })}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
                       <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => setFiltros({ ...filtros, analista: value === 'all' ? '' : value })}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasUnicos.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
                       <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => setFiltros({ ...filtros, origem: value })}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
                       <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
+                      <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicos.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
                     </div>
                   </div>
                 )}
@@ -375,6 +395,7 @@ export default function InconsistenciaChamados() {
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.activityDate')}</TableHead>
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.systemDate')}</TableHead>
                         <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.time')}</TableHead>
+                        <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Cód. Resolução</TableHead>
                         <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('historico.company')}</TableHead>
                         <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.analyst')}</TableHead>
                         <TableHead className="w-[60px] text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
@@ -391,6 +412,7 @@ export default function InconsistenciaChamados() {
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_atividade)}>{formatarData(inc.data_atividade)}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_sistema)}>{formatarData(inc.data_sistema)}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm font-medium">{inc.tempo_gasto_horas || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs" title={inc.cod_resolucao || ''}>{formatarCodResolucao(inc.cod_resolucao)}</span></TableCell>
                             <TableCell className="text-center py-2 max-w-[120px]">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm">{inc.analista || '-'}</span></TableCell>
                             <TableCell className="text-center py-2"><div className="flex justify-center gap-1"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => handleArquivar(inc.id)} disabled={isArquivando} title="Arquivar"><Archive className="h-3.5 w-3.5 text-orange-600" /></Button></div></TableCell>
@@ -411,7 +433,7 @@ export default function InconsistenciaChamados() {
                           <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">{t('historico.pageOf', { current: currentPage, total: totalPages })}</span>
                           <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}><ChevronRight className="h-4 w-4" /></Button>
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">{startIndex + 1}-{Math.min(endIndex, inconsistencias.length)} de {inconsistencias.length} {t('inconsistencias.inconsistenciesCount')}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">{startIndex + 1}-{Math.min(endIndex, inconsistenciasFiltradas.length)} de {inconsistenciasFiltradas.length} {t('inconsistencias.inconsistenciesCount')}</div>
                       </div>
                     )}
                   </>
@@ -538,6 +560,9 @@ export default function InconsistenciaChamados() {
               <div className="grid grid-cols-2 gap-4">
                 {selectedInconsistencia.tempo_gasto_horas && (<div><Label className="text-sm font-medium text-gray-700">{t('inconsistencias.timeSpent')}</Label><p className="text-sm font-mono mt-1">{selectedInconsistencia.tempo_gasto_horas}</p></div>)}
                 <div><Label className="text-sm font-medium text-gray-700">{t('historico.company')}</Label><p className="text-sm mt-1">{selectedInconsistencia.empresa || '-'}</p></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {selectedInconsistencia.cod_resolucao && (<div><Label className="text-sm font-medium text-gray-700">Cód. Resolução</Label><p className="text-sm mt-1" title={selectedInconsistencia.cod_resolucao}>{formatarCodResolucao(selectedInconsistencia.cod_resolucao)}</p></div>)}
               </div>
               {selectedInconsistencia.analista && (<div><Label className="text-sm font-medium text-gray-700">{t('inconsistencias.analyst')}</Label><p className="text-sm mt-1">{selectedInconsistencia.analista}</p></div>)}
               {selectedInconsistencia.status === 'resolvida' && selectedInconsistencia.data_resolucao && (
