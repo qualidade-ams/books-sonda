@@ -79,7 +79,7 @@ interface BotaoEnviarEmailBancoHorasProps {
 /** Assinatura padrão do email - imagem única */
 const ASSINATURA_HTML = `
 <div style="margin-top:24px;">
-  <img src="https://books-sonda.vercel.app/images/qualidade/assinatura.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+  <img src="https://books-sonda.vercel.app/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
 </div>
 `;
 
