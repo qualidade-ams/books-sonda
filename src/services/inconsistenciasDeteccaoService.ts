@@ -162,29 +162,61 @@ class InconsistenciasDeteccaoService {
     };
 
     try {
+      console.log('');
+      console.log('🔍 [DETECCAO] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🔍 [DETECCAO] Iniciando detecção de inconsistências...');
+      console.log('🔍 [DETECCAO] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       resultado.mensagens.push('Iniciando detecção de inconsistências...');
 
       // 1. Detectar inconsistências nos dados atuais
       const inconsistenciasDetectadas: InconsistenciaDetectada[] = [];
 
       // Detectar em apontamentos
+      console.log('📊 [DETECCAO] Analisando apontamentos...');
       const apontamentos = await this.detectarInconsistenciasApontamentos();
       inconsistenciasDetectadas.push(...apontamentos);
       resultado.mensagens.push(`Apontamentos: ${apontamentos.length} inconsistências detectadas`);
 
+      // Contagem por tipo em apontamentos
+      const tiposAp = apontamentos.reduce((acc, a) => {
+        acc[a.tipo_inconsistencia] = (acc[a.tipo_inconsistencia] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log(`   📋 Apontamentos: ${apontamentos.length} inconsistências`);
+      if (apontamentos.length > 0) {
+        Object.entries(tiposAp).forEach(([tipo, qtd]) => {
+          console.log(`      └─ ${tipo}: ${qtd}`);
+        });
+      }
+
       // Enriquecer apontamentos com status do ticket correspondente
+      console.log('📊 [DETECCAO] Enriquecendo status dos apontamentos...');
       await this.enriquecerStatusApontamentos(apontamentos);
 
       // Detectar em tickets
+      console.log('📊 [DETECCAO] Analisando tickets...');
       const tickets = await this.detectarInconsistenciasTickets();
       inconsistenciasDetectadas.push(...tickets);
       resultado.mensagens.push(`Tickets: ${tickets.length} inconsistências detectadas`);
 
+      // Contagem por tipo em tickets
+      const tiposTk = tickets.reduce((acc, t) => {
+        acc[t.tipo_inconsistencia] = (acc[t.tipo_inconsistencia] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log(`   📋 Tickets: ${tickets.length} inconsistências`);
+      if (tickets.length > 0) {
+        Object.entries(tiposTk).forEach(([tipo, qtd]) => {
+          console.log(`      └─ ${tipo}: ${qtd}`);
+        });
+      }
+
       resultado.total_detectadas = inconsistenciasDetectadas.length;
+      console.log('');
       console.log(`🔍 [DETECCAO] Total detectadas: ${resultado.total_detectadas}`);
 
       // 2. Buscar TODAS as inconsistências ativas existentes na tabela (com paginação)
+      console.log('📊 [DETECCAO] Comparando com banco de dados...');
       const ativasExistentes = await this.buscarTodosPaginado<any>(
         () => supabase
           .from('inconsistencias_chamados' as any)
@@ -193,7 +225,7 @@ class InconsistenciasDeteccaoService {
         'id'
       );
 
-      console.log(`🔍 [DETECCAO] Ativas existentes no banco: ${ativasExistentes.length}`);
+      console.log(`   📋 Ativas existentes no banco: ${ativasExistentes.length}`);
 
       const ativasMap = new Map<string, string>();
       for (const ativa of ativasExistentes) {
@@ -214,7 +246,7 @@ class InconsistenciasDeteccaoService {
         chavesArquivadas.add(arq.chave_unica);
       }
 
-      console.log(`🔍 [DETECCAO] Arquivadas manualmente (ignoradas): ${chavesArquivadas.size}`);
+      console.log(`   📋 Arquivadas manualmente (ignoradas): ${chavesArquivadas.size}`);
 
       // 3. Determinar quais são novas, quais se mantêm e quais foram resolvidas
       const chavesDetectadas = new Set<string>();
@@ -275,6 +307,7 @@ class InconsistenciasDeteccaoService {
 
       // 5. Inserir novas inconsistências (em lotes de 100)
       if (novasInconsistencias.length > 0) {
+        console.log(`📊 [DETECCAO] Persistindo ${novasInconsistencias.length} novas inconsistências...`);
         // Deduplicar por chave_unica para evitar erro "ON CONFLICT DO UPDATE cannot affect row a second time"
         const mapaDeduplicado = new Map<string, any>();
         for (const item of novasInconsistencias) {
@@ -300,6 +333,7 @@ class InconsistenciasDeteccaoService {
 
       // 6. Marcar resolvidas (em lotes de 100)
       if (chavesResolvidas.length > 0) {
+        console.log(`📊 [DETECCAO] Marcando ${chavesResolvidas.length} como resolvidas...`);
         const batchSize = 100;
         for (let i = 0; i < chavesResolvidas.length; i += batchSize) {
           const batch = chavesResolvidas.slice(i, i + batchSize);
@@ -335,7 +369,15 @@ class InconsistenciasDeteccaoService {
         `Resultado: ${resultado.novas} novas, ${resultado.resolvidas} resolvidas, ${resultado.mantidas} mantidas`
       );
 
-      console.log('✅ [DETECCAO] Detecção finalizada:', resultado);
+      console.log('');
+      console.log('✅ [DETECCAO] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ [DETECCAO] Detecção de inconsistências concluída:');
+      console.log(`   📊 Total detectadas: ${resultado.total_detectadas}`);
+      console.log(`   🆕 Novas: ${resultado.novas}`);
+      console.log(`   ✅ Resolvidas: ${resultado.resolvidas}`);
+      console.log(`   🔄 Mantidas: ${resultado.mantidas}`);
+      console.log('✅ [DETECCAO] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('');
       return resultado;
 
     } catch (error) {
