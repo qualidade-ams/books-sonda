@@ -425,7 +425,7 @@ class InconsistenciasDeteccaoService {
       const data = await this.buscarTodosPaginado<any>(
         () => supabase
           .from('apontamentos_tickets_aranda' as any)
-          .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario')
+          .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario, cod_resolucao')
           .gte('data_abertura', dataInicio)
           .neq('nome_grupo', 'CA SDM')
           .not('status', 'in', '("Cancelled","Closed","Resolved")'),
@@ -499,7 +499,7 @@ class InconsistenciasDeteccaoService {
             empresa: empresaAbreviada,
             analista: ticket.nome_responsavel || null,
             status_chamado: ticket.status || null,
-            cod_resolucao: null, // Tickets não possuem código de resolução
+            cod_resolucao: ticket.cod_resolucao || null,
             chave_unica: this.gerarChaveUnica('tickets', nroFormatado, tipo, isIc999999 ? null : ticket.data_abertura)
           });
         }
