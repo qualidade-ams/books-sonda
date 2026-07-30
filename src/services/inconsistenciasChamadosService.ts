@@ -20,6 +20,46 @@ import type {
 export class InconsistenciasChamadosService {
 
   /**
+   * Tamanho do lote para paginação (Supabase retorna no máximo 1000 por request)
+   */
+  private readonly PAGE_SIZE = 1000;
+
+  /**
+   * Busca TODOS os registros de uma query paginando automaticamente.
+   * O Supabase retorna no máximo 1000 registros por request.
+   */
+  private async buscarTodosPaginado(
+    queryBuilder: () => any
+  ): Promise<any[]> {
+    const todosRegistros: any[] = [];
+    let offset = 0;
+    let continuar = true;
+
+    while (continuar) {
+      const { data, error } = await queryBuilder()
+        .range(offset, offset + this.PAGE_SIZE - 1);
+
+      if (error) {
+        console.error(`❌ Erro na paginação (offset ${offset}):`, error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        continuar = false;
+      } else {
+        todosRegistros.push(...data);
+        if (data.length < this.PAGE_SIZE) {
+          continuar = false;
+        } else {
+          offset += this.PAGE_SIZE;
+        }
+      }
+    }
+
+    return todosRegistros;
+  }
+
+  /**
    * Enriquece inconsistências com o status atual do ticket (busca direto na tabela de tickets).
    * Substitui o campo status_chamado pelo status mais recente da tabela apontamentos_tickets_aranda.
    */
@@ -77,6 +117,7 @@ export class InconsistenciasChamadosService {
 
   /**
    * Busca inconsistências ativas (pendentes de correção)
+   * Usa paginação para buscar TODOS os registros (Supabase limita a 1000 por request)
    */
   async buscarInconsistencias(
     filtros?: InconsistenciasChamadosFiltros
@@ -84,52 +125,56 @@ export class InconsistenciasChamadosService {
     try {
       console.log('🔍 Buscando inconsistências ativas:', filtros);
 
-      let query = supabase
-        .from('inconsistencias_chamados' as any)
-        .select('*')
-        .eq('status', 'ativa')
-        .order('data_abertura', { ascending: false });
+      const buildQuery = () => {
+        let query = supabase
+          .from('inconsistencias_chamados' as any)
+          .select('*')
+          .eq('status', 'ativa')
+          .order('data_abertura', { ascending: false });
 
-      // Filtro por período (data_atividade)
-      if (filtros?.data_inicio) {
-        query = query.gte('data_atividade', filtros.data_inicio);
-      }
-      if (filtros?.data_fim) {
-        query = query.lte('data_atividade', filtros.data_fim);
-      }
-
-      // Filtro por tipo de inconsistência
-      if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
-        query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
-      }
-
-      // Filtro por origem
-      if (filtros?.origem && filtros.origem !== 'all') {
-        query = query.eq('origem', filtros.origem);
-      }
-
-      // Filtro por analista
-      if (filtros?.analista) {
-        query = query.eq('analista', filtros.analista);
-      }
-
-      // Filtro por busca (número do chamado)
-      if (filtros?.busca) {
-        const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
-        if (buscaLimpa) {
-          query = query.ilike('nro_chamado', `%${buscaLimpa}%`);
+        // Filtro por período (data_atividade)
+        if (filtros?.data_inicio) {
+          query = query.gte('data_atividade', filtros.data_inicio);
         }
-      }
+        if (filtros?.data_fim) {
+          query = query.lte('data_atividade', filtros.data_fim);
+        }
 
-      const { data, error } = await query;
+        // Filtro por tipo de inconsistência
+        if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
+          query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
+        }
 
-      if (error) {
-        console.error('❌ Erro ao buscar inconsistências:', error);
-        throw error;
-      }
+        // Filtro por origem
+        if (filtros?.origem && filtros.origem !== 'all') {
+          query = query.eq('origem', filtros.origem);
+        }
 
-      console.log('✅ Inconsistências ativas encontradas:', data?.length || 0);
-      const inconsistencias = (data as any[] || []) as InconsistenciaChamado[];
+        // Filtro por analista
+        if (filtros?.analista) {
+          query = query.eq('analista', filtros.analista);
+        }
+
+        // Filtro por busca (número do chamado)
+        if (filtros?.busca) {
+          const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
+          if (buscaLimpa) {
+            query = query.ilike('nro_chamado', `%${buscaLimpa}%`);
+          }
+        }
+
+        // Filtro por status do chamado
+        if (filtros?.status_chamado && filtros.status_chamado !== 'all') {
+          query = query.eq('status_chamado', filtros.status_chamado);
+        }
+
+        return query;
+      };
+
+      const data = await this.buscarTodosPaginado(buildQuery);
+
+      console.log('✅ Inconsistências ativas encontradas:', data.length);
+      const inconsistencias = (data as any[]) as InconsistenciaChamado[];
       
       // Enriquecer com status atual do ticket (sempre busca da tabela de tickets)
       return await this.enriquecerComStatusTicket(inconsistencias);
@@ -141,6 +186,7 @@ export class InconsistenciasChamadosService {
 
   /**
    * Busca inconsistências resolvidas (corrigidas pelo analista)
+   * Usa paginação para buscar TODOS os registros
    */
   async buscarResolvidas(
     filtros?: InconsistenciasChamadosFiltros
@@ -148,52 +194,56 @@ export class InconsistenciasChamadosService {
     try {
       console.log('📜 Buscando inconsistências resolvidas:', filtros);
 
-      let query = supabase
-        .from('inconsistencias_chamados' as any)
-        .select('*')
-        .eq('status', 'resolvida')
-        .order('data_resolucao', { ascending: false });
+      const buildQuery = () => {
+        let query = supabase
+          .from('inconsistencias_chamados' as any)
+          .select('*')
+          .eq('status', 'resolvida')
+          .order('data_resolucao', { ascending: false });
 
-      // Filtro por período (data_atividade)
-      if (filtros?.data_inicio) {
-        query = query.gte('data_atividade', filtros.data_inicio);
-      }
-      if (filtros?.data_fim) {
-        query = query.lte('data_atividade', filtros.data_fim);
-      }
-
-      // Filtro por tipo de inconsistência
-      if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
-        query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
-      }
-
-      // Filtro por origem
-      if (filtros?.origem && filtros.origem !== 'all') {
-        query = query.eq('origem', filtros.origem);
-      }
-
-      // Filtro por analista
-      if (filtros?.analista) {
-        query = query.eq('analista', filtros.analista);
-      }
-
-      // Filtro por busca
-      if (filtros?.busca) {
-        const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
-        if (buscaLimpa) {
-          query = query.ilike('nro_chamado', `%${buscaLimpa}%`);
+        // Filtro por período (data_atividade)
+        if (filtros?.data_inicio) {
+          query = query.gte('data_atividade', filtros.data_inicio);
         }
-      }
+        if (filtros?.data_fim) {
+          query = query.lte('data_atividade', filtros.data_fim);
+        }
 
-      const { data, error } = await query;
+        // Filtro por tipo de inconsistência
+        if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
+          query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
+        }
 
-      if (error) {
-        console.error('❌ Erro ao buscar resolvidas:', error);
-        throw error;
-      }
+        // Filtro por origem
+        if (filtros?.origem && filtros.origem !== 'all') {
+          query = query.eq('origem', filtros.origem);
+        }
 
-      console.log('✅ Inconsistências resolvidas encontradas:', data?.length || 0);
-      const resolvidas = (data as any[] || []) as InconsistenciaChamado[];
+        // Filtro por analista
+        if (filtros?.analista) {
+          query = query.eq('analista', filtros.analista);
+        }
+
+        // Filtro por busca
+        if (filtros?.busca) {
+          const buscaLimpa = filtros.busca.replace(/^(RF|IM|PM)\s*/i, '').trim();
+          if (buscaLimpa) {
+            query = query.ilike('nro_chamado', `%${buscaLimpa}%`);
+          }
+        }
+
+        // Filtro por status do chamado
+        if (filtros?.status_chamado && filtros.status_chamado !== 'all') {
+          query = query.eq('status_chamado', filtros.status_chamado);
+        }
+
+        return query;
+      };
+
+      const data = await this.buscarTodosPaginado(buildQuery);
+
+      console.log('✅ Inconsistências resolvidas encontradas:', data.length);
+      const resolvidas = (data as any[]) as InconsistenciaChamado[];
       
       // Enriquecer com status atual do ticket
       return await this.enriquecerComStatusTicket(resolvidas);
@@ -268,8 +318,9 @@ export class InconsistenciasChamadosService {
   }
 
   /**
-   * Arquiva uma inconsistência (muda status de 'ativa' para 'resolvida')
+   * Arquiva uma inconsistência manualmente (muda status de 'ativa' para 'resolvida')
    * Move o chamado da aba "Inconsistências Detectadas" para "Histórico de Inconsistências"
+   * Marca arquivado_manualmente = true para que a detecção automática não reative o registro.
    */
   async arquivarInconsistencia(id: string): Promise<void> {
     try {
@@ -279,7 +330,8 @@ export class InconsistenciasChamadosService {
         .from('inconsistencias_chamados' as any)
         .update({
           status: 'resolvida',
-          data_resolucao: new Date().toISOString()
+          data_resolucao: new Date().toISOString(),
+          arquivado_manualmente: true
         })
         .eq('id', id);
 
@@ -288,7 +340,7 @@ export class InconsistenciasChamadosService {
         throw error;
       }
 
-      console.log('✅ Inconsistência arquivada com sucesso:', id);
+      console.log('✅ Inconsistência arquivada manualmente com sucesso:', id);
     } catch (error) {
       console.error('❌ Erro ao arquivar inconsistência:', error);
       throw error;
@@ -296,7 +348,8 @@ export class InconsistenciasChamadosService {
   }
 
   /**
-   * Arquiva múltiplas inconsistências de uma vez
+   * Arquiva múltiplas inconsistências de uma vez (ação manual do usuário)
+   * Marca arquivado_manualmente = true para que a detecção automática não reative os registros.
    */
   async arquivarMultiplas(ids: string[]): Promise<void> {
     try {
@@ -306,7 +359,8 @@ export class InconsistenciasChamadosService {
         .from('inconsistencias_chamados' as any)
         .update({
           status: 'resolvida',
-          data_resolucao: new Date().toISOString()
+          data_resolucao: new Date().toISOString(),
+          arquivado_manualmente: true
         })
         .in('id', ids);
 
@@ -315,7 +369,7 @@ export class InconsistenciasChamadosService {
         throw error;
       }
 
-      console.log('✅', ids.length, 'inconsistências arquivadas com sucesso');
+      console.log('✅', ids.length, 'inconsistências arquivadas manualmente com sucesso');
     } catch (error) {
       console.error('❌ Erro ao arquivar múltiplas inconsistências:', error);
       throw error;
