@@ -317,6 +317,44 @@ export function gerarTabelaRequerimentos(
   `;
 }
 
+// ==================== Seção de Excedentes ====================
+
+interface ExcedenteInfo {
+  horasExcedentes: string;
+  valorHoraExcedente: number;
+  valorTotalExcedentes: number;
+}
+
+/**
+ * Gera seção HTML de Excedentes quando há horas excedentes no período.
+ * Exibe no formato padrão do email de saldo mensal:
+ * - Horas Excedentes: HH:MM
+ * - Valor Hora Excedentes: R$ X,XX
+ * - Valor total dos Excedentes: R$ X,XX
+ */
+export function gerarSecaoExcedentes(info: ExcedenteInfo | null): string {
+  if (!info) return '';
+
+  const formatarMoeda = (valor: number) => {
+    if (!valor || valor === 0) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+  };
+
+  return `
+    <div style="margin-top:16px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-family:Inter,sans-serif;">
+      <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:#92400e;">
+        Horas Excedentes: ${info.horasExcedentes}
+      </p>
+      <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:#92400e;">
+        Valor Hora Excedentes: ${formatarMoeda(info.valorHoraExcedente)}
+      </p>
+      <p style="margin:0;font-size:11px;font-weight:700;color:#92400e;">
+        Valor total dos Excedentes: ${formatarMoeda(info.valorTotalExcedentes)}
+      </p>
+    </div>
+  `;
+}
+
 // ==================== Seção de Observações ====================
 
 /** Gera seção HTML de Observações do período */
@@ -645,7 +683,7 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]));
     }
 
-    // Formatar observações
+    // Formatar observações (apenas manuais - tipo "ajuste" é desconsiderado no book)
     const observacoes: Observacao[] = [
       ...(observacoesManuais || []).map((obs: any) => ({
         tipo: 'manual',
@@ -657,16 +695,6 @@ export async function buscarDadosEGerarTabelaBancoHoras(
         tipo_ajuste: '',
         valor_horas: '',
       })),
-      ...(reajustesData || []).map((rea: any) => ({
-        tipo: 'ajuste',
-        mes: rea.mes,
-        ano: rea.ano,
-        texto: rea.observacao || '',
-        usuario_nome: profilesMap.get(rea.created_by)?.full_name || '',
-        created_at: rea.created_at || '',
-        tipo_ajuste: rea.tipo_reajuste || '',
-        valor_horas: rea.valor_reajuste_horas || '',
-      })),
     ];
 
     // Gerar HTML das tabelas de requerimentos e observações
@@ -674,9 +702,36 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosDesenv, 'Requerimentos em Desenvolvimento', '#ea580c', true);
     const secaoObs = gerarSecaoObservacoes(observacoes);
 
-    // Montar HTML completo (tabela banco + requerimentos do período + observações)
+    // Gerar seção de excedentes se houver (último mês do período com excedente)
+    const calculoFimPeriodo = calculos[calculos.length - 1];
+    const isTicketMode = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
+    
+    let secaoExcedentes = '';
+    if (calculoFimPeriodo) {
+      const temExcedente = isTicketMode
+        ? (calculoFimPeriodo.excedentes_tickets && calculoFimPeriodo.excedentes_tickets > 0)
+        : (calculoFimPeriodo.excedentes_horas && calculoFimPeriodo.excedentes_horas !== '00:00' && calculoFimPeriodo.excedentes_horas !== '0:00');
+
+      if (temExcedente) {
+        const horasExcedentes = isTicketMode
+          ? String(calculoFimPeriodo.excedentes_tickets || 0)
+          : (calculoFimPeriodo.excedentes_horas || '00:00');
+        const valorHora = isTicketMode
+          ? (calculoFimPeriodo.taxa_ticket_utilizada || 0)
+          : (calculoFimPeriodo.taxa_hora_utilizada || 0);
+        const valorTotal = calculoFimPeriodo.valor_a_faturar || 0;
+
+        secaoExcedentes = gerarSecaoExcedentes({
+          horasExcedentes,
+          valorHoraExcedente: valorHora,
+          valorTotalExcedentes: valorTotal,
+        });
+      }
+    }
+
+    // Montar HTML completo (tabela banco + excedentes + requerimentos do período + observações)
     // Nota: Requerimentos em Desenvolvimento NÃO são incluídos no email
-    const html = `${tabelaBancoHoras}${tabelaReqPeriodo}${secaoObs}`;
+    const html = `${tabelaBancoHoras}${secaoExcedentes}${tabelaReqPeriodo}${secaoObs}`;
 
     return { html, calculos };
   } catch (error) {
