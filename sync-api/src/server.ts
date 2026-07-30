@@ -537,6 +537,13 @@ app.get('/api/validate-sync', async (req, res) => {
           ? `⚠️ ${totalSemModificacao} registros no SQL Server sem Data_Ultima_Modificacao (não são capturados pelo sync incremental)` 
           : null
       };
+
+      // Log detalhado da validação de pesquisas
+      const statusPesquisas = diferenca === 0 ? '✅' : '⚠️';
+      console.log(`   ${statusPesquisas} pesquisas: SQL Server=${totalSqlPesquisas} | Supabase=${totalSupabasePesquisas || 0} | Diferença=${diferenca}`);
+      if (totalSemModificacao > 0) {
+        console.log(`   ⚠️  └─ ${totalSemModificacao} registros sem Data_Ultima_Modificacao (não capturados pelo sync incremental)`);
+      }
       
       resultado.resumo.total_tabelas++;
       if (diferenca === 0) resultado.resumo.tabelas_ok++;
@@ -582,6 +589,10 @@ app.get('/api/validate-sync', async (req, res) => {
         diferenca: diferenca,
         status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
       };
+
+      // Log detalhado da validação de especialistas
+      const statusEsp = diferenca === 0 ? '✅' : '⚠️';
+      console.log(`   ${statusEsp} especialistas: SQL Server=${totalSqlEsp} (ativos: ${totalSqlEspAtivos}) | Supabase=${totalSupabaseEsp || 0} | Diferença=${diferenca}`);
       
       resultado.resumo.total_tabelas++;
       if (diferenca === 0) resultado.resumo.tabelas_ok++;
@@ -627,6 +638,10 @@ app.get('/api/validate-sync', async (req, res) => {
         diferenca: diferenca,
         status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
       };
+
+      // Log detalhado da validação de apontamentos
+      const statusAp = diferenca === 0 ? '✅' : '⚠️';
+      console.log(`   ${statusAp} apontamentos: SQL Server=${totalSqlAp} | Supabase=${totalSupabaseAp || 0} | Diferença=${diferenca}`);
       
       resultado.resumo.total_tabelas++;
       if (diferenca === 0) resultado.resumo.tabelas_ok++;
@@ -669,6 +684,10 @@ app.get('/api/validate-sync', async (req, res) => {
         diferenca: diferenca,
         status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
       };
+
+      // Log detalhado da validação de tickets
+      const statusTickets = diferenca === 0 ? '✅' : '⚠️';
+      console.log(`   ${statusTickets} tickets: SQL Server=${totalSqlTickets} | Supabase=${totalSupabaseTickets || 0} | Diferença=${diferenca}`);
       
       resultado.resumo.total_tabelas++;
       if (diferenca === 0) resultado.resumo.tabelas_ok++;
@@ -687,7 +706,13 @@ app.get('/api/validate-sync', async (req, res) => {
     // Fechar conexão
     await pool.close();
 
-    console.log('✅ [VALIDATE] Validação concluída:', resultado.resumo);
+    console.log('');
+    console.log('✅ [VALIDATE] Validação concluída:');
+    console.log(`   📊 Total de tabelas: ${resultado.resumo.total_tabelas}`);
+    console.log(`   ✅ Tabelas OK: ${resultado.resumo.tabelas_ok}`);
+    console.log(`   ⚠️  Tabelas com diferença: ${resultado.resumo.tabelas_com_diferenca}`);
+    console.log(`   ❌ Tabelas com erro: ${resultado.resumo.tabelas_com_erro}`);
+    console.log('');
     res.json(resultado);
 
   } catch (error) {
