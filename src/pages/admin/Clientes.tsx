@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Users, AlertCircle, ChevronLeft, ChevronRight, UserCheck, UserX, Star } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,6 +63,7 @@ const Clientes: React.FC = () => {
   } = useClientes();
 
   const { empresas, isLoading: isLoadingEmpresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] });
+  const { toast } = useToast();
 
   // Garantir que empresas é sempre um array válido e converter para o tipo correto
   const empresasArray = Array.isArray(empresas) 
@@ -97,8 +99,26 @@ const Clientes: React.FC = () => {
     try {
       await deletarCliente(clienteExcluindo.id);
       setClienteExcluindo(null);
-    } catch (error) {
+      toast({
+        title: 'Cliente excluído',
+        description: 'O cliente foi removido com sucesso.',
+      });
+    } catch (error: any) {
       console.error('Erro ao excluir cliente:', error);
+      const mensagem = error?.message || 'Erro desconhecido ao excluir cliente';
+      
+      // Mapear mensagens de erro para mensagens amigáveis
+      let descricao = mensagem;
+      if (mensagem.includes('histórico de disparos')) {
+        descricao = 'Este cliente possui histórico de envios de e-mail e não pode ser excluído. Considere inativá-lo em vez de excluir.';
+      }
+
+      toast({
+        title: 'Não foi possível excluir o cliente',
+        description: descricao,
+        variant: 'destructive',
+      });
+      setClienteExcluindo(null);
     }
   };
 
