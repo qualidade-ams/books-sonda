@@ -180,8 +180,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
     console.log('🔄 [PesquisaForm useEffect reset] pesquisa.categoria:', pesquisa?.categoria);
     console.log('🔄 [PesquisaForm useEffect reset] pesquisa.grupo:', pesquisa?.grupo);
     
-    // Aguardar empresas E categorias estarem carregadas
-    if (pesquisa && empresas.length > 0 && categorias.length > 0) {
+    // Aguardar empresas, categorias E deParaCategorias estarem carregadas
+    if (pesquisa && empresas.length > 0 && categorias.length > 0 && deParaCategorias.length > 0) {
       // Tentar encontrar a empresa pelo nome completo ou abreviado
       const empresaEncontrada = empresas.find(
         e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
@@ -246,8 +246,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       if (!pesquisa) console.log('  - Sem pesquisa');
       if (empresas.length === 0) console.log('  - Empresas não carregadas');
       if (categorias.length === 0) console.log('  - Categorias não carregadas');
+      if (deParaCategorias.length === 0) console.log('  - DeParaCategorias não carregadas');
     }
-  }, [pesquisa?.id, empresas.length, categorias.length, form]); // Adicionar categorias.length
+  }, [pesquisa?.id, empresas.length, categorias.length, deParaCategorias.length, form]);
 
   // Preencher especialistas separadamente - APENAS uma vez quando carregados
   // NÃO atualizar se o formulário já foi modificado pelo usuário
