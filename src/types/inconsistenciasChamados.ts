@@ -57,6 +57,7 @@ export interface InconsistenciasChamadosFiltros {
   data_inicio?: string;
   data_fim?: string;
   status?: 'ativa' | 'resolvida' | 'all';
+  status_chamado?: string;
 }
 
 export interface InconsistenciasChamadosEstatisticas {

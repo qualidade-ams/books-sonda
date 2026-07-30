@@ -200,6 +200,22 @@ class InconsistenciasDeteccaoService {
         ativasMap.set(ativa.chave_unica, ativa.id);
       }
 
+      // 2.1 Buscar chaves de inconsistências arquivadas manualmente (NÃO devem ser reinseridas)
+      const arquivadasManualmente = await this.buscarTodosPaginado<any>(
+        () => supabase
+          .from('inconsistencias_chamados' as any)
+          .select('chave_unica')
+          .eq('arquivado_manualmente', true),
+        'chave_unica'
+      );
+
+      const chavesArquivadas = new Set<string>();
+      for (const arq of arquivadasManualmente) {
+        chavesArquivadas.add(arq.chave_unica);
+      }
+
+      console.log(`🔍 [DETECCAO] Arquivadas manualmente (ignoradas): ${chavesArquivadas.size}`);
+
       // 3. Determinar quais são novas, quais se mantêm e quais foram resolvidas
       const chavesDetectadas = new Set<string>();
       const novasInconsistencias: any[] = [];
@@ -207,8 +223,8 @@ class InconsistenciasDeteccaoService {
       for (const inc of inconsistenciasDetectadas) {
         chavesDetectadas.add(inc.chave_unica);
 
-        if (!ativasMap.has(inc.chave_unica)) {
-          // Nova inconsistência - verificar se não está já resolvida (caso de regressão)
+        if (!ativasMap.has(inc.chave_unica) && !chavesArquivadas.has(inc.chave_unica)) {
+          // Nova inconsistência - não está ativa nem arquivada manualmente
           novasInconsistencias.push({
             origem: inc.origem,
             nro_chamado: inc.nro_chamado,
