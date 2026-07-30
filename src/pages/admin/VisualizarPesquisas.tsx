@@ -217,6 +217,24 @@ function VisualizarPesquisas() {
 
   // Debug removido para evitar logs excessivos no console
 
+  // Recalcular categoria (grupo_book) quando categorias/deParaCategorias terminam de carregar
+  // Corrige race condition onde o campo "Grupo" aparece em branco na primeira abertura
+  useEffect(() => {
+    if (pesquisaEditando && categorias.length > 0 && deParaCategorias.length > 0) {
+      const categoriaAtual = dadosEdicao.categoria;
+      const categoriaConvertida = converterParaGrupoBook(
+        pesquisaEditando.categoria || '', 
+        pesquisaEditando.grupo || ''
+      );
+      
+      // Só atualizar se o valor convertido for diferente e válido
+      if (categoriaConvertida && categoriaConvertida !== categoriaAtual) {
+        console.log('🔄 [VisualizarPesquisas] Recalculando categoria após categorias carregarem:', categoriaAtual, '→', categoriaConvertida);
+        setDadosEdicao(prev => ({ ...prev, categoria: categoriaConvertida }));
+      }
+    }
+  }, [pesquisaEditando?.id, categorias.length, deParaCategorias.length]);
+
   // Preencher especialistas quando pesquisa for carregada - AGUARDAR LOADING
   useEffect(() => {
     console.log('🔄 [VisualizarPesquisas useEffect] === EXECUÇÃO ===');
