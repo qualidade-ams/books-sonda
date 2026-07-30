@@ -3,10 +3,13 @@
  * no formato padrão de acompanhamento (similar ao relatório Ternium).
  * 
  * Gera planilha com colunas:
- * chamado, Cod_Resolucao, empresa, item_configuracao, Categoria, estado, tarefa,
+ * chamado, Cod_Resolucao, empresa, Categoria, estado, tarefa,
  * tipo_tarefa, servicio_tarefa, Data_Sistema, dt_atividade, dt_abertura, dt_solucao,
  * Analista, Responsavel_Pelo_Chamado, solicitante, Horas, tempo_minutos, Ativi_Interna,
- * grupo_solucao, Descricao_tarefa
+ * grupo_solucao, Descricao_tarefa, Descricao_da_Solicitacao, Solucao
+ * 
+ * As colunas "Descrição da Solicitação" e "Solução" são obtidas da tabela
+ * apontamentos_tickets_aranda relacionando pelo número do chamado.
  * 
  * @module utils/gerarExcelConsumoHoras
  */
@@ -39,6 +42,57 @@ interface ApontamentoExcel {
   ativi_interna: string | null;
   grupo_tarefa: string | null;
   descricao_tarefa: string | null;
+}
+
+/**
+ * Interface para dados de ticket (descrição e solução) da tabela apontamentos_tickets_aranda
+ */
+interface TicketInfo {
+  descricao: string | null;
+  solucao: string | null;
+}
+
+/**
+ * Busca descrição e solução dos chamados na tabela apontamentos_tickets_aranda.
+ * Retorna um Map com nro_chamado → { descricao, solucao }
+ */
+async function buscarDescricaoSolucaoChamados(nrosChamados: string[]): Promise<Map<string, TicketInfo>> {
+  const mapa = new Map<string, TicketInfo>();
+  
+  if (nrosChamados.length === 0) return mapa;
+
+  // Remover duplicatas para otimizar a query
+  const chamadosUnicos = [...new Set(nrosChamados.filter(Boolean))];
+  
+  // Buscar em lotes de 500 para evitar limite do Supabase
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < chamadosUnicos.length; i += BATCH_SIZE) {
+    const batch = chamadosUnicos.slice(i, i + BATCH_SIZE);
+    
+    const { data, error } = await supabase
+      .from('apontamentos_tickets_aranda' as any)
+      .select('nro_solicitacao, descricao, solucao')
+      .in('nro_solicitacao', batch);
+
+    if (error) {
+      console.error('❌ Erro ao buscar descrição/solução dos tickets:', error);
+      continue;
+    }
+
+    if (data) {
+      (data as any[]).forEach((ticket: any) => {
+        if (ticket.nro_solicitacao && !mapa.has(ticket.nro_solicitacao)) {
+          mapa.set(ticket.nro_solicitacao, {
+            descricao: ticket.descricao || null,
+            solucao: ticket.solucao || null,
+          });
+        }
+      });
+    }
+  }
+
+  console.log(`📋 Descrição/Solução encontrada para ${mapa.size} de ${chamadosUnicos.length} chamados únicos`);
+  return mapa;
 }
 
 /**
@@ -256,7 +310,8 @@ function gerarWorkbook(
   mes: number,
   ano: number,
   requerimentos?: any[],
-  observacoes?: any[]
+  observacoes?: any[],
+  ticketsInfo?: Map<string, TicketInfo>
 ): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new();
 
@@ -265,7 +320,6 @@ function gerarWorkbook(
     'CHAMADO',
     'CÓDIGO RESOLUÇÃO',
     'EMPRESA',
-    'ITEM CONFIGURAÇÃO',
     'CATEGORIA',
     'ESTADO',
     'TAREFA',
@@ -283,31 +337,37 @@ function gerarWorkbook(
     'ATIVIDADE INTERNA',
     'GRUPO SOLUÇÃO',
     'DESCRIÇÃO TAREFA',
+    'DESCRIÇÃO DA SOLICITAÇÃO',
+    'SOLUÇÃO',
   ];
 
-  const rows = apontamentos.map(apt => [
-    apt.nro_chamado || '',
-    apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(Banco.*$/i, '') : '',
-    apt.org_us_final || '',
-    apt.item_configuracao || '',
-    apt.categoria || '',
-    apt.caso_estado || '',
-    apt.nro_tarefa || '',
-    apt.tipo_chamado || '',
-    apt.item_configuracao || '', // servicio_tarefa = item_configuracao
-    formatarData(apt.data_sistema),
-    formatarData(apt.data_atividade),
-    formatarData(apt.data_abertura),
-    formatarData(apt.data_fechamento),
-    apt.analista_tarefa || '',
-    apt.analista_caso || apt.analista_tarefa || '',
-    apt.solicitante || '',
-    horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos), // valor numérico nativo Excel
-    apt.tempo_gasto_minutos || 0,
-    apt.ativi_interna || '',
-    apt.grupo_tarefa || '',
-    apt.descricao_tarefa || '',
-  ]);
+  const rows = apontamentos.map(apt => {
+    const ticketData = ticketsInfo?.get(apt.nro_chamado || '') || { descricao: null, solucao: null };
+    return [
+      apt.nro_chamado || '',
+      apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(Banco.*$/i, '') : '',
+      apt.org_us_final || '',
+      apt.categoria || '',
+      apt.caso_estado || '',
+      apt.nro_tarefa || '',
+      apt.tipo_chamado || '',
+      apt.item_configuracao || '', // servicio_tarefa = item_configuracao
+      formatarData(apt.data_sistema),
+      formatarData(apt.data_atividade),
+      formatarData(apt.data_abertura),
+      formatarData(apt.data_fechamento),
+      apt.analista_tarefa || '',
+      apt.analista_caso || apt.analista_tarefa || '',
+      apt.solicitante || '',
+      horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos), // valor numérico nativo Excel
+      apt.tempo_gasto_minutos || 0,
+      apt.ativi_interna || '',
+      apt.grupo_tarefa || '',
+      apt.descricao_tarefa || '',
+      ticketData.descricao || '',
+      ticketData.solucao || '',
+    ];
+  });
 
   // Calcular total de horas como valor numérico nativo do Excel (soma dos valores das linhas).
   // IMPORTANTE: Priorizar tempo_gasto_horas sobre tempo_gasto_minutos (mesma lógica do backend).
@@ -391,7 +451,6 @@ function gerarWorkbook(
     { width: 12 },  // CHAMADO
     { width: 35 },  // CÓDIGO RESOLUÇÃO
     { width: 30 },  // EMPRESA
-    { width: 35 },  // ITEM CONFIGURAÇÃO
     { width: 30 },  // CATEGORIA
     { width: 10 },  // ESTADO
     { width: 14 },  // TAREFA
@@ -409,6 +468,8 @@ function gerarWorkbook(
     { width: 16 },  // ATIVIDADE INTERNA
     { width: 30 },  // GRUPO SOLUÇÃO
     { width: 60 },  // DESCRIÇÃO TAREFA
+    { width: 60 },  // DESCRIÇÃO DA SOLICITAÇÃO
+    { width: 60 },  // SOLUÇÃO
   ];
 
   XLSX.utils.book_append_sheet(workbook, sheet, 'Consumo de Horas');
@@ -572,8 +633,14 @@ export async function gerarExcelConsumoHoras(
       console.log(`✅ ${apontamentos.length} apontamentos encontrados para o Excel`);
     }
 
+    // Buscar descrição e solução dos chamados na tabela apontamentos_tickets_aranda
+    const nrosChamados = apontamentos
+      .map(apt => apt.nro_chamado)
+      .filter((nro): nro is string => !!nro);
+    const ticketsInfo = await buscarDescricaoSolucaoChamados(nrosChamados);
+
     // Gerar workbook
-    const workbook = gerarWorkbook(apontamentos, empresaNome, mes, ano, requerimentos, observacoes);
+    const workbook = gerarWorkbook(apontamentos, empresaNome, mes, ano, requerimentos, observacoes, ticketsInfo);
 
     // Converter para buffer
     const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
