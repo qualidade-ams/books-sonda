@@ -28,6 +28,7 @@ interface InconsistenciaDetectada {
   empresa: string | null;
   analista: string | null;
   status_chamado: string | null;
+  cod_resolucao: string | null;
   chave_unica: string;
 }
 
@@ -183,20 +184,19 @@ class InconsistenciasDeteccaoService {
       resultado.total_detectadas = inconsistenciasDetectadas.length;
       console.log(`🔍 [DETECCAO] Total detectadas: ${resultado.total_detectadas}`);
 
-      // 2. Buscar inconsistências ativas existentes na tabela
-      const { data: ativasExistentes, error: erroAtivas } = await supabase
-        .from('inconsistencias_chamados' as any)
-        .select('id, chave_unica')
-        .eq('status', 'ativa');
+      // 2. Buscar TODAS as inconsistências ativas existentes na tabela (com paginação)
+      const ativasExistentes = await this.buscarTodosPaginado<any>(
+        () => supabase
+          .from('inconsistencias_chamados' as any)
+          .select('id, chave_unica')
+          .eq('status', 'ativa'),
+        'id'
+      );
 
-      if (erroAtivas) {
-        console.error('❌ [DETECCAO] Erro ao buscar ativas existentes:', erroAtivas);
-        resultado.mensagens.push(`Erro ao buscar ativas: ${erroAtivas.message}`);
-        return resultado;
-      }
+      console.log(`🔍 [DETECCAO] Ativas existentes no banco: ${ativasExistentes.length}`);
 
       const ativasMap = new Map<string, string>();
-      for (const ativa of (ativasExistentes as any[]) || []) {
+      for (const ativa of ativasExistentes) {
         ativasMap.set(ativa.chave_unica, ativa.id);
       }
 
@@ -225,6 +225,7 @@ class InconsistenciasDeteccaoService {
             empresa: inc.empresa,
             analista: inc.analista,
             status_chamado: inc.status_chamado,
+            cod_resolucao: inc.cod_resolucao,
             chave_unica: inc.chave_unica,
             status: 'ativa',
             data_deteccao: new Date().toISOString()
@@ -344,7 +345,7 @@ class InconsistenciasDeteccaoService {
       const data = await this.buscarTodosPaginado<any>(
         () => supabase
           .from('apontamentos_aranda' as any)
-          .select('id, nro_chamado, nro_tarefa, tipo_chamado, data_abertura, data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, org_us_final, analista_tarefa, item_configuracao')
+          .select('id, nro_chamado, nro_tarefa, tipo_chamado, data_abertura, data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, org_us_final, analista_tarefa, item_configuracao, cod_resolucao')
           .gte('data_atividade', dataInicio),
         'id'
       );
@@ -393,6 +394,7 @@ class InconsistenciasDeteccaoService {
             empresa: empresaAbreviada,
             analista: apt.analista_tarefa,
             status_chamado: null, // Apontamentos não têm status próprio
+            cod_resolucao: apt.cod_resolucao || null,
             chave_unica: this.gerarChaveUnica('apontamentos', nroFormatado, tipo, apt.data_atividade)
           });
         }
@@ -497,6 +499,7 @@ class InconsistenciasDeteccaoService {
             empresa: empresaAbreviada,
             analista: ticket.nome_responsavel || null,
             status_chamado: ticket.status || null,
+            cod_resolucao: null, // Tickets não possuem código de resolução
             chave_unica: this.gerarChaveUnica('tickets', nroFormatado, tipo, isIc999999 ? null : ticket.data_abertura)
           });
         }
@@ -627,23 +630,24 @@ class InconsistenciasDeteccaoService {
     ativasMap: Map<string, string>
   ): Promise<void> {
     try {
-      // Mapear chave_unica -> tempo_gasto dos dados detectados
-      const tempoPorChave = new Map<string, { tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null }>();
+      // Mapear chave_unica -> tempo_gasto e cod_resolucao dos dados detectados
+      const dadosPorChave = new Map<string, { tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null; cod_resolucao: string | null }>();
       for (const inc of inconsistenciasDetectadas) {
-        if (inc.tempo_gasto_minutos != null || inc.tempo_gasto_horas != null) {
-          tempoPorChave.set(inc.chave_unica, {
+        if (inc.tempo_gasto_minutos != null || inc.tempo_gasto_horas != null || inc.cod_resolucao != null) {
+          dadosPorChave.set(inc.chave_unica, {
             tempo_gasto_horas: inc.tempo_gasto_horas,
-            tempo_gasto_minutos: inc.tempo_gasto_minutos
+            tempo_gasto_minutos: inc.tempo_gasto_minutos,
+            cod_resolucao: inc.cod_resolucao
           });
         }
       }
 
       // Atualizar apenas as que têm chave no ativasMap (existiam antes)
-      const updates: { id: string; tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null }[] = [];
+      const updates: { id: string; tempo_gasto_horas: string | null; tempo_gasto_minutos: number | null; cod_resolucao: string | null }[] = [];
       for (const [chave, id] of ativasMap.entries()) {
-        const tempo = tempoPorChave.get(chave);
-        if (tempo) {
-          updates.push({ id, ...tempo });
+        const dados = dadosPorChave.get(chave);
+        if (dados) {
+          updates.push({ id, ...dados });
         }
       }
 
@@ -658,13 +662,14 @@ class InconsistenciasDeteccaoService {
             .from('inconsistencias_chamados' as any)
             .update({
               tempo_gasto_horas: item.tempo_gasto_horas,
-              tempo_gasto_minutos: item.tempo_gasto_minutos
+              tempo_gasto_minutos: item.tempo_gasto_minutos,
+              cod_resolucao: item.cod_resolucao
             })
             .eq('id', item.id);
         }
       }
 
-      console.log(`✅ [DETECCAO] ${updates.length} tempo_gasto atualizados`);
+      console.log(`✅ [DETECCAO] ${updates.length} tempo_gasto/cod_resolucao atualizados`);
     } catch (error) {
       console.error('❌ [DETECCAO] Erro ao atualizar tempo_gasto:', error);
     }
