@@ -43,9 +43,10 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
           return;
         }
 
-        const emailGestor = empresaData?.email_gestor;
-        const emailComercial = (empresaData as any)?.email_comercial;
-        const emailTm = (empresaData as any)?.email_tm;
+        const empresaDataAny = empresaData as any;
+        const emailGestor = empresaDataAny?.email_gestor;
+        const emailComercial = empresaDataAny?.email_comercial;
+        const emailTm = empresaDataAny?.email_tm;
 
         console.log(`📧 [BookOrgComercialCS] Email CS: ${emailGestor || 'N/A'}`);
         console.log(`📧 [BookOrgComercialCS] Email Comercial: ${emailComercial || 'N/A'}`);
@@ -356,6 +357,13 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
           </div>
         )}
       </div>
+      {/* Logo Sonda - canto inferior direito */}
+      <img
+        src="/images/n-sonda-azul.png"
+        alt="Sonda"
+        className="absolute pointer-events-none"
+        style={{ height: '100px', opacity: 0.15, bottom: '95px', right: '50px' }}
+      />
       <div className="px-6 pb-6">
         <BookFooterBar />
       </div>
