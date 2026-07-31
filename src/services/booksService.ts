@@ -319,12 +319,13 @@ class BooksService {
       console.log('🔍 [buscarEstatisticas] Iniciando busca:', { mes, ano });
 
       // PASSO 1: Buscar todas as empresas que devem ter books
-      // (mesma lógica do método listarBooks)
+      // (MESMA lógica exata do método listarBooks para garantir consistência)
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select('id, nome_completo, nome_abreviado, status, tipo_book, inicio_vigencia')
-        .or('status.eq.ativo,status.eq.AMS')
-        .or('tipo_book.is.null,tipo_book.eq.qualidade');
+        .select('id, nome_completo, nome_abreviado, status, tipo_book, inicio_vigencia, tem_ams')
+        .eq('status', 'ativo')
+        .eq('tem_ams', true)
+        .eq('tipo_book', 'qualidade');
 
       if (empresasError) {
         console.error('❌ [buscarEstatisticas] Erro ao buscar empresas:', empresasError);
@@ -361,20 +362,30 @@ class BooksService {
       // Status que indicam que o book já foi gerado/enviado com sucesso
       const statusConcluidos: string[] = ['gerado', 'enviado'];
       
-      const booksGerados = books?.filter(b => statusConcluidos.includes(b.status)).length || 0;
+      // Criar set de IDs de empresas válidas para filtrar books relevantes
+      const empresasValidas = new Set(empresasFiltradas.map(e => e.id));
       
-      // Books pendentes = empresas que NÃO têm books gerados ou enviados
+      // Filtrar apenas books de empresas que estão no universo válido
+      const booksRelevantes = books?.filter(b => empresasValidas.has(b.empresa_id)) || [];
+      
+      // Empresas únicas que têm books gerados/enviados (dentro do universo válido)
       const empresasComBooksGerados = new Set(
-        books?.filter(b => statusConcluidos.includes(b.status)).map(b => b.empresa_id) || []
+        booksRelevantes.filter(b => statusConcluidos.includes(b.status)).map(b => b.empresa_id)
       );
-      const booksPendentes = totalEmpresas - empresasComBooksGerados.size;
       
-      // Books atualizados = books que têm updated_at diferente de created_at
-      const booksAtualizados = books?.filter(b => {
-        if (!b.created_at || !b.updated_at) return false;
-        // Considerar atualizado se a diferença for maior que 1 segundo
-        return new Date(b.updated_at).getTime() - new Date(b.created_at).getTime() > 1000;
-      }).length || 0;
+      const booksGerados = empresasComBooksGerados.size;
+      
+      // Books pendentes = empresas válidas que NÃO têm books gerados/enviados
+      const booksPendentes = totalEmpresas - booksGerados;
+      
+      // Books atualizados = empresas únicas com books que têm updated_at diferente de created_at
+      const empresasAtualizadas = new Set(
+        booksRelevantes.filter(b => {
+          if (!b.created_at || !b.updated_at) return false;
+          return new Date(b.updated_at).getTime() - new Date(b.created_at).getTime() > 1000;
+        }).map(b => b.empresa_id)
+      );
+      const booksAtualizados = empresasAtualizadas.size;
       
       const resultado = {
         total_empresas: totalEmpresas,
