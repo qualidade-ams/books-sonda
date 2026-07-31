@@ -509,6 +509,13 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
           />
         </div>
       </div>
+      {/* Logo Sonda - canto inferior direito */}
+      <img
+        src="/images/n-sonda-azul.png"
+        alt="Sonda"
+        className="absolute pointer-events-none"
+        style={{ height: '100px', opacity: 0.15, bottom: '95px', right: '50px' }}
+      />
       <BookFooterBar />
     </div>
   );

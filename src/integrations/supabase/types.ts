@@ -3041,6 +3041,15 @@ export type Database = {
           status: string
         }[]
       }
+      get_percentual_repasse_vigente: {
+        Args: {
+          p_empresa_id: string
+          p_data: string
+        }
+        Returns: {
+          percentual: number
+        }[]
+      }
       get_user_group: {
         Args: { user_uuid: string }
         Returns: {
