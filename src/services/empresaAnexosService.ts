@@ -23,6 +23,8 @@ const TIPOS_PERMITIDOS = [
   'text/plain',
   'text/csv',
   'application/zip',
+  'application/x-zip-compressed',  // MIME alternativo do Windows para .zip
+  'application/x-zip',             // Outra variação de .zip
   'application/x-rar-compressed',
 ];
 
