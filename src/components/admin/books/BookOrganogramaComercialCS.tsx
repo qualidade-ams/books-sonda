@@ -357,13 +357,18 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
           </div>
         )}
       </div>
-      {/* Logo Sonda - canto inferior direito */}
-      <img
-        src="/images/n-sonda-azul.png"
-        alt="Sonda"
-        className="absolute pointer-events-none"
-        style={{ height: '100px', opacity: 0.15, bottom: '95px', right: '50px' }}
-      />
+      {/* Wrapper para imagem decorativa - colada nos cantos da página */}
+      <div 
+        className="absolute overflow-hidden pointer-events-none portfolio-bg-image" 
+        style={{ top: 0, left: 0, right: 0, bottom: 0 }}
+      >
+        <img
+          src="/images/n-sonda-azul.png"
+          alt=""
+          className="absolute opacity-10"
+          style={{ width: '40%', bottom: '-5%', right: '-3%', objectFit: 'contain' }}
+        />
+      </div>
       <div className="px-6 pb-6">
         <BookFooterBar />
       </div>

@@ -225,8 +225,8 @@
   width: 100% !important;
 }
 
-/* Portfólio - imagem decorativa colada nas bordas da page-section no PDF */
-.print-container [data-section="portfolio"] .portfolio-bg-image {
+/* Imagem decorativa N Sonda - colada nas bordas da page-section no PDF (todas as seções) */
+.print-container .page-section .portfolio-bg-image {
   top: -45px !important;
   left: -45px !important;
   right: -45px !important;
