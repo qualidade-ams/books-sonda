@@ -1308,7 +1308,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
               </div>
 
               <p className="text-xs text-gray-500">
-                Máximo {empresaAnexosService.getMaxAnexos()} arquivos. Tipos aceitos: PDF, Word, Excel, PowerPoint, imagens, texto, CSV, ZIP. Tamanho máximo: 10MB por arquivo.
+                Máximo {empresaAnexosService.getMaxAnexos()} arquivos. Tipos aceitos: PDF, Word, Excel, PowerPoint, imagens, texto, CSV, ZIP, RAR, MSG (Outlook). Tamanho máximo: 10MB por arquivo.
               </p>
 
               {/* Lista de anexos salvos */}
