@@ -26,6 +26,7 @@ const TIPOS_PERMITIDOS = [
   'application/x-zip-compressed',  // MIME alternativo do Windows para .zip
   'application/x-zip',             // Outra variação de .zip
   'application/x-rar-compressed',
+  'application/vnd.ms-outlook',    // Emails do Outlook (.msg)
 ];
 
 // Interface para dados de anexo retornado do banco
@@ -100,6 +101,26 @@ class RequerimentoAnexosService {
   }
 
   /**
+   * Resolve o MIME type do arquivo — usa arquivo.type quando disponível,
+   * caso contrário infere pela extensão (ex: .msg retorna string vazia no Windows)
+   */
+  private resolverMimeType(arquivo: File): string {
+    if (arquivo.type) return arquivo.type;
+
+    const extensaoMap: Record<string, string> = {
+      '.msg': 'application/vnd.ms-outlook',
+      '.pdf': 'application/pdf',
+      '.zip': 'application/zip',
+      '.rar': 'application/x-rar-compressed',
+      '.csv': 'text/csv',
+      '.txt': 'text/plain',
+    };
+
+    const ext = arquivo.name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? '';
+    return extensaoMap[ext] ?? '';
+  }
+
+  /**
    * Validar arquivo antes do upload
    */
   validarArquivo(arquivo: File): ValidacaoResult {
@@ -110,10 +131,12 @@ class RequerimentoAnexosService {
       };
     }
 
-    if (!TIPOS_PERMITIDOS.includes(arquivo.type)) {
+    // Verificar tipo MIME (com fallback por extensão para tipos como .msg que chegam vazios)
+    const tipoMime = this.resolverMimeType(arquivo);
+    if (!TIPOS_PERMITIDOS.includes(tipoMime)) {
       return {
         valido: false,
-        erro: `Tipo de arquivo "${arquivo.type}" não é permitido. Tipos aceitos: PDF, Word, Excel, PowerPoint, imagens, texto, CSV, ZIP, RAR.`,
+        erro: `Tipo de arquivo "${arquivo.type || arquivo.name}" não é permitido. Tipos aceitos: PDF, Word, Excel, PowerPoint, imagens, texto, CSV, ZIP, RAR, MSG (Outlook).`,
       };
     }
 
@@ -174,11 +197,13 @@ class RequerimentoAnexosService {
     const storagePath = this.gerarNomeArquivo(requerimentoId, arquivo.name);
 
     // 4. Upload para o Storage
+    const tipoMime = this.resolverMimeType(arquivo);
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(storagePath, arquivo, {
         cacheControl: '3600',
         upsert: false,
+        contentType: tipoMime || 'application/octet-stream',
       });
 
     if (uploadError) {
@@ -199,7 +224,7 @@ class RequerimentoAnexosService {
         requerimento_id: requerimentoId,
         nome_original: arquivo.name,
         nome_arquivo: storagePath.split('/').pop() || arquivo.name,
-        tipo_mime: arquivo.type,
+        tipo_mime: this.resolverMimeType(arquivo),
         tamanho_bytes: arquivo.size,
         storage_path: storagePath,
         descricao: descricao || null,

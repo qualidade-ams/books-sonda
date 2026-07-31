@@ -1972,7 +1972,7 @@ export function RequerimentoForm({
               </div>
 
               <p className="text-xs text-gray-500">
-                Máx. {requerimentoAnexosService.getMaxAnexos()} arquivos, 10MB cada. PDF, Word, Excel, imagens, CSV, ZIP.
+                Máx. {requerimentoAnexosService.getMaxAnexos()} arquivos, 10MB cada. PDF, Word, Excel, imagens, CSV, ZIP, RAR, MSG (Outlook).
               </p>
 
               {/* Lista de anexos salvos */}
