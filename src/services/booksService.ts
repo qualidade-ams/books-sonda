@@ -358,11 +358,14 @@ class BooksService {
       console.log('📊 [buscarEstatisticas] Books encontrados:', books?.length || 0);
 
       // PASSO 3: Calcular estatísticas
-      const booksGerados = books?.filter(b => b.status === 'gerado').length || 0;
+      // Status que indicam que o book já foi gerado/enviado com sucesso
+      const statusConcluidos: string[] = ['gerado', 'enviado'];
       
-      // Books pendentes = empresas que NÃO têm books gerados
+      const booksGerados = books?.filter(b => statusConcluidos.includes(b.status)).length || 0;
+      
+      // Books pendentes = empresas que NÃO têm books gerados ou enviados
       const empresasComBooksGerados = new Set(
-        books?.filter(b => b.status === 'gerado').map(b => b.empresa_id) || []
+        books?.filter(b => statusConcluidos.includes(b.status)).map(b => b.empresa_id) || []
       );
       const booksPendentes = totalEmpresas - empresasComBooksGerados.size;
       
