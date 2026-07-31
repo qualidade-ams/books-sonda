@@ -364,7 +364,7 @@ export const BooksProcessingProvider: React.FC<{ children: React.ReactNode }> = 
             if (cancelledRef.current) break;
 
             const emailResult = await emailService.sendEmail({
-              to: ['willian.faria@sonda.com'],
+              to: ['qualidadeams@sonda.com'],
               subject: assunto,
               html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
               anexos: {
@@ -388,7 +388,7 @@ export const BooksProcessingProvider: React.FC<{ children: React.ReactNode }> = 
               // 6. Registrar envio no versionamento
               await booksVersioningService.registrarEnvio(
                 bookGerado.book_id!,
-                ['willian.faria@sonda.com']
+                ['qualidadeams@sonda.com']
               );
             } else if (emailResult.retryAfter) {
               // Rate limit 429
