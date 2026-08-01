@@ -122,6 +122,9 @@ async function calcularConsumoSegmentadoPorMes(
     
     // Códigos de resolução válidos (MESMA LISTA DO BACKEND)
     const codigosResolucaoValidos = [
+      'Alocação',
+      'Alocação (Banco=S |SLA=N)',
+      'Alocação (Banco=S| SLA=N)',
       'Alocação - T&M',
       'Alocação T&M',
       'Alocação - T&M (Banco=S |SLA=N)',

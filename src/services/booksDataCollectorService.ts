@@ -1491,6 +1491,9 @@ class BooksDataCollectorService {
         .neq('item_configuracao', '000000 - PROJETOS APL')
         .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
         .in('cod_resolucao', [
+          'Alocação',
+          'Alocação (Banco=S |SLA=N)',
+          'Alocação (Banco=S| SLA=N)',
           'Alocação - T&M',
           'Alocação - T&M (Banco=S |SLA=N)',
           'Alocação - T&M (Banco=S| SLA=N)',

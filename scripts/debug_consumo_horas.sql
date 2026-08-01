@@ -39,6 +39,9 @@ WHERE org_us_final ILIKE '%RAINBOW%' -- SUBSTITUIR pelo nome da empresa
   AND data_atividade >= '2026-01-01' -- SUBSTITUIR pela data início
   AND data_atividade < '2026-02-01'  -- SUBSTITUIR pela data fim
   AND cod_resolucao NOT IN (
+    'Alocação',
+    'Alocação (Banco=S |SLA=N)',
+    'Alocação (Banco=S| SLA=N)',
     'Alocação - T&M',
     'Alocação T&M (Banco=S| SLA=N)',
     'AMS SAP',

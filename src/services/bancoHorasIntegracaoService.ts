@@ -158,6 +158,9 @@ export class BancoHorasIntegracaoService {
 
       // Lista de códigos de resolução válidos para consumo de banco de tickets
       const codigosResolucaoValidos = [
+        'Alocação',
+        'Alocação (Banco=S |SLA=N)',
+        'Alocação (Banco=S| SLA=N)',
         'Alocação - T&M',
         'Alocação T&M',
         'Alocação - T&M (Banco=S |SLA=N)',

@@ -184,6 +184,9 @@ WHERE
   AND data_atividade <= '2026-02-28 23:59:59'
   AND org_us_final ILIKE '%ABBOTT%'
   AND cod_resolucao IN (
+    'Alocação',
+    'Alocação (Banco=S |SLA=N)',
+    'Alocação (Banco=S| SLA=N)',
     'Alocação - T&M',
     'Alocação - T&M (Banco=S |SLA=N)',
     'Alocação - T&M (Banco=S| SLA=N)',

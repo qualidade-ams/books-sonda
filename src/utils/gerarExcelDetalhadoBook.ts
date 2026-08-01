@@ -328,6 +328,9 @@ async function buscarApontamentosHoras(
   dataFim: Date
 ): Promise<ApontamentoHoras[]> {
   const codigosResolucaoValidos = [
+    'Alocação',
+    'Alocação (Banco=S |SLA=N)',
+    'Alocação (Banco=S| SLA=N)',
     'Alocação - T&M', 'Alocação T&M',
     'Alocação - T&M (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
     'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',

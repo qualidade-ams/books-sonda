@@ -26,6 +26,7 @@ export interface ConsumoHorasEmpresa {
 // ─── Constantes (mesmas do bancoHorasIntegracaoService) ───────────────────────
 
 const CODIGOS_RESOLUCAO_VALIDOS = [
+  'Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocação (Banco=S| SLA=N)',
   'Alocação - T&M', 'Alocação T&M',
   'Alocação - T&M (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
   'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
