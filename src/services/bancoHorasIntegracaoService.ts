@@ -375,6 +375,9 @@ export class BancoHorasIntegracaoService {
 
       // Códigos de resolução válidos para banco de horas
       const codigosResolucaoValidos = [
+        'Alocação',
+        'Alocação (Banco=S |SLA=N)',
+        'Alocação (Banco=S| SLA=N)',
         'Alocação - T&M',
         'Alocação T&M',
         'Alocação - T&M (Banco=S |SLA=N)',
