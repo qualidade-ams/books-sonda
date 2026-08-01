@@ -335,6 +335,9 @@ interface ExcedenteInfo {
 export function gerarSecaoExcedentes(info: ExcedenteInfo | null): string {
   if (!info) return '';
 
+  // Não exibir o quadro se o valor total dos excedentes for zero ou inexistente
+  if (!info.valorTotalExcedentes || info.valorTotalExcedentes === 0) return '';
+
   const formatarMoeda = (valor: number) => {
     if (!valor || valor === 0) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -721,11 +724,14 @@ export async function buscarDadosEGerarTabelaBancoHoras(
           : (calculoFimPeriodo.taxa_hora_utilizada || 0);
         const valorTotal = calculoFimPeriodo.valor_a_faturar || 0;
 
-        secaoExcedentes = gerarSecaoExcedentes({
-          horasExcedentes,
-          valorHoraExcedente: valorHora,
-          valorTotalExcedentes: valorTotal,
-        });
+        // Só exibe o quadro de excedentes se o valor total a faturar for maior que zero
+        if (valorTotal > 0) {
+          secaoExcedentes = gerarSecaoExcedentes({
+            horasExcedentes,
+            valorHoraExcedente: valorHora,
+            valorTotalExcedentes: valorTotal,
+          });
+        }
       }
     }
 

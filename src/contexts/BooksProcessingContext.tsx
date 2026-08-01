@@ -266,7 +266,7 @@ export const BooksProcessingProvider: React.FC<{ children: React.ReactNode }> = 
           }
 
           // 2. Gerar PDF
-          const nomeFormatado = nomeAbreviado.replace(/\s+/g, '_').toUpperCase();
+          const nomeFormatado = nomeAbreviado.toUpperCase();
           const mesFormatado = String(mesReferencia).padStart(2, '0');
           const mesNomeRef = MESES_NOMES[mesReferencia];
           const assunto = `BOOK: ${nomeFormatado}_${anoReferencia}_${mesFormatado}. ${mesNomeRef}`;
