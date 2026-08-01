@@ -122,17 +122,24 @@ export default async function handler(
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Medir a altura real do conteúdo completo
-    const contentHeight = await page.evaluate(() => {
-      // Usar scrollHeight do body que captura TODO o conteúdo incluindo margins/paddings
+    const contentDimensions = await page.evaluate(() => {
+      // Usar scrollHeight/scrollWidth do body que captura TODO o conteúdo incluindo margins/paddings
       const bodyHeight = document.body.scrollHeight;
-      // Também verificar documentElement para pegar qualquer overflow
       const docHeight = document.documentElement.scrollHeight;
-      return Math.ceil(Math.max(bodyHeight, docHeight));
+      const bodyWidth = document.body.scrollWidth;
+      const docWidth = document.documentElement.scrollWidth;
+      return {
+        height: Math.ceil(Math.max(bodyHeight, docHeight)),
+        width: Math.ceil(Math.max(bodyWidth, docWidth)),
+      };
     });
 
-    // Redimensionar viewport para a altura exata do conteúdo
+    const contentHeight = contentDimensions.height;
+    const contentWidth = Math.max(contentDimensions.width, viewportWidth);
+
+    // Redimensionar viewport para a dimensão exata do conteúdo
     await page.setViewport({
-      width: viewportWidth,
+      width: contentWidth,
       height: Math.max(contentHeight, 100),
       deviceScaleFactor: 2
     });
@@ -142,7 +149,7 @@ export default async function handler(
       clip: {
         x: 0,
         y: 0,
-        width: viewportWidth,
+        width: contentWidth,
         height: contentHeight
       },
       type: 'png',
@@ -156,7 +163,8 @@ export default async function handler(
     res.end(JSON.stringify({
       success: true,
       image: screenshot,
-      contentType: 'image/png'
+      contentType: 'image/png',
+      width: contentWidth
     }));
 
   } catch (error) {

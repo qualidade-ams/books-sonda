@@ -836,7 +836,7 @@ export async function gerarImagemBancoHoras(
         </style>
       </head>
       <body>
-        <div style="font-family:Calibri,sans-serif;max-width:${viewportWidth}px;width:${viewportWidth}px;margin:0;padding:6px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:7pt;">
+        <div style="font-family:Calibri,sans-serif;max-width:${viewportWidth}px;width:${viewportWidth}px;margin:0;padding:6px;background:#ffffff;color:#1F497D;font-size:7pt;">
           ${resultado.html}
         </div>
       </body>
@@ -910,7 +910,7 @@ export async function gerarImagemBancoHoras(
     return {
       sucesso: true,
       imagemUrl: urlData.publicUrl,
-      largura: viewportWidth
+      largura: data.width || viewportWidth
     };
   } catch (error) {
     console.error(`❌ Erro ao gerar imagem do banco de horas:`, error);
