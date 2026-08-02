@@ -14,7 +14,7 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import { sincronizarApontamentosIncremental } from './services/incrementalSyncApontamentosService';
 import { sincronizarTicketsIncremental } from './services/incrementalSyncTicketsService';
-import { sincronizarPesquisasIncremental } from './services/incrementalSyncPesquisasService';
+import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from './services/incrementalSyncPesquisasService';
 
 const app = express();
 app.use(cors());
@@ -844,35 +844,44 @@ app.post('/api/sync-pesquisas-por-chamados', async (req, res) => {
     // Construir lista de chamados para a query IN
     const chamadosLista = chamados.map((c: string) => `'${c.trim()}'`).join(',');
 
+    // Busca o registro mais recente por Nro_Caso (maior Data_Ultima_Modificacao)
+    // usando ROW_NUMBER para desempatar quando há múltiplos registros por chamado
     const query = `
-      SELECT
-        Empresa,
-        Categoria,
-        Grupo,
-        Cliente,
-        Email_Cliente,
-        Prestador,
-        Solicitante,
-        Nro_Caso,
-        Tipo_Caso,
-        Ano_Abertura,
-        Mes_abertura,
-        [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
-        Resposta,
-        Comentario_Pesquisa,
-        Servico,
-        Nome_Pesquisa,
-        [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
-        [Data_Ultima_Modificacao (Year)] as Data_Ultima_Modificacao,
-        Autor_Notificacao,
-        Estado,
-        Descricao,
-        Pesquisa_Recebida,
-        Pergunta,
-        SequenciaPregunta,
-        LOG
-      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-      WHERE Nro_Caso IN (${chamadosLista})
+      WITH ranked AS (
+        SELECT
+          Empresa,
+          Categoria,
+          Grupo,
+          Cliente,
+          Email_Cliente,
+          Prestador,
+          Solicitante,
+          Nro_Caso,
+          Tipo_Caso,
+          Ano_Abertura,
+          Mes_abertura,
+          [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
+          Resposta,
+          Comentario_Pesquisa,
+          Servico,
+          Nome_Pesquisa,
+          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+          [Data_Ultima_Modificacao (Year)] as Data_Ultima_Modificacao,
+          Autor_Notificacao,
+          Estado,
+          Descricao,
+          Pesquisa_Recebida,
+          Pergunta,
+          SequenciaPregunta,
+          LOG,
+          ROW_NUMBER() OVER (
+            PARTITION BY Nro_Caso
+            ORDER BY [Data_Ultima_Modificacao (Year)] DESC
+          ) as rn
+        FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+        WHERE Nro_Caso IN (${chamadosLista})
+      )
+      SELECT * FROM ranked WHERE rn = 1
       ORDER BY Nro_Caso ASC
     `;
 
@@ -4083,6 +4092,66 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
     res.status(500).json(resultado);
   }
 }
+
+// ============================================
+// ENDPOINT: SYNC DE PESQUISA POR NRO_CASO ESPECÍFICO
+// ============================================
+
+/**
+ * POST /api/sync-pesquisas-por-caso/:nroCaso
+ * 
+ * Força a sincronização de uma pesquisa específica pelo Nro_Caso.
+ * Ignora comparação de datas — sempre atualiza se status = 'pendente'.
+ * 
+ * Exemplos:
+ *   curl -X POST http://localhost:3001/api/sync-pesquisas-por-caso/9085328
+ *   curl -X POST http://localhost:3001/api/sync-pesquisas-por-caso/9084337
+ */
+app.post('/api/sync-pesquisas-por-caso/:nroCaso', async (req, res) => {
+  const startTime = Date.now();
+  const { nroCaso } = req.params;
+
+  if (!nroCaso || nroCaso.trim() === '') {
+    return res.status(400).json({
+      sucesso: false,
+      mensagem: 'nroCaso é obrigatório. Use: POST /api/sync-pesquisas-por-caso/:nroCaso'
+    });
+  }
+
+  console.log(`\n🎯 [API] Sync forçado solicitado para nro_caso: ${nroCaso}`);
+
+  try {
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [API] Conectado ao SQL Server');
+
+    const resultado = await sincronizarPesquisaPorNroCaso(pool, nroCaso.trim());
+
+    await pool.close();
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`✅ [API] Sync do caso ${nroCaso} concluído em ${duration}s — operação: ${resultado.operacao}`);
+
+    const statusCode = resultado.sucesso ? 200 : resultado.operacao === 'nao_encontrado' ? 404 : 422;
+
+    return res.status(statusCode).json({
+      ...resultado,
+      nro_caso: nroCaso,
+      tempo_execucao: `${duration}s`
+    });
+
+  } catch (erro) {
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error(`❌ [API] Erro fatal ao sincronizar caso ${nroCaso}:`, erro);
+
+    return res.status(500).json({
+      sucesso: false,
+      operacao: 'erro',
+      nro_caso: nroCaso,
+      mensagem: `Erro fatal: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`,
+      tempo_execucao: `${duration}s`
+    });
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 

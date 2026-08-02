@@ -166,12 +166,12 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                   </div>
-                  {data.incidentes >= 2 ? t('books.bookContent.incidents') : t('books.bookContent.incident')}
+                  {(data.consultorias_fechadas ?? data.incidentes) >= 2 ? t('books.bookContent.incidents') : t('books.bookContent.incident')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-black">{data.incidentes}</span>
+                  <span className="text-3xl font-bold text-black">{data.consultorias_fechadas ?? data.incidentes}</span>
                   <span className="text-xs font-medium text-gray-500 uppercase">{t('books.bookContent.closedConsultations')}</span>
                 </div>
               </CardContent>

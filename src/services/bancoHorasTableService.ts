@@ -154,9 +154,8 @@ export function gerarTabelaBancoHoras(
     return `<tr style="${bgStyle}"><td style="${cellBase}color:#111827;border-bottom:1px solid #e5e7eb;">${linha.label}</td>${cells}</tr>`;
   }).join('');
 
-  // Linha de Excedente/Taxa/Valor Total (última linha cinza escuro)
-  // Usar o último cálculo REAL (não placeholder) para taxa e valor a faturar
-  const calculoFim = [...calculos].reverse().find(c => !c.id.startsWith('placeholder-')) || calculos[calculos.length - 1];
+  // Usar o último cálculo do array para taxa e valor a faturar
+  const calculoFim = calculos[calculos.length - 1];
   const taxaHora = isTicket 
     ? (calculoFim?.taxa_ticket_utilizada || calculos.find(c => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada)
     : (calculoFim?.taxa_hora_utilizada || calculos.find(c => c.taxa_hora_utilizada)?.taxa_hora_utilizada);
@@ -527,9 +526,10 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       }
     }
 
-    // Buscar cálculos do banco de horas para todos os meses do período
+    // Buscar cálculos do banco de horas apenas para meses com dados reais.
+    // Meses futuros (sem registro em banco_horas_calculos) são simplesmente ignorados —
+    // a tabela do email exibe apenas o que foi efetivamente calculado.
     const calculos: BancoHorasCalculo[] = [];
-    let temAoMenosUmCalculo = false;
 
     for (const periodo of mesesParaBuscar) {
       const { data: calculo, error: calculoError } = await supabase
@@ -544,46 +544,12 @@ export async function buscarDadosEGerarTabelaBancoHoras(
 
       if (!calculoError && calculo) {
         calculos.push(calculo as unknown as BancoHorasCalculo);
-        temAoMenosUmCalculo = true;
       } else {
-        // Mês sem dados (ex: meses futuros do trimestre) — inserir placeholder zerado
-        // para que a coluna apareça na tabela com valores em branco/zero
-        calculos.push({
-          id: `placeholder-${periodo.mes}-${periodo.ano}`,
-          empresa_id: empresaId,
-          mes: periodo.mes,
-          ano: periodo.ano,
-          baseline_horas: '00:00',
-          repasses_mes_anterior_horas: '00:00',
-          saldo_a_utilizar_horas: '00:00',
-          consumo_horas: '00:00',
-          requerimentos_horas: '00:00',
-          reajustes_horas: '00:00',
-          consumo_total_horas: '00:00',
-          saldo_horas: '00:00',
-          repasse_horas: '00:00',
-          excedentes_horas: '00:00',
-          baseline_tickets: 0,
-          repasses_mes_anterior_tickets: 0,
-          saldo_a_utilizar_tickets: 0,
-          consumo_tickets: 0,
-          requerimentos_tickets: 0,
-          reajustes_tickets: 0,
-          consumo_total_tickets: 0,
-          saldo_tickets: 0,
-          repasse_tickets: 0,
-          excedentes_tickets: 0,
-          valor_a_faturar: 0,
-          taxa_hora_utilizada: 0,
-          taxa_ticket_utilizada: 0,
-          is_fim_periodo: false,
-          created_at: new Date(),
-          updated_at: new Date(),
-        } as BancoHorasCalculo);
+        console.log(`ℹ️ Sem dados para ${periodo.mes}/${periodo.ano} — coluna omitida da tabela`);
       }
     }
 
-    if (!temAoMenosUmCalculo) {
+    if (calculos.length === 0) {
       console.log(`ℹ️ Nenhum dado de banco de horas encontrado para empresa ${empresaId} no período`);
       return null;
     }
@@ -744,9 +710,8 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosDesenv, 'Requerimentos em Desenvolvimento', '#ea580c', true);
     const secaoObs = gerarSecaoObservacoes(observacoes);
 
-    // Gerar seção de excedentes se houver (último mês REAL do período com excedente)
-    // Ignorar placeholders (meses sem dados) ao determinar o cálculo fim de período
-    const calculoFimPeriodo = [...calculos].reverse().find(c => !c.id.startsWith('placeholder-')) || calculos[calculos.length - 1];
+    // Determinar o cálculo de fim de período para exibição de excedentes
+    const calculoFimPeriodo = calculos[calculos.length - 1];
     const isTicketMode = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
     
     let secaoExcedentes = '';

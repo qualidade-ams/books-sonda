@@ -130,6 +130,18 @@ function formatarData(dataISO: string | null): string {
   }
 }
 
+/**
+ * Trunca texto para o limite máximo de caracteres do Excel (.xlsx = 32767).
+ * Campos como "resumo", "descricao_tarefa" e "comentario_pesquisa" podem vir
+ * do banco com tamanho arbitrário e precisam ser truncados antes do write.
+ */
+const EXCEL_MAX_CHARS = 32767;
+function truncarTexto(valor: string | null | undefined, limite = EXCEL_MAX_CHARS): string {
+  if (!valor) return '';
+  if (valor.length <= limite) return valor;
+  return valor.substring(0, limite - 3) + '...';
+}
+
 /** Converte tempo para valor numérico nativo do Excel (fração de dia) */
 function horasParaExcelNumerico(tempoHoras: string | null, tempoMinutos: number | null): number {
   if (tempoHoras) {
@@ -202,7 +214,7 @@ function calcularPeriodo(mes: number, ano: number, diaInicioApuracao: number, di
   return { dataInicio: new Date(dataInicioStr), dataFim: new Date(dataFimStr) };
 }
 
-/** Busca tickets abertos no período */
+/** Busca tickets abertos no período (exclui Cancelled) */
 async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
@@ -211,6 +223,7 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
     .gte('data_abertura', dataInicio.toISOString())
     .lte('data_abertura', dataFim.toISOString())
     .neq('cod_tipo', 'Problema')
+    .neq('status', 'Cancelled')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
     .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
@@ -224,7 +237,7 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
   return (data || []) as unknown as TicketAranda[];
 }
 
-/** Busca tickets fechados no período */
+/** Busca tickets fechados no período (exclui Cancelled) */
 async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
   const proximoMesInicio = new Date(dataFim);
   proximoMesInicio.setDate(proximoMesInicio.getDate() + 1);
@@ -237,6 +250,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
     .neq('cod_tipo', 'Problema')
+    .neq('status', 'Cancelled')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
     .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
@@ -250,14 +264,14 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
   return (data || []) as unknown as TicketAranda[];
 }
 
-/** Busca tickets em backlog (abertos até o período, não fechados) */
+/** Busca tickets em backlog (abertos até o período, não fechados, exclui Cancelled) */
 async function buscarTicketsBacklog(nomeCompleto: string, dataFim: Date): Promise<TicketAranda[]> {
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', `%${nomeCompleto}%`)
     .lte('data_abertura', dataFim.toISOString())
-    .not('status', 'in', '("Closed","Resolved","Canceled")')
+    .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
     .neq('cod_tipo', 'Problema')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
@@ -272,7 +286,26 @@ async function buscarTicketsBacklog(nomeCompleto: string, dataFim: Date): Promis
   return (data || []) as unknown as TicketAranda[];
 }
 
-/** Busca incidentes fechados para SLA */
+/**
+ * Códigos de resolução elegíveis para a aba SLA do detalhamento.
+ * Apenas incidentes com estes códigos são incluídos no relatório SLA.
+ */
+const COD_RESOLUCAO_SLA = [
+  'Consultoria',
+  'Consultoria (Banco=S |SLA=S)',
+  'Consultoria (Banco=S| SLA=S)',
+  'Consultoria - Banco de Dados',
+  'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+  'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+  'Consultoria - Nota Publicada',
+  'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+  'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+  'Consultoria - Solução Paliativa',
+  'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+  'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+];
+
+/** Busca incidentes violados para SLA (exclui Cancelled, retorna apenas TDS Vencido com cod_resolucao elegível) */
 async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
   const proximoMesInicio = new Date(dataFim);
   proximoMesInicio.setDate(proximoMesInicio.getDate() + 1);
@@ -285,6 +318,9 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
     .eq('cod_tipo', 'Incidente')
+    .neq('status', 'Cancelled')
+    .eq('tds_cumprido', 'TDS Vencido')
+    .in('cod_resolucao', COD_RESOLUCAO_SLA)
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
     .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
@@ -495,7 +531,7 @@ function ticketParaRow(t: TicketAranda): any[] {
     t.numero_pai || '',
     t.tds_cumprido || '',
     t.tds_cumprido === 'TDS Vencido' ? 'SIM' : 'NÃO',
-    t.resumo || '',
+    truncarTexto(t.resumo),
   ];
 }
 
@@ -586,7 +622,7 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
     formatarData(apt.data_fechamento),
     horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
     apt.tempo_gasto_minutos || 0,
-    apt.descricao_tarefa || '',
+    truncarTexto(apt.descricao_tarefa),
   ]);
 
   // Calcular total de horas
@@ -721,8 +757,8 @@ function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: s
     p.grupo || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
-    p.descricao || '',
-    p.pergunta || '',
+    truncarTexto(p.descricao),
+    truncarTexto(p.pergunta),
   ]);
 
   const sheetData = [PESQ_HEADERS, ...rows];
@@ -767,11 +803,11 @@ function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome
     p.grupo || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
-    p.descricao || '',
+    truncarTexto(p.descricao),
     formatarData(p.data_resposta),
-    p.pergunta || '',
-    p.comentario_pesquisa || '',
-    p.resposta || '',
+    truncarTexto(p.pergunta),
+    truncarTexto(p.comentario_pesquisa),
+    truncarTexto(p.resposta),
   ]);
 
   const sheetData = [PESQ_HEADERS, ...rows];
@@ -816,8 +852,8 @@ function criarSheetPesquisasNaoRespondidas(pesquisas: PesquisaSatisfacao[], mesN
     p.grupo || '',
     p.prestador || '',
     formatarData(p.data_fechamento),
-    p.descricao || '',
-    p.pergunta || '',
+    truncarTexto(p.descricao),
+    truncarTexto(p.pergunta),
   ]);
 
   const sheetData = [PESQ_HEADERS, ...rows];

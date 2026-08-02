@@ -6,15 +6,21 @@
  * Pode ser minimizado/expandido.
  */
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { Loader2, X, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useBooksProcessing } from '@/contexts/BooksProcessingContext';
+import { BooksProcessingContext } from '@/contexts/BooksProcessingContext';
 
 export function BooksProcessingIndicator() {
-  const { progress, isProcessing, cancelProcessing, resetProgress } = useBooksProcessing();
+  // Usa useContext diretamente para retornar null silenciosamente quando o provider
+  // não está disponível (ex: durante recovery de error boundary acima do provider)
+  const ctx = useContext(BooksProcessingContext);
   const [minimized, setMinimized] = useState(false);
+
+  if (!ctx) return null;
+
+  const { progress, isProcessing, cancelProcessing, resetProgress } = ctx;
 
   // Não mostrar se não está processando e não tem resultados para exibir
   if (!isProcessing && progress.total === 0) return null;

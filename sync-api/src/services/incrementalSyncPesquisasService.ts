@@ -766,3 +766,162 @@ export async function sincronizarPesquisasIncremental(
     return resultado;
   }
 }
+
+/**
+ * Busca um registro específico do SQL Server pelo Nro_Caso
+ */
+async function buscarRegistroPorNroCaso(
+  pool: sql.ConnectionPool,
+  nroCaso: string
+): Promise<DadosPesquisaSqlServer | null> {
+  console.log(`🔍 [SYNC-CASO] Buscando nro_caso="${nroCaso}" no SQL Server...`);
+
+  // Busca o registro mais recente para esse Nro_Caso (maior Data_Ultima_Modificacao)
+  const query = `
+    WITH ranked AS (
+      SELECT
+        Empresa,
+        Categoria,
+        Grupo,
+        Cliente,
+        Email_Cliente,
+        Prestador,
+        Solicitante,
+        Nro_Caso,
+        Tipo_Caso,
+        Ano_Abertura,
+        Mes_abertura,
+        [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
+        Resposta,
+        Comentario_Pesquisa,
+        Servico,
+        Nome_Pesquisa,
+        [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+        [Data_Ultima_Modificacao (Year)] as Data_Ultima_Modificacao,
+        Autor_Notificacao,
+        Estado,
+        Descricao,
+        Pesquisa_Recebida,
+        Pergunta,
+        SequenciaPregunta,
+        LOG,
+        ROW_NUMBER() OVER (
+          PARTITION BY Nro_Caso
+          ORDER BY [Data_Ultima_Modificacao (Year)] DESC
+        ) as rn
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE Nro_Caso = @nroCaso
+    )
+    SELECT * FROM ranked WHERE rn = 1
+  `;
+
+  const result = await pool.request()
+    .input('nroCaso', sql.VarChar, nroCaso)
+    .query(query);
+
+  if (result.recordset.length === 0) {
+    console.warn(`⚠️ [SYNC-CASO] Nro_Caso "${nroCaso}" não encontrado no SQL Server`);
+    return null;
+  }
+
+  if (result.recordset.length > 1) {
+    console.warn(`⚠️ [SYNC-CASO] Nro_Caso "${nroCaso}" retornou ${result.recordset.length} registros — usando o primeiro`);
+  }
+
+  const registro = result.recordset[0] as DadosPesquisaSqlServer;
+  console.log(`✅ [SYNC-CASO] Registro encontrado: ${registro.Nro_Caso} - ${registro.Cliente}`);
+  console.log(`   📅 Data Modificação: ${registro.Data_Ultima_Modificacao}`);
+  console.log(`   💬 Data Resposta: ${registro.Data_Resposta || 'SEM RESPOSTA'}`);
+  console.log(`   📊 Resposta: ${registro.Resposta || 'N/A'}`);
+
+  return registro;
+}
+
+/**
+ * Força a sincronização de uma pesquisa específica pelo Nro_Caso.
+ * Ignora a lógica de comparação de datas — sempre sobrescreve se status = 'pendente',
+ * ou insere se o registro ainda não existe.
+ */
+export async function sincronizarPesquisaPorNroCaso(
+  pool: sql.ConnectionPool,
+  nroCaso: string
+): Promise<{
+  sucesso: boolean;
+  operacao: 'inserido' | 'atualizado' | 'ignorado' | 'nao_encontrado' | 'erro';
+  mensagem: string;
+  dados?: any;
+}> {
+  console.log(`\n🎯 [SYNC-CASO] ========================================`);
+  console.log(`🎯 [SYNC-CASO] Forçando sync do nro_caso: ${nroCaso}`);
+  console.log(`🎯 [SYNC-CASO] ========================================\n`);
+
+  try {
+    // 1. Buscar no SQL Server
+    const registro = await buscarRegistroPorNroCaso(pool, nroCaso);
+
+    if (!registro) {
+      return {
+        sucesso: false,
+        operacao: 'nao_encontrado',
+        mensagem: `Nro_Caso "${nroCaso}" não encontrado no SQL Server`
+      };
+    }
+
+    // 2. Preparar dados (aplica transformação AMS se necessário)
+    const dados = prepararDadosPesquisa(registro);
+
+    const idExterno = [
+      dados.empresa?.trim() || 'sem_empresa',
+      dados.cliente?.trim() || 'sem_cliente',
+      dados.nro_caso?.trim() || 'sem_caso'
+    ].filter(Boolean).join('|');
+
+    // 3. Verificar se já existe no Supabase
+    const { existe, id, status } = await buscarRegistroExistente(
+      idExterno,
+      dados.empresa?.trim(),
+      dados.nro_caso?.trim()
+    );
+
+    if (!existe) {
+      // INSERT
+      await inserirRegistro(idExterno, dados);
+      console.log(`✅ [SYNC-CASO] Registro INSERIDO com sucesso`);
+      return {
+        sucesso: true,
+        operacao: 'inserido',
+        mensagem: `Nro_Caso "${nroCaso}" inserido com sucesso`,
+        dados: { id_externo: idExterno, ...dados }
+      };
+    }
+
+    // 4. Se existe, verificar o status
+    if (status !== 'pendente') {
+      console.log(`🔒 [SYNC-CASO] Registro BLOQUEADO — status '${status}' não permite atualização`);
+      return {
+        sucesso: false,
+        operacao: 'ignorado',
+        mensagem: `Nro_Caso "${nroCaso}" não pode ser atualizado pois o status é '${status}' (somente 'pendente' é atualizável)`,
+        dados: { id, status, id_externo: idExterno }
+      };
+    }
+
+    // 5. Forçar UPDATE (ignora comparação de datas)
+    await atualizarRegistro(id!, dados);
+    console.log(`🔄 [SYNC-CASO] Registro ATUALIZADO com sucesso (força — sem comparação de datas)`);
+    return {
+      sucesso: true,
+      operacao: 'atualizado',
+      mensagem: `Nro_Caso "${nroCaso}" atualizado com sucesso (sync forçado)`,
+      dados: { id, id_externo: idExterno, ...dados }
+    };
+
+  } catch (erro) {
+    console.error(`💥 [SYNC-CASO] Erro ao sincronizar nro_caso "${nroCaso}":`, erro);
+    return {
+      sucesso: false,
+      operacao: 'erro',
+      mensagem: `Erro ao sincronizar nro_caso "${nroCaso}": ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`
+    };
+  }
+}

@@ -12,7 +12,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { sincronizarPesquisasIncremental } = require('../services/incrementalSyncPesquisasService');
+const { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } = require('../services/incrementalSyncPesquisasService');
 
 /**
  * POST /api/sync-pesquisas-incremental
@@ -131,6 +131,66 @@ router.get('/sync-pesquisas-incremental/status', async (req, res) => {
     console.error('❌ [API] Erro ao buscar status da sincronização:', erro);
     res.status(500).json({
       erro: erro.message
+    });
+  }
+});
+
+/**
+ * POST /api/sync-pesquisas-incremental/caso/:nroCaso
+ * Força a sincronização de uma pesquisa específica pelo Nro_Caso.
+ * Ignora comparação de datas — sempre atualiza se status = 'pendente'.
+ *
+ * Exemplos:
+ *   POST /api/sync-pesquisas-incremental/caso/9085328
+ *   POST /api/sync-pesquisas-incremental/caso/9084337
+ */
+router.post('/sync-pesquisas-incremental/caso/:nroCaso', async (req, res) => {
+  const startTime = Date.now();
+  const { nroCaso } = req.params;
+
+  if (!nroCaso || nroCaso.trim() === '') {
+    return res.status(400).json({
+      sucesso: false,
+      mensagem: 'nroCaso é obrigatório. Use: POST /api/sync-pesquisas-incremental/caso/:nroCaso'
+    });
+  }
+
+  console.log(`\n🎯 [API] Sync forçado solicitado para nro_caso: ${nroCaso}`);
+
+  try {
+    const sqlPool = req.app.locals.sqlPool;
+
+    if (!sqlPool) {
+      return res.status(500).json({
+        sucesso: false,
+        mensagem: 'Pool de conexão SQL Server não disponível'
+      });
+    }
+
+    const resultado = await sincronizarPesquisaPorNroCaso(sqlPool, nroCaso.trim());
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    console.log(`✅ [API] Sync do caso ${nroCaso} concluído em ${duration}s — operação: ${resultado.operacao}`);
+
+    const statusCode = resultado.sucesso ? 200 : resultado.operacao === 'nao_encontrado' ? 404 : 422;
+
+    return res.status(statusCode).json({
+      ...resultado,
+      nro_caso: nroCaso,
+      tempo_execucao: `${duration}s`
+    });
+
+  } catch (erro) {
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error(`❌ [API] Erro fatal ao sincronizar caso ${nroCaso}:`, erro);
+
+    return res.status(500).json({
+      sucesso: false,
+      operacao: 'erro',
+      nro_caso: nroCaso,
+      mensagem: `Erro fatal: ${erro.message}`,
+      tempo_execucao: `${duration}s`
     });
   }
 });
