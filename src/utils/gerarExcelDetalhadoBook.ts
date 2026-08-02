@@ -339,10 +339,17 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
   const dataInicio = new Date(ano, mes - 1, 1);
   const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
 
+  console.log('🔍 Buscando pesquisas para Excel:', {
+    empresa: nomeCompleto,
+    periodo: `${mes}/${ano}`,
+    dataInicio: dataInicio.toISOString(),
+    dataFim: dataFim.toISOString()
+  });
+
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
     .select('nro_caso, tipo_caso, empresa, grupo, cliente, prestador, solicitante, data_fechamento, data_resposta, resposta, comentario_pesquisa, categoria, servico, pergunta, descricao')
-    .eq('empresa', nomeCompleto)
+    .ilike('empresa', `%${nomeCompleto}%`)
     .gte('data_fechamento', dataInicio.toISOString())
     .lte('data_fechamento', dataFim.toISOString())
     .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
@@ -354,6 +361,8 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
     console.error('❌ Erro ao buscar pesquisas para Excel:', error);
     return [];
   }
+
+  console.log(`✅ Pesquisas encontradas para Excel: ${data?.length || 0} registros`);
   return (data || []) as unknown as PesquisaSatisfacao[];
 }
 
