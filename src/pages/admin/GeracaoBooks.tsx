@@ -1277,7 +1277,7 @@ export default function GeracaoBooks() {
             <AlertDialogDescription className="text-sm text-gray-500">
               Deseja gerar books para {selectedCount} {selectedCount === 1 ? 'empresa' : 'empresas'} selecionada(s)?
               <br /><br />
-              <strong>Período:</strong> {periodoLabel}
+              <strong>Período:</strong> {periodoReferenciaLabel}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1304,7 +1304,7 @@ export default function GeracaoBooks() {
               <br /><br />
               <strong className="text-orange-600">Atenção:</strong> Esta ação irá sobrescrever os dados existentes com novos dados do período.
               <br /><br />
-              <strong>Período:</strong> {periodoLabel}
+              <strong>Período:</strong> {periodoReferenciaLabel}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
