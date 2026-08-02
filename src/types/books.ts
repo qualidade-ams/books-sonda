@@ -131,6 +131,7 @@ export interface BookSLAData {
   // Cards de métricas
   fechados: number;
   incidentes: number;
+  consultorias_fechadas: number; // Incidentes com cod_resolucao do tipo Consultoria
   violados: number;
   
   // Gráfico: SLA Histórico Mensal

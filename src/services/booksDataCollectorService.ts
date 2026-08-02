@@ -343,7 +343,7 @@ class BooksDataCollectorService {
     let apontamentosTickets: any[] = [];
 
     // SEMPRE buscar tickets para os cards de volumetria (independente do tipo_contrato)
-    // ABERTOS: Buscar por data_abertura no mês com filtros específicos
+    // ABERTOS: Buscar por data_abertura no mês com filtros específicos (exclui Cancelled)
     const { data: ticketsAbertos, error: ticketsAbertosError } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
@@ -351,11 +351,12 @@ class BooksDataCollectorService {
       .gte('data_abertura', dataInicio.toISOString())
       .lte('data_abertura', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
+      .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
 
-    // FECHADOS: Buscar por data_solucao no mês com filtros específicos
+    // FECHADOS: Buscar por data_solucao no mês com filtros específicos (exclui Cancelled)
     const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
@@ -363,6 +364,7 @@ class BooksDataCollectorService {
       .gte('data_solucao', dataInicio.toISOString())
       .lt('data_solucao', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
+      .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
@@ -537,7 +539,7 @@ class BooksDataCollectorService {
       .select('nro_solicitacao')
       .ilike('organizacao', `%${empresaNomeCompleto}%`)
       .lte('data_abertura', ultimoDiaMes)
-      .not('status', 'in', '("Closed","Resolved","Canceled")')
+      .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
@@ -551,7 +553,7 @@ class BooksDataCollectorService {
     
     console.log('✅ Backlog total calculado:', {
       total: totalBacklog,
-      criterio: 'status NOT IN (Closed, Resolved, Canceled) AND data_abertura <= último dia do mês',
+      criterio: 'status NOT IN (Closed, Resolved, Canceled, Cancelled) AND data_abertura <= último dia do mês',
       dataLimite: ultimoDiaMes,
       alinhado_com: 'aba Backlog'
     });
@@ -630,6 +632,7 @@ class BooksDataCollectorService {
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .eq('cod_tipo', 'Incidente')
+        .neq('status', 'Cancelled')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
         .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
@@ -720,7 +723,7 @@ class BooksDataCollectorService {
       anoAtual
     });
     
-    // Buscar TODOS os tickets ABERTOS dos últimos 6 meses (1 query)
+    // Buscar TODOS os tickets ABERTOS dos últimos 6 meses (1 query) — exclui Cancelled
     const { data: ticketsAbertos, error: errorAbertos } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao, cod_tipo, data_abertura')
@@ -728,6 +731,7 @@ class BooksDataCollectorService {
       .gte('data_abertura', dataInicio.toISOString())
       .lte('data_abertura', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
+      .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
@@ -745,7 +749,7 @@ class BooksDataCollectorService {
       }))
     });
     
-    // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query)
+    // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query) — exclui Cancelled
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao, cod_tipo, data_solucao')
@@ -753,6 +757,7 @@ class BooksDataCollectorService {
       .gte('data_solucao', dataInicio.toISOString())
       .lte('data_solucao', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
+      .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
@@ -1127,7 +1132,7 @@ class BooksDataCollectorService {
       dataFim: dataFim.toISOString()
     });
 
-    // FECHADOS: Todos os chamados fechados no mês (com data_solucao)
+    // FECHADOS: Todos os chamados fechados no mês (com data_solucao) — exclui Cancelled
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
@@ -1135,6 +1140,7 @@ class BooksDataCollectorService {
       .gte('data_solucao', dataInicio.toISOString())
       .lt('data_solucao', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
+      .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
@@ -1146,6 +1152,7 @@ class BooksDataCollectorService {
     const fechados = (ticketsFechados || []).length;
 
     // INCIDENTES: Incidentes fechados no mês (base para cálculo do SLA)
+    // O card "FECHADOS" exibe apenas Incidentes (IM), não Solicitações
     const incidentes = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente').length;
 
     // INCIDENTES ELEGÍVEIS: Incidentes com cod_resolucao específicos para elegibilidade
@@ -1175,6 +1182,25 @@ class BooksDataCollectorService {
       'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
       'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
     ];
+
+    // CONSULTORIAS FECHADAS: Incidentes com cod_resolucao exclusivamente do tipo Consultoria
+    // (exclui AMS SAP — usado apenas para elegibilidade SLA, não para o card)
+    const codResolucaoConsultoria = [
+      'Consultoria',
+      'Consultoria (Banco=S |SLA=S)',
+      'Consultoria (Banco=S| SLA=S)',
+      'Consultoria - Banco de Dados',
+      'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+      'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+      'Consultoria - Nota Publicada',
+      'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+      'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+    ];
+
+    const consultoriasFechadas = (ticketsFechados || []).filter(t =>
+      t.cod_tipo === 'Incidente' &&
+      codResolucaoConsultoria.includes(t.cod_resolucao)
+    ).length;
     
     const incidentesElegiveis = (ticketsFechados || []).filter(t => 
       t.cod_tipo === 'Incidente' && 
@@ -1312,8 +1338,9 @@ class BooksDataCollectorService {
       sla_percentual: slaPercentual,
       meta_percentual: metaSLA,
       status: status,
-      fechados: fechados,
+      fechados: incidentes, // Apenas Incidentes (IM) fechados no mês
       incidentes: incidentes,
+      consultorias_fechadas: consultoriasFechadas,
       violados: violadosElegiveis, // Apenas violados com cod_resolucao elegível
       sla_historico: historicoSLA,
       chamados_violados: chamadosViolados,
@@ -1333,6 +1360,7 @@ class BooksDataCollectorService {
       status: 'vencido',
       fechados: 0,
       incidentes: 0,
+      consultorias_fechadas: 0,
       violados: 0,
       sla_historico: [],
       chamados_violados: []
@@ -1360,7 +1388,7 @@ class BooksDataCollectorService {
       dataLimite,
       filtros: {
         data_abertura: `<= ${dataLimite}`,
-        status: 'NOT IN (Closed, Resolved, Canceled)',
+        status: 'NOT IN (Closed, Resolved, Canceled, Cancelled)',
         cod_tipo: '!= Problema',
         item_configuracao: 'IS NULL OR != 000000 - PROJETOS APL',
         caso_pai: 'SIM',
@@ -1376,7 +1404,7 @@ class BooksDataCollectorService {
       .select('*')
       .ilike('organizacao', `%${empresaNomeCompleto}%`)
       .lte('data_abertura', dataLimite)
-      .not('status', 'in', '("Closed","Resolved","Canceled")')
+      .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
@@ -2619,6 +2647,7 @@ class BooksDataCollectorService {
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .neq('cod_tipo', 'Problema')
+        .neq('status', 'Cancelled')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
         .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');

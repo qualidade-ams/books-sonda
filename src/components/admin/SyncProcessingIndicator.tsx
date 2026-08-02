@@ -18,11 +18,13 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useSyncProcessing } from '@/contexts/SyncProcessingContext';
+import { SyncProcessingContext } from '@/contexts/SyncProcessingContext';
 import { BooksProcessingContext } from '@/contexts/BooksProcessingContext';
 
 export function SyncProcessingIndicator() {
-  const { syncProgress, isSyncing, ultimaExecucao, resetSync } = useSyncProcessing();
+  // Usa useContext diretamente para retornar null silenciosamente quando o provider
+  // não está disponível (ex: durante recovery de error boundary acima do provider)
+  const syncCtx = React.useContext(SyncProcessingContext);
   
   // Usar useContext diretamente para evitar throw se provider não estiver disponível
   const booksContext = React.useContext(BooksProcessingContext);
@@ -33,16 +35,20 @@ export function SyncProcessingIndicator() {
   const [showDates, setShowDates] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Se o indicador de books estiver visível, subir o de sync
-  const booksIndicatorVisible = isBooksProcessing || booksProgress.total > 0;
-  const bottomClass = booksIndicatorVisible ? 'bottom-52' : 'bottom-4';
-
-  // Auto-scroll logs
+  // Auto-scroll logs — deve estar antes de qualquer return condicional (regra dos hooks)
   useEffect(() => {
     if (showLogs && logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [syncProgress.logs, showLogs]);
+  }, [syncCtx?.syncProgress?.logs, showLogs]);
+
+  if (!syncCtx) return null;
+
+  const { syncProgress, isSyncing, ultimaExecucao, resetSync } = syncCtx;
+
+  // Se o indicador de books estiver visível, subir o de sync
+  const booksIndicatorVisible = isBooksProcessing || booksProgress.total > 0;
+  const bottomClass = booksIndicatorVisible ? 'bottom-52' : 'bottom-4';
 
   // Não mostrar se não está sincronizando e não tem resultados
   if (!isSyncing && !syncProgress.concluido) return null;

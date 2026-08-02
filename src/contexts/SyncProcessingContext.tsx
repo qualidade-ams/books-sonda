@@ -100,7 +100,7 @@ interface SyncProcessingContextType {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const SyncProcessingContext = createContext<SyncProcessingContextType | undefined>(undefined);
+export const SyncProcessingContext = createContext<SyncProcessingContextType | undefined>(undefined);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
