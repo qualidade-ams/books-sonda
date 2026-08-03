@@ -209,22 +209,9 @@ async function calcularConsumoSegmentadoPorMes(
     console.log(`📊 Total de apontamentos encontrados: ${apontamentos?.length || 0}`);
     
     // Filtrar apontamentos baseado no item_configuracao (FILTRO ADICIONAL DA SEGMENTAÇÃO)
+    // Todos os apontamentos retornados pela query são considerados válidos.
+    // A detecção de extemporâneos é feita pelo bancoHorasQuarentenaService (synced_at > fechado_em).
     const apontamentosFiltrados = (apontamentos || []).filter(apt => {
-      // ✅ CORREÇÃO: Mesma lógica do bancoHorasIntegracaoService.buscarConsumo
-      // Excluir APENAS quando data_sistema é POSTERIOR à data_atividade (apontamento retroativo)
-      // Manter quando data_sistema é anterior ou igual ao mês da atividade
-      if (apt.data_atividade && apt.data_sistema) {
-        const dataAtividade = new Date(apt.data_atividade);
-        const dataSistema = new Date(apt.data_sistema);
-        
-        const mesAtividade = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
-        const mesSistema = dataSistema.getFullYear() * 12 + dataSistema.getMonth();
-        
-        if (mesSistema > mesAtividade) {
-          return false; // Excluir apenas se data_sistema é posterior (retroativo)
-        }
-      }
-      
       // Aplicar filtro de segmentação
       return aplicarFiltro(apt.item_configuracao, filtroTipo, filtroValor);
     });

@@ -1602,32 +1602,10 @@ class BooksDataCollectorService {
       });
 
       if (apontamentosHoras && apontamentosHoras.length > 0) {
-        // REGRA: Descartar apontamentos onde data_sistema é POSTERIOR à data_atividade
-        // (lançado retroativamente fora do mês — não conta para o período)
-        // Manter quando data_sistema é anterior ou igual ao mês da atividade
-        let apontamentosExcluidos = 0;
-        const apontamentosFiltrados = apontamentosHoras.filter(a => {
-          if (a.data_atividade && a.data_sistema) {
-            const dataAtividade = new Date(a.data_atividade);
-            const dataSistema   = new Date(a.data_sistema);
-            const mesAtividade  = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
-            const mesSistema    = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
-            if (mesSistema > mesAtividade) {
-              apontamentosExcluidos++;
-              console.log('⚠️ [gerarDadosConsumo] Apontamento excluído (data_sistema posterior à data_atividade):', {
-                data_atividade: a.data_atividade,
-                data_sistema: a.data_sistema,
-                nro_chamado: a.nro_chamado || 'N/A'
-              });
-              return false;
-            }
-          }
-          return true;
-        });
-
-        if (apontamentosExcluidos > 0) {
-          console.log(`⚠️ [gerarDadosConsumo] ${apontamentosExcluidos} apontamentos excluídos por data_atividade/data_sistema em meses diferentes`);
-        }
+        // Todos os apontamentos retornados pela query são contabilizados.
+        // A detecção de extemporâneos (retroativos pós-fechamento) é feita separadamente
+        // pelo bancoHorasQuarentenaService ao comparar synced_at > fechado_em.
+        const apontamentosFiltrados = apontamentosHoras;
 
         // Calcular horas baseado em tempo_gasto_horas (formato: "HH:MM:SS" ou "HH:MM")
         // IMPORTANTE: Ignorar segundos, considerar apenas horas e minutos
@@ -2861,20 +2839,9 @@ class BooksDataCollectorService {
           .lt('data_atividade', proximoMesInicio.toISOString());
 
         if (apontamentosHoras) {
-          // Descartar apontamentos onde data_sistema é POSTERIOR à data_atividade
-          // (mesma lógica corrigida do bancoHorasIntegracaoService.buscarConsumo)
-          const apontamentosFiltrados = apontamentosHoras.filter(a => {
-            if (a.data_atividade && a.data_sistema) {
-              const dataAtividade = new Date(a.data_atividade);
-              const dataSistema   = new Date(a.data_sistema);
-              const mesAtividade  = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
-              const mesSistema    = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
-              if (mesSistema > mesAtividade) {
-                return false;
-              }
-            }
-            return true;
-          });
+          // Todos os apontamentos retornados pela query são contabilizados.
+          // A detecção de extemporâneos é feita pelo bancoHorasQuarentenaService.
+          const apontamentosFiltrados = apontamentosHoras;
 
           // Usar tempo_gasto_horas (formato HH:MM:SS ou HH:MM) em vez de tempo_gasto_minutos
           // para consistência com gerarDadosConsumo e bancoHorasIntegracaoService
@@ -2889,7 +2856,7 @@ class BooksDataCollectorService {
           }, 0);
           horasMes += horasApontadas;
           
-          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros (${apontamentosHoras.length - apontamentosFiltrados.length} excluídos por data_sistema), ${horasApontadas.toFixed(2)}h`);
+          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros, ${horasApontadas.toFixed(2)}h`);
         }
       }
 

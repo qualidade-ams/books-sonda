@@ -370,7 +370,10 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
 async function buscarApontamentosHoras(
   nomeCompleto: string,
   dataInicio: Date,
-  dataFim: Date
+  dataFim: Date,
+  empresaId?: string,
+  mes?: number,
+  ano?: number
 ): Promise<ApontamentoHoras[]> {
   const codigosResolucaoValidos = [
     'Alocação',
@@ -418,17 +421,12 @@ async function buscarApontamentosHoras(
     apt.cod_resolucao && codigosResolucaoValidos.includes(apt.cod_resolucao)
   );
 
-  // Filtrar: descartar quando data_sistema é POSTERIOR ao mês da data_atividade
-  const filtrados = comCodigo.filter((apt: any) => {
-    if (apt.data_atividade && apt.data_sistema) {
-      const mesAtiv = new Date(apt.data_atividade).getFullYear() * 12 + new Date(apt.data_atividade).getMonth();
-      const mesSist = new Date(apt.data_sistema).getFullYear() * 12 + new Date(apt.data_sistema).getMonth();
-      return mesSist <= mesAtiv;
-    }
-    return true;
-  });
+  // Todos os apontamentos com código válido são incluídos no detalhamento.
+  // A detecção de extemporâneos (retroativos pós-fechamento) é feita separadamente
+  // pelo bancoHorasQuarentenaService ao comparar synced_at > fechado_em.
+  // A regra de data_sistema > data_atividade NÃO se aplica aqui.
 
-  return filtrados as unknown as ApontamentoHoras[];
+  return comCodigo as unknown as ApontamentoHoras[];
 }
 
 /** Interface para tickets de consumo (contrato tipo ticket) */
@@ -930,7 +928,7 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
       buscarTicketsFechados(nomeCompleto, dataInicio, dataFim),
       buscarTicketsSLA(nomeCompleto, dataInicio, dataFim),
       buscarTicketsBacklog(nomeCompleto, dataFim),
-      tipoContratoEmpresa !== 'tickets' ? buscarApontamentosHoras(nomeCompleto, dataInicio, dataFim) : Promise.resolve([]),
+      tipoContratoEmpresa !== 'tickets' ? buscarApontamentosHoras(nomeCompleto, dataInicio, dataFim, empresaId, mes, ano) : Promise.resolve([]),
       tipoContratoEmpresa === 'tickets' || tipoContratoEmpresa === 'ambos' ? buscarTicketsConsumo(nomeCompleto, mes, ano) : Promise.resolve([]),
       buscarPesquisas(nomeCompleto, mes, ano),
     ]);
