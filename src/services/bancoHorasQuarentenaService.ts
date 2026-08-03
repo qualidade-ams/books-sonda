@@ -1088,7 +1088,7 @@ export class BancoHorasQuarentenaService {
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
         .in('cod_resolucao', codigosResolucaoValidos)
-        .ilike('org_us_final', `%${empresa.nome_completo}%`)
+        .ilike('org_us_final', empresa.nome_completo) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
 
       // Regra: descartar apenas quando data_sistema é POSTERIOR ao mês da data_atividade
       // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar
@@ -1188,7 +1188,7 @@ export class BancoHorasQuarentenaService {
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
         .in('cod_resolucao', codigosResolucaoValidos)
-        .ilike('org_us_final', `%${empresa.nome_completo}%`);
+        .ilike('org_us_final', empresa.nome_completo); // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
 
       if (!apontamentos) return [];
 
@@ -1247,7 +1247,9 @@ export class BancoHorasQuarentenaService {
         dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
       }
 
-      const nomeParaBusca = empresa.nome_abreviado || empresa.nome_completo;
+      // IMPORTANTE: Usar nome_completo para match exato (sem wildcards)
+      // O campo organizacao no banco contém o nome completo da empresa
+      const nomeParaBusca = empresa.nome_completo;
 
       const { data: tickets } = await db
         .from('apontamentos_tickets_aranda')
@@ -1255,7 +1257,7 @@ export class BancoHorasQuarentenaService {
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
         .eq('status', 'Closed')
-        .ilike('organizacao', `%${nomeParaBusca}%`)
+        .ilike('organizacao', nomeParaBusca) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
         .limit(5000);
 
       if (!tickets) return [];

@@ -347,7 +347,7 @@ class BooksDataCollectorService {
     const { data: ticketsAbertos, error: ticketsAbertosError } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .gte('data_abertura', dataInicio.toISOString())
       .lte('data_abertura', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
@@ -360,7 +360,7 @@ class BooksDataCollectorService {
     const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .gte('data_solucao', dataInicio.toISOString())
       .lt('data_solucao', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
@@ -537,7 +537,7 @@ class BooksDataCollectorService {
     const { data: ticketsBacklogTotal, error: errorBacklog } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .lte('data_abertura', ultimoDiaMes)
       .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
       .neq('cod_tipo', 'Problema')
@@ -628,7 +628,7 @@ class BooksDataCollectorService {
       const { data: ticketsFechados } = await supabase
         .from('apontamentos_tickets_aranda')
         .select('*')
-        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .eq('cod_tipo', 'Incidente')
@@ -727,7 +727,7 @@ class BooksDataCollectorService {
     const { data: ticketsAbertos, error: errorAbertos } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao, cod_tipo, data_abertura')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .gte('data_abertura', dataInicio.toISOString())
       .lte('data_abertura', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
@@ -753,7 +753,7 @@ class BooksDataCollectorService {
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao, cod_tipo, data_solucao')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .gte('data_solucao', dataInicio.toISOString())
       .lte('data_solucao', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
@@ -1136,7 +1136,7 @@ class BooksDataCollectorService {
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .gte('data_solucao', dataInicio.toISOString())
       .lt('data_solucao', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
@@ -1402,7 +1402,7 @@ class BooksDataCollectorService {
     const { data: ticketsBacklog, error } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
       .lte('data_abertura', dataLimite)
       .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
       .neq('cod_tipo', 'Problema')
@@ -1507,13 +1507,16 @@ class BooksDataCollectorService {
       // Para tipo 'ambos', exibimos apenas a visão de tickets no Book
       // IMPORTANTE: Usa nome_completo da tabela empresas_clientes para buscar em org_us_final
       // FILTROS CORRETOS: org_us_final, data_atividade, ativi_interna, tipo_chamado, item_configuracao, cod_resolucao
-      console.log('🔍 Buscando apontamentos_aranda com nome_completo:', empresaNomeCompleto);
+      // CORREÇÃO: Usar match exato (sem wildcards %) para evitar capturar org_us_final de
+      // outras organizações que contenham o nome da empresa como substring
+      // Ex: "BRFONSDAGUIRRE-Sonda Procwork" não deve ser capturado para "SONDA PROCWORK INFORMATICA LTDA"
+      console.log('🔍 Buscando apontamentos_aranda com nome_completo (match exato):', empresaNomeCompleto);
       console.log('📅 Período:', { dataInicio, proximoMesInicio });
       
       const { data: apontamentosHoras, error: errorApontamentos } = await supabase
         .from('apontamentos_aranda')
         .select('*')
-        .ilike('org_us_final', `%${empresaNomeCompleto}%`)
+        .ilike('org_us_final', empresaNomeCompleto)
         .eq('ativi_interna', 'Não')
         .in('tipo_chamado', ['IM', 'RF', 'PM'])
         .neq('item_configuracao', '000000 - PROJETOS APL')
@@ -1729,7 +1732,9 @@ class BooksDataCollectorService {
       // CORREÇÃO: Usar mesma lógica do bancoHorasIntegracaoService.buscarConsumoTickets
       // Filtrar por data_fechamento + status = 'Closed' (em vez de data_solucao + caso_pai)
       const dataFimMes = new Date(ano, mes, 0, 23, 59, 59, 999);
-      const nomeParaBuscaTickets = empresaNomeAbreviado || empresaNomeCompleto;
+      // IMPORTANTE: Usar nome_completo para match exato (sem wildcards)
+      // O campo organizacao no banco contém o nome completo da empresa
+      const nomeParaBuscaTickets = empresaNomeCompleto;
       
       console.log('🎫 [gerarDadosConsumo] Buscando tickets com mesma lógica do banco de horas:', {
         nomeParaBusca: nomeParaBuscaTickets,
@@ -1741,7 +1746,7 @@ class BooksDataCollectorService {
       const { data: ticketsFechados } = await supabase
         .from('apontamentos_tickets_aranda')
         .select('*')
-        .ilike('organizacao', `%${nomeParaBuscaTickets}%`)
+        .ilike('organizacao', nomeParaBuscaTickets) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFimMes.toISOString())
         .eq('status', 'Closed')
@@ -2643,7 +2648,7 @@ class BooksDataCollectorService {
       const { data: ticketsFechados } = await supabase
         .from('apontamentos_tickets_aranda')
         .select('*')
-        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .neq('cod_tipo', 'Problema')
@@ -2798,7 +2803,7 @@ class BooksDataCollectorService {
         const { data: apontamentosHoras } = await supabase
           .from('apontamentos_aranda')
           .select('tempo_gasto_horas, data_atividade, data_sistema, nro_chamado')
-          .ilike('org_us_final', `%${empresaNomeCompleto}%`)
+          .ilike('org_us_final', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
           .eq('ativi_interna', 'Não')
           .in('tipo_chamado', ['IM', 'RF', 'PM'])
           .neq('item_configuracao', '000000 - PROJETOS APL')
@@ -2898,7 +2903,7 @@ class BooksDataCollectorService {
         const { data: ticketsFechados } = await supabase
           .from('apontamentos_tickets_aranda')
           .select('tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos, cod_tipo')
-          .ilike('organizacao', `%${nomeParaBuscaTickets}%`)
+          .ilike('organizacao', nomeParaBuscaTickets) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
           .gte('data_fechamento', dataInicio.toISOString())
           .lte('data_fechamento', dataFimMes.toISOString())
           .eq('status', 'Closed')

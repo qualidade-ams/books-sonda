@@ -271,7 +271,7 @@ async function buscarApontamentosDetalhados(
     .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
     .gte('data_atividade', dataInicio.toISOString())
     .lte('data_atividade', dataFim.toISOString())
-    .ilike('org_us_final', `%${nomeCompleto}%`)
+    .ilike('org_us_final', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .order('data_atividade', { ascending: true })
     .limit(10000);
 
