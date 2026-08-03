@@ -146,14 +146,15 @@ export class BancoHorasIntegracaoService {
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      // OTIMIZAÇÃO: Usar apenas nome abreviado para evitar timeout
-      const nomeParaBusca = nomeAbreviado || nomeCompleto;
+      // OTIMIZAÇÃO: Usar nome_completo para match exato (sem wildcards)
+      // O campo organizacao no banco contém o nome completo da empresa
+      const nomeParaBusca = nomeCompleto;
       
       console.log('🎫 Buscando tickets com nome:', {
         nomeAbreviado,
         nomeCompleto,
         nomeParaBusca,
-        observacao: 'Usando apenas um nome para otimizar performance'
+        observacao: 'Usando nome_completo para match exato case-insensitive'
       });
 
       // Lista de códigos de resolução válidos para consumo de banco de tickets
@@ -220,7 +221,7 @@ export class BancoHorasIntegracaoService {
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
         .eq('status', 'Closed')
-        .ilike('organizacao', `%${nomeParaBusca}%`)
+        .ilike('organizacao', nomeParaBusca) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
         .neq('item_configuracao', '000000 - PROJETOS APL')
         .in('cod_resolucao', codigosResolucaoValidos)
         .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%')
@@ -516,17 +517,46 @@ export class BancoHorasIntegracaoService {
         observacao: 'Verificar se org_us_final dos apontamentos corresponde ao nome completo'
       });
 
+      // Verificar se o período está fechado para aplicar regra de retroatividade
+      // Se o período está ABERTO: aceitar todos os apontamentos (mesmo com data_sistema posterior)
+      // Se o período está FECHADO: excluir apontamentos retroativos (irão para tela de Ajustes Retroativos)
+      let periodoFechado = false;
+      try {
+        const { data: fechamento } = await supabase
+          .from('banco_horas_fechamentos')
+          .select('id')
+          .eq('empresa_id', empresaId)
+          .eq('mes', mes)
+          .eq('ano', ano)
+          .maybeSingle();
+        periodoFechado = !!fechamento;
+      } catch (err) {
+        console.warn('⚠️ Não foi possível verificar fechamento do período, assumindo aberto:', err);
+      }
+
+      console.log('🔒 Status do período:', {
+        empresaId,
+        mes,
+        ano,
+        periodoFechado,
+        observacao: periodoFechado
+          ? 'Período FECHADO - apontamentos retroativos serão excluídos (vão para Ajustes Retroativos)'
+          : 'Período ABERTO - todos os apontamentos serão aceitos normalmente'
+      });
+
       // Somar horas
       let totalMinutos = 0;
       let apontamentosExcluidos = 0;
 
       if (apontamentos && apontamentos.length > 0) {
         for (const apontamento of apontamentos) {
-          // NOVA REGRA 3: Validar que data_atividade e data_sistema estão no mesmo mês
+          // REGRA DE RETROATIVIDADE: Validar que data_atividade e data_sistema estão no mesmo mês
+          // CONDIÇÃO: Só aplicar se o período estiver FECHADO
+          // Se o período está ABERTO, aceitar todos os apontamentos normalmente
           // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar esta regra
           // pois o período naturalmente cruza dois meses e a divergência é esperada
           let mesmoMes = true;
-          if (diaInicioApuracao === 1 && apontamento.data_atividade && apontamento.data_sistema) {
+          if (periodoFechado && diaInicioApuracao === 1 && apontamento.data_atividade && apontamento.data_sistema) {
             const dataAtividade = new Date(apontamento.data_atividade);
             const dataSistema = new Date(apontamento.data_sistema);
 
@@ -537,13 +567,15 @@ export class BancoHorasIntegracaoService {
             // Descartar APENAS quando data_sistema é POSTERIOR à data_atividade
             // (apontamento lançado depois do mês em que ocorreu — retroativo)
             // Manter quando data_sistema é anterior ou igual ao mês da atividade
+            // Esses apontamentos excluídos irão para a tela de Ajustes Retroativos
             if (mesSistema > mesAtividade) {
               mesmoMes = false;
               apontamentosExcluidos++;
-              console.log('⚠️ Apontamento excluído (data_sistema posterior à data_atividade):', {
+              console.log('⚠️ Apontamento excluído (retroativo em período fechado):', {
                 data_atividade: apontamento.data_atividade,
                 data_sistema: apontamento.data_sistema,
-                nro_chamado: apontamento.nro_chamado || 'N/A'
+                nro_chamado: apontamento.nro_chamado || 'N/A',
+                destino: 'Tela de Ajustes Retroativos'
               });
             }
           }

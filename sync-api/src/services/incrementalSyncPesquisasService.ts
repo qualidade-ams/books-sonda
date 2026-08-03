@@ -1,24 +1,23 @@
 /**
  * Serviço de Sincronização Incremental de Pesquisas
  * 
- * Implementa sincronização inteligente baseada em Data_Ultima_Modificacao
- * com suporte a UPSERT seguro e comparação de timestamps.
+ * Implementa sincronização inteligente baseada em Data_Fechamento (critério primário)
+ * com atualização de respostas para registros pendentes (critério secundário).
  * 
- * Regras:
- * 1. Busca maior Data_Ultima_Modificacao do Supabase
- * 2. Busca registros do SQL Server:
- *    - Com Data_Ultima_Modificacao >= (maior_data - 1 dia de folga)
- *    - Inclui pesquisas com e sem resposta (desde que tenham sido modificadas recentemente)
- * 3. Para cada registro:
- *    - Se não existe → INSERT
- *    - Se existe e data SQL > data Supabase → UPDATE
- *    - Se existe e data SQL <= data Supabase → SKIP (não sobrescrever)
+ * Fluxo:
+ * 1. INSERÇÃO DE NOVOS: Busca pesquisas com Data_Fechamento >= (última data fechamento sincronizada - 1 dia)
+ *    - Se não existe no Supabase → INSERT
+ *    - Se já existe → SKIP
+ * 
+ * 2. ATUALIZAÇÃO DE RESPOSTAS: Busca no SQL Server pesquisas que:
+ *    - Já existem no Supabase com status = 'pendente' e data_resposta NULL
+ *    - No SQL Server agora têm Data_Resposta preenchida
+ *    → UPDATE apenas campos de resposta (data_resposta, resposta, comentario_pesquisa)
  * 
  * Filtros obrigatórios:
  * - Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL
  * - Data_Fechamento >= '2026-01-01 00:00:00'
  * - Cliente != 'user - ams - teste'
- * - Data_Ultima_Modificacao >= (última sincronização - 1 dia)
  */
 
 import sql from 'mssql';
@@ -182,34 +181,34 @@ function aplicarTransformacaoAMS(dados: {
 }
 
 /**
- * Busca a maior Data_Ultima_Modificacao já sincronizada no Supabase
+ * Busca a maior Data_Fechamento já sincronizada no Supabase (origem sql_server)
  */
-async function buscarUltimaDataSincronizada(): Promise<Date> {
-  console.log('📅 [SYNC] Buscando última data de sincronização no Supabase...');
+async function buscarUltimaDataFechamento(): Promise<Date> {
+  console.log('📅 [SYNC] Buscando última data de fechamento sincronizada no Supabase...');
   
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
-    .select('data_ultima_modificacao')
+    .select('data_fechamento')
     .eq('origem', 'sql_server')
-    .not('data_ultima_modificacao', 'is', null)
-    .order('data_ultima_modificacao', { ascending: false })
+    .not('data_fechamento', 'is', null)
+    .order('data_fechamento', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
-    console.error('❌ [SYNC] Erro ao buscar última data:', error);
+    console.error('❌ [SYNC] Erro ao buscar última data de fechamento:', error);
     throw error;
   }
 
-  if (!data || !data.data_ultima_modificacao) {
+  if (!data || !data.data_fechamento) {
     // Se não houver registros, começar de 01/01/2026
     const dataInicial = new Date('2026-01-01T00:00:00.000Z');
     console.log('⚠️ [SYNC] Nenhum registro encontrado. Usando data inicial:', dataInicial.toISOString());
     return dataInicial;
   }
 
-  const ultimaData = new Date(data.data_ultima_modificacao);
-  console.log('✅ [SYNC] Última data sincronizada encontrada:', ultimaData.toISOString());
+  const ultimaData = new Date(data.data_fechamento);
+  console.log('✅ [SYNC] Última data de fechamento sincronizada:', ultimaData.toISOString());
   
   return ultimaData;
 }
@@ -232,17 +231,16 @@ function calcularDataInicioComFolga(ultimaData: Date): Date {
 }
 
 /**
- * Busca registros do SQL Server modificados após a data especificada
- * Inclui pesquisas sem resposta que foram modificadas recentemente
+ * Busca registros do SQL Server fechados após a data especificada
+ * Critério primário: Data_Fechamento (quando o caso fecha, aparece na tabela)
  */
-async function buscarRegistrosModificados(
+async function buscarRegistrosFechados(
   pool: sql.ConnectionPool,
   dataInicio: Date
 ): Promise<DadosPesquisaSqlServer[]> {
-  console.log(`📊 [SYNC] Buscando registros modificados após ${dataInicio.toISOString()}...`);
-  console.log(`📊 [SYNC] Incluindo pesquisas sem resposta modificadas após essa data`);
+  console.log(`📊 [SYNC] Buscando registros fechados após ${dataInicio.toISOString()}...`);
   
-  // 🔍 DEBUG: Contar total de registros no SQL Server
+  // Contar total de registros elegíveis
   const queryTotal = `
     SELECT COUNT(*) as total
     FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
@@ -255,45 +253,41 @@ async function buscarRegistrosModificados(
   const totalRegistros = resultTotal.recordset[0].total;
   console.log(`📊 [SYNC] Total de registros no SQL Server (com filtros básicos): ${totalRegistros}`);
   
-  // 🔍 DEBUG: Contar registros modificados após dataInicio
-  const queryModificados = `
-    SELECT COUNT(*) as total_modificados
+  // Contar registros fechados após dataInicio
+  const queryFechados = `
+    SELECT COUNT(*) as total_fechados
     FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-    WHERE [Data_Ultima_Modificacao (Year)] IS NOT NULL 
-      AND CAST([Data_Ultima_Modificacao (Year)] AS DATETIME) >= @dataInicio
+    WHERE [Data_Fechamento (Date-Hour-Minute-Second)] >= @dataInicio
       AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
-      AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
       AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
   `;
   
-  const resultModificados = await pool.request()
+  const resultFechados = await pool.request()
     .input('dataInicio', sql.DateTime, dataInicio)
-    .query(queryModificados);
-  const totalModificados = resultModificados.recordset[0].total_modificados;
-  console.log(`📊 [SYNC] Registros modificados após ${dataInicio.toISOString()}: ${totalModificados}`);
+    .query(queryFechados);
+  const totalFechados = resultFechados.recordset[0].total_fechados;
+  console.log(`📊 [SYNC] Registros fechados após ${dataInicio.toISOString()}: ${totalFechados}`);
   
-  // 🔍 DEBUG: Distribuição de datas de modificação (últimos 7 dias)
+  // Distribuição de fechamentos (últimos 7 dias)
   const queryDistribuicao = `
     SELECT 
-      CAST([Data_Ultima_Modificacao (Year)] AS DATE) as data_modificacao,
+      CAST([Data_Fechamento (Date-Hour-Minute-Second)] AS DATE) as data_fechamento,
       COUNT(*) as quantidade
     FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-    WHERE [Data_Ultima_Modificacao (Year)] IS NOT NULL 
-      AND CAST([Data_Ultima_Modificacao (Year)] AS DATETIME) >= DATEADD(day, -7, GETDATE())
+    WHERE [Data_Fechamento (Date-Hour-Minute-Second)] >= DATEADD(day, -7, GETDATE())
       AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
-      AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
       AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
-    GROUP BY CAST([Data_Ultima_Modificacao (Year)] AS DATE)
-    ORDER BY data_modificacao DESC
+    GROUP BY CAST([Data_Fechamento (Date-Hour-Minute-Second)] AS DATE)
+    ORDER BY data_fechamento DESC
   `;
   
   const resultDistribuicao = await pool.request().query(queryDistribuicao);
-  console.log(`📊 [SYNC] Distribuição de modificações (últimos 7 dias):`);
+  console.log(`📊 [SYNC] Distribuição de fechamentos (últimos 7 dias):`);
   resultDistribuicao.recordset.forEach((row: any) => {
-    console.log(`   📅 ${row.data_modificacao}: ${row.quantidade} registros`);
+    console.log(`   📅 ${row.data_fechamento}: ${row.quantidade} registros`);
   });
   
-  // Query principal
+  // Query principal - buscar por Data_Fechamento
   const query = `
     SELECT
       Empresa,
@@ -322,18 +316,15 @@ async function buscarRegistrosModificados(
       SequenciaPregunta,
       LOG
     FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-    WHERE [Data_Ultima_Modificacao (Year)] IS NOT NULL 
-      AND CAST([Data_Ultima_Modificacao (Year)] AS DATETIME) >= @dataInicio
+    WHERE [Data_Fechamento (Date-Hour-Minute-Second)] >= @dataInicio
       AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
-      AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
       AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
-    ORDER BY [Data_Ultima_Modificacao (Year)] DESC
+    ORDER BY [Data_Fechamento (Date-Hour-Minute-Second)] DESC
   `;
 
   console.log(`🔍 [SYNC] Filtros aplicados:`);
-  console.log(`   - Data Modificação: >= ${dataInicio.toISOString()}`);
+  console.log(`   - Data Fechamento: >= ${dataInicio.toISOString()}`);
   console.log(`   - Grupo: Excluindo 'AMS SAP%'`);
-  console.log(`   - Data Fechamento: >= 2026-01-01`);
   console.log(`   - Cliente: Excluindo 'user - ams - teste'`);
   
   const result = await pool.request()
@@ -344,32 +335,28 @@ async function buscarRegistrosModificados(
   
   // Log dos primeiros 5 registros para debug
   if (result.recordset.length > 0) {
-    console.log('📋 [SYNC] Primeiros 5 registros encontrados (ordenados por data de modificação):');
+    console.log('📋 [SYNC] Primeiros 5 registros (ordenados por data de fechamento):');
     result.recordset.slice(0, 5).forEach((reg: any, idx: number) => {
       console.log(`   ${idx + 1}. ${reg.Nro_Caso} - ${reg.Cliente}`);
-      console.log(`      📅 Data Modificação: ${reg.Data_Ultima_Modificacao}`);
+      console.log(`      📅 Data Fechamento: ${reg.Data_Fechamento}`);
       console.log(`      💬 Data Resposta: ${reg.Data_Resposta || 'SEM RESPOSTA'}`);
     });
   } else {
     console.log('⚠️ [SYNC] Nenhum registro encontrado com os filtros aplicados');
-    console.log('⚠️ [SYNC] Isso significa que não há registros modificados após a data de início');
   }
   
   return result.recordset as DadosPesquisaSqlServer[];
 }
 
 /**
- * Verifica se registro existe no Supabase e retorna data de modificação e status.
+ * Verifica se registro existe no Supabase e retorna ID e status.
  * 
  * Estratégia de busca:
  * 1. Busca por nro_caso (chave natural única no sistema Aranda)
  * 2. Fallback: busca por id_externo (compatibilidade com registros antigos)
- * 
- * IMPORTANTE: Não altera id_externo para evitar duplicatas quando empresa muda
  */
 async function buscarRegistroExistente(idExterno: string, empresa?: string, nroCaso?: string): Promise<{
   existe: boolean;
-  dataModificacao: Date | null;
   id: string | null;
   status: string | null;
 }> {
@@ -377,7 +364,7 @@ async function buscarRegistroExistente(idExterno: string, empresa?: string, nroC
   if (nroCaso && nroCaso !== 'sem_caso' && nroCaso.trim() !== '') {
     const { data, error } = await supabase
       .from('pesquisas_satisfacao')
-      .select('id, data_ultima_modificacao, status, id_externo')
+      .select('id, status')
       .eq('nro_caso', nroCaso)
       .eq('origem', 'sql_server')
       .maybeSingle();
@@ -388,19 +375,14 @@ async function buscarRegistroExistente(idExterno: string, empresa?: string, nroC
     }
 
     if (data) {
-      const dataModificacao = data.data_ultima_modificacao 
-        ? new Date(data.data_ultima_modificacao)
-        : null;
-
-      // NÃO alterar id_externo - manter o original para evitar duplicatas
-      return { existe: true, dataModificacao, id: data.id, status: data.status };
+      return { existe: true, id: data.id, status: data.status };
     }
   }
 
   // 2. Fallback: busca por id_externo (registros sem nro_caso ou compatibilidade)
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
-    .select('id, data_ultima_modificacao, status')
+    .select('id, status')
     .eq('id_externo', idExterno)
     .maybeSingle();
 
@@ -410,36 +392,10 @@ async function buscarRegistroExistente(idExterno: string, empresa?: string, nroC
   }
 
   if (!data) {
-    return { existe: false, dataModificacao: null, id: null, status: null };
+    return { existe: false, id: null, status: null };
   }
 
-  const dataModificacao = data.data_ultima_modificacao 
-    ? new Date(data.data_ultima_modificacao)
-    : null;
-
-  return { existe: true, dataModificacao, id: data.id, status: data.status };
-}
-
-/**
- * Compara datas considerando timezone UTC
- * Retorna true se dataSqlServer > dataSupabase
- */
-function deveAtualizar(dataSqlServer: Date | null, dataSupabase: Date | null): boolean {
-  // Se não houver data no SQL Server, não atualizar
-  if (!dataSqlServer) {
-    return false;
-  }
-
-  // Se não houver data no Supabase, atualizar
-  if (!dataSupabase) {
-    return true;
-  }
-
-  // Comparar timestamps em UTC
-  const timestampSqlServer = dataSqlServer.getTime();
-  const timestampSupabase = dataSupabase.getTime();
-
-  return timestampSqlServer > timestampSupabase;
+  return { existe: true, id: data.id, status: data.status };
 }
 
 /**
@@ -519,7 +475,9 @@ async function atualizarRegistro(id: string, dados: any): Promise<void> {
 }
 
 /**
- * Processa um único registro (INSERT ou UPDATE)
+ * Processa um único registro (INSERT ou SKIP)
+ * Na nova lógica baseada em Data_Fechamento, registros existentes são ignorados
+ * (a atualização de respostas é feita em etapa separada)
  */
 async function processarRegistro(
   registro: DadosPesquisaSqlServer,
@@ -539,8 +497,8 @@ async function processarRegistro(
       dados.nro_caso?.trim() || 'sem_caso'
     ].filter(Boolean).join('|');
 
-    // Verificar se registro existe (busca por empresa+nro_caso primeiro, fallback por id_externo)
-    const { existe, dataModificacao, id, status } = await buscarRegistroExistente(
+    // Verificar se registro existe (busca por nro_caso primeiro, fallback por id_externo)
+    const { existe, id, status } = await buscarRegistroExistente(
       idExterno, 
       dados.empresa?.trim(), 
       dados.nro_caso?.trim()
@@ -553,44 +511,9 @@ async function processarRegistro(
       return 'inserido';
     }
 
-    // 🔒 VALIDAÇÃO: Só atualizar se status = 'pendente'
-    if (status !== 'pendente') {
-      // Adicionar à lista de ignorados
-      registrosIgnorados.push({
-        nro_caso: dados.nro_caso || 'N/A',
-        cliente: dados.cliente || 'N/A',
-        status: status || 'N/A',
-        motivo: `Status '${status}' não permite atualização`
-      });
-      
-      console.log(`🔒 [SYNC] Registro ${index + 1}/${total}: BLOQUEADO - Status '${status}' não permite atualização`);
-      console.log(`   📋 Nro Caso: ${dados.nro_caso}`);
-      console.log(`   👤 Cliente: ${dados.cliente}`);
-      console.log(`   🏢 Empresa: ${dados.empresa}`);
-      
-      return 'ignorado';
-    }
-
-    // Verificar se deve atualizar
-    if (deveAtualizar(registro.Data_Ultima_Modificacao, dataModificacao)) {
-      // ✅ UPDATE: Data SQL Server > Data Supabase E status = 'pendente'
-      
-      // Registrar campos que serão atualizados
-      Object.keys(dados).forEach(campo => camposAtualizados.add(campo));
-      
-      await atualizarRegistro(id!, dados);
-      
-      console.log(`🔄 [SYNC] Registro ${index + 1}/${total}: ATUALIZADO (${dados.nro_caso} - ${dados.cliente})`);
-      console.log(`   📅 Data SQL: ${registro.Data_Ultima_Modificacao?.toISOString()}`);
-      console.log(`   📅 Data Supabase: ${dataModificacao?.toISOString()}`);
-      console.log(`   🔑 Campo de comparação: data_ultima_modificacao`);
-      
-      return 'atualizado';
-    }
-
-    // ⏭️ SKIP: Data SQL Server <= Data Supabase (não sobrescrever)
-    if (index % 50 === 0) { // Log apenas a cada 50 para não poluir
-      console.log(`⏭️ [SYNC] Registro ${index + 1}/${total}: IGNORADO (${dados.nro_caso} - ${dados.cliente})`);
+    // Registro já existe — ignorar (atualização de respostas é feita na etapa 2)
+    if (index % 100 === 0) { // Log apenas a cada 100 para não poluir
+      console.log(`⏭️ [SYNC] Registro ${index + 1}/${total}: JÁ EXISTE (${dados.nro_caso} - ${dados.cliente})`);
     }
     return 'ignorado';
 
@@ -602,6 +525,9 @@ async function processarRegistro(
 
 /**
  * Função principal de sincronização incremental
+ * 
+ * Etapa 1: Inserir novos registros (baseado em Data_Fechamento)
+ * Etapa 2: Atualizar respostas de registros pendentes sem resposta
  */
 export async function sincronizarPesquisasIncremental(
   pool: sql.ConnectionPool,
@@ -615,12 +541,9 @@ export async function sincronizarPesquisasIncremental(
   erros: number;
   mensagens: string[];
 }> {
-  // 🔍 DEBUG: Verificar se cliente Supabase está disponível
-  console.log('🔍 [DEBUG SYNC] Cliente Supabase:', supabase ? 'OK' : 'UNDEFINED');
-  console.log('🔍 [DEBUG SYNC] Tipo do cliente:', typeof supabase);
-  
+  // Verificar se cliente Supabase está disponível
   if (!supabase) {
-    console.error('❌ [DEBUG SYNC] Cliente Supabase está UNDEFINED!');
+    console.error('❌ [SYNC] Cliente Supabase está UNDEFINED!');
     throw new Error('Cliente Supabase não está disponível');
   }
   
@@ -635,127 +558,94 @@ export async function sincronizarPesquisasIncremental(
   };
 
   try {
-    console.log('🚀 [SYNC] Iniciando sincronização incremental de pesquisas...');
-    console.log(`🔍 [SYNC] Parâmetro dataInicialCustomizada recebido: "${dataInicialCustomizada}" (tipo: ${typeof dataInicialCustomizada})`);
-    resultado.mensagens.push('Iniciando sincronização incremental baseada em Data_Ultima_Modificacao');
+    console.log('🚀 [SYNC] Iniciando sincronização incremental de pesquisas (baseada em Data_Fechamento)...');
+    resultado.mensagens.push('Iniciando sincronização baseada em Data_Fechamento');
 
-    // 1. Determinar data de início
+    // ========================================
+    // ETAPA 1: INSERIR NOVOS REGISTROS
+    // ========================================
+    console.log('\n📥 [SYNC] ═══════════════════════════════════════');
+    console.log('📥 [SYNC] ETAPA 1: INSERIR NOVOS REGISTROS');
+    console.log('📥 [SYNC] ═══════════════════════════════════════\n');
+
+    // Determinar data de início
     let dataInicio: Date;
     
     if (dataInicialCustomizada) {
-      // Usar data customizada fornecida pelo usuário
       dataInicio = new Date(`${dataInicialCustomizada}T00:00:00.000Z`);
       console.log(`📅 [SYNC] Usando data inicial CUSTOMIZADA: ${dataInicio.toISOString()}`);
       resultado.mensagens.push(`📅 Data inicial customizada: ${dataInicio.toISOString()}`);
     } else {
-      // Buscar última data sincronizada (comportamento padrão)
-      const ultimaData = await buscarUltimaDataSincronizada();
-      console.log(`📅 [SYNC] Última sincronização: ${ultimaData.toISOString()}`);
-      resultado.mensagens.push(`✅ Última sincronização: ${ultimaData.toISOString()}`);
+      const ultimaDataFechamento = await buscarUltimaDataFechamento();
+      console.log(`📅 [SYNC] Última data de fechamento sincronizada: ${ultimaDataFechamento.toISOString()}`);
+      resultado.mensagens.push(`✅ Última data de fechamento: ${ultimaDataFechamento.toISOString()}`);
 
       // Calcular data de início com folga de 1 dia
-      dataInicio = calcularDataInicioComFolga(ultimaData);
+      dataInicio = calcularDataInicioComFolga(ultimaDataFechamento);
     }
     
     console.log(`📅 [SYNC] Data de início efetiva: ${dataInicio.toISOString()}`);
-    resultado.mensagens.push(`🔍 Buscando desde: ${dataInicio.toISOString()}`);
-    resultado.mensagens.push(`🔍 Incluindo pesquisas com e sem resposta modificadas após essa data`);
+    resultado.mensagens.push(`🔍 Buscando fechamentos desde: ${dataInicio.toISOString()}`);
 
-    // 3. Buscar registros modificados do SQL Server
-    const registros = await buscarRegistrosModificados(pool, dataInicio);
+    // Buscar registros fechados do SQL Server
+    const registros = await buscarRegistrosFechados(pool, dataInicio);
     resultado.total_processados = registros.length;
-    resultado.mensagens.push(`📊 ${registros.length} registros encontrados no SQL Server`);
+    resultado.mensagens.push(`📊 ${registros.length} registros fechados encontrados no SQL Server`);
 
-    if (registros.length === 0) {
-      console.log('✅ [SYNC] Nenhum registro novo ou modificado encontrado');
-      resultado.sucesso = true;
-      resultado.mensagens.push('Nenhum registro novo ou modificado para sincronizar');
-      return resultado;
-    }
-
-    // 4. Processar cada registro
-    console.log(`🔄 [SYNC] Processando ${registros.length} registros...`);
-    resultado.mensagens.push(`🔄 Processando ${registros.length} registros...`);
-    
-    // Arrays para rastrear registros ignorados e campos atualizados
-    const registrosIgnorados: Array<{nro_caso: string; cliente: string; status: string; motivo: string}> = [];
-    const camposAtualizados = new Set<string>();
-    
-    for (let i = 0; i < registros.length; i++) {
-      const registro = registros[i];
+    if (registros.length > 0) {
+      console.log(`🔄 [SYNC] Processando ${registros.length} registros (etapa 1 - inserção)...`);
       
-      // Log de progresso a cada 50 registros
-      if (i % 50 === 0 && i > 0) {
-        const mensagemProgresso = `📊 Progresso: ${i}/${registros.length} registros processados`;
-        console.log(`📊 [SYNC] ${mensagemProgresso}`);
-        resultado.mensagens.push(mensagemProgresso);
+      const registrosIgnorados: Array<{nro_caso: string; cliente: string; status: string; motivo: string}> = [];
+      const camposAtualizados = new Set<string>();
+      
+      for (let i = 0; i < registros.length; i++) {
+        const registro = registros[i];
+        
+        if (i % 50 === 0 && i > 0) {
+          console.log(`📊 [SYNC] Progresso etapa 1: ${i}/${registros.length}`);
+        }
+
+        const resultadoProcessamento = await processarRegistro(registro, i, registros.length, registrosIgnorados, camposAtualizados);
+
+        switch (resultadoProcessamento) {
+          case 'inserido': resultado.inseridos++; break;
+          case 'atualizado': resultado.atualizados++; break;
+          case 'ignorado': resultado.ignorados++; break;
+          case 'erro': resultado.erros++; break;
+        }
+
+        if (resultado.erros >= 10) {
+          console.log('🛑 [SYNC] Muitos erros na etapa 1, parando...');
+          resultado.mensagens.push('⚠️ Etapa 1 interrompida por erros');
+          break;
+        }
       }
 
-      const resultadoProcessamento = await processarRegistro(registro, i, registros.length, registrosIgnorados, camposAtualizados);
-
-      switch (resultadoProcessamento) {
-        case 'inserido':
-          resultado.inseridos++;
-          break;
-        case 'atualizado':
-          resultado.atualizados++;
-          break;
-        case 'ignorado':
-          resultado.ignorados++;
-          break;
-        case 'erro':
-          resultado.erros++;
-          break;
-      }
-
-      // Parar se houver muitos erros consecutivos
-      if (resultado.erros >= 10) {
-        console.log('🛑 [SYNC] Muitos erros detectados, parando sincronização...');
-        resultado.mensagens.push('⚠️ Sincronização interrompida devido a múltiplos erros');
-        break;
-      }
+      resultado.mensagens.push(`📥 Etapa 1 concluída: ${resultado.inseridos} inseridos, ${resultado.ignorados} já existiam`);
+    } else {
+      resultado.mensagens.push('📥 Etapa 1: Nenhum registro novo para inserir');
     }
 
-    // 5. Resultado final
+    // ========================================
+    // ETAPA 2: ATUALIZAR RESPOSTAS PENDENTES
+    // ========================================
+    console.log('\n📝 [SYNC] ═══════════════════════════════════════');
+    console.log('📝 [SYNC] ETAPA 2: ATUALIZAR RESPOSTAS PENDENTES');
+    console.log('📝 [SYNC] ═══════════════════════════════════════\n');
+
+    const respostasAtualizadas = await atualizarRespostasPendentes(pool);
+    resultado.atualizados += respostasAtualizadas.atualizados;
+    resultado.erros += respostasAtualizadas.erros;
+    resultado.total_processados += respostasAtualizadas.total_verificados;
+    
+    resultado.mensagens.push(`📝 Etapa 2: ${respostasAtualizadas.atualizados} respostas atualizadas de ${respostasAtualizadas.total_verificados} pendentes verificados`);
+
+    // Resultado final
     resultado.sucesso = resultado.erros === 0;
     const mensagemFinal = `✅ Sincronização concluída: ${resultado.inseridos} inseridos, ${resultado.atualizados} atualizados, ${resultado.ignorados} ignorados, ${resultado.erros} erros`;
     resultado.mensagens.push(mensagemFinal);
     
-    console.log('✅ [SYNC] ' + mensagemFinal);
-    console.log('📊 [SYNC] Resultado detalhado:', resultado);
-    
-    // 6. Exibir resumo dos registros ignorados
-    if (registrosIgnorados.length > 0) {
-      console.log('\n🔒 ========================================');
-      console.log(`🔒 REGISTROS IGNORADOS (${registrosIgnorados.length} total):`);
-      console.log('🔒 ========================================');
-      
-      registrosIgnorados.forEach((reg, idx) => {
-        console.log(`\n🔒 [${idx + 1}/${registrosIgnorados.length}]`);
-        console.log(`   📋 Nro Caso: ${reg.nro_caso}`);
-        console.log(`   👤 Cliente: ${reg.cliente}`);
-        console.log(`   📊 Status: ${reg.status}`);
-        console.log(`   ⚠️ Motivo: ${reg.motivo}`);
-      });
-      
-      console.log('\n🔒 ========================================\n');
-    }
-    
-    // 7. Exibir campos que foram atualizados
-    if (camposAtualizados.size > 0) {
-      console.log('\n📝 ========================================');
-      console.log(`📝 CAMPOS ATUALIZADOS (${resultado.atualizados} registros):`);
-      console.log('📝 ========================================');
-      console.log('🔑 Campo de comparação: data_ultima_modificacao');
-      console.log('📋 Campos atualizados em cada registro:');
-      
-      const camposArray = Array.from(camposAtualizados).sort();
-      camposArray.forEach((campo, idx) => {
-        console.log(`   ${idx + 1}. ${campo}`);
-      });
-      
-      console.log('\n📝 ========================================\n');
-    }
+    console.log('\n✅ [SYNC] ' + mensagemFinal);
 
     return resultado;
 
@@ -763,6 +653,118 @@ export async function sincronizarPesquisasIncremental(
     console.error('💥 [SYNC] Erro crítico na sincronização incremental:', erro);
     resultado.sucesso = false;
     resultado.mensagens.push(`❌ Erro crítico: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`);
+    return resultado;
+  }
+}
+
+/**
+ * Etapa 2: Buscar registros pendentes no Supabase sem resposta e verificar se o SQL Server já tem resposta
+ * Se sim, atualizar apenas os campos de resposta
+ */
+async function atualizarRespostasPendentes(pool: sql.ConnectionPool): Promise<{
+  total_verificados: number;
+  atualizados: number;
+  erros: number;
+}> {
+  const resultado = { total_verificados: 0, atualizados: 0, erros: 0 };
+
+  try {
+    // 1. Buscar no Supabase registros pendentes sem resposta (origem sql_server)
+    console.log('📝 [SYNC] Buscando registros pendentes sem resposta no Supabase...');
+    
+    const { data: pendentes, error } = await supabase
+      .from('pesquisas_satisfacao')
+      .select('id, nro_caso, cliente, empresa')
+      .eq('origem', 'sql_server')
+      .eq('status', 'pendente')
+      .is('data_resposta', null)
+      .not('nro_caso', 'is', null);
+
+    if (error) {
+      console.error('❌ [SYNC] Erro ao buscar pendentes:', error);
+      throw error;
+    }
+
+    if (!pendentes || pendentes.length === 0) {
+      console.log('✅ [SYNC] Nenhum registro pendente sem resposta encontrado');
+      return resultado;
+    }
+
+    console.log(`📝 [SYNC] ${pendentes.length} registros pendentes sem resposta encontrados`);
+    resultado.total_verificados = pendentes.length;
+
+    // 2. Buscar no SQL Server se esses nro_caso já têm resposta
+    const nroCasos = pendentes.map(p => p.nro_caso).filter(Boolean);
+    
+    if (nroCasos.length === 0) {
+      console.log('⚠️ [SYNC] Nenhum nro_caso válido para verificar');
+      return resultado;
+    }
+
+    // Buscar em lotes de 100
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < nroCasos.length; i += BATCH_SIZE) {
+      const lote = nroCasos.slice(i, i + BATCH_SIZE);
+      const loteStr = lote.map(c => `'${c}'`).join(',');
+
+      const query = `
+        SELECT 
+          Nro_Caso,
+          [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
+          Resposta,
+          Comentario_Pesquisa
+        FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+        WHERE Nro_Caso IN (${loteStr})
+          AND [Data_Resposta (Date-Hour-Minute-Second)] IS NOT NULL
+          AND LTRIM(RTRIM(Resposta)) != ''
+          AND Resposta IS NOT NULL
+      `;
+
+      const resultSql = await pool.request().query(query);
+      
+      if (resultSql.recordset.length === 0) {
+        continue;
+      }
+
+      console.log(`📝 [SYNC] Lote ${Math.floor(i / BATCH_SIZE) + 1}: ${resultSql.recordset.length} respostas encontradas no SQL Server`);
+
+      // 3. Atualizar no Supabase
+      for (const registro of resultSql.recordset) {
+        try {
+          const pendente = pendentes.find(p => p.nro_caso === registro.Nro_Caso);
+          if (!pendente) continue;
+
+          const dadosUpdate = {
+            data_resposta: formatarDataSemTimezone(registro.Data_Resposta),
+            resposta: registro.Resposta || null,
+            comentario_pesquisa: registro.Comentario_Pesquisa || null
+          };
+
+          const { error: updateError } = await supabase
+            .from('pesquisas_satisfacao')
+            .update(dadosUpdate)
+            .eq('id', pendente.id);
+
+          if (updateError) {
+            console.error(`❌ [SYNC] Erro ao atualizar resposta do caso ${registro.Nro_Caso}:`, updateError);
+            resultado.erros++;
+          } else {
+            console.log(`📝 [SYNC] Resposta atualizada: ${registro.Nro_Caso} - "${registro.Resposta}"`);
+            resultado.atualizados++;
+          }
+        } catch (err) {
+          console.error(`💥 [SYNC] Erro ao processar resposta do caso ${registro.Nro_Caso}:`, err);
+          resultado.erros++;
+        }
+      }
+    }
+
+    console.log(`✅ [SYNC] Etapa 2 concluída: ${resultado.atualizados} respostas atualizadas, ${resultado.erros} erros`);
+    return resultado;
+
+  } catch (erro) {
+    console.error('💥 [SYNC] Erro na etapa de atualização de respostas:', erro);
+    resultado.erros++;
     return resultado;
   }
 }

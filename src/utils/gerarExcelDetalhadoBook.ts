@@ -219,7 +219,7 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
-    .ilike('organizacao', `%${nomeCompleto}%`)
+    .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_abertura', dataInicio.toISOString())
     .lte('data_abertura', dataFim.toISOString())
     .neq('cod_tipo', 'Problema')
@@ -246,7 +246,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
-    .ilike('organizacao', `%${nomeCompleto}%`)
+    .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
     .neq('cod_tipo', 'Problema')
@@ -269,7 +269,7 @@ async function buscarTicketsBacklog(nomeCompleto: string, dataFim: Date): Promis
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
-    .ilike('organizacao', `%${nomeCompleto}%`)
+    .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .lte('data_abertura', dataFim.toISOString())
     .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
     .neq('cod_tipo', 'Problema')
@@ -314,7 +314,7 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
-    .ilike('organizacao', `%${nomeCompleto}%`)
+    .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
     .eq('cod_tipo', 'Incidente')
@@ -349,7 +349,7 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
     .select('nro_caso, tipo_caso, empresa, grupo, cliente, prestador, solicitante, data_fechamento, data_resposta, resposta, comentario_pesquisa, categoria, servico, pergunta, descricao')
-    .ilike('empresa', `%${nomeCompleto}%`)
+    .ilike('empresa', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_fechamento', dataInicio.toISOString())
     .lte('data_fechamento', dataFim.toISOString())
     .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
@@ -404,7 +404,7 @@ async function buscarApontamentosHoras(
     .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%')
     .gte('data_atividade', dataInicio.toISOString())
     .lte('data_atividade', dataFim.toISOString())
-    .ilike('org_us_final', `%${nomeCompleto}%`)
+    .ilike('org_us_final', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .order('data_atividade', { ascending: true })
     .limit(10000);
 
@@ -478,7 +478,7 @@ async function buscarTicketsConsumo(nomeCompleto: string, mes: number, ano: numb
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, cod_resolucao, categoria, status, nome_grupo, data_abertura, data_fechamento, nome_responsavel, solicitante, cliente, organizacao')
-    .ilike('organizacao', `%${nomeCompleto}%`)
+    .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%')
     .eq('status', 'Closed')
     .neq('item_configuracao', '000000 - PROJETOS APL')
