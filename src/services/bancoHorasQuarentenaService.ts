@@ -427,13 +427,34 @@ export class BancoHorasQuarentenaService {
         return [];
       }
 
+      // Buscar tipo de cobrança da empresa para decidir quais detecções executar
+      const { data: empresa } = await supabase
+        .from('empresas_clientes')
+        .select('tipo_cobranca')
+        .eq('id', empresaId)
+        .single();
+
+      const tipoCobranca = (empresa as any)?.tipo_cobranca || 'banco_horas';
+
       const ajustesCriados: AjusteRetroativo[] = [];
 
-      // Executar detecção de horas e tickets em PARALELO
-      const [resultHoras, resultTickets] = await Promise.all([
-        this.detectarExtemporaneosComFechamento(empresaId, mes, ano, fechamento),
-        this.detectarExtemporaneosTicketsComFechamento(empresaId, mes, ano, fechamento)
-      ]);
+      // Executar detecção de horas (sempre) e tickets (apenas se tipo_cobranca = 'ticket')
+      const deteccoes: Promise<any>[] = [
+        this.detectarExtemporaneosComFechamento(empresaId, mes, ano, fechamento)
+      ];
+
+      // Só detectar tickets para empresas que cobram por ticket
+      if (tipoCobranca === 'ticket') {
+        deteccoes.push(
+          this.detectarExtemporaneosTicketsComFechamento(empresaId, mes, ano, fechamento)
+        );
+      } else {
+        console.log(`ℹ️ Empresa com tipo_cobranca='${tipoCobranca}', ignorando detecção de tickets`);
+      }
+
+      const results = await Promise.all(deteccoes);
+      const resultHoras = results[0];
+      const resultTickets = tipoCobranca === 'ticket' ? results[1] : null;
 
       // Criar ajustes para horas
       if (resultHoras?.temDiferenca) {
@@ -448,7 +469,7 @@ export class BancoHorasQuarentenaService {
         if (ajuste) ajustesCriados.push(ajuste);
       }
 
-      // Criar ajustes para tickets
+      // Criar ajustes para tickets (apenas se empresa cobra por ticket)
       if (resultTickets?.temDiferenca) {
         const ajuste = await this.criarAjusteRetroativo(
           empresaId,
@@ -1139,6 +1160,7 @@ export class BancoHorasQuarentenaService {
       }
 
       const codigosResolucaoValidos = [
+        'Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocação (Banco=S| SLA=N)',
         'Alocação - T&M', 'Alocação T&M',
         'Alocação - T&M (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
         'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
