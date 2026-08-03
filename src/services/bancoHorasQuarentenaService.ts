@@ -1090,18 +1090,9 @@ export class BancoHorasQuarentenaService {
         .in('cod_resolucao', codigosResolucaoValidos)
         .ilike('org_us_final', empresa.nome_completo) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
 
-      // Regra: descartar apenas quando data_sistema é POSTERIOR ao mês da data_atividade
-      // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar
-      return apontamentos
-        .filter((a: any) => {
-          if (diaInicioApuracao > 1) return true;
-          if (!a.data_atividade || !a.data_sistema) return true;
-          const dAtiv = new Date(a.data_atividade);
-          const dSist = new Date(a.data_sistema);
-          const mesAtiv = dAtiv.getFullYear() * 12 + dAtiv.getMonth();
-          const mesSist = dSist.getFullYear() * 12 + dSist.getMonth();
-          return mesSist <= mesAtiv; // descarta somente se sistema é posterior à atividade
-        })
+      // Todos os apontamentos retornados pela query fazem parte do snapshot.
+      // A detecção de extemporâneos compara IDs novos (synced_at > fechado_em) vs snapshot.
+      return (apontamentos || [])
         .map((a: any) => a.id_externo)
         .filter(Boolean);
     } catch (error) {

@@ -517,87 +517,30 @@ export class BancoHorasIntegracaoService {
         observacao: 'Verificar se org_us_final dos apontamentos corresponde ao nome completo'
       });
 
-      // Verificar se o período está fechado para aplicar regra de retroatividade
-      // Se o período está ABERTO: aceitar todos os apontamentos (mesmo com data_sistema posterior)
-      // Se o período está FECHADO: excluir apontamentos retroativos (irão para tela de Ajustes Retroativos)
-      let periodoFechado = false;
-      try {
-        const { data: fechamento } = await supabase
-          .from('banco_horas_fechamentos')
-          .select('id')
-          .eq('empresa_id', empresaId)
-          .eq('mes', mes)
-          .eq('ano', ano)
-          .maybeSingle();
-        periodoFechado = !!fechamento;
-      } catch (err) {
-        console.warn('⚠️ Não foi possível verificar fechamento do período, assumindo aberto:', err);
-      }
-
-      console.log('🔒 Status do período:', {
-        empresaId,
-        mes,
-        ano,
-        periodoFechado,
-        observacao: periodoFechado
-          ? 'Período FECHADO - apontamentos retroativos serão excluídos (vão para Ajustes Retroativos)'
-          : 'Período ABERTO - todos os apontamentos serão aceitos normalmente'
-      });
-
       // Somar horas
       let totalMinutos = 0;
-      let apontamentosExcluidos = 0;
 
       if (apontamentos && apontamentos.length > 0) {
         for (const apontamento of apontamentos) {
-          // REGRA DE RETROATIVIDADE: Validar que data_atividade e data_sistema estão no mesmo mês
-          // CONDIÇÃO: Só aplicar se o período estiver FECHADO
-          // Se o período está ABERTO, aceitar todos os apontamentos normalmente
-          // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar esta regra
-          // pois o período naturalmente cruza dois meses e a divergência é esperada
-          let mesmoMes = true;
-          if (periodoFechado && diaInicioApuracao === 1 && apontamento.data_atividade && apontamento.data_sistema) {
-            const dataAtividade = new Date(apontamento.data_atividade);
-            const dataSistema = new Date(apontamento.data_sistema);
+          // Contabilizar todos os apontamentos retornados pela query
+          // A detecção de extemporâneos (retroativos) é feita separadamente
+          // pelo bancoHorasQuarentenaService ao comparar synced_at > fechado_em
 
-            // Calcular "mês-índice" (ano * 12 + mês) para comparação ordinal
-            const mesAtividade = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
-            const mesSistema   = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
-
-            // Descartar APENAS quando data_sistema é POSTERIOR à data_atividade
-            // (apontamento lançado depois do mês em que ocorreu — retroativo)
-            // Manter quando data_sistema é anterior ou igual ao mês da atividade
-            // Esses apontamentos excluídos irão para a tela de Ajustes Retroativos
-            if (mesSistema > mesAtividade) {
-              mesmoMes = false;
-              apontamentosExcluidos++;
-              console.log('⚠️ Apontamento excluído (retroativo em período fechado):', {
-                data_atividade: apontamento.data_atividade,
-                data_sistema: apontamento.data_sistema,
-                nro_chamado: apontamento.nro_chamado || 'N/A',
-                destino: 'Tela de Ajustes Retroativos'
+          // Priorizar tempo_gasto_horas (formato HH:MM)
+          if (apontamento.tempo_gasto_horas) {
+            try {
+              const horasDecimal = converterParaHorasDecimal(apontamento.tempo_gasto_horas);
+              totalMinutos += horasDecimal * 60;
+            } catch (error) {
+              console.warn('⚠️ Erro ao converter tempo_gasto_horas:', {
+                valor: apontamento.tempo_gasto_horas,
+                erro: error
               });
             }
-          }
-
-          // Só contabilizar se passou na validação de mês
-          if (mesmoMes) {
-            // Priorizar tempo_gasto_horas (formato HH:MM)
-            if (apontamento.tempo_gasto_horas) {
-              try {
-                const horasDecimal = converterParaHorasDecimal(apontamento.tempo_gasto_horas);
-                totalMinutos += horasDecimal * 60;
-              } catch (error) {
-                console.warn('⚠️ Erro ao converter tempo_gasto_horas:', {
-                  valor: apontamento.tempo_gasto_horas,
-                  erro: error
-                });
-              }
-            } 
-            // Fallback para tempo_gasto_minutos
-            else if (apontamento.tempo_gasto_minutos) {
-              totalMinutos += apontamento.tempo_gasto_minutos;
-            }
+          } 
+          // Fallback para tempo_gasto_minutos
+          else if (apontamento.tempo_gasto_minutos) {
+            totalMinutos += apontamento.tempo_gasto_minutos;
           }
         }
       }
@@ -614,7 +557,7 @@ export class BancoHorasIntegracaoService {
         totalMinutos,
         horas: horasFormatadas,
         tickets: ticketsReais,
-        apontamentosExcluidos,
+        totalApontamentos: apontamentos?.length || 0,
         observacao: 'Tickets buscados da tabela apontamentos_tickets_aranda (data_fechamento)'
       });
 

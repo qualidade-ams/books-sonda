@@ -286,20 +286,12 @@ async function buscarApontamentosDetalhados(
     return codigosResolucaoValidos.includes(apt.cod_resolucao);
   });
 
-  // Filtrar: descartar apenas quando data_sistema é POSTERIOR ao mês da data_atividade
-  // (apontamento lançado retroativamente — mesma regra do bancoHorasIntegracaoService)
-  const apontamentosFiltrados = apontamentosComCodigo.filter((apt: any) => {
-    if (apt.data_atividade && apt.data_sistema) {
-      const dataAtividade = new Date(apt.data_atividade);
-      const dataSistema   = new Date(apt.data_sistema);
-      const mesAtiv = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
-      const mesSist = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
-      return mesSist <= mesAtiv; // descarta somente se sistema é posterior à atividade
-    }
-    return true;
-  });
+  // Todos os apontamentos com código válido são incluídos.
+  // A detecção de extemporâneos (retroativos pós-fechamento) é feita separadamente
+  // pelo bancoHorasQuarentenaService ao comparar synced_at > fechado_em.
+  const apontamentosFiltrados = apontamentosComCodigo;
 
-  console.log(`📊 Apontamentos após filtros: total=${(apontamentos||[]).length}, com código válido=${apontamentosComCodigo.length}, mesmo mês=${apontamentosFiltrados.length}`);
+  console.log(`📊 Apontamentos após filtros: total=${(apontamentos||[]).length}, com código válido=${apontamentosComCodigo.length}, final=${apontamentosFiltrados.length}`);
 
   return apontamentosFiltrados as unknown as ApontamentoExcel[];
 }

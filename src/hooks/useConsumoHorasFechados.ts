@@ -94,14 +94,8 @@ async function calcularConsumoHoras(
 
   let totalMinutos = 0;
   for (const apt of data) {
-    // Regra: descartar se data_sistema é posterior ao mês da data_atividade
-    if (apt.data_atividade && apt.data_sistema) {
-      const dAtiv = new Date(apt.data_atividade);
-      const dSist = new Date(apt.data_sistema);
-      const mesAtiv = dAtiv.getFullYear() * 12 + dAtiv.getMonth();
-      const mesSist = dSist.getFullYear() * 12 + dSist.getMonth();
-      if (mesSist > mesAtiv) continue;
-    }
+    // Todos os apontamentos retornados pela query são contabilizados.
+    // A detecção de extemporâneos é feita pelo bancoHorasQuarentenaService (synced_at > fechado_em).
     totalMinutos += tempoParaMinutos(apt.tempo_gasto_horas, apt.tempo_gasto_minutos);
   }
 
