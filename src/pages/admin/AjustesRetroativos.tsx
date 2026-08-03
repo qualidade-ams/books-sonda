@@ -53,6 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -97,10 +98,11 @@ export default function AjustesRetroativos() {
 
   // Estado de filtros
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('pendente');
   const [filtros, setFiltros] = useState({
     empresaId: 'all',
     consultor: 'all',
-    status: 'all',
+    status: 'pendente', // controlado pela aba ativa
   });
 
   // Estado de modais
@@ -181,11 +183,16 @@ export default function AjustesRetroativos() {
 
   // Handlers
   const hasActiveFilters = () => {
-    return filtros.empresaId !== 'all' || filtros.consultor !== 'all' || filtros.status !== 'all';
+    return filtros.empresaId !== 'all' || filtros.consultor !== 'all';
   };
 
   const limparFiltros = () => {
-    setFiltros({ empresaId: 'all', consultor: 'all', status: 'all' });
+    setFiltros({ ...filtros, empresaId: 'all', consultor: 'all' });
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setFiltros(prev => ({ ...prev, status: tab }));
   };
 
   const toggleExpandRow = (id: string) => {
@@ -1062,7 +1069,7 @@ Obrigado.`;
               {/* Filtros expansíveis */}
               {showFilters && (
                 <div className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm font-medium mb-2">{t('ajustesRetroativos.company')}</div>
                       <Select
@@ -1100,28 +1107,36 @@ Obrigado.`;
                         </SelectContent>
                       </Select>
                     </div>
-
-                    <div>
-                      <div className="text-sm font-medium mb-2">Status</div>
-                      <Select
-                        value={filtros.status}
-                        onValueChange={(value) => setFiltros({ ...filtros, status: value })}
-                      >
-                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Todos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          <SelectItem value="pendente">Pendentes</SelectItem>
-                          <SelectItem value="aprovado">Aprovados</SelectItem>
-                          <SelectItem value="descartado">Descartados</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                 </div>
               )}
             </CardHeader>
+
+            {/* Abas de Status */}
+            <div className="px-6 pb-2">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <TabsList className="bg-gray-100 p-1 rounded-lg">
+                  <TabsTrigger
+                    value="pendente"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                  >
+                    Pendentes ({ajustesParaEstatisticas.filter(a => a.status === 'pendente').length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="aprovado"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                  >
+                    Aprovados ({ajustesParaEstatisticas.filter(a => a.status === 'aprovado').length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="descartado"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                  >
+                    Descartados ({ajustesParaEstatisticas.filter(a => a.status === 'descartado').length})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
 
             <CardContent className="space-y-4 overflow-x-auto">
               {isLoading ? (
@@ -1135,10 +1150,20 @@ Obrigado.`;
                   <div className="text-center">
                     <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-4" />
                     <p className="text-gray-500 mb-2 font-medium">
-                      {t('ajustesRetroativos.noAdjustmentsFound')}
+                      {activeTab === 'pendente' 
+                        ? t('ajustesRetroativos.noAdjustmentsFound')
+                        : activeTab === 'aprovado'
+                        ? 'Nenhum ajuste aprovado'
+                        : 'Nenhum ajuste descartado'
+                      }
                     </p>
                     <p className="text-sm text-gray-400">
-                      {t('ajustesRetroativos.allPeriodsUpdated')}
+                      {activeTab === 'pendente'
+                        ? t('ajustesRetroativos.allPeriodsUpdated')
+                        : activeTab === 'aprovado'
+                        ? 'Ajustes aprovados aparecerão aqui.'
+                        : 'Ajustes descartados aparecerão aqui.'
+                      }
                     </p>
                   </div>
                 </div>
