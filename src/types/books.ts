@@ -464,7 +464,8 @@ export const BOOK_TABS_LABELS: Record<BookTab, string> = {
   sla: 'SLA',
   backlog: 'Backlog',
   consumo: 'Consumo',
-  pesquisa: 'Pesquisa'
+  pesquisa: 'Pesquisa',
+  portfolio: 'Portfólio'
 };
 
 export const MESES_LABELS: Record<number, string> = {
