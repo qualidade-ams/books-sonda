@@ -549,6 +549,37 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       }
     }
 
+    // Zerar campos de consumo, requerimentos e reajuste para meses POSTERIORES ao
+    // mês de referência do book (mesReferencia). Esses meses ainda não foram fechados,
+    // então seus valores são provisórios e não devem aparecer no email.
+    for (let i = 0; i < calculos.length; i++) {
+      const c = calculos[i];
+      const isFuturo = (c.ano > anoReferencia) || (c.ano === anoReferencia && c.mes > mesReferencia);
+      if (isFuturo) {
+        console.log(`ℹ️ Zerando consumo/req/reajuste do mês ${c.mes}/${c.ano} (posterior ao mês de referência ${mesReferencia}/${anoReferencia})`);
+        calculos[i] = {
+          ...c,
+          consumo_horas: '00:00',
+          consumo_tickets: 0,
+          requerimentos_horas: '00:00',
+          requerimentos_tickets: 0,
+          reajustes_horas: '00:00',
+          reajustes_tickets: 0,
+          consumo_total_horas: '00:00',
+          consumo_total_tickets: 0,
+          saldo_horas: c.saldo_a_utilizar_horas || c.baseline_horas || '00:00',
+          saldo_tickets: c.saldo_a_utilizar_tickets || c.baseline_tickets || 0,
+          repasse_horas: c.saldo_a_utilizar_horas || c.baseline_horas || '00:00',
+          repasse_tickets: c.saldo_a_utilizar_tickets || c.baseline_tickets || 0,
+          excedentes_horas: '00:00',
+          excedentes_tickets: 0,
+          valor_excedentes_horas: 0,
+          valor_excedentes_tickets: 0,
+          valor_a_faturar: 0,
+        };
+      }
+    }
+
     if (calculos.length === 0) {
       console.log(`ℹ️ Nenhum dado de banco de horas encontrado para empresa ${empresaId} no período`);
       return null;
