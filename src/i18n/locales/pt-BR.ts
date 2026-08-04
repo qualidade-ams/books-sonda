@@ -755,7 +755,7 @@ const ptBR = {
       surveysAnswered: 'PESQUISAS RESPONDIDAS',
       surveysNotAnswered: 'PESQUISAS NÃO RESPONDIDAS',
       surveysSent: 'PESQUISAS ENVIADAS',
-      surveySummary: 'Resumo de Pesquisas',
+      surveySummary: 'Resumo de Pesquisas Respondidas',
       noDataToShow: 'Nenhum dado para exibir no momento...',
       ticketColumn: 'Chamado',
       typeColumn: 'Tipo',
