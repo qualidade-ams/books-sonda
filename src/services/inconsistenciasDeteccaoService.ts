@@ -531,7 +531,6 @@ class InconsistenciasDeteccaoService {
           const nroSolicitacao = ticket.nro_solicitacao || 'N/A';
           const nroFormatado = prefixo ? `${prefixo} ${nroSolicitacao}` : nroSolicitacao;
           const empresaAbreviada = this.obterNomeAbreviado(ticket.organizacao, mapaEmpresas);
-          const isIc999999 = tipo === 'ic_999999';
 
           inconsistencias.push({
             origem: 'tickets',
@@ -550,7 +549,7 @@ class InconsistenciasDeteccaoService {
               ticket.status
             ),
             data_abertura: ticket.data_abertura || null,
-            data_atividade: isIc999999 ? null : ticket.data_abertura,
+            data_atividade: ticket.data_abertura || null,
             data_sistema: null,
             tempo_gasto_horas: null,
             tempo_gasto_minutos: null,
@@ -558,7 +557,7 @@ class InconsistenciasDeteccaoService {
             analista: ticket.nome_responsavel || null,
             status_chamado: ticket.status || null,
             cod_resolucao: ticket.cod_resolucao || null,
-            chave_unica: this.gerarChaveUnica('tickets', nroFormatado, tipo, isIc999999 ? null : ticket.data_abertura)
+            chave_unica: this.gerarChaveUnica('tickets', nroFormatado, tipo, ticket.data_abertura)
           });
         }
       }
@@ -834,7 +833,7 @@ class InconsistenciasDeteccaoService {
         
         const { data: registros, error } = await supabase
           .from('apontamentos_tickets_aranda' as any)
-          .select('data_abertura, item_configuracao, data_ultimo_comentario, status')
+          .select('data_abertura, item_configuracao, data_ultimo_comentario, status, nome_grupo')
           .eq('nro_solicitacao', nroLimpo)
           .limit(1);
 
@@ -903,11 +902,16 @@ class InconsistenciasDeteccaoService {
    */
   private verificarCorrecaoTicket(
     tipoInconsistencia: string,
-    registro: { data_abertura: string | null; item_configuracao: string | null; data_ultimo_comentario: string | null; status: string | null }
+    registro: { data_abertura: string | null; item_configuracao: string | null; data_ultimo_comentario: string | null; status: string | null; nome_grupo?: string | null }
   ): boolean {
     // Tickets com status finalizado (Cancelled, Closed, Resolved) são considerados resolvidos
     const statusFinalizados = ['Cancelled', 'Closed', 'Resolved'];
     if (registro.status && statusFinalizados.includes(registro.status)) {
+      return true;
+    }
+
+    // Tickets movidos para CA SDM são considerados resolvidos (grupo de roteamento/SDM)
+    if (registro.nome_grupo === 'CA SDM') {
       return true;
     }
 

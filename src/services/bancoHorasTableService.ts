@@ -10,6 +10,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
+import { getLabels, getMonthName, isEnglishTemplateByName } from '@/utils/bancoHorasI18n';
 
 // ==================== Tipos locais ====================
 
@@ -45,6 +46,11 @@ export const MESES_PT = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
+const MESES_EN = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 // ==================== Funções de Geração de Tabela ====================
 
 /**
@@ -58,7 +64,8 @@ export function gerarTabelaBancoHoras(
   percentualRepasse: number,
   nomePeriodo: string,
   diaInicioApuracao?: number,
-  diaFimApuracao?: number
+  diaFimApuracao?: number,
+  isEnglish: boolean = false
 ): string {
   // Se mais de 6 meses, dividir em duas tabelas (ex: 12 meses = 6 + 6, 8 meses = 4 + 4)
   if (calculos.length > 6) {
@@ -66,11 +73,14 @@ export function gerarTabelaBancoHoras(
     const primeiraParte = calculos.slice(0, metade);
     const segundaParte = calculos.slice(metade);
     
-    const tabela1 = gerarTabelaBancoHoras(primeiraParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (1/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao);
-    const tabela2 = gerarTabelaBancoHoras(segundaParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (2/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao);
+    const tabela1 = gerarTabelaBancoHoras(primeiraParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (1/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const tabela2 = gerarTabelaBancoHoras(segundaParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (2/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao, isEnglish);
     
     return `${tabela1}<div style="margin-top:12px;"></div>${tabela2}`;
   }
+
+  const labels = getLabels(isEnglish);
+  const meses = isEnglish ? MESES_EN : MESES_PT;
 
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   
@@ -116,24 +126,25 @@ export function gerarTabelaBancoHoras(
         anoFim += 1;
       }
       const anoFimAbrev = String(anoFim).slice(-2);
-      const mesInicioAbrev = MESES_PT[mesInicio - 1].substring(0, 3);
-      const mesFimAbrev = MESES_PT[mesFim - 1].substring(0, 3);
-      return `<th style="${headerBlue}">${diaInicio} ${mesInicioAbrev}/${anoAbrev} à ${diaFim} ${mesFimAbrev}/${anoFimAbrev}</th>`;
+      const mesInicioAbrev = meses[mesInicio - 1].substring(0, 3);
+      const mesFimAbrev = meses[mesFim - 1].substring(0, 3);
+      const separador = isEnglish ? 'to' : 'à';
+      return `<th style="${headerBlue}">${diaInicio} ${mesInicioAbrev}/${anoAbrev} ${separador} ${diaFim} ${mesFimAbrev}/${anoFimAbrev}</th>`;
     }
-    return `<th style="${headerBlue}">${MESES_PT[c.mes - 1]}/${anoAbrev}</th>`;
+    return `<th style="${headerBlue}">${meses[c.mes - 1]}/${anoAbrev}</th>`;
   }).join('');
 
   // Definição das linhas
   const linhasConfig = [
-    { label: isTicket ? 'Tickets Contratados' : 'Banco Contratado', isDark: true, values: calculos.map(c => fmtVal(c.baseline_horas, c.baseline_tickets)) },
-    { label: 'Repasse mês anterior', isDark: false, bg: '#e5e7eb', values: calculos.map(c => fmtVal(c.repasses_mes_anterior_horas, c.repasses_mes_anterior_tickets)), isColorized: true },
-    { label: 'Saldo a utilizar', isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.saldo_a_utilizar_horas, c.saldo_a_utilizar_tickets)), isColorized: true },
-    { label: 'Consumo Chamados', isDark: false, bg: '#ffffff', values: calculos.map(c => fmtVal(c.consumo_horas, c.consumo_tickets)) },
-    { label: 'Requerimentos <span style="color:#2563eb;">*</span>', isDark: false, bg: '#ffffff', values: calculos.map(c => fmtVal(c.requerimentos_horas, c.requerimentos_tickets)) },
-    { label: 'Reajuste', isDark: false, bg: '#ffffff', values: calculos.map(c => fmtVal(c.reajustes_horas, c.reajustes_tickets)) },
-    { label: 'Consumo Total', isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.consumo_total_horas, c.consumo_total_tickets, true)) },
-    { label: 'Saldo', isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.saldo_horas, c.saldo_tickets)), isColorized: true },
-    { label: `Repasse - ${percentualRepasse}%`, isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.repasse_horas, c.repasse_tickets)), isColorized: true },
+    { label: isTicket ? labels.ticketsContratados : labels.bancoContratado, isDark: true, values: calculos.map(c => fmtVal(c.baseline_horas, c.baseline_tickets)) },
+    { label: labels.repasseMesAnterior, isDark: false, bg: '#e5e7eb', values: calculos.map(c => fmtVal(c.repasses_mes_anterior_horas, c.repasses_mes_anterior_tickets)), isColorized: true },
+    { label: labels.saldoAUtilizar, isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.saldo_a_utilizar_horas, c.saldo_a_utilizar_tickets)), isColorized: true },
+    { label: labels.consumoChamados, isDark: false, bg: '#ffffff', values: calculos.map(c => fmtVal(c.consumo_horas, c.consumo_tickets)) },
+    { label: `${labels.requerimentos} <span style="color:#2563eb;">*</span>`, isDark: false, bg: '#ffffff', values: calculos.map(c => fmtVal(c.requerimentos_horas, c.requerimentos_tickets)) },
+    { label: labels.reajuste, isDark: false, bg: '#ffffff', values: calculos.map(c => fmtVal(c.reajustes_horas, c.reajustes_tickets)) },
+    { label: labels.consumoTotal, isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.consumo_total_horas, c.consumo_total_tickets, true)) },
+    { label: labels.saldo, isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.saldo_horas, c.saldo_tickets)), isColorized: true },
+    { label: `${labels.repasse} - ${percentualRepasse}%`, isDark: false, bg: '#f9fafb', values: calculos.map(c => fmtVal(c.repasse_horas, c.repasse_tickets)), isColorized: true },
   ];
 
   const linhasHtml = linhasConfig.map(linha => {
@@ -164,9 +175,9 @@ export function gerarTabelaBancoHoras(
 
   const linhaExcedente = `
     <tr>
-      <td style="${headerDark}">${isTicket ? 'Taxa/ticket Excedente' : 'Taxa/hora Excedente'}</td>
+      <td style="${headerDark}">${isTicket ? (isEnglish ? 'Surplus Rate/ticket' : 'Taxa/ticket Excedente') : labels.taxaHoraExcedente}</td>
       <td style="${headerDark}">${taxaHora && taxaHora > 0 ? formatarMoeda(taxaHora) : ''}</td>
-      <td style="${headerDark}" colspan="${colSpanMeio}">Valor Total</td>
+      <td style="${headerDark}" colspan="${colSpanMeio}">${labels.valorTotal}</td>
       <td style="${headerDark}">${formatarMoeda(valorFaturar)}</td>
     </tr>
   `;
@@ -175,11 +186,11 @@ export function gerarTabelaBancoHoras(
     <table style="width:100%;border-collapse:collapse;font-family:Calibri,sans-serif;overflow:hidden;">
       <thead>
         <tr>
-          <th style="${headerDark}">Período</th>
+          <th style="${headerDark}">${labels.periodo}</th>
           <th style="${headerDark}" colspan="${calculos.length}">${nomePeriodo}</th>
         </tr>
         <tr>
-          <th style="${headerBlue}">Mês</th>
+          <th style="${headerBlue}">${labels.mes}</th>
           ${headerMeses}
         </tr>
       </thead>
@@ -192,6 +203,13 @@ export function gerarTabelaBancoHoras(
 }
 
 // ==================== Funções Auxiliares de Formatação ====================
+
+/** Retorna o ordinal em inglês (1st, 2nd, 3rd, 4th, etc.) */
+function getOrdinalEn(n: number): string {
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+}
 
 /** Converte horas decimais (ex: 2.5) para formato HH:MM (ex: 02:30) */
 function formatarHorasDecimal(decimal: number): string {
@@ -222,7 +240,8 @@ export function gerarTabelaRequerimentos(
   requerimentos: Requerimento[],
   titulo: string,
   corHeader: string,
-  isDesenvolvimento: boolean = false
+  isDesenvolvimento: boolean = false,
+  isEnglish: boolean = false
 ): string {
   if (!requerimentos || requerimentos.length === 0) return '';
 
@@ -254,8 +273,8 @@ export function gerarTabelaRequerimentos(
       ? converterParaHorasDecimal(req.horas_tecnico) : (req.horas_tecnico || 0);
     const total = hFunc + hTec;
     
-    const dataEnvio = req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : isDesenvolvimento ? 'Não enviado' : '-';
-    const dataAprov = req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-';
+    const dataEnvio = req.data_envio ? new Date(req.data_envio).toLocaleDateString(isEnglish ? 'en-US' : 'pt-BR', { timeZone: 'UTC' }) : isDesenvolvimento ? (isEnglish ? 'Not sent' : 'Não enviado') : '-';
+    const dataAprov = req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString(isEnglish ? 'en-US' : 'pt-BR', { timeZone: 'UTC' }) : '-';
     const periodo = req.mes_cobranca || '-';
     const tipoCobranca = req.tipo_cobranca || 'Banco de Horas';
     const valorTotal = req.valor_total_geral 
@@ -273,8 +292,8 @@ export function gerarTabelaRequerimentos(
         <td style="${tdStyle}">${formatarHorasDecimal(hFunc)}</td>
         <td style="${tdStyle}">${formatarHorasDecimal(hTec)}</td>
         <td style="${isDesenvolvimento ? 'padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#ea580c;font-weight:700;border-bottom:1px solid #e5e7eb;' : tdBold}">${formatarHorasDecimal(total)}</td>
-        <td style="${tdGray}">${isDesenvolvimento ? (req.data_envio ? dataEnvio : '<span style="display:inline-block;white-space:nowrap;background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:8px;font-size:8px;line-height:1.4;font-family:Inter,sans-serif;">Não enviado</span>') : dataEnvio}</td>
-        <td style="${tdGray}">${isDesenvolvimento ? '<span style="display:inline-block;white-space:nowrap;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px;font-size:8px;line-height:1.4;font-weight:600;font-family:Inter,sans-serif;">Em desenvolvimento</span>' : dataAprov}</td>
+        <td style="${tdGray}">${isDesenvolvimento ? (req.data_envio ? dataEnvio : `<span style="display:inline-block;white-space:nowrap;background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:8px;font-size:8px;line-height:1.4;font-family:Inter,sans-serif;">${isEnglish ? 'Not sent' : 'Não enviado'}</span>`) : dataEnvio}</td>
+        <td style="${tdGray}">${isDesenvolvimento ? `<span style="display:inline-block;white-space:nowrap;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px;font-size:8px;line-height:1.4;font-weight:600;font-family:Inter,sans-serif;">${isEnglish ? 'In development' : 'Em desenvolvimento'}</span>` : dataAprov}</td>
         <td style="${tdGray}">${valorTotal}</td>
         <td style="${tdGray}">${periodo}</td>
       </tr>
@@ -297,16 +316,16 @@ export function gerarTabelaRequerimentos(
       <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:8px;">
         <thead>
           <tr${isDesenvolvimento ? ' style="background:#fff7ed;"' : ''}>
-            <th style="${thStyle}">Chamado</th>
-            <th style="${thStyle}">Cliente</th>
-            <th style="${thStyle}">Módulo</th>
-            <th style="${thStyle}">H.Func</th>
-            <th style="${thStyle}">H.Téc</th>
-            <th style="${thStyle}">Total</th>
-            <th style="${thStyle}">Data Envio</th>
-            <th style="${thStyle}">${isDesenvolvimento ? 'Status' : 'Data Aprovação'}</th>
-            <th style="${thStyle}">Valor Total</th>
-            <th style="${thStyle}">Período</th>
+            <th style="${thStyle}">${isEnglish ? 'Ticket' : 'Chamado'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Client' : 'Cliente'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Module' : 'Módulo'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Func.H' : 'H.Func'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Tech.H' : 'H.Téc'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Total' : 'Total'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Sent Date' : 'Data Envio'}</th>
+            <th style="${thStyle}">${isDesenvolvimento ? 'Status' : (isEnglish ? 'Approval Date' : 'Data Aprovação')}</th>
+            <th style="${thStyle}">${isEnglish ? 'Total Amount' : 'Valor Total'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Period' : 'Período'}</th>
           </tr>
         </thead>
         <tbody>
@@ -332,7 +351,7 @@ interface ExcedenteInfo {
  * - Valor Hora Excedentes: R$ X,XX
  * - Valor total dos Excedentes: R$ X,XX
  */
-export function gerarSecaoExcedentes(info: ExcedenteInfo | null): string {
+export function gerarSecaoExcedentes(info: ExcedenteInfo | null, isEnglish: boolean = false): string {
   if (!info) return '';
 
   // Não exibir o quadro se o valor total dos excedentes for zero ou inexistente
@@ -343,16 +362,20 @@ export function gerarSecaoExcedentes(info: ExcedenteInfo | null): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   };
 
+  const labelHorasExcedentes = isEnglish ? 'Surplus Hours' : 'Horas Excedentes';
+  const labelValorHora = isEnglish ? 'Surplus Rate/Hour' : 'Valor Hora Excedentes';
+  const labelValorTotal = isEnglish ? 'Total Surplus Amount' : 'Valor total dos Excedentes';
+
   return `
     <div style="margin-top:16px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-family:Inter,sans-serif;">
       <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:#92400e;">
-        Horas Excedentes: ${info.horasExcedentes}
+        ${labelHorasExcedentes}: ${info.horasExcedentes}
       </p>
       <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:#92400e;">
-        Valor Hora Excedentes: ${formatarMoeda(info.valorHoraExcedente)}
+        ${labelValorHora}: ${formatarMoeda(info.valorHoraExcedente)}
       </p>
       <p style="margin:0;font-size:11px;font-weight:700;color:#92400e;">
-        Valor total dos Excedentes: ${formatarMoeda(info.valorTotalExcedentes)}
+        ${labelValorTotal}: ${formatarMoeda(info.valorTotalExcedentes)}
       </p>
     </div>
   `;
@@ -361,23 +384,24 @@ export function gerarSecaoExcedentes(info: ExcedenteInfo | null): string {
 // ==================== Seção de Observações ====================
 
 /** Gera seção HTML de Observações do período */
-export function gerarSecaoObservacoes(observacoes: Observacao[]): string {
+export function gerarSecaoObservacoes(observacoes: Observacao[], isEnglish: boolean = false): string {
   if (!observacoes || observacoes.length === 0) return '';
 
+  const meses = isEnglish ? MESES_EN : MESES_PT;
   const thStyle = 'padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
   const tdStyle = 'padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;';
   const tdGray = 'padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;';
 
   const linhas = observacoes.map(obs => {
-    const periodo = obs.mes && obs.ano ? `${MESES_PT[(obs.mes || 1) - 1]}/${obs.ano}` : '-';
-    const data = obs.created_at ? new Date(obs.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' às') : '-';
+    const periodo = obs.mes && obs.ano ? `${meses[(obs.mes || 1) - 1]}/${obs.ano}` : '-';
+    const data = obs.created_at ? new Date(obs.created_at).toLocaleString(isEnglish ? 'en-US' : 'pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', isEnglish ? ' at' : ' às') : '-';
     const usuario = obs.usuario_nome || '-';
     
     let tipoBadge = '';
     if (obs.tipo === 'manual') {
-      tipoBadge = '<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">Manual</span>';
+      tipoBadge = `<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">${isEnglish ? 'Manual' : 'Manual'}</span>`;
     } else {
-      tipoBadge = '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">Ajuste</span>';
+      tipoBadge = `<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">${isEnglish ? 'Adjustment' : 'Ajuste'}</span>`;
       if (obs.valor_horas && obs.valor_horas !== '00:00') {
         tipoBadge += `<br/><span style="background:#dbeafe;color:#1e40af;padding:2px 4px;border-radius:5px;font-size:7px;font-family:Inter,sans-serif;margin-top:2px;display:inline-block;">🕐 ${obs.tipo_ajuste === 'entrada' ? '+' : '-'}${obs.valor_horas}</span>`;
       }
@@ -398,16 +422,16 @@ export function gerarSecaoObservacoes(observacoes: Observacao[]): string {
     <div style="margin-top:16px;">
       <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
         <span style="font-size:11px;">💬</span>
-        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Observações</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">${isEnglish ? 'Notes' : 'Observações'}</span>
       </td></tr></table>
       <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:3px;">
         <thead>
           <tr>
-            <th style="${thStyle}">Tipo</th>
-            <th style="${thStyle}">Período</th>
-            <th style="${thStyle}">Observação</th>
-            <th style="${thStyle}">Usuário</th>
-            <th style="${thStyle}">Data</th>
+            <th style="${thStyle}">${isEnglish ? 'Type' : 'Tipo'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Period' : 'Período'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Note' : 'Observação'}</th>
+            <th style="${thStyle}">${isEnglish ? 'User' : 'Usuário'}</th>
+            <th style="${thStyle}">${isEnglish ? 'Date' : 'Data'}</th>
           </tr>
         </thead>
         <tbody>
@@ -428,6 +452,8 @@ export interface BancoHorasImagemParams {
   empresaNome: string;
   mes: number;
   ano: number;
+  /** Se true, gera a tabela em inglês. Se omitido, detecta automaticamente pelo template_padrao da empresa. */
+  isEnglish?: boolean;
 }
 
 /**
@@ -449,7 +475,8 @@ export interface BancoHorasImagemResult {
 export async function buscarDadosEGerarTabelaBancoHoras(
   empresaId: string,
   mes: number,
-  ano: number
+  ano: number,
+  isEnglish: boolean = false
 ): Promise<{ html: string; calculos: BancoHorasCalculo[] } | null> {
   try {
     // Buscar dados da empresa para obter tipo_cobranca, periodo_apuracao, percentual_repasse
@@ -597,19 +624,19 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       const periodoNoAno = (periodosCompletos % periodosNoAno) + 1;
       
       if (periodoApuracao === 1) {
-        nomePeriodo = 'Mensal';
+        nomePeriodo = isEnglish ? 'Monthly' : 'Mensal';
       } else if (periodoApuracao === 3) {
-        nomePeriodo = `${periodoNoAno}º Trimestre`;
+        nomePeriodo = isEnglish ? `${getOrdinalEn(periodoNoAno)} Quarter` : `${periodoNoAno}º Trimestre`;
       } else if (periodoApuracao === 6) {
-        nomePeriodo = `${periodoNoAno}º Semestre`;
+        nomePeriodo = isEnglish ? `${getOrdinalEn(periodoNoAno)} Semester` : `${periodoNoAno}º Semestre`;
       } else if (periodoApuracao === 12) {
-        nomePeriodo = 'Anual';
+        nomePeriodo = isEnglish ? 'Annual' : 'Anual';
       } else {
-        nomePeriodo = `${periodoNoAno}º Período (${periodoApuracao} meses)`;
+        nomePeriodo = isEnglish ? `${getOrdinalEn(periodoNoAno)} Period (${periodoApuracao} months)` : `${periodoNoAno}º Período (${periodoApuracao} meses)`;
       }
     } else {
       const trimestre = Math.ceil(mesReferencia / 3);
-      nomePeriodo = `${trimestre}º Trimestre`;
+      nomePeriodo = isEnglish ? `${getOrdinalEn(trimestre)} Quarter` : `${trimestre}º Trimestre`;
     }
 
     // Gerar tabela HTML principal do banco de horas
@@ -619,7 +646,8 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       percentualRepasse,
       nomePeriodo,
       diaInicioApuracao,
-      diaFimApuracao
+      diaFimApuracao,
+      isEnglish
     );
 
     // Buscar requerimentos do período (mesmo comportamento do email Saldo do Mês)
@@ -737,9 +765,9 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     ];
 
     // Gerar HTML das tabelas de requerimentos e observações
-    const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
-    const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosDesenv, 'Requerimentos em Desenvolvimento', '#ea580c', true);
-    const secaoObs = gerarSecaoObservacoes(observacoes);
+    const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
+    const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosDesenv, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
+    const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
 
     // Determinar o cálculo de fim de período para exibição de excedentes
     const calculoFimPeriodo = calculos[calculos.length - 1];
@@ -766,7 +794,7 @@ export async function buscarDadosEGerarTabelaBancoHoras(
             horasExcedentes,
             valorHoraExcedente: valorHora,
             valorTotalExcedentes: valorTotal,
-          });
+          }, isEnglish);
         }
       }
     }
@@ -796,11 +824,40 @@ export async function gerarImagemBancoHoras(
   try {
     console.log(`📊 Gerando imagem do banco de horas para ${params.empresaNome}...`);
 
+    // Detectar idioma: usar isEnglish do params ou buscar template_padrao da empresa
+    let isEnglish = params.isEnglish ?? false;
+    if (params.isEnglish === undefined) {
+      // Buscar template_padrao da empresa para detectar idioma
+      const { data: empresaTemplate } = await supabase
+        .from('empresas_clientes')
+        .select('template_padrao')
+        .eq('id', params.empresaId)
+        .single();
+      
+      if (empresaTemplate) {
+        const templatePadrao = (empresaTemplate as any).template_padrao;
+        if (templatePadrao) {
+          // Buscar nome do template na tabela email_templates
+          const { data: templateData } = await supabase
+            .from('email_templates')
+            .select('nome')
+            .eq('id', templatePadrao)
+            .single();
+          
+          if (templateData) {
+            isEnglish = isEnglishTemplateByName((templateData as any).nome);
+            console.log(`🌐 [gerarImagemBancoHoras] Template: ${(templateData as any).nome}, isEnglish: ${isEnglish}`);
+          }
+        }
+      }
+    }
+
     // 1. Buscar dados e gerar tabela HTML
     const resultado = await buscarDadosEGerarTabelaBancoHoras(
       params.empresaId,
       params.mes,
-      params.ano
+      params.ano,
+      isEnglish
     );
 
     if (!resultado) {

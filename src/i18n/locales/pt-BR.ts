@@ -293,7 +293,7 @@ const ptBR = {
         aguardando_retorno: 'Aguardando',
         concluido: 'Concluído',
         cancelado: 'Cancelado',
-        sem_retorno: 'Sem Retorno',
+        sem_retorno: 'Encerrado Sem Retorno',
       },
       finalStatuses: {
         resolvido: 'Resolvido',
