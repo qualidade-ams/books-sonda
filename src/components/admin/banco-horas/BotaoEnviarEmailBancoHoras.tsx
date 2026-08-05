@@ -74,6 +74,8 @@ interface BotaoEnviarEmailBancoHorasProps {
   disabled?: boolean;
   diaInicioApuracao?: number;
   diaFimApuracao?: number;
+  /** Se true, gera emails em inglês. Detectado pelo template padrão da empresa. */
+  isEnglish?: boolean;
 }
 
 /** Assinatura padrão do email - imagem única */
@@ -84,8 +86,13 @@ const ASSINATURA_HTML = `
 `;
 
 /** Retorna saudação baseada no horário */
-function getSaudacao(): string {
+function getSaudacao(isEnglish: boolean = false): string {
   const hora = new Date().getHours();
+  if (isEnglish) {
+    if (hora < 12) return 'Good morning!';
+    if (hora < 18) return 'Good afternoon!';
+    return 'Good evening!';
+  }
   if (hora < 12) return 'Bom dia!';
   if (hora < 18) return 'Boa tarde!';
   return 'Boa noite!';
@@ -103,18 +110,32 @@ function gerarHtmlSaldoParcial(
   requerimentosEmDesenvolvimento: Requerimento[],
   observacoes: Observacao[],
   diaInicioApuracao: number = 1,
-  diaFimApuracao: number = 0
+  diaFimApuracao: number = 0,
+  isEnglish: boolean = false
 ): string {
-  const saudacao = getSaudacao();
-  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
-  const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
-  const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
-  const secaoObs = gerarSecaoObservacoes(observacoes);
+  const saudacao = getSaudacao(isEnglish);
+  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+  const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
+  const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
+  const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
 
-  return `
-    <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;">
-      <p style="font-size:12pt;margin-bottom:16px;"><strong>${saudacao}</strong></p>
+  const corpo = isEnglish ? `
+      <p style="font-size:12pt;margin-bottom:12px;">
+        Below is the partial forecast of hours accounted for so far.
+      </p>
       
+      <p style="font-size:12pt;margin-bottom:12px;">
+        Please note that the official closing will be done at the beginning of next month, when the monthly Book and the official consumption table for the period will be made available.
+      </p>
+      
+      <p style="font-size:12pt;margin-bottom:8px;">
+        We inform that this statement includes:
+      </p>
+      
+      <p style="font-size:12pt;margin-bottom:24px;">
+        Therefore, the values and quantities presented may change until the official month-end closing.
+      </p>
+  ` : `
       <p style="font-size:12pt;margin-bottom:12px;">
         Segue abaixo a previsão parcial das horas contabilizadas até o momento.
       </p>
@@ -130,18 +151,36 @@ function gerarHtmlSaldoParcial(
       <p style="font-size:12pt;margin-bottom:24px;">
         Dessa forma, os valores e quantidades apresentados poderão sofrer alterações até o fechamento oficial do mês.
       </p>
+  `;
 
-      ${tabelaBancoHoras}
-      ${tabelaReqPeriodo}
-      ${tabelaReqDesenv}
-      ${secaoObs}
-
+  const encerramento = isEnglish ? `
+      <p style="font-size:12pt;margin-top:24px;">
+        We remain at your disposal should you have any questions.
+      </p>
+      <p style="font-size:12pt;margin-top:8px;">
+        Best regards
+      </p>
+  ` : `
       <p style="font-size:12pt;margin-top:24px;">
         Ficamos à disposição em caso de dúvidas.
       </p>
       <p style="font-size:12pt;margin-top:8px;">
         Atenciosamente
       </p>
+  `;
+
+  return `
+    <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;">
+      <p style="font-size:12pt;margin-bottom:16px;"><strong>${saudacao}</strong></p>
+      
+      ${corpo}
+
+      ${tabelaBancoHoras}
+      ${tabelaReqPeriodo}
+      ${tabelaReqDesenv}
+      ${secaoObs}
+
+      ${encerramento}
 
       ${ASSINATURA_HTML}
     </div>
@@ -160,11 +199,18 @@ function gerarHtmlSaldoMes(
   requerimentosEmDesenvolvimento: Requerimento[],
   observacoes: Observacao[],
   diaInicioApuracao: number = 1,
-  diaFimApuracao: number = 0
+  diaFimApuracao: number = 0,
+  isEnglish: boolean = false
 ): string {
-  const saudacao = getSaudacao();
+  const saudacao = getSaudacao(isEnglish);
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   const calculoRef = calculos[calculos.length - 1];
+  
+  const MESES_EN = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const meses = isEnglish ? MESES_EN : MESES_PT;
   
   const saldoFinal = (() => {
     if (isTicket) return `${calculoRef?.saldo_tickets || 0} tickets`;
@@ -179,21 +225,43 @@ function gerarHtmlSaldoMes(
     return (calculoRef?.saldo_horas || '00:00').startsWith('-') ? '#ef4444' : '#10b981';
   })();
 
-  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
-  const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
-  const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
-  const secaoObs = gerarSecaoObservacoes(observacoes);
+  const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+  const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
+  const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
+  const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
+
+  const textoIntro = isEnglish 
+    ? `Below is the consolidated hours bank balance for the closing of <strong>${meses[mesAno.mes - 1]} ${mesAno.ano}</strong>.`
+    : `Segue abaixo o saldo consolidado do banco de horas referente ao fechamento de <strong>${meses[mesAno.mes - 1]} ${mesAno.ano}</strong>.`;
+
+  const labelSaldoFinal = isEnglish ? 'Final Period Balance' : 'Saldo Final do Período';
+
+  const encerramento = isEnglish ? `
+      <p style="font-size:12pt;margin-top:24px;">
+        We remain at your disposal should you have any questions.
+      </p>
+      <p style="font-size:12pt;margin-top:8px;">
+        Best regards,
+      </p>
+  ` : `
+      <p style="font-size:12pt;margin-top:24px;">
+        Ficamos à disposição em caso de dúvidas.
+      </p>
+      <p style="font-size:12pt;margin-top:8px;">
+        Atenciosamente,
+      </p>
+  `;
 
   return `
     <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;">
       <p style="font-size:12pt;margin-bottom:16px;"><strong>${saudacao}</strong></p>
       
       <p style="font-size:12pt;margin-bottom:12px;">
-        Segue abaixo o saldo consolidado do banco de horas referente ao fechamento de <strong>${MESES_PT[mesAno.mes - 1]} ${mesAno.ano}</strong>.
+        ${textoIntro}
       </p>
 
       <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;margin-bottom:24px;text-align:center;">
-        <p style="color:#0369a1;font-size:10pt;margin:0 0 4px 0;text-transform:uppercase;letter-spacing:0.5px;font-family:Calibri,sans-serif;">Saldo Final do Período</p>
+        <p style="color:#0369a1;font-size:10pt;margin:0 0 4px 0;text-transform:uppercase;letter-spacing:0.5px;font-family:Calibri,sans-serif;">${labelSaldoFinal}</p>
         <p style="color:${saldoColor};font-size:28px;font-weight:700;margin:0;font-family:Calibri,sans-serif;">${saldoFinal}</p>
       </div>
 
@@ -202,12 +270,7 @@ function gerarHtmlSaldoMes(
       ${tabelaReqDesenv}
       ${secaoObs}
 
-      <p style="font-size:12pt;margin-top:24px;">
-        Ficamos à disposição em caso de dúvidas.
-      </p>
-      <p style="font-size:12pt;margin-top:8px;">
-        Atenciosamente,
-      </p>
+      ${encerramento}
 
       ${ASSINATURA_HTML}
     </div>
@@ -232,6 +295,7 @@ export function BotaoEnviarEmailBancoHoras({
   disabled = false,
   diaInicioApuracao = 1,
   diaFimApuracao = 0,
+  isEnglish = false,
 }: BotaoEnviarEmailBancoHorasProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -343,35 +407,38 @@ export function BotaoEnviarEmailBancoHoras({
 
   // Texto padrão do saldo parcial
   const getTextoPadraoParcial = () => {
-    const saudacao = getSaudacao();
+    const saudacao = getSaudacao(isEnglish);
+    if (isEnglish) {
+      return `${saudacao}\n\nBelow is the partial forecast of hours accounted for so far.\n\nPlease note that the official closing will be done at the beginning of next month, when the monthly Book and the official consumption table for the period will be made available.\n\nWe inform that this statement includes:\n• Automatic entries;\n• Period requirements already accounted for in the consumption table;\n• Requirements in development, not yet accounted for in the consumption table;\n\nTherefore, the values and quantities presented may change until the official month-end closing.`;
+    }
     return `${saudacao}\n\nSegue abaixo a previsão parcial das horas contabilizadas até o momento.\n\nRessaltamos que o fechamento oficial será realizado no início do próximo mês, ocasião em que serão disponibilizados o Book mensal e o quadro oficial de consumo do período.\n\nInformamos que este demonstrativo contempla:\n• Apontamentos automáticos;\n• Requerimentos do período já contabilizados no quadro de consumo;\n• Requerimentos em desenvolvimento, ainda não contabilizados no quadro de consumo;\n\nDessa forma, os valores e quantidades apresentados poderão sofrer alterações até o fechamento oficial do mês.`;
   };
 
   // Texto padrão do saldo do mês
   const getTextoPadraoMes = () => {
-    const saudacao = getSaudacao();
-    
-    let texto = `${saudacao}\n\nComplementando o e-mail dos indicadores, segue fechamento do banco de horas:`;
-    
-    return texto;
+    const saudacao = getSaudacao(isEnglish);
+    if (isEnglish) {
+      return `${saudacao}\n\nComplementing the indicators email, please find below the hours bank closing:`;
+    }
+    return `${saudacao}\n\nComplementando o e-mail dos indicadores, segue fechamento do banco de horas:`;
   };
 
   // Gera apenas o HTML das tabelas (para renderizar como imagem)
   const gerarHtmlTabelas = () => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
-    const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
-    const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
-    const secaoObs = gerarSecaoObservacoes(observacoes);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
+    const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
+    const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
     
     return `${tabelaBancoHoras}${tabelaReqPeriodo}${tabelaReqDesenv}${secaoObs}`;
   };
 
   // Gera o HTML final combinando texto editável + tabelas
   const gerarHtmlFinal = (texto: string, tipo: TipoEmailBancoHoras) => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao);
-    const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, 'Requerimentos do Período', '#2563eb', false);
-    const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, 'Requerimentos em Desenvolvimento', '#ea580c', true);
-    const secaoObs = gerarSecaoObservacoes(observacoes);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
+    const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
+    const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
 
     // Converter quebras de linha em parágrafos HTML
     const paragrafos = texto.split('\n').filter(l => l.trim()).map(linha => {
@@ -379,8 +446,8 @@ export function BotaoEnviarEmailBancoHoras({
         return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha.substring(1).trim()}</li>`;
       }
       // Linhas de excedente ficam em negrito
-      const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:');
-      const isBold = linha === getSaudacao() || isExcedente;
+      const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:') || linha.startsWith('Surplus Hours:') || linha.startsWith('Surplus Rate/Hour:') || linha.startsWith('Total Surplus Amount:');
+      const isBold = linha === getSaudacao(isEnglish) || isExcedente;
       return `<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;${isBold ? 'font-weight:700;' : ''}">${linha}</p>`;
     }).join('\n');
 
@@ -398,23 +465,39 @@ export function BotaoEnviarEmailBancoHoras({
       const partes = horasExc.split(':');
       if (partes.length >= 3) horasExc = `${partes[0]}:${partes[1]}`;
       
+      const labelHorasExc = isEnglish ? 'Surplus Hours' : 'Horas Excedentes';
+      const labelValorHora = isEnglish ? 'Surplus Rate/Hour' : 'Valor Hora Excedentes';
+      const labelValorTotal = isEnglish ? 'Total Surplus Amount' : 'Valor total dos Excedentes';
+      const textoAguardo = isEnglish 
+        ? 'We await the PO or your approval to proceed with billing.'
+        : 'Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.';
+      const textoAtencao = isEnglish
+        ? '<strong>Attention:</strong> The deadline for validating the Hours Bank is 20 calendar days from the receipt of this email.'
+        : '<strong>Atenção:</strong> O prazo para validação do Banco é 20 dias corridos a partir do recebimento deste e-mail.';
+      const textoEncerramento = isEnglish ? 'Best regards' : 'Atenciosamente';
+      
       encerramento = `
-        <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;">Horas Excedentes: ${horasExc}</p>
-        <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">Valor Hora Excedentes: ${formatarMoeda(taxaHoraExcedente)}</p>
-        <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">Valor total dos Excedentes: ${formatarMoeda(valorExcedentes)}</p>
+        <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;">${labelHorasExc}: ${horasExc}</p>
+        <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">${labelValorHora}: ${formatarMoeda(taxaHoraExcedente)}</p>
+        <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">${labelValorTotal}: ${formatarMoeda(valorExcedentes)}</p>
         <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">
-          Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.
+          ${textoAguardo}
         </p>
         <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">
-          <strong>Atenção:</strong> O prazo para validação do Banco é 20 dias corridos a partir do recebimento deste e-mail.
+          ${textoAtencao}
         </p>
-        <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+        <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">${textoEncerramento}</p>
         ${ASSINATURA_HTML}
       `;
     } else {
+      const textoDisposicao = isEnglish 
+        ? 'We remain at your disposal should you have any questions.'
+        : 'Ficamos à disposição em caso de dúvidas.';
+      const textoEncerramento = isEnglish ? 'Best regards' : 'Atenciosamente';
+      
       encerramento = `
-        <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">Ficamos à disposição em caso de dúvidas.</p>
-        <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+        <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">${textoDisposicao}</p>
+        <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">${textoEncerramento}</p>
         ${ASSINATURA_HTML}
       `;
     }
@@ -648,8 +731,8 @@ export function BotaoEnviarEmailBancoHoras({
           if (linha.startsWith('•')) {
             return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha.substring(1).trim()}</li>`;
           }
-          const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:');
-          const isBold = linha === getSaudacao() || isExcedente;
+          const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:') || linha.startsWith('Surplus Hours:') || linha.startsWith('Surplus Rate/Hour:') || linha.startsWith('Total Surplus Amount:');
+          const isBold = linha === getSaudacao(isEnglish) || isExcedente;
           return `<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;${isBold ? 'font-weight:700;' : ''}">${linha}</p>`;
         }).join('\n');
         
@@ -665,23 +748,39 @@ export function BotaoEnviarEmailBancoHoras({
           const partes = horasExc.split(':');
           if (partes.length >= 3) horasExc = `${partes[0]}:${partes[1]}`;
           
+          const labelHorasExcImg = isEnglish ? 'Surplus Hours' : 'Horas Excedentes';
+          const labelValorHoraImg = isEnglish ? 'Surplus Rate/Hour' : 'Valor Hora Excedentes';
+          const labelValorTotalImg = isEnglish ? 'Total Surplus Amount' : 'Valor total dos Excedentes';
+          const textoAguardoImg = isEnglish 
+            ? 'We await the PO or your approval to proceed with billing.'
+            : 'Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.';
+          const textoAtencaoImg = isEnglish
+            ? '<strong>Attention:</strong> The deadline for validating the Hours Bank is 20 calendar days from the receipt of this email.'
+            : '<strong>Atenção:</strong> O prazo para validação do Banco é 20 dias corridos a partir do recebimento deste e-mail.';
+          const textoEncerramentoImg = isEnglish ? 'Best regards' : 'Atenciosamente';
+          
           encerramento = `
-            <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;">Horas Excedentes: ${horasExc}</p>
-            <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">Valor Hora Excedentes: ${formatarMoedaLocal(taxaHoraExcedente)}</p>
-            <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">Valor total dos Excedentes: ${formatarMoedaLocal(valorExcedentes)}</p>
+            <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;">${labelHorasExcImg}: ${horasExc}</p>
+            <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">${labelValorHoraImg}: ${formatarMoedaLocal(taxaHoraExcedente)}</p>
+            <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;font-weight:700;margin-bottom:12px;">${labelValorTotalImg}: ${formatarMoedaLocal(valorExcedentes)}</p>
             <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">
-              Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.
+              ${textoAguardoImg}
             </p>
             <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">
-              <strong>Atenção:</strong> O prazo para validação do Banco é 20 dias corridos a partir do recebimento deste e-mail.
+              ${textoAtencaoImg}
             </p>
-            <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+            <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">${textoEncerramentoImg}</p>
             ${ASSINATURA_HTML}
           `;
         } else {
+          const textoDisposicaoImg = isEnglish 
+            ? 'We remain at your disposal should you have any questions.'
+            : 'Ficamos à disposição em caso de dúvidas.';
+          const textoEncerramentoImg2 = isEnglish ? 'Best regards' : 'Atenciosamente';
+          
           encerramento = `
-            <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">Ficamos à disposição em caso de dúvidas.</p>
-            <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+            <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">${textoDisposicaoImg}</p>
+            <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">${textoEncerramentoImg2}</p>
             ${ASSINATURA_HTML}
           `;
         }

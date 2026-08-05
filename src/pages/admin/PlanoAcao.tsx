@@ -309,7 +309,7 @@ export default function PlanoAcao() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="h-4 w-4 text-orange-500" />
-                <p className="text-xs font-medium text-orange-500">Sem retorno</p>
+                <p className="text-xs font-medium text-orange-500">Encerrado Sem retorno</p>
               </div>
               <p className="text-2xl font-bold text-orange-600">{estatisticas.sem_retorno}</p>
             </CardContent>
