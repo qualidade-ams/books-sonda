@@ -122,7 +122,14 @@ class InconsistenciasDeteccaoService {
 
   /**
    * Gera chave única para uma inconsistência (evita duplicatas)
-   * Usa formato normalizado da data (ISO sem timezone) para garantir consistência
+   * 
+   * Para tickets com tipos "por ticket" (ic_999999, sem_atualizacao), a chave NÃO inclui
+   * a data, pois a inconsistência é UMA por ticket, independente da data de abertura.
+   * Isso evita duplicatas quando data_abertura muda de null para um valor real entre syncs.
+   * 
+   * Para apontamentos e tipos "por apontamento" (mes_diferente, tempo_excessivo), a chave
+   * inclui a data normalizada (apenas YYYY-MM-DD) para diferenciar múltiplos apontamentos
+   * do mesmo chamado em datas diferentes.
    */
   private gerarChaveUnica(
     origem: string,
@@ -130,13 +137,22 @@ class InconsistenciasDeteccaoService {
     tipoInconsistencia: string,
     dataAtividade: string | null
   ): string {
-    // Normalizar a data para formato consistente (YYYY-MM-DDTHH:mm:ss)
+    // Para tickets com tipos "por ticket", não incluir data na chave
+    // Isso evita duplicatas quando data_abertura é populada entre sincronizações
+    const tiposPorTicket = ['ic_999999', 'sem_atualizacao'];
+    if (origem === 'tickets' && tiposPorTicket.includes(tipoInconsistencia)) {
+      return `${origem}-${nroChamado}-${tipoInconsistencia}`;
+    }
+
+    // Para apontamentos, normalizar a data usando apenas YYYY-MM-DD para evitar
+    // duplicatas causadas por diferenças de timezone (ex: 19:26:51 vs 22:26:51)
     let dataNormalizada = 'null';
     if (dataAtividade) {
       try {
         const d = new Date(dataAtividade);
         if (!isNaN(d.getTime())) {
-          dataNormalizada = d.toISOString().replace('Z', '').split('.')[0];
+          // Usar apenas a data (YYYY-MM-DD) para evitar problemas de timezone
+          dataNormalizada = d.toISOString().split('T')[0];
         } else {
           dataNormalizada = dataAtividade;
         }
