@@ -755,7 +755,7 @@ class InconsistenciasDeteccaoService {
         const batch = idsCandidata.slice(i, i + batchSize);
         const { data, error } = await supabase
           .from('inconsistencias_chamados' as any)
-          .select('id, origem, nro_chamado, tipo_inconsistencia, data_atividade, data_sistema, tempo_gasto_horas, item_configuracao, chave_unica')
+          .select('id, origem, nro_chamado, nro_tarefa, tipo_inconsistencia, data_atividade, data_sistema, tempo_gasto_horas, item_configuracao, chave_unica')
           .in('id', batch);
 
         if (error) {
@@ -787,14 +787,46 @@ class InconsistenciasDeteccaoService {
    * consultando o registro original no banco
    */
   private async verificarSeRealmenteResolvida(inconsistencia: any): Promise<boolean> {
-    const { origem, nro_chamado, tipo_inconsistencia, data_atividade } = inconsistencia;
+    const { origem, nro_chamado, nro_tarefa, tipo_inconsistencia, data_atividade } = inconsistencia;
 
     try {
       if (origem === 'apontamentos') {
         // Extrair número do chamado (remover prefixo tipo "RF ", "IM ", etc.)
         const nroLimpo = nro_chamado.replace(/^(RF|IM|PM)\s*/, '');
-        
-        // Buscar o apontamento original com a mesma data_atividade
+
+        // === VERIFICAÇÃO 1: Tarefa específica foi excluída do chamado ===
+        // Se temos nro_tarefa, verificar se a tarefa específica ainda existe.
+        // Se o chamado existe mas a tarefa NÃO, significa que foi excluída no Aranda → resolver.
+        if (nro_tarefa) {
+          const { data: tarefaExiste, error: errTarefa } = await supabase
+            .from('apontamentos_aranda' as any)
+            .select('id')
+            .eq('nro_chamado', nroLimpo)
+            .eq('nro_tarefa', nro_tarefa)
+            .limit(1);
+
+          if (!errTarefa && (!tarefaExiste || tarefaExiste.length === 0)) {
+            // Tarefa não encontrada - verificar se o chamado pai existe (outras tarefas)
+            const { data: chamadoExiste, error: errChamado } = await supabase
+              .from('apontamentos_aranda' as any)
+              .select('id')
+              .eq('nro_chamado', nroLimpo)
+              .limit(1);
+
+            if (!errChamado && chamadoExiste && chamadoExiste.length > 0) {
+              // O chamado existe mas a tarefa específica foi removida → RESOLVIDA
+              console.log(`✅ [DETECCAO] Tarefa ${nro_tarefa} do chamado ${nro_chamado} foi excluída do sistema de origem - marcando como resolvida`);
+              return true;
+            }
+            // Se nem o chamado existe, pode ser problema de sync - mantém conservador
+          }
+
+          if (errTarefa) {
+            console.error(`❌ [DETECCAO] Erro ao verificar tarefa ${nro_tarefa}:`, errTarefa);
+          }
+        }
+
+        // === VERIFICAÇÃO 2: Busca padrão por chamado + data_atividade ===
         let query = supabase
           .from('apontamentos_aranda' as any)
           .select('data_atividade, data_sistema, tempo_gasto_horas, tempo_gasto_minutos, item_configuracao')
@@ -817,9 +849,24 @@ class InconsistenciasDeteccaoService {
         }
 
         if (!registros || registros.length === 0) {
-          // Registro não encontrado no banco - pode não ter sido sincronizado ainda
-          // NÃO marca como resolvida (conservador - mantém ativa até que o registro
-          // reapareça na sync e seja verificado como correto)
+          // Registro não encontrado no banco.
+          // Se temos nro_tarefa e chegamos aqui, significa que a verificação 1 não resolveu
+          // (chamado pai também não existe) - pode ser problema de sync, mantém conservador.
+          // Se NÃO temos nro_tarefa, verificar se o chamado existe de alguma forma
+          if (!nro_tarefa) {
+            const { data: chamadoExisteGeral, error: errGeral } = await supabase
+              .from('apontamentos_aranda' as any)
+              .select('id')
+              .eq('nro_chamado', nroLimpo)
+              .limit(1);
+
+            if (!errGeral && chamadoExisteGeral && chamadoExisteGeral.length > 0) {
+              // O chamado existe mas não para esta data - possível exclusão de apontamento → RESOLVIDA
+              console.log(`✅ [DETECCAO] Apontamento do chamado ${nro_chamado} na data ${data_atividade} não existe mais - marcando como resolvida`);
+              return true;
+            }
+          }
+
           console.log(`⚠️ [DETECCAO] Apontamento ${nro_chamado} não encontrado no banco - mantém ativa`);
           return false;
         }
