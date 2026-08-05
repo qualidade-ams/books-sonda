@@ -2011,7 +2011,7 @@ const en = {
     // Products
     fiscal: 'Fiscal',
     comex: 'Comex',
-    fiscalComex: 'Fiscal + Comex',
+    fiscalComex: 'Fiscal + Gallery + Comex',
     onlyFiscal: 'Fiscal Only',
     onlyGallery: 'Gallery Only',
     onlyComex: 'Comex Only',

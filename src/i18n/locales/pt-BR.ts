@@ -2011,7 +2011,7 @@ const ptBR = {
     // Produtos
     fiscal: 'Fiscal',
     comex: 'Comex',
-    fiscalComex: 'Fiscal + Comex',
+    fiscalComex: 'Fiscal + Gallery + Comex',
     onlyFiscal: 'Somente Fiscal',
     onlyGallery: 'Somente Gallery',
     onlyComex: 'Somente Comex',
