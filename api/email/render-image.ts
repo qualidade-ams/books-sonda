@@ -154,9 +154,14 @@ export default async function handler(
     // Aguardar re-render após redimensionamento (importante para Vercel/Chromium)
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Screenshot fullPage para capturar todo o conteúdo sem depender de clip
+    // Screenshot com clip exato — NÃO usar fullPage para evitar duplicação
     const screenshot = await page.screenshot({
-      fullPage: true,
+      clip: {
+        x: 0,
+        y: 0,
+        width: contentWidth,
+        height: contentHeight
+      },
       type: 'png',
       encoding: 'base64'
     });
