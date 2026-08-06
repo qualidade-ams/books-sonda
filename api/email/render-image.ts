@@ -105,10 +105,15 @@ export default async function handler(
 
     const page = await browser.newPage();
 
+    // Usar deviceScaleFactor 1 na Vercel para evitar problemas de memória com imagens grandes
+    const isVercel = !localBrowser;
+    const scaleFactor = isVercel ? 1 : 2;
+
+    // Definir viewport inicial com altura generosa para que todo o conteúdo seja renderizado
     await page.setViewport({
       width: viewportWidth,
-      height: 100,
-      deviceScaleFactor: 2
+      height: 16384,
+      deviceScaleFactor: scaleFactor
     });
 
     // Carregar HTML com espera para fontes e imagens
@@ -137,21 +142,21 @@ export default async function handler(
     const contentHeight = contentDimensions.height;
     const contentWidth = Math.max(contentDimensions.width, viewportWidth);
 
+    console.log(`📐 Dimensões do conteúdo: ${contentWidth}x${contentHeight} (scale: ${scaleFactor})`);
+
     // Redimensionar viewport para a dimensão exata do conteúdo
     await page.setViewport({
       width: contentWidth,
-      height: Math.max(contentHeight, 100),
-      deviceScaleFactor: 2
+      height: contentHeight,
+      deviceScaleFactor: scaleFactor
     });
 
-    // Screenshot com clip exato do conteúdo (sem espaço em branco extra)
+    // Aguardar re-render após redimensionamento (importante para Vercel/Chromium)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Screenshot fullPage para capturar todo o conteúdo sem depender de clip
     const screenshot = await page.screenshot({
-      clip: {
-        x: 0,
-        y: 0,
-        width: contentWidth,
-        height: contentHeight
-      },
+      fullPage: true,
       type: 'png',
       encoding: 'base64'
     });
