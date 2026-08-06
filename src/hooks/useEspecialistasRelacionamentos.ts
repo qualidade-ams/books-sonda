@@ -74,9 +74,10 @@ export function useSalvarEspecialistasPesquisa() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ pesquisaId, especialistasIds }: { 
+    mutationFn: async ({ pesquisaId, especialistasIds, skipPrestadorSync = false }: { 
       pesquisaId: string; 
-      especialistasIds: string[] 
+      especialistasIds: string[];
+      skipPrestadorSync?: boolean;
     }) => {
       // 1. Remover relacionamentos existentes
       const { error: deleteError } = await supabase
@@ -105,33 +106,40 @@ export function useSalvarEspecialistasPesquisa() {
           throw insertError;
         }
 
-        // 3. Sincronizar campo prestador na pesquisas_satisfacao com o nome do primeiro especialista
-        const { data: especialistaData } = await supabase
-          .from('especialistas')
-          .select('nome')
-          .in('id', especialistasIds);
+        // 3. Sincronizar campo prestador na pesquisas_satisfacao com o nome dos especialistas
+        // APENAS se não foi solicitado para pular (ex: quando prestador já inclui consultores manuais)
+        if (!skipPrestadorSync) {
+          const { data: especialistaData } = await supabase
+            .from('especialistas')
+            .select('nome')
+            .in('id', especialistasIds);
 
-        if (especialistaData && especialistaData.length > 0) {
-          const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
-          if (nomesPrestadores) {
-            const { error: updateError } = await supabase
-              .from('pesquisas_satisfacao')
-              .update({ prestador: nomesPrestadores })
-              .eq('id', pesquisaId);
+          if (especialistaData && especialistaData.length > 0) {
+            const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
+            if (nomesPrestadores) {
+              const { error: updateError } = await supabase
+                .from('pesquisas_satisfacao')
+                .update({ prestador: nomesPrestadores })
+                .eq('id', pesquisaId);
 
-            if (updateError) {
-              console.warn('⚠️ Erro ao sincronizar prestador na pesquisa:', updateError);
-            } else {
-              console.log('✅ Prestador sincronizado na pesquisa:', nomesPrestadores);
+              if (updateError) {
+                console.warn('⚠️ Erro ao sincronizar prestador na pesquisa:', updateError);
+              } else {
+                console.log('✅ Prestador sincronizado na pesquisa:', nomesPrestadores);
+              }
             }
           }
+        } else {
+          console.log('ℹ️ Pulando sincronização do prestador (já definido com consultores manuais)');
         }
       } else {
         // Se removeu todos os especialistas, limpar o prestador
-        await supabase
-          .from('pesquisas_satisfacao')
-          .update({ prestador: null })
-          .eq('id', pesquisaId);
+        if (!skipPrestadorSync) {
+          await supabase
+            .from('pesquisas_satisfacao')
+            .update({ prestador: null })
+            .eq('id', pesquisaId);
+        }
       }
 
       return { pesquisaId, especialistasIds };

@@ -2,7 +2,7 @@
  * Página para visualização de todas as pesquisas de satisfação
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Eye, X, Filter, Edit, Trash2, Search, FileText, Clock, CheckCircle, Server, FileEdit, Check, ChevronsUpDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,9 @@ function VisualizarPesquisas() {
   
   // Estado para consultores manuais (adicionados via MultiSelect)
   const [consultoresManuaisEdicao, setConsultoresManuaisEdicao] = useState<Array<{value: string; label: string}>>([]);
+  
+  // Ref para evitar que o useEffect de especialistas sobrescreva IDs manuais já adicionados
+  const especialistasJaInicializados = useRef(false);
 
   // Hooks para dados de seleção
   const { empresas } = useEmpresas();
@@ -242,10 +245,15 @@ function VisualizarPesquisas() {
     console.log('🔄 [VisualizarPesquisas useEffect] especialistasIds:', especialistasIds);
     console.log('🔄 [VisualizarPesquisas useEffect] especialistasLoading:', especialistasLoading);
     console.log('🔄 [VisualizarPesquisas useEffect] dadosEdicao.especialistas_ids atual:', dadosEdicao.especialistas_ids);
+    console.log('🔄 [VisualizarPesquisas useEffect] especialistasJaInicializados:', especialistasJaInicializados.current);
     
-    if (pesquisaEditando && !especialistasLoading) {
+    if (pesquisaEditando && !especialistasLoading && !especialistasJaInicializados.current) {
       console.log('✅ [VisualizarPesquisas useEffect] Dados carregados! Atualizando especialistas_ids para:', especialistasIds);
       setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
+      // Marcar como inicializado apenas quando temos dados ou quando confirmamos que não há especialistas
+      if (especialistasIds.length > 0 || !pesquisaEditando.prestador) {
+        especialistasJaInicializados.current = true;
+      }
     }
   }, [pesquisaEditando?.id, especialistasIds.length, especialistasLoading]); // Incluir especialistasLoading nas dependências
 
@@ -259,6 +267,9 @@ function VisualizarPesquisas() {
     console.log('📝 [handleEditarPesquisa] Pesquisa:', pesquisa);
     console.log('📝 [handleEditarPesquisa] Pesquisa ID:', pesquisa.id);
     console.log('📝 [handleEditarPesquisa] Prestador:', pesquisa.prestador);
+    
+    // Resetar flag para permitir inicialização dos especialistas ao abrir novo modal
+    especialistasJaInicializados.current = false;
     
     setPesquisaEditando(pesquisa);
     
@@ -329,11 +340,18 @@ function VisualizarPesquisas() {
       const idsDb = todosIds.filter(id => !id.startsWith('manual_'));
       const idsManuais = todosIds.filter(id => id.startsWith('manual_'));
 
+      console.log('💾 [salvarEdicao] === INÍCIO ===');
+      console.log('💾 [salvarEdicao] todosIds:', todosIds);
+      console.log('💾 [salvarEdicao] idsDb:', idsDb);
+      console.log('💾 [salvarEdicao] idsManuais:', idsManuais);
+      console.log('💾 [salvarEdicao] consultoresManuaisEdicao:', consultoresManuaisEdicao);
+
       // Criar consultores manuais na tabela especialistas e obter UUIDs reais
       const idsNovosCriados: string[] = [];
       if (idsManuais.length > 0) {
         for (const idManual of idsManuais) {
           const consultorManual = consultoresManuaisEdicao.find(c => c.value === idManual);
+          console.log('💾 [salvarEdicao] Buscando consultor manual com value:', idManual, '→ encontrado:', consultorManual);
           if (consultorManual) {
             // Verificar se já existe um especialista com esse nome
             const { data: existente } = await supabase
@@ -351,7 +369,7 @@ function VisualizarPesquisas() {
               // (não aparece na interface de gestão de especialistas, mas é encontrado ao reabrir edição)
               const { data: novoEspecialista, error: errorCriar } = await supabase
                 .from('especialistas')
-                .insert({ nome: consultorManual.label.trim(), status: 'manual' })
+                .insert({ nome: consultorManual.label.trim(), status: 'manual' as any })
                 .select('id')
                 .single();
 

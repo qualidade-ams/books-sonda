@@ -647,20 +647,25 @@ export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormD
       }
 
       // Sincronizar campo prestador com nomes dos especialistas
-      const { data: especialistaData } = await supabase
-        .from('especialistas')
-        .select('nome')
-        .in('id', dados.especialistas_ids);
+      // APENAS se o prestador NÃO foi explicitamente fornecido nos dados (evita sobrescrever consultores manuais)
+      if (dados.prestador === undefined) {
+        const { data: especialistaData } = await supabase
+          .from('especialistas')
+          .select('nome')
+          .in('id', dados.especialistas_ids);
 
-      if (especialistaData && especialistaData.length > 0) {
-        const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
-        if (nomesPrestadores) {
-          await supabase
-            .from('pesquisas_satisfacao')
-            .update({ prestador: nomesPrestadores })
-            .eq('id', id);
-          console.log('✅ [ATUALIZAR] Prestador sincronizado:', nomesPrestadores);
+        if (especialistaData && especialistaData.length > 0) {
+          const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
+          if (nomesPrestadores) {
+            await supabase
+              .from('pesquisas_satisfacao')
+              .update({ prestador: nomesPrestadores })
+              .eq('id', id);
+            console.log('✅ [ATUALIZAR] Prestador sincronizado:', nomesPrestadores);
+          }
         }
+      } else {
+        console.log('ℹ️ [ATUALIZAR] Prestador já fornecido nos dados, pulando sincronização automática');
       }
     } else {
       console.log('ℹ️ [ATUALIZAR] Nenhum relacionamento para salvar (lista vazia)');
