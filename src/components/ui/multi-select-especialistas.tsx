@@ -75,21 +75,33 @@ export function MultiSelectEspecialistas({
   // Estado interno para garantir que mudanças não sejam perdidas
   const [internalValue, setInternalValue] = React.useState<string[]>(value);
   
-  // Sincronizar estado interno com prop value apenas quando necessário
+  // Ref para rastrear o último valor enviado ao pai via onValueChange
+  const lastEmittedValue = React.useRef<string[]>(value);
+  
+  // Sincronizar estado interno com prop value apenas quando o pai muda externamente
+  // (não quando a mudança foi iniciada internamente via onValueChange)
   React.useEffect(() => {
-    if (JSON.stringify(value) !== JSON.stringify(internalValue)) {
-      console.log('🔄 [MultiSelectEspecialistas] Sincronizando valor:', value);
+    // Se o valor da prop é diferente do que emitimos por último, significa que o pai mudou externamente
+    if (JSON.stringify(value) !== JSON.stringify(lastEmittedValue.current)) {
+      console.log('🔄 [MultiSelectEspecialistas] Sincronizando valor (mudança externa):', value);
       console.log('🔄 [MultiSelectEspecialistas] Valor anterior (internal):', internalValue);
-      console.log('🔄 [MultiSelectEspecialistas] Novo valor (prop):', value);
       setInternalValue(value);
+      lastEmittedValue.current = value;
     }
-  }, [value, internalValue]);
+  }, [value]);
   
   // Log quando consultores manuais mudam
   React.useEffect(() => {
     console.log('📋 [MultiSelectEspecialistas] Consultores manuais atualizados:', consultoresManuais);
     console.log('📋 [MultiSelectEspecialistas] Quantidade:', consultoresManuais.length);
   }, [consultoresManuais]);
+
+  // Helper para emitir mudanças de valor (atualiza state interno + notifica pai + atualiza ref)
+  const emitValueChange = React.useCallback((novoValor: string[]) => {
+    setInternalValue(novoValor);
+    lastEmittedValue.current = novoValor;
+    onValueChange?.(novoValor);
+  }, [onValueChange]);
   
   const { 
     especialistas, 
@@ -155,10 +167,8 @@ export function MultiSelectEspecialistas({
     
     const novoValor = internalValue.filter(id => id !== item);
     console.log('🗑️ [MultiSelectEspecialistas] novoValor calculado:', novoValor);
-    console.log('🗑️ [MultiSelectEspecialistas] Chamando setInternalValue...');
-    setInternalValue(novoValor);
-    console.log('🗑️ [MultiSelectEspecialistas] Chamando onValueChange...');
-    onValueChange?.(novoValor);
+    console.log('🗑️ [MultiSelectEspecialistas] Chamando emitValueChange...');
+    emitValueChange(novoValor);
     
     // Fechar o popover após remover (para não bloquear outros elementos)
     setOpen(false);
@@ -180,8 +190,7 @@ export function MultiSelectEspecialistas({
         }
         const novoValor = internalValue.slice(0, -1);
         console.log('⌫ [MultiSelectEspecialistas] Removendo último item via teclado:', ultimoItem, 'Novo valor:', novoValor);
-        setInternalValue(novoValor);
-        onValueChange?.(novoValor);
+        emitValueChange(novoValor);
       }
     }
     // Escape closes the popover
@@ -213,8 +222,7 @@ export function MultiSelectEspecialistas({
     // Adicionar à seleção
     const novoValor = [...internalValue, idTemporario];
     console.log('➕ [MultiSelectEspecialistas] Adicionando consultor manual:', novoConsultor.label, 'Novo valor:', novoValor);
-    setInternalValue(novoValor);
-    onValueChange?.(novoValor);
+    emitValueChange(novoValor);
     
     // Limpar o modal
     setNomeNovoConsultor('');
@@ -418,8 +426,7 @@ export function MultiSelectEspecialistas({
                           onSelect={() => {
                             const novoValor = [...internalValue, option.value];
                             console.log('➕ [MultiSelectEspecialistas] Adicionando especialista:', option.label, 'Novo valor:', novoValor);
-                            setInternalValue(novoValor);
-                            onValueChange?.(novoValor);
+                            emitValueChange(novoValor);
                             atualizarBusca("");
                           }}
                           className="flex items-center gap-2 cursor-pointer hover:bg-accent min-w-max"

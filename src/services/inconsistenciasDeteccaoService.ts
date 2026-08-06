@@ -494,15 +494,15 @@ class InconsistenciasDeteccaoService {
       const dataInicio = `${anoAtual - 1}-01-01`;
 
       // Buscar TODOS os registros com paginação
-      // Excluir tickets com status finalizado (Cancelled, Closed, Resolved) 
-      // pois não faz sentido monitorar atualização de tickets finalizados
+      // Excluir apenas tickets Cancelled e Closed (finalizados definitivamente).
+      // Tickets "Resolved" são mantidos pois ainda podem ter IC 999999 pendente de correção.
       const data = await this.buscarTodosPaginado<any>(
         () => supabase
           .from('apontamentos_tickets_aranda' as any)
           .select('id, nro_solicitacao, cod_tipo, data_abertura, organizacao, nome_responsavel, item_configuracao, nome_grupo, status, data_ultimo_comentario, cod_resolucao')
           .gte('data_abertura', dataInicio)
           .neq('nome_grupo', 'CA SDM')
-          .not('status', 'in', '("Cancelled","Closed","Resolved")'),
+          .not('status', 'in', '("Cancelled","Closed")'),
         'id'
       );
 
@@ -520,7 +520,7 @@ class InconsistenciasDeteccaoService {
           ticket.item_configuracao
         );
 
-        // Regra: Sem atualização há 16+ dias
+        // Regra: Sem atualização há 16+ dias (apenas tickets com status ativo, NÃO Resolved)
         const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged'];
         if (
           ticket.status &&
@@ -967,14 +967,20 @@ class InconsistenciasDeteccaoService {
     tipoInconsistencia: string,
     registro: { data_abertura: string | null; item_configuracao: string | null; data_ultimo_comentario: string | null; status: string | null; nome_grupo?: string | null }
   ): boolean {
-    // Tickets com status finalizado (Cancelled, Closed, Resolved) são considerados resolvidos
-    const statusFinalizados = ['Cancelled', 'Closed', 'Resolved'];
-    if (registro.status && statusFinalizados.includes(registro.status)) {
+    // Tickets Cancelled/Closed são sempre considerados resolvidos (para qualquer tipo)
+    const statusDefinitivamenteFinalizados = ['Cancelled', 'Closed'];
+    if (registro.status && statusDefinitivamenteFinalizados.includes(registro.status)) {
       return true;
     }
 
     // Tickets movidos para CA SDM são considerados resolvidos (grupo de roteamento/SDM)
     if (registro.nome_grupo === 'CA SDM') {
+      return true;
+    }
+
+    // Para "Resolved": considerar resolvido apenas para sem_atualizacao.
+    // Para ic_999999, o que importa é se o IC foi corrigido, não o status do ticket.
+    if (registro.status === 'Resolved' && tipoInconsistencia !== 'ic_999999') {
       return true;
     }
 

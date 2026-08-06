@@ -58,7 +58,10 @@ export function useAtualizarPesquisaComEspecialistas() {
       if (dados.especialistas_ids !== undefined) {
         await salvarEspecialistas.mutateAsync({
           pesquisaId: id,
-          especialistasIds: dados.especialistas_ids
+          especialistasIds: dados.especialistas_ids,
+          // Pular sincronização do prestador quando já foi definido explicitamente
+          // (ex: quando há consultores manuais incluídos no prestador)
+          skipPrestadorSync: dados.prestador !== undefined
         });
       }
       
