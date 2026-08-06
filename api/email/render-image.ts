@@ -109,10 +109,10 @@ export default async function handler(
     const isVercel = !localBrowser;
     const scaleFactor = isVercel ? 1 : 2;
 
-    // Definir viewport inicial com altura generosa para que todo o conteúdo seja renderizado
+    // Viewport inicial com altura mínima — será redimensionado após medir o conteúdo
     await page.setViewport({
       width: viewportWidth,
-      height: 16384,
+      height: 100,
       deviceScaleFactor: scaleFactor
     });
 
@@ -128,21 +128,43 @@ export default async function handler(
 
     // Medir a altura real do conteúdo completo
     const contentDimensions = await page.evaluate(() => {
-      // Usar scrollHeight/scrollWidth do body que captura TODO o conteúdo incluindo margins/paddings
       const bodyHeight = document.body.scrollHeight;
       const docHeight = document.documentElement.scrollHeight;
       const bodyWidth = document.body.scrollWidth;
       const docWidth = document.documentElement.scrollWidth;
+      const bodyClientHeight = document.body.clientHeight;
+      const docClientHeight = document.documentElement.clientHeight;
+      const bodyOffsetHeight = document.body.offsetHeight;
+
+      // Medir também o último elemento do DOM para comparar
+      const allElements = document.querySelectorAll('*');
+      let maxBottom = 0;
+      allElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom > maxBottom) maxBottom = rect.bottom;
+      });
+
       return {
-        height: Math.ceil(Math.max(bodyHeight, docHeight)),
-        width: Math.ceil(Math.max(bodyWidth, docWidth)),
+        bodyScrollHeight: bodyHeight,
+        docScrollHeight: docHeight,
+        bodyClientHeight,
+        docClientHeight,
+        bodyOffsetHeight,
+        bodyScrollWidth: bodyWidth,
+        docScrollWidth: docWidth,
+        maxElementBottom: Math.ceil(maxBottom),
+        childrenCount: document.body.children.length,
       };
     });
 
-    const contentHeight = contentDimensions.height;
-    const contentWidth = Math.max(contentDimensions.width, viewportWidth);
+    const contentHeight = Math.ceil(Math.max(
+      contentDimensions.bodyScrollHeight,
+      contentDimensions.docScrollHeight
+    ));
+    const contentWidth = Math.max(contentDimensions.bodyScrollWidth, viewportWidth);
 
-    console.log(`📐 Dimensões do conteúdo: ${contentWidth}x${contentHeight} (scale: ${scaleFactor})`);
+    console.log(`📐 DEBUG dimensões:`, JSON.stringify(contentDimensions));
+    console.log(`📐 Usando: ${contentWidth}x${contentHeight} (scale: ${scaleFactor}, isVercel: ${isVercel})`);
 
     // Redimensionar viewport para a dimensão exata do conteúdo
     await page.setViewport({
@@ -174,7 +196,15 @@ export default async function handler(
       success: true,
       image: screenshot,
       contentType: 'image/png',
-      width: contentWidth
+      width: contentWidth,
+      // DEBUG: remover após investigação
+      debug: {
+        contentWidth,
+        contentHeight,
+        scaleFactor,
+        isVercel,
+        dimensions: contentDimensions,
+      }
     }));
 
   } catch (error) {
