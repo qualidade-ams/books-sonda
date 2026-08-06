@@ -133,6 +133,14 @@ export default function EnviarElogios() {
         
         if (response.ok) {
           const data = await response.json();
+          // DEBUG: logar dimensões para investigação de duplicação em PRD
+          if (data.debug) {
+            console.group('🔍 DEBUG render-image');
+            console.log('Dimensões usadas:', data.debug.contentWidth + 'x' + data.debug.contentHeight);
+            console.log('Scale factor:', data.debug.scaleFactor, '| isVercel:', data.debug.isVercel);
+            console.log('Detalhes DOM:', JSON.stringify(data.debug.dimensions, null, 2));
+            console.groupEnd();
+          }
           if (data.success && data.image) {
             setCorpoEmailImagem(data.image);
             
