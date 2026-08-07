@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sincronizarApontamentosIncremental } from './services/incrementalSyncApontamentosService';
 import { sincronizarTicketsIncremental } from './services/incrementalSyncTicketsService';
 import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from './services/incrementalSyncPesquisasService';
+import { executarDeteccaoInconsistencias } from './services/inconsistenciasDeteccaoService';
 
 const app = express();
 app.use(cors());
@@ -4148,6 +4149,47 @@ app.post('/api/sync-pesquisas-por-caso/:nroCaso', async (req, res) => {
       operacao: 'erro',
       nro_caso: nroCaso,
       mensagem: `Erro fatal: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`,
+      tempo_execucao: `${duration}s`
+    });
+  }
+});
+
+// ============================================
+// ENDPOINT DE DETECÇÃO DE INCONSISTÊNCIAS
+// ============================================
+
+/**
+ * POST /api/detectar-inconsistencias
+ * Executa detecção de inconsistências nos dados sincronizados.
+ * Processa por tipo com queries SQL otimizadas (sem timeout).
+ */
+app.post('/api/detectar-inconsistencias', async (req, res) => {
+  const startTime = Date.now();
+
+  try {
+    console.log('🔍 [API] Iniciando detecção de inconsistências...');
+
+    const resultado = await executarDeteccaoInconsistencias(supabase);
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    resultado.tempo_execucao = `${duration}s`;
+    resultado.mensagens.push(`Tempo de execução: ${duration}s`);
+
+    console.log(`✅ [API] Detecção concluída em ${duration}s`);
+
+    res.status(resultado.sucesso ? 200 : 207).json(resultado);
+  } catch (erro) {
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error('❌ [API] Erro fatal na detecção de inconsistências:', erro);
+
+    res.status(500).json({
+      sucesso: false,
+      novas: 0,
+      resolvidas: 0,
+      mantidas: 0,
+      total_detectadas: 0,
+      por_tipo: {},
+      mensagens: [`Erro fatal: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`],
       tempo_execucao: `${duration}s`
     });
   }

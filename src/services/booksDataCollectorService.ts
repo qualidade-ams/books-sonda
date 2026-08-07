@@ -354,7 +354,7 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
     // FECHADOS: Buscar por data_solucao no mês com filtros específicos (exclui Cancelled)
     const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
@@ -367,7 +367,7 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
     if (ticketsAbertosError) {
       console.error('❌ Erro ao buscar apontamentos_tickets_aranda (abertos):', ticketsAbertosError);
@@ -543,7 +543,7 @@ class BooksDataCollectorService {
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
     if (errorBacklog) {
       console.error('❌ Erro ao buscar backlog total:', errorBacklog);
@@ -635,7 +635,7 @@ class BooksDataCollectorService {
         .neq('status', 'Cancelled')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
       const totalIncidentes = (ticketsFechados || []).length;
 
@@ -734,7 +734,7 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
     
     if (errorAbertos) {
       console.error('❌ Erro ao buscar tickets abertos do semestre:', errorAbertos);
@@ -760,7 +760,7 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
     
     if (errorFechados) {
       console.error('❌ Erro ao buscar tickets fechados do semestre:', errorFechados);
@@ -1143,7 +1143,7 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
     if (errorFechados) {
       console.error('❌ Erro ao buscar tickets fechados:', errorFechados);
@@ -1392,7 +1392,7 @@ class BooksDataCollectorService {
         cod_tipo: '!= Problema',
         item_configuracao: 'IS NULL OR != 000000 - PROJETOS APL',
         caso_pai: 'SIM',
-        nome_grupo: 'NOT IN (AMS APL - TÉCNICO, CA SDM)'
+        nome_grupo: 'NOT IN (AMS APL - TÉCNICO, CA SDM, PROJETOS APL - PLSQL)'
       }
     });
 
@@ -1408,7 +1408,7 @@ class BooksDataCollectorService {
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
     if (error) {
       console.error('❌ Erro ao buscar backlog:', error);
@@ -2225,7 +2225,7 @@ class BooksDataCollectorService {
    * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
    * - Pesquisas com data_resposta preenchido = RESPONDIDAS
    * - Pesquisas com data_resposta NULL = NÃO RESPONDIDAS
-   * - EXCLUI grupos: "AMS APL - TÉCNICO" e "CA SDM"
+   * - EXCLUI grupos: "AMS APL - TÉCNICO", "CA SDM" e "PROJETOS APL - PLSQL"
    * - EXCLUI tipo_caso: "PM"
    */
   private async gerarDadosPesquisa(
@@ -2259,11 +2259,11 @@ class BooksDataCollectorService {
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString()
       });
-      console.log('🚫 Grupos excluídos: "AMS APL - TÉCNICO", "CA SDM"');
+      console.log('🚫 Grupos excluídos: "AMS APL - TÉCNICO", "CA SDM", "PROJETOS APL - PLSQL"');
       console.log('🚫 Tipo de caso excluído: "PM"');
 
       // 3. Buscar todas as pesquisas da empresa no período (data_fechamento)
-      // Excluindo grupos "AMS APL - TÉCNICO" e "CA SDM"
+      // Excluindo grupos "AMS APL - TÉCNICO", "CA SDM" e "PROJETOS APL - PLSQL"
       // Excluindo tipo_caso "PM"
       const { data: pesquisas, error: pesquisasError } = await supabase
         .from('pesquisas_satisfacao')
@@ -2271,7 +2271,7 @@ class BooksDataCollectorService {
         .eq('empresa', nomeCompletoEmpresa)
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
-        .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+        .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
         .neq('tipo_caso', 'PM');
 
       if (pesquisasError) {
@@ -2633,7 +2633,7 @@ class BooksDataCollectorService {
         .neq('status', 'Cancelled')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
 
       // Contar incidentes fechados no mês (base para cálculo)
       const incidentesFechados = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente');

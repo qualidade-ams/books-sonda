@@ -100,23 +100,53 @@ export default function InconsistenciaChamados() {
   const { enviarNotificacao, isEnviando } = useEnviarNotificacao();
   const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
 
-  // Query para empresas cadastradas (validação visual)
+  // Query para empresas cadastradas (validação visual e de-para nome abreviado)
   const { data: empresasCadastradas } = useQuery({
     queryKey: ['empresas-nomes-cadastradas'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresas_clientes')
-        .select('nome_abreviado')
+        .select('nome_abreviado, nome_completo')
         .order('nome_abreviado');
       if (error) throw error;
-      return (data || []).map(e => e.nome_abreviado?.toUpperCase().trim()).filter(Boolean) as string[];
+      return data || [];
     },
     staleTime: 10 * 60 * 1000,
   });
 
-  const isEmpresaCadastrada = (nomeEmpresa: string | null) => {
-    if (!nomeEmpresa || !empresasCadastradas) return true;
-    return empresasCadastradas.includes(nomeEmpresa.toUpperCase().trim());
+  // Função para obter nome abreviado e verificar se empresa está cadastrada
+  const obterDadosEmpresa = (nomeEmpresa: string | null): { nome: string; encontrada: boolean } => {
+    if (!nomeEmpresa) return { nome: '-', encontrada: false };
+    if (!empresasCadastradas) return { nome: nomeEmpresa, encontrada: true };
+    
+    const nomeNormalizado = nomeEmpresa.toUpperCase().trim();
+    
+    // Busca exata por nome_completo ou nome_abreviado
+    const empresaExata = empresasCadastradas.find(
+      e => e.nome_completo?.toUpperCase().trim() === nomeNormalizado || 
+           e.nome_abreviado?.toUpperCase().trim() === nomeNormalizado
+    );
+    if (empresaExata) {
+      return { nome: empresaExata.nome_abreviado || nomeEmpresa, encontrada: true };
+    }
+    
+    // Busca parcial: nome do chamado começa com nome abreviado cadastrado
+    // ou nome cadastrado começa com nome do chamado
+    const empresaParcial = empresasCadastradas.find(
+      e => {
+        const abrev = e.nome_abreviado?.toUpperCase().trim() || '';
+        const completo = e.nome_completo?.toUpperCase().trim() || '';
+        return completo.startsWith(nomeNormalizado) || 
+               nomeNormalizado.startsWith(completo) ||
+               abrev.startsWith(nomeNormalizado) || 
+               nomeNormalizado.startsWith(abrev);
+      }
+    );
+    if (empresaParcial) {
+      return { nome: empresaParcial.nome_abreviado || nomeEmpresa, encontrada: true };
+    }
+    
+    return { nome: nomeEmpresa, encontrada: false };
   };
 
   // Lista de analistas únicos das inconsistências ativas
@@ -304,7 +334,8 @@ export default function InconsistenciaChamados() {
     if (isClienteEspecial) {
       return <ClienteNomeDisplay nomeEmpresa={empresa} nomeCliente={analista} className="inline font-medium" />;
     }
-    return <span className={`font-medium ${!isEmpresaCadastrada(empresa) ? 'text-red-600' : ''}`}>{empresa || '-'}</span>;
+    const { nome, encontrada } = obterDadosEmpresa(empresa);
+    return <span className={`font-medium ${!encontrada ? 'text-red-600' : ''}`}>{nome}</span>;
   };
 
   return (

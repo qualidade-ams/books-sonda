@@ -333,9 +333,10 @@ export default function EnviarElogios() {
       };
     }
     
-    // Buscar empresa correspondente pelo nome completo ou abreviado
+    // Buscar empresa correspondente pelo nome completo ou abreviado (case-insensitive)
     const empresaEncontrada = empresas.find(
-      e => e.nome_completo === nomeCompleto || e.nome_abreviado === nomeCompleto
+      e => e.nome_completo?.trim().toUpperCase() === nomeNormalizado || 
+           e.nome_abreviado?.trim().toUpperCase() === nomeNormalizado
     );
     
     // Retornar nome abreviado se encontrado, senão retornar o nome original

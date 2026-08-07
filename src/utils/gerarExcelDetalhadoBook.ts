@@ -226,7 +226,7 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
     .neq('status', 'Cancelled')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
     .order('data_abertura', { ascending: true })
     .limit(10000);
 
@@ -253,7 +253,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
     .neq('status', 'Cancelled')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
     .order('data_solucao', { ascending: true })
     .limit(10000);
 
@@ -275,7 +275,7 @@ async function buscarTicketsBacklog(nomeCompleto: string, dataFim: Date): Promis
     .neq('cod_tipo', 'Problema')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
     .order('data_abertura', { ascending: true })
     .limit(10000);
 
@@ -323,7 +323,7 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
     .in('cod_resolucao', COD_RESOLUCAO_SLA)
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+    .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
     .order('data_solucao', { ascending: true })
     .limit(10000);
 
@@ -352,7 +352,7 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
     .ilike('empresa', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_fechamento', dataInicio.toISOString())
     .lte('data_fechamento', dataFim.toISOString())
-    .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+    .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
     .neq('tipo_caso', 'PM')
     .order('data_fechamento', { ascending: true })
     .limit(10000);

@@ -520,8 +520,8 @@ class InconsistenciasDeteccaoService {
           ticket.item_configuracao
         );
 
-        // Regra: Sem atualização há 16+ dias (apenas tickets com status ativo, NÃO Resolved)
-        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged'];
+        // Regra: Sem atualização há 16+ dias
+        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged', 'Resolved'];
         if (
           ticket.status &&
           statusRelevantes.includes(ticket.status) &&
@@ -992,9 +992,9 @@ class InconsistenciasDeteccaoService {
 
       case 'sem_atualizacao': {
         // Resolvida se: status mudou para não-relevante OU foi atualizado nos últimos 16 dias
-        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged'];
+        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged', 'Resolved'];
         if (!registro.status || !statusRelevantes.includes(registro.status)) {
-          return true; // Status mudou para um não monitorado
+          return true; // Status mudou para um não monitorado (Cancelled, Closed)
         }
         if (!registro.data_ultimo_comentario) return false;
         const dataUltimoComentario = new Date(registro.data_ultimo_comentario);

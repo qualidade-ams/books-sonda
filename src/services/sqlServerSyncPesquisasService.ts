@@ -6,7 +6,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { safeFetch } from '@/utils/apiConfig';
 import type { DadosSqlServer, ResultadoSincronizacao } from '@/types/pesquisasSatisfacao';
-import { inconsistenciasDeteccaoService } from '@/services/inconsistenciasDeteccaoService';
 import { bancoHorasQuarentenaService } from '@/services/bancoHorasQuarentenaService';
 
 // ============================================
@@ -550,13 +549,19 @@ export async function sincronizarDados(
     console.log('📊 [DEBUG] Resultado final - apontamentos.total_processados:', resultadoCombinado.apontamentos?.total_processados);
     console.log('📊 [DEBUG] Resultado final completo:', JSON.stringify(resultadoCombinado, null, 2));
 
-    // 8. Executar detecção de inconsistências (se apontamentos ou tickets foram sincronizados)
-    if (tabelasParaSincronizar.apontamentos || tabelasParaSincronizar.tickets) {
+    // 8. Executar detecção de inconsistências (se opção habilitada)
+    if (tabelasParaSincronizar.detectarInconsistencias !== false) {
       try {
-        console.log('🔍 [INCONSISTENCIAS] Executando detecção de inconsistências após sincronização...');
+        console.log('🔍 [INCONSISTENCIAS] Executando detecção de inconsistências via Sync API...');
         onLog?.('🔍 Detectando inconsistências nos dados sincronizados...');
         
-        const resultadoDeteccao = await inconsistenciasDeteccaoService.executarDeteccao();
+        const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+        const response = await fetch(`${API_URL}/api/detectar-inconsistencias`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const resultadoDeteccao = await response.json();
         
         mensagensCombinadas.push('');
         mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

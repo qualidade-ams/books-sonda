@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Database, CheckSquare, Square, CalendarDays, Clock } from 'lucide-react';
+import { Database, CheckSquare, Square, CalendarDays, Clock, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -24,6 +24,7 @@ export interface TabelasSincronizacao {
   especialistas: boolean;
   apontamentos: boolean;
   tickets: boolean;
+  detectarInconsistencias: boolean;
   dataInicial?: string; // formato YYYY-MM-DD
 }
 
@@ -44,7 +45,8 @@ export function SyncSelectionModal({
     pesquisas: true,
     especialistas: true,
     apontamentos: true,
-    tickets: true
+    tickets: true,
+    detectarInconsistencias: true
   });
   const [dataInicial, setDataInicial] = useState<string>('');
   const { t } = useTranslation();
@@ -71,13 +73,14 @@ export function SyncSelectionModal({
   };
 
   const handleSelecionarTodos = () => {
-    const todosSelecionados = Object.values(tabelas).every(v => v);
-    setTabelas({
+    const todosSelecionados = tabelas.pesquisas && tabelas.especialistas && tabelas.apontamentos && tabelas.tickets;
+    setTabelas(prev => ({
+      ...prev,
       pesquisas: !todosSelecionados,
       especialistas: !todosSelecionados,
       apontamentos: !todosSelecionados,
       tickets: !todosSelecionados
-    });
+    }));
   };
 
   const handleConfirmar = () => {
@@ -104,13 +107,13 @@ export function SyncSelectionModal({
     onConfirm(dadosSincronizacao);
   };
 
-  const todosSelecionados = Object.values(tabelas).every(v => v);
-  const algumaSelecionada = Object.values(tabelas).some(v => v);
-  const quantidadeSelecionada = Object.values(tabelas).filter(v => v).length;
+  const todosSelecionados = tabelas.pesquisas && tabelas.especialistas && tabelas.apontamentos && tabelas.tickets;
+  const algumaSelecionada = tabelas.pesquisas || tabelas.especialistas || tabelas.apontamentos || tabelas.tickets || tabelas.detectarInconsistencias;
+  const quantidadeSelecionada = [tabelas.pesquisas, tabelas.especialistas, tabelas.apontamentos, tabelas.tickets].filter(v => v).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-blue-600" />
@@ -268,6 +271,39 @@ export function SyncSelectionModal({
                   <span>{formatarDataSync(ultimasSincronizacoes.tickets)}</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Divisor - Pós-processamento */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200 dark:border-gray-700" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white dark:bg-gray-900 px-2 text-gray-500">
+                Pós-processamento
+              </span>
+            </div>
+          </div>
+
+          {/* Detectar Inconsistências */}
+          <div className="flex items-center space-x-3 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-800">
+            <Checkbox
+              id="detectarInconsistencias"
+              checked={tabelas.detectarInconsistencias}
+              onCheckedChange={() => handleToggleTabela('detectarInconsistencias')}
+              className="h-5 w-5"
+            />
+            <div className="flex-1 cursor-pointer" onClick={() => handleToggleTabela('detectarInconsistencias')}>
+              <Label
+                htmlFor="detectarInconsistencias"
+                className="text-sm font-medium text-orange-900 dark:text-orange-100 cursor-pointer"
+              >
+                ⚠️ Detectar Inconsistências
+              </Label>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mt-0.5">
+                Analisa chamados com IC 999999, sem atualização 16+ dias, mês diferente e tempo excessivo
+              </p>
             </div>
           </div>
 
