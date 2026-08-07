@@ -282,7 +282,7 @@ export interface DistribuicaoCausaData {
  * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
  * - Pesquisas com data_resposta preenchido = RESPONDIDAS
  * - Pesquisas com data_resposta NULL = NÃO RESPONDIDAS
- * - EXCLUI grupos: "AMS APL - TÉCNICO" e "CA SDM"
+ * - EXCLUI grupos: "AMS APL - TÉCNICO", "CA SDM" e "PROJETOS APL - PLSQL"
  * - EXCLUI tipo_caso: "PM"
  */
 export interface BookPesquisaData {
