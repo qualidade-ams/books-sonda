@@ -354,7 +354,12 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
     // FECHADOS: Buscar por data_solucao no mês com filtros específicos (exclui Cancelled)
     const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
@@ -367,7 +372,12 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
     if (ticketsAbertosError) {
       console.error('❌ Erro ao buscar apontamentos_tickets_aranda (abertos):', ticketsAbertosError);
@@ -543,7 +553,12 @@ class BooksDataCollectorService {
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
     if (errorBacklog) {
       console.error('❌ Erro ao buscar backlog total:', errorBacklog);
@@ -635,7 +650,12 @@ class BooksDataCollectorService {
         .neq('status', 'Cancelled')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+        .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
       const totalIncidentes = (ticketsFechados || []).length;
 
@@ -734,7 +754,12 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
     
     if (errorAbertos) {
       console.error('❌ Erro ao buscar tickets abertos do semestre:', errorAbertos);
@@ -760,7 +785,12 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
     
     if (errorFechados) {
       console.error('❌ Erro ao buscar tickets fechados do semestre:', errorFechados);
@@ -1143,7 +1173,12 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
     if (errorFechados) {
       console.error('❌ Erro ao buscar tickets fechados:', errorFechados);
@@ -1408,7 +1443,12 @@ class BooksDataCollectorService {
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
     if (error) {
       console.error('❌ Erro ao buscar backlog:', error);
@@ -2271,7 +2311,12 @@ class BooksDataCollectorService {
         .eq('empresa', nomeCompletoEmpresa)
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
-        .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")')
+        .not('grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+        .not('grupo', 'like', 'AMS DX %')
+        .not('grupo', 'like', 'AMS PRJ %')
+        .not('grupo', 'like', 'AMS SAP %')
+        .not('grupo', 'like', 'BPO %')
+        .not('grupo', 'like', 'PROJETOS APL %')
         .neq('tipo_caso', 'PM');
 
       if (pesquisasError) {
@@ -2633,7 +2678,12 @@ class BooksDataCollectorService {
         .neq('status', 'Cancelled')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM","PROJETOS APL - PLSQL")');
+        .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not('nome_grupo', 'like', 'AMS DX %')
+      .not('nome_grupo', 'like', 'AMS PRJ %')
+      .not('nome_grupo', 'like', 'AMS SAP %')
+      .not('nome_grupo', 'like', 'BPO %')
+      .not('nome_grupo', 'like', 'PROJETOS APL %');
 
       // Contar incidentes fechados no mês (base para cálculo)
       const incidentesFechados = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente');
