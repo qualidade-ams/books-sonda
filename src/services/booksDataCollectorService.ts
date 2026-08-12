@@ -976,7 +976,7 @@ class BooksDataCollectorService {
 
     // Processar tickets ABERTOS
     ticketsAbertos.forEach(a => {
-      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução';
+      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução - Ainda não classificado';
       // Mapear cod_resolucao para grupo_book usando de_para_categoria
       const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
       
@@ -996,7 +996,7 @@ class BooksDataCollectorService {
 
     // Processar tickets FECHADOS
     ticketsFechados.forEach(a => {
-      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução';
+      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução - Ainda não classificado';
       // Mapear cod_resolucao para grupo_book usando de_para_categoria
       const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
       
@@ -1055,7 +1055,7 @@ class BooksDataCollectorService {
 
     backlog.forEach(a => {
       // Usar cod_resolucao como causa
-      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução';
+      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução - Ainda não classificado';
       // Mapear cod_resolucao para grupo_book usando de_para_categoria
       const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
       
