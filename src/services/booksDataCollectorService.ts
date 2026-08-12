@@ -361,7 +361,7 @@ class BooksDataCollectorService {
       .not('nome_grupo', 'like', 'BPO %')
       .not('nome_grupo', 'like', 'PROJETOS APL %');
 
-    // FECHADOS: Buscar por data_solucao no mês com filtros específicos (exclui Cancelled)
+    // FECHADOS: Buscar por data_solucao no mês com filtros específicos (apenas status Closed)
     const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
@@ -369,7 +369,7 @@ class BooksDataCollectorService {
       .gte('data_solucao', dataInicio.toISOString())
       .lt('data_solucao', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
-      .neq('status', 'Cancelled')
+      .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
@@ -647,7 +647,7 @@ class BooksDataCollectorService {
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .eq('cod_tipo', 'Incidente')
-        .neq('status', 'Cancelled')
+        .eq('status', 'Closed')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
         .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
@@ -774,7 +774,7 @@ class BooksDataCollectorService {
       }))
     });
     
-    // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query) — exclui Cancelled
+    // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query) — apenas status Closed
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao, cod_tipo, data_solucao')
@@ -782,7 +782,7 @@ class BooksDataCollectorService {
       .gte('data_solucao', dataInicio.toISOString())
       .lte('data_solucao', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
-      .neq('status', 'Cancelled')
+      .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
@@ -1162,7 +1162,7 @@ class BooksDataCollectorService {
       dataFim: dataFim.toISOString()
     });
 
-    // FECHADOS: Todos os chamados fechados no mês (com data_solucao) — exclui Cancelled
+    // FECHADOS: Todos os chamados fechados no mês (com data_solucao) — apenas status Closed
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
@@ -1170,7 +1170,7 @@ class BooksDataCollectorService {
       .gte('data_solucao', dataInicio.toISOString())
       .lt('data_solucao', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
-      .neq('status', 'Cancelled')
+      .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
       .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
@@ -2675,7 +2675,7 @@ class BooksDataCollectorService {
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .neq('cod_tipo', 'Problema')
-        .neq('status', 'Cancelled')
+        .eq('status', 'Closed')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
         .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')

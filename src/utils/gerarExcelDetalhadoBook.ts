@@ -242,7 +242,7 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
   return (data || []) as unknown as TicketAranda[];
 }
 
-/** Busca tickets fechados no período (exclui Cancelled) */
+/** Busca tickets fechados no período (apenas status Closed) */
 async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
   const proximoMesInicio = new Date(dataFim);
   proximoMesInicio.setDate(proximoMesInicio.getDate() + 1);
@@ -255,7 +255,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
     .neq('cod_tipo', 'Problema')
-    .neq('status', 'Cancelled')
+    .eq('status', 'Closed')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
     .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
@@ -333,7 +333,7 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
     .gte('data_solucao', dataInicio.toISOString())
     .lt('data_solucao', proximoMesInicio.toISOString())
     .eq('cod_tipo', 'Incidente')
-    .neq('status', 'Cancelled')
+    .eq('status', 'Closed')
     .eq('tds_cumprido', 'TDS Vencido')
     .in('cod_resolucao', COD_RESOLUCAO_SLA)
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
