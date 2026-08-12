@@ -2,12 +2,14 @@
  * Utilitários de exportação do Relatório de Consumo de Horas por Empresa.
  * - Empresas de banco_horas: exibe HH:MM calculado em tempo real
  * - Empresas de ticket: exibe "N tickets" — não entra no total de horas
+ * - Inclui abas adicionais de indicadores por empresa (Chamados, SLA, Backlog, Pesquisas)
  */
 
 import * as XLSX from 'xlsx-js-style';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ConsumoHorasEmpresa } from '@/hooks/useConsumoHorasFechados';
+import type { IndicadoresEmpresa } from '@/types/relatorioIndicadores';
 
 const MESES_PT: Record<number, string> = {
   1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
@@ -44,56 +46,42 @@ function minutosParaHHMM(totalMinutos: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-// ─── Excel ────────────────────────────────────────────────────────────────────
+// ─── Estilos reutilizáveis ─────────────────────────────────────────────────
 
-export function exportarConsumoHorasExcel(
-  dados: ConsumoHorasEmpresa[],
-  mes: number,
-  ano: number
+const HEADER_STYLE = {
+  font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+  fill: { fgColor: { rgb: '2563EB' } },
+  alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+};
+const TOTAL_STYLE = {
+  font: { bold: true, sz: 11 },
+  fill: { fgColor: { rgb: 'EFF6FF' } },
+  alignment: { horizontal: 'center' as const },
+};
+
+// ─── Helper para criar aba de indicador numérico ──────────────────────────────
+
+function criarAbaIndicador(
+  workbook: XLSX.WorkBook,
+  nomeAba: string,
+  tituloRelatorio: string,
+  periodo: string,
+  dados: { empresa: string; valor: number | string }[],
+  totalLabel: string,
+  totalValor: number | string
 ): void {
-  const periodo = `${MESES_PT[mes]}/${ano}`;
-  const dadosOrdenados = ordenarAlfabetico(dados);
+  const headers = ['#', 'EMPRESA', tituloRelatorio.toUpperCase()];
 
-  const headerStyle = {
-    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
-    fill: { fgColor: { rgb: '2563EB' } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-  };
-  const totalStyle = {
-    font: { bold: true, sz: 11 },
-    fill: { fgColor: { rgb: 'EFF6FF' } },
-    alignment: { horizontal: 'center' },
-  };
-  const ticketStyle = {
-    font: { italic: true, color: { rgb: '6B7280' }, sz: 10 },
-    alignment: { horizontal: 'center' },
-  };
-
-  const headers = ['#', 'EMPRESA', 'CONSUMO'];
-
-  // Total somente das empresas de horas
-  const totalMinutos = dadosOrdenados
-    .filter(d => d.tipo_cobranca !== 'ticket')
-    .reduce((acc, d) => acc + hhmmParaMinutos(d.consumo_horas), 0);
-  const totalHHMM = minutosParaHHMM(totalMinutos);
-
-  // Monta rows com valores numéricos de tempo para Excel
-  const rows = dadosOrdenados.map((d, i) => {
-    const excelTime = hhmmParaExcelTime(d.consumo_horas);
-    // Se é ticket ou não conseguiu converter, mantém como string
-    return [i + 1, d.empresa, excelTime !== null ? excelTime : d.consumo_horas];
-  });
-
-  const totalExcelTime = totalMinutos / 1440; // Converte total para fração de dia
+  const rows = dados.map((d, i) => [i + 1, d.empresa, d.valor]);
 
   const sheetData: any[][] = [
-    [`RELATÓRIO DE CONSUMO DE HORAS — ${periodo.toUpperCase()}`],
+    [`${tituloRelatorio.toUpperCase()} — ${periodo.toUpperCase()}`],
     [`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`],
     [],
     headers,
     ...rows,
     [],
-    ['', 'TOTAL HORAS (banco_horas)', totalExcelTime],
+    ['', totalLabel, totalValor],
   ];
 
   const sheet = XLSX.utils.aoa_to_sheet(sheetData);
@@ -107,44 +95,271 @@ export function exportarConsumoHorasExcel(
   // Headers (linha 3)
   headers.forEach((_, col) => {
     const ref = XLSX.utils.encode_cell({ r: 3, c: col });
-    if (sheet[ref]) sheet[ref].s = headerStyle;
-  });
-
-  // Estilo em linhas de dados
-  dadosOrdenados.forEach((d, rowIdx) => {
-    const ref = XLSX.utils.encode_cell({ r: 4 + rowIdx, c: 2 });
-    if (d.tipo_cobranca === 'ticket') {
-      if (sheet[ref]) sheet[ref].s = ticketStyle;
-    } else {
-      // Aplicar formato de hora [h]:mm para que o Excel reconheça como tempo
-      if (sheet[ref]) {
-        sheet[ref].t = 'n'; // tipo numérico
-        sheet[ref].z = '[h]:mm'; // formato de hora que aceita >24h
-        sheet[ref].s = { alignment: { horizontal: 'center' } };
-      }
-    }
+    if (sheet[ref]) sheet[ref].s = HEADER_STYLE;
   });
 
   // Linha de total
   const totalRow = 4 + rows.length + 1;
   [0, 1, 2].forEach(col => {
     const ref = XLSX.utils.encode_cell({ r: totalRow, c: col });
-    if (sheet[ref]) {
-      sheet[ref].s = totalStyle;
-      // Aplicar formato de hora na coluna de consumo do total
-      if (col === 2) {
-        sheet[ref].t = 'n';
-        sheet[ref].z = '[h]:mm';
-      }
-    }
+    if (sheet[ref]) sheet[ref].s = TOTAL_STYLE;
   });
 
-  sheet['!cols'] = [{ width: 5 }, { width: 38 }, { width: 20 }];
+  sheet['!cols'] = [{ width: 5 }, { width: 38 }, { width: 22 }];
   sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
 
+  XLSX.utils.book_append_sheet(workbook, sheet, nomeAba);
+}
+
+// ─── Helper para criar aba SLA com coluna Violados ────────────────────────────
+
+function criarAbaSLA(
+  workbook: XLSX.WorkBook,
+  periodo: string,
+  dados: IndicadoresEmpresa[]
+): void {
+  const headers = ['#', 'EMPRESA', 'SLA (%)', 'VIOLADOS'];
+
+  const rows = dados.map((d, i) => [
+    i + 1,
+    d.empresa,
+    d.sla_percentual !== null ? `${d.sla_percentual}%` : 'N/A',
+    d.sla_violados,
+  ]);
+
+  const empresasComSLA = dados.filter(d => d.sla_percentual !== null);
+  const slaMedio = empresasComSLA.length > 0
+    ? Math.round(empresasComSLA.reduce((acc, d) => acc + (d.sla_percentual || 0), 0) / empresasComSLA.length)
+    : 0;
+  const totalViolados = dados.reduce((acc, d) => acc + d.sla_violados, 0);
+
+  const sheetData: any[][] = [
+    [`SLA (%) — ${periodo.toUpperCase()}`],
+    [`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`],
+    [],
+    headers,
+    ...rows,
+    [],
+    ['', 'TOTAL', empresasComSLA.length > 0 ? `${slaMedio}% (média)` : 'N/A', totalViolados],
+  ];
+
+  const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+  // Título
+  const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+  if (sheet[titleCell]) {
+    sheet[titleCell].s = { font: { bold: true, sz: 14, color: { rgb: '1D4ED8' } } };
+  }
+
+  // Headers (linha 3)
+  headers.forEach((_, col) => {
+    const ref = XLSX.utils.encode_cell({ r: 3, c: col });
+    if (sheet[ref]) sheet[ref].s = HEADER_STYLE;
+  });
+
+  // Linha de total
+  const totalRow = 4 + rows.length + 1;
+  [0, 1, 2, 3].forEach(col => {
+    const ref = XLSX.utils.encode_cell({ r: totalRow, c: col });
+    if (sheet[ref]) sheet[ref].s = TOTAL_STYLE;
+  });
+
+  sheet['!cols'] = [{ width: 5 }, { width: 38 }, { width: 14 }, { width: 14 }];
+  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+
+  XLSX.utils.book_append_sheet(workbook, sheet, 'SLA');
+}
+
+// ─── Excel ────────────────────────────────────────────────────────────────────
+
+/**
+ * Exporta relatório Excel com múltiplas abas de indicadores por empresa.
+ *
+ * Ordem das abas:
+ * 1. Chamados Abertos
+ * 2. Chamados Fechados
+ * 3. SLA (%) + Violados
+ * 4. Backlog
+ * 5. Horas/Tickets (antigo "Consumo de Horas")
+ * 6. Pesquisas Enviadas
+ * 7. Pesquisas Respondidas
+ * 8. Não Respondidas
+ *
+ * Dados vêm dos snapshots dos books gerados (congelados na geração).
+ */
+export function exportarConsumoHorasExcel(
+  dados: ConsumoHorasEmpresa[],
+  mes: number,
+  ano: number,
+  indicadores?: IndicadoresEmpresa[]
+): void {
+  const periodo = `${MESES_PT[mes]}/${ano}`;
+  const dadosOrdenados = ordenarAlfabetico(dados);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Consumo de Horas');
-  XLSX.writeFile(workbook, `consumo-horas-${MESES_PT[mes].toLowerCase()}-${ano}.xlsx`);
+
+  const ticketStyle = {
+    font: { italic: true, color: { rgb: '6B7280' }, sz: 10 },
+    alignment: { horizontal: 'center' as const },
+  };
+
+  // ─── Abas de indicadores (antes do Consumo de Horas) ────────────────────────
+  if (indicadores && indicadores.length > 0) {
+    const indicadoresOrdenados = [...indicadores].sort((a, b) =>
+      a.empresa.localeCompare(b.empresa, 'pt-BR', { sensitivity: 'base' })
+    );
+
+    // 1. Chamados Abertos
+    criarAbaIndicador(
+      workbook,
+      'Chamados Abertos',
+      'Chamados Abertos',
+      periodo,
+      indicadoresOrdenados.map(d => ({ empresa: d.empresa, valor: d.chamados_abertos })),
+      'TOTAL',
+      indicadoresOrdenados.reduce((acc, d) => acc + d.chamados_abertos, 0)
+    );
+
+    // 2. Chamados Fechados
+    criarAbaIndicador(
+      workbook,
+      'Chamados Fechados',
+      'Chamados Fechados',
+      periodo,
+      indicadoresOrdenados.map(d => ({ empresa: d.empresa, valor: d.chamados_fechados })),
+      'TOTAL',
+      indicadoresOrdenados.reduce((acc, d) => acc + d.chamados_fechados, 0)
+    );
+
+    // 3. SLA (%) com coluna Violados
+    criarAbaSLA(workbook, periodo, indicadoresOrdenados);
+
+    // 4. Backlog
+    criarAbaIndicador(
+      workbook,
+      'Backlog',
+      'Backlog',
+      periodo,
+      indicadoresOrdenados.map(d => ({ empresa: d.empresa, valor: d.backlog })),
+      'TOTAL',
+      indicadoresOrdenados.reduce((acc, d) => acc + d.backlog, 0)
+    );
+  }
+
+  // ─── 5. Aba Horas/Tickets (antigo "Consumo de Horas") ──────────────────────
+  {
+    const headers = ['#', 'EMPRESA', 'CONSUMO'];
+
+    // Total somente das empresas de horas
+    const totalMinutos = dadosOrdenados
+      .filter(d => d.tipo_cobranca !== 'ticket')
+      .reduce((acc, d) => acc + hhmmParaMinutos(d.consumo_horas), 0);
+
+    // Monta rows com valores numéricos de tempo para Excel
+    const rows = dadosOrdenados.map((d, i) => {
+      const excelTime = hhmmParaExcelTime(d.consumo_horas);
+      return [i + 1, d.empresa, excelTime !== null ? excelTime : d.consumo_horas];
+    });
+
+    const totalExcelTime = totalMinutos / 1440;
+
+    const sheetData: any[][] = [
+      [`HORAS/TICKETS — ${periodo.toUpperCase()}`],
+      [`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`],
+      [],
+      headers,
+      ...rows,
+      [],
+      ['', 'TOTAL HORAS (banco_horas)', totalExcelTime],
+    ];
+
+    const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // Título
+    const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (sheet[titleCell]) {
+      sheet[titleCell].s = { font: { bold: true, sz: 14, color: { rgb: '1D4ED8' } } };
+    }
+
+    // Headers (linha 3)
+    headers.forEach((_, col) => {
+      const ref = XLSX.utils.encode_cell({ r: 3, c: col });
+      if (sheet[ref]) sheet[ref].s = HEADER_STYLE;
+    });
+
+    // Estilo em linhas de dados
+    dadosOrdenados.forEach((d, rowIdx) => {
+      const ref = XLSX.utils.encode_cell({ r: 4 + rowIdx, c: 2 });
+      if (d.tipo_cobranca === 'ticket') {
+        if (sheet[ref]) sheet[ref].s = ticketStyle;
+      } else {
+        if (sheet[ref]) {
+          sheet[ref].t = 'n';
+          sheet[ref].z = '[h]:mm';
+          sheet[ref].s = { alignment: { horizontal: 'center' } };
+        }
+      }
+    });
+
+    // Linha de total
+    const totalRow = 4 + rows.length + 1;
+    [0, 1, 2].forEach(col => {
+      const ref = XLSX.utils.encode_cell({ r: totalRow, c: col });
+      if (sheet[ref]) {
+        sheet[ref].s = TOTAL_STYLE;
+        if (col === 2) {
+          sheet[ref].t = 'n';
+          sheet[ref].z = '[h]:mm';
+        }
+      }
+    });
+
+    sheet['!cols'] = [{ width: 5 }, { width: 38 }, { width: 20 }];
+    sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Horas_Tickets');
+  }
+
+  // ─── Abas de pesquisas (após Horas/Tickets) ─────────────────────────────────
+  if (indicadores && indicadores.length > 0) {
+    const indicadoresOrdenados = [...indicadores].sort((a, b) =>
+      a.empresa.localeCompare(b.empresa, 'pt-BR', { sensitivity: 'base' })
+    );
+
+    // 6. Pesquisas Enviadas
+    criarAbaIndicador(
+      workbook,
+      'Pesquisas Enviadas',
+      'Pesquisas Enviadas',
+      periodo,
+      indicadoresOrdenados.map(d => ({ empresa: d.empresa, valor: d.pesquisas_enviadas })),
+      'TOTAL',
+      indicadoresOrdenados.reduce((acc, d) => acc + d.pesquisas_enviadas, 0)
+    );
+
+    // 7. Pesquisas Respondidas
+    criarAbaIndicador(
+      workbook,
+      'Pesquisas Respondidas',
+      'Pesquisas Respondidas',
+      periodo,
+      indicadoresOrdenados.map(d => ({ empresa: d.empresa, valor: d.pesquisas_respondidas })),
+      'TOTAL',
+      indicadoresOrdenados.reduce((acc, d) => acc + d.pesquisas_respondidas, 0)
+    );
+
+    // 8. Enviadas e Não Respondidas
+    criarAbaIndicador(
+      workbook,
+      'Não Respondidas',
+      'Enviadas e Não Respondidas',
+      periodo,
+      indicadoresOrdenados.map(d => ({ empresa: d.empresa, valor: d.pesquisas_nao_respondidas })),
+      'TOTAL',
+      indicadoresOrdenados.reduce((acc, d) => acc + d.pesquisas_nao_respondidas, 0)
+    );
+  }
+
+  XLSX.writeFile(workbook, `relatorio-indicadores-${MESES_PT[mes].toLowerCase()}-${ano}.xlsx`);
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
