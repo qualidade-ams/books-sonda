@@ -26,7 +26,6 @@ import {
   Lock,
   History,
   ShieldCheck,
-  BarChart3,
   ChevronDown,
   FileSpreadsheet,
   FileDown,
@@ -65,6 +64,7 @@ import { Label } from '@/components/ui/label';
 import { useBooksProcessing } from '@/contexts/BooksProcessingContext';
 import { useConsumoHorasFechados } from '@/hooks/useConsumoHorasFechados';
 import { exportarConsumoHorasExcel, exportarConsumoHorasPDF } from '@/utils/consumoHorasExportUtils';
+import { useRelatorioIndicadores } from '@/hooks/useRelatorioIndicadores';
 import { gerarExcelDetalhadoBook } from '@/utils/gerarExcelDetalhadoBook';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -160,6 +160,9 @@ export default function GeracaoBooks() {
   // Hook de consumo de horas — período de referência com fechamento
   const { data: consumoHoras = [], isLoading: isLoadingConsumo } = useConsumoHorasFechados(mesReferencia, anoReferencia);
   const [exportandoConsumo, setExportandoConsumo] = useState(false);
+
+  // Hook de relatório de indicadores por empresa (alimenta abas extras do Excel)
+  const { indicadores, isLoading: isLoadingIndicadores } = useRelatorioIndicadores(mesReferencia, anoReferencia);
 
   // Refetch automático a cada 5s enquanto há processamento em andamento
   useEffect(() => {
@@ -659,13 +662,13 @@ export default function GeracaoBooks() {
 
   // Handlers de exportação do relatório de consumo
   const handleExportarConsumoExcel = async () => {
-    if (!consumoHoras.length) {
+    if (!consumoHoras.length && !indicadores.length) {
       toast({ title: 'Sem dados', description: 'Não há empresas com período fechado para exportar.', variant: 'destructive' });
       return;
     }
     setExportandoConsumo(true);
     try {
-      exportarConsumoHorasExcel(consumoHoras, mesReferencia, anoReferencia);
+      exportarConsumoHorasExcel(consumoHoras, mesReferencia, anoReferencia, indicadores);
     } catch {
       toast({ title: 'Erro ao exportar', description: 'Não foi possível gerar o Excel.', variant: 'destructive' });
     } finally {
@@ -709,15 +712,15 @@ export default function GeracaoBooks() {
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={isLoadingConsumo || exportandoConsumo}
+                    disabled={isLoadingConsumo || isLoadingIndicadores || exportandoConsumo}
                     className="flex items-center gap-2 data-[state=open]:bg-transparent data-[state=open]:border-input data-[state=open]:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   >
-                    {isLoadingConsumo || exportandoConsumo ? (
+                    {isLoadingConsumo || isLoadingIndicadores || exportandoConsumo ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    {isLoadingConsumo ? 'Exportando...' : 'Exportar'}
+                    {(isLoadingConsumo || isLoadingIndicadores) ? 'Carregando...' : exportandoConsumo ? 'Exportando...' : 'Exportar'}
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
