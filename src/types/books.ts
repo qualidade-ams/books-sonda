@@ -248,6 +248,7 @@ export interface BancoHorasTrimestreItem {
 export interface RequerimentoDescontadoData {
   id: string;
   numero_chamado: string;
+  ticket_externo?: string;
   cliente: string;
   modulo: string;
   tipo_cobranca: string;
@@ -310,6 +311,7 @@ export interface BookPesquisaData {
 
 export interface ResumoPesquisaData {
   chamado: string;
+  ticket_externo: string;
   tipo: 'Incidente' | 'Requisição';
   solicitante: string;
   grupo: string;

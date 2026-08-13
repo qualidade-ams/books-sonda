@@ -2179,6 +2179,27 @@ class BooksDataCollectorService {
 
       console.log('✅ Requerimentos encontrados:', requerimentos?.length || 0);
 
+      // Buscar ticket_externo para os chamados dos requerimentos
+      const chamadosNumeros = (requerimentos || [])
+        .map(req => (req.chamado || '').replace('RF-', ''))
+        .filter(Boolean);
+
+      let ticketExternoReqMap: Record<string, string> = {};
+      if (chamadosNumeros.length > 0) {
+        const { data: ticketsData } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('nro_solicitacao, ticket_externo')
+          .in('nro_solicitacao', chamadosNumeros);
+
+        if (ticketsData) {
+          ticketsData.forEach(t => {
+            if (t.nro_solicitacao && t.ticket_externo) {
+              ticketExternoReqMap[t.nro_solicitacao] = t.ticket_externo.trim();
+            }
+          });
+        }
+      }
+
       return (requerimentos || []).map(req => {
         console.log(`\n🔍 Processando requerimento ${req.chamado}:`, {
           horas_funcional_raw: req.horas_funcional,
@@ -2237,6 +2258,7 @@ class BooksDataCollectorService {
         return {
           id: req.id,
           numero_chamado: req.chamado || '--',
+          ticket_externo: ticketExternoReqMap[(req.chamado || '').replace('RF-', '')] || '',
           cliente: req.cliente_id || '--',
           modulo: req.modulo || '--',
           tipo_cobranca: req.tipo_cobranca || '--',
@@ -2362,12 +2384,37 @@ class BooksDataCollectorService {
         }
       });
 
-      // 7. Montar resumo de pesquisas (apenas as respondidas)
+      // 7. Buscar ticket_externo da tabela apontamentos_tickets_aranda para os chamados respondidos
+      const nroCasosRespondidos = pesquisasRespondidas
+        .map(p => p.nro_caso)
+        .filter(Boolean);
+
+      let ticketExternoMap: Record<string, string> = {};
+      if (nroCasosRespondidos.length > 0) {
+        const { data: ticketsData } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('nro_solicitacao, ticket_externo')
+          .in('nro_solicitacao', nroCasosRespondidos);
+
+        if (ticketsData) {
+          ticketsData.forEach(t => {
+            if (t.nro_solicitacao && t.ticket_externo) {
+              ticketExternoMap[t.nro_solicitacao] = t.ticket_externo;
+            }
+          });
+        }
+      }
+
+      // 8. Buscar mapeamento de grupos (de_para_categoria) para exibir grupo_book
+      const mapeamentoGrupos = await this.buscarMapeamentoGrupos();
+
+      // 9. Montar resumo de pesquisas (apenas as respondidas)
       const resumoPesquisas = pesquisasRespondidas.map(p => ({
         chamado: p.nro_caso || 'N/A',
+        ticket_externo: ticketExternoMap[p.nro_caso] || 'N/A',
         tipo: (p.tipo_caso === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
         solicitante: p.solicitante || 'N/A',
-        grupo: p.grupo || 'N/A',
+        grupo: mapeamentoGrupos.get(p.grupo) || p.grupo || 'N/A',
         resposta: p.resposta || null
       }));
 
