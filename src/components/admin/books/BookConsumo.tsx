@@ -801,6 +801,27 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           .order('data_envio_faturamento', { ascending: false });
 
         if (requerimentos && requerimentos.length > 0) {
+          // Buscar ticket_externo para os chamados
+          const chamadosNumeros = requerimentos
+            .map(req => (req.chamado || '').replace('RF-', ''))
+            .filter(Boolean);
+
+          let ticketExternoMap: Record<string, string> = {};
+          if (chamadosNumeros.length > 0) {
+            const { data: ticketsData } = await supabase
+              .from('apontamentos_tickets_aranda')
+              .select('nro_solicitacao, ticket_externo')
+              .in('nro_solicitacao', chamadosNumeros);
+
+            if (ticketsData) {
+              ticketsData.forEach(t => {
+                if (t.nro_solicitacao && t.ticket_externo) {
+                  ticketExternoMap[t.nro_solicitacao] = t.ticket_externo.trim();
+                }
+              });
+            }
+          }
+
           const formatados: RequerimentoDescontadoData[] = requerimentos.map(req => {
             // Converter horas para formato HH:MM
             let horasFuncional = 0;
@@ -835,6 +856,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             return {
               id: req.id,
               numero_chamado: req.chamado || '--',
+              ticket_externo: ticketExternoMap[(req.chamado || '').replace('RF-', '')] || '',
               cliente: req.cliente_id || '--',
               modulo: req.modulo || '--',
               tipo_cobranca: req.tipo_cobranca || '--',
@@ -1691,6 +1713,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                           <span className="font-semibold text-xs text-blue-600">
                             {req.numero_chamado}
                           </span>
+                          {req.ticket_externo && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-[11px] text-gray-600">
+                                {req.ticket_externo}
+                              </span>
+                            </>
+                          )}
                           {req.modulo && (
                             <>
                               <span className="text-gray-400">•</span>

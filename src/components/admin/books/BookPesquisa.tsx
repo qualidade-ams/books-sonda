@@ -215,6 +215,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
                   <TableHeader>
                     <TableRow className="bg-gray-50">
                       <TableHead className="font-semibold">{t('books.bookContent.ticketColumn')}</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap">{t('books.bookContent.externalTicketColumn')}</TableHead>
                       <TableHead className="font-semibold">{t('books.bookContent.typeColumn')}</TableHead>
                       <TableHead className="font-semibold">{t('books.bookContent.requesterColumn')}</TableHead>
                       <TableHead className="font-semibold">{t('books.bookContent.groupColumn')}</TableHead>
@@ -225,6 +226,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
                     {data.resumo_pesquisas.map((pesquisa, index) => (
                       <TableRow key={index} className="hover:bg-gray-50">
                         <TableCell className="font-medium text-blue-600">{pesquisa.chamado}</TableCell>
+                        <TableCell>{pesquisa.ticket_externo}</TableCell>
                         <TableCell>{pesquisa.tipo}</TableCell>
                         <TableCell>{pesquisa.solicitante}</TableCell>
                         <TableCell>{pesquisa.grupo}</TableCell>

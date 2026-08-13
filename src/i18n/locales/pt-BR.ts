@@ -758,6 +758,7 @@ const ptBR = {
       surveySummary: 'Resumo de Pesquisas Respondidas',
       noDataToShow: 'Nenhum dado para exibir no momento...',
       ticketColumn: 'Chamado',
+      externalTicketColumn: 'Ticket Externo',
       typeColumn: 'Tipo',
       requesterColumn: 'Solicitante',
       groupColumn: 'Grupo',

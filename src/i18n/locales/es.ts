@@ -758,6 +758,7 @@ const es = {
       surveySummary: 'Resumen de Encuestas',
       noDataToShow: 'Ningún dato para mostrar en este momento...',
       ticketColumn: 'Ticket',
+      externalTicketColumn: 'Ticket Externo',
       typeColumn: 'Tipo',
       requesterColumn: 'Solicitante',
       groupColumn: 'Grupo',

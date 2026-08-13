@@ -758,6 +758,7 @@ const en = {
       surveySummary: 'Survey Summary',
       noDataToShow: 'No data to display at the moment...',
       ticketColumn: 'Ticket',
+      externalTicketColumn: 'External Ticket',
       typeColumn: 'Type',
       requesterColumn: 'Requester',
       groupColumn: 'Group',
