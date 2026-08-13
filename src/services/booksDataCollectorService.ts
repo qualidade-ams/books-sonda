@@ -12,6 +12,7 @@ import type {
   BookConsumoData,
   BookPesquisaData,
   BookConsumoSegmentadoData,
+  RequerimentoEmDesenvolvimentoData,
   ChamadosSemestreData
 } from '@/types/books';
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
@@ -33,6 +34,7 @@ class BooksDataCollectorService {
     consumo: BookConsumoData;
     pesquisa: BookPesquisaData;
     consumo_segmentado?: BookConsumoSegmentadoData[];
+    requerimentos_em_desenvolvimento?: RequerimentoEmDesenvolvimentoData[];
   }> {
     console.log('🚀 INICIANDO COLETA DE DADOS DO BOOK:', { empresaId, mes, ano });
     
@@ -240,7 +242,8 @@ class BooksDataCollectorService {
           baselineHoras
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano),
-        consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano)
+        consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano),
+        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(empresaId, mes, ano)
       };
 
       console.log('✅ DADOS DO BOOK GERADOS COM SUCESSO:', {
@@ -2276,6 +2279,150 @@ class BooksDataCollectorService {
       });
     } catch (error) {
       console.error('❌ Erro ao buscar requerimentos descontados:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca requerimentos em desenvolvimento para a aba do Book
+   * Requerimentos com status = 'lancado', tipo_cobranca = 'Banco de Horas'
+   * e data_envio <= último dia do mês do book
+   * 
+   * REGRA: Book de Fevereiro mostra TODOS os requerimentos em desenvolvimento
+   * com data_envio até 28/02 (não mostra os que foram enviados depois).
+   */
+  private async buscarRequerimentosEmDesenvolvimentoParaBook(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<RequerimentoEmDesenvolvimentoData[]> {
+    try {
+      // Primeiro dia do mês do book (requerimentos aparecem A PARTIR do mês da data_envio)
+      // Último dia do mês do book (não mostra requerimentos com data_envio futura)
+      const dataInicioISO = `${ano}-${String(mes).padStart(2, '0')}-01`;
+      const ultimoDia = new Date(ano, mes, 0).getDate();
+      const dataFimISO = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+
+      const { data: requerimentos, error } = await supabase
+        .from('requerimentos')
+        .select('*')
+        .eq('cliente_id', empresaId)
+        .eq('tipo_cobranca', 'Banco de Horas')
+        .eq('status', 'lancado')
+        .lte('data_envio', dataFimISO)
+        .order('chamado', { ascending: true });
+
+      if (error) {
+        console.error('❌ Erro ao buscar requerimentos em desenvolvimento:', error);
+        return [];
+      }
+
+      if (!requerimentos || requerimentos.length === 0) {
+        return [];
+      }
+
+      // Filtrar: não exibir requerimentos cuja data_envio tem mês posterior ao mês do book
+      // Regra: se data_envio é do mês 8 e o book é do mês 7, não exibir
+      const requerimentosFiltrados = requerimentos.filter(req => {
+        if (!req.data_envio) return true;
+        const partes = req.data_envio.split('-');
+        const anoEnvio = parseInt(partes[0], 10);
+        const mesEnvio = parseInt(partes[1], 10);
+        // Se o ano+mês da data_envio é posterior ao ano+mês do book, excluir
+        if (anoEnvio > ano) return false;
+        if (anoEnvio === ano && mesEnvio > mes) return false;
+        return true;
+      });
+
+      if (requerimentosFiltrados.length === 0) {
+        return [];
+      }
+
+      // Buscar ticket_externo para os chamados
+      const chamadosNumeros = requerimentosFiltrados
+        .map(req => (req.chamado || '').replace('RF-', ''))
+        .filter(Boolean);
+
+      let ticketExternoMap: Record<string, string> = {};
+      if (chamadosNumeros.length > 0) {
+        const { data: ticketsData } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('nro_solicitacao, ticket_externo')
+          .in('nro_solicitacao', chamadosNumeros);
+
+        if (ticketsData) {
+          ticketsData.forEach(t => {
+            if (t.nro_solicitacao && t.ticket_externo) {
+              ticketExternoMap[t.nro_solicitacao] = t.ticket_externo.trim();
+            }
+          });
+        }
+      }
+
+      // Buscar nome da empresa para exibir
+      const { data: empresaData } = await supabase
+        .from('empresas_clientes')
+        .select('nome_abreviado')
+        .eq('id', empresaId)
+        .single();
+
+      const nomeCliente = empresaData?.nome_abreviado || '--';
+
+      return requerimentosFiltrados.map(req => {
+        // Converter horas para formato HH:MM
+        let horasFuncional = 0;
+        let horasTecnico = 0;
+
+        if (req.horas_funcional) {
+          const val = req.horas_funcional as string | number;
+          if (typeof val === 'string' && val.includes(':')) {
+            const [h, m] = val.split(':').map(Number);
+            horasFuncional = h + (m / 60);
+          } else {
+            horasFuncional = Number(val) || 0;
+          }
+        }
+
+        if (req.horas_tecnico) {
+          const val = req.horas_tecnico as string | number;
+          if (typeof val === 'string' && val.includes(':')) {
+            const [h, m] = val.split(':').map(Number);
+            horasTecnico = h + (m / 60);
+          } else {
+            horasTecnico = Number(val) || 0;
+          }
+        }
+
+        const totalDecimal = horasFuncional + horasTecnico;
+        const totalH = Math.floor(totalDecimal);
+        const totalM = Math.round((totalDecimal - totalH) * 60);
+        const horasFuncH = Math.floor(horasFuncional);
+        const horasFuncM = Math.round((horasFuncional - horasFuncH) * 60);
+        const horasTecH = Math.floor(horasTecnico);
+        const horasTecM = Math.round((horasTecnico - horasTecH) * 60);
+
+        return {
+          id: req.id,
+          numero_chamado: req.chamado || '--',
+          ticket_externo: ticketExternoMap[(req.chamado || '').replace('RF-', '')] || '',
+          cliente: nomeCliente,
+          modulo: req.modulo || '--',
+          tipo_cobranca: req.tipo_cobranca || '--',
+          horas_funcional: `${String(horasFuncH).padStart(2, '0')}:${String(horasFuncM).padStart(2, '0')}`,
+          horas_tecnica: `${String(horasTecH).padStart(2, '0')}:${String(horasTecM).padStart(2, '0')}`,
+          total_horas: `${String(totalH).padStart(2, '0')}:${String(totalM).padStart(2, '0')}`,
+          data_envio: req.data_envio ? (() => {
+            // Parse manual para evitar problema de timezone (+1 dia)
+            const parts = req.data_envio.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+          })() : '--',
+          status: 'Em desenvolvimento',
+          valor_total: (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0) || undefined,
+          periodo_cobranca: req.mes_cobranca || undefined
+        };
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar requerimentos em desenvolvimento para book:', error);
       return [];
     }
   }

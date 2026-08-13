@@ -34,6 +34,9 @@ export interface BookData {
   consumo: BookConsumoData;
   pesquisa: BookPesquisaData;
   
+  // Requerimentos em desenvolvimento (snapshot - visível apenas quando existirem)
+  requerimentos_em_desenvolvimento?: RequerimentoEmDesenvolvimentoData[];
+
   // Consumo segmentado (snapshot - apenas se empresa tem baseline_segmentado)
   consumo_segmentado?: BookConsumoSegmentadoData[];
   
@@ -260,6 +263,26 @@ export interface RequerimentoDescontadoData {
   data_aprovacao?: string;
   valor_total?: number;
   periodo_cobranca: string;
+}
+
+/**
+ * Requerimentos em desenvolvimento (status = 'lancado')
+ * Exibidos em aba própria quando existirem
+ */
+export interface RequerimentoEmDesenvolvimentoData {
+  id: string;
+  numero_chamado: string;
+  ticket_externo?: string;
+  cliente: string;
+  modulo: string;
+  tipo_cobranca: string;
+  horas_funcional: string;
+  horas_tecnica: string;
+  total_horas: string;
+  data_envio?: string;
+  status: string;
+  valor_total?: number;
+  periodo_cobranca?: string;
 }
 
 export interface HistoricoConsumoData {
