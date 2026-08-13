@@ -24,6 +24,7 @@ interface ResultadoDeteccao {
 interface InconsistenciaDetectada {
   origem: string;
   nro_chamado: string;
+  nro_tarefa: string | null;
   tipo_chamado: string | null;
   item_configuracao: string | null;
   tipo_inconsistencia: string;
@@ -165,7 +166,6 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
       if (!ativasMap.has(inc.chave_unica) && !chavesArquivadas.has(inc.chave_unica)) {
         novasInconsistencias.push({
           ...inc,
-          nro_tarefa: null,
           status: 'ativa',
           data_deteccao: new Date().toISOString()
         });

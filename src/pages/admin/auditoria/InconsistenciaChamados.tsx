@@ -85,6 +85,18 @@ export default function InconsistenciaChamados() {
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [currentPageResolvidas, setCurrentPageResolvidas] = useState(1);
 
+  // Estado de filtros e paginação para Histórico (Tab 2)
+  const [showFiltersHistorico, setShowFiltersHistorico] = useState(false);
+  const [filtrosHistorico, setFiltrosHistorico] = useState({
+    busca: '',
+    tipo_inconsistencia: 'all' as string,
+    analista: 'all' as string,
+    origem: 'all' as string,
+    mesHistorico: 'all' as string,
+    codResolucao: 'all' as string,
+    statusChamado: 'all' as string,
+  });
+
   // Estado do formulário de email
   const [emailForm, setEmailForm] = useState({
     destinatarios: '', cc: '', bcc: '',
@@ -299,10 +311,65 @@ export default function InconsistenciaChamados() {
   const paginatedInconsistencias = inconsistenciasFiltradas.slice(startIndex, endIndex);
 
   // Paginação - Resolvidas
-  const totalPagesResolvidas = Math.ceil(resolvidas.length / itemsPerPage);
+  const resolvidasFiltradas = resolvidas.filter(inc => {
+    // Filtro de busca
+    if (filtrosHistorico.busca) {
+      const busca = filtrosHistorico.busca.toLowerCase();
+      const matchBusca = (inc.nro_chamado || '').toLowerCase().includes(busca) ||
+        (inc.nro_tarefa || '').toLowerCase().includes(busca) ||
+        (inc.analista || '').toLowerCase().includes(busca) ||
+        (inc.empresa || '').toLowerCase().includes(busca);
+      if (!matchBusca) return false;
+    }
+    // Filtro de tipo
+    if (filtrosHistorico.tipo_inconsistencia !== 'all' && inc.tipo_inconsistencia !== filtrosHistorico.tipo_inconsistencia) return false;
+    // Filtro de analista
+    if (filtrosHistorico.analista !== 'all' && inc.analista !== filtrosHistorico.analista) return false;
+    // Filtro de origem
+    if (filtrosHistorico.origem !== 'all' && inc.origem !== filtrosHistorico.origem) return false;
+    // Filtro de mês (baseado em data_deteccao)
+    if (filtrosHistorico.mesHistorico !== 'all' && inc.data_deteccao) {
+      const mes = new Date(inc.data_deteccao).getMonth() + 1;
+      if (String(mes).padStart(2, '0') !== filtrosHistorico.mesHistorico) return false;
+    }
+    // Filtro de cód. resolução
+    if (filtrosHistorico.codResolucao !== 'all') {
+      const codFormatado = inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '';
+      if (codFormatado !== filtrosHistorico.codResolucao) return false;
+    }
+    // Filtro de status do chamado
+    if (filtrosHistorico.statusChamado !== 'all') {
+      if (inc.status_chamado !== filtrosHistorico.statusChamado) return false;
+    }
+    return true;
+  });
+  const totalPagesResolvidas = Math.ceil(resolvidasFiltradas.length / itemsPerPage);
   const startIndexResolvidas = (currentPageResolvidas - 1) * itemsPerPage;
   const endIndexResolvidas = startIndexResolvidas + itemsPerPage;
-  const paginatedResolvidas = resolvidas.slice(startIndexResolvidas, endIndexResolvidas);
+  const paginatedResolvidas = resolvidasFiltradas.slice(startIndexResolvidas, endIndexResolvidas);
+
+  // Listas únicas para filtros do Histórico
+  const analistasUnicosHistorico = Array.from(
+    new Set(resolvidas.map(inc => inc.analista).filter(a => a && a.trim() !== ''))
+  ).sort() as string[];
+  const statusChamadoUnicosHistorico = Array.from(
+    new Set(resolvidas.map(inc => inc.status_chamado).filter(s => s && s.trim() !== ''))
+  ).sort() as string[];
+  const codResolucaoUnicosHistorico = Array.from(
+    new Set(resolvidas.map(inc => inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '').filter(c => c !== ''))
+  ).sort() as string[];
+
+  // Filtros ativos - Histórico
+  const hasActiveFiltersHistorico = () => {
+    return filtrosHistorico.busca !== '' || filtrosHistorico.tipo_inconsistencia !== 'all' ||
+      filtrosHistorico.origem !== 'all' || filtrosHistorico.analista !== 'all' || 
+      filtrosHistorico.mesHistorico !== 'all' || filtrosHistorico.codResolucao !== 'all' ||
+      filtrosHistorico.statusChamado !== 'all';
+  };
+  const limparFiltrosHistorico = () => {
+    setFiltrosHistorico({ busca: '', tipo_inconsistencia: 'all', analista: 'all', origem: 'all', mesHistorico: 'all', codResolucao: 'all', statusChamado: 'all' });
+    setCurrentPageResolvidas(1);
+  };
 
   const handleItemsPerPageChange = (value: string) => { setItemsPerPage(Number(value)); setCurrentPage(1); setCurrentPageResolvidas(1); };
 
@@ -387,7 +454,7 @@ export default function InconsistenciaChamados() {
               {t('inconsistencias.tabDetected')} ({inconsistencias.length})
             </TabsTrigger>
             <TabsTrigger value="historico_resolvidas" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium">
-              Histórico de Inconsistências ({resolvidas.length})
+              Histórico de Inconsistências ({resolvidasFiltradas.length})
             </TabsTrigger>
             <TabsTrigger value="emails_enviados" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium">
               Emails Enviados ({historico.length})
@@ -489,53 +556,87 @@ export default function InconsistenciaChamados() {
           <TabsContent value="historico_resolvidas" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-600" />Histórico de Inconsistências</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-600" />Histórico de Inconsistências</CardTitle>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowFiltersHistorico(!showFiltersHistorico)}><Filter className="h-4 w-4 mr-2" />{t('common.filter')}</Button>
+                    {hasActiveFiltersHistorico() && (<Button variant="outline" size="sm" onClick={limparFiltrosHistorico} className="hover:border-red-300"><X className="h-4 w-4 mr-2 text-red-600" />{t('common.clearFilter')}</Button>)}
+                  </div>
+                </div>
+                {showFiltersHistorico && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                      <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtrosHistorico.busca} onChange={(e) => { setFiltrosHistorico({ ...filtrosHistorico, busca: e.target.value }); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
+                      <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtrosHistorico.tipo_inconsistencia} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, tipo_inconsistencia: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
+                      <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtrosHistorico.analista} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, analista: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasUnicosHistorico.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
+                      <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtrosHistorico.origem} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, origem: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
+                      <div><div className="text-sm font-medium mb-2">Mês</div><Select value={filtrosHistorico.mesHistorico} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, mesHistorico: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
+                      <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtrosHistorico.codResolucao} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, codResolucao: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosHistorico.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
+                      <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtrosHistorico.statusChamado} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, statusChamado: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicosHistorico.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
+
               <CardContent className="overflow-x-auto">
                 {isLoadingResolvidas ? (
-                  <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+                  <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
                 ) : paginatedResolvidas.length === 0 ? (
                   <div className="flex items-center justify-center py-12"><div className="text-center"><CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" /><p className="text-gray-500 mb-2 font-medium">Nenhuma inconsistência resolvida neste período</p><p className="text-sm text-gray-400">Quando analistas corrigirem chamados com inconsistências, eles aparecerão aqui</p></div></div>
                 ) : (
                   <>
-                    <Table>
+                    <Table className="w-full text-xs sm:text-sm">
                       <TableHeader><TableRow>
-                        <TableHead className="w-[120px] text-center">{t('inconsistencias.ticketNumber')}</TableHead>
-                        <TableHead className="w-[100px] text-center">{t('inconsistencias.taskNumber')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('common.type')}</TableHead>
-                        <TableHead className="w-[150px] text-center">Data Detecção</TableHead>
-                        <TableHead className="w-[150px] text-center">Data Resolução</TableHead>
-                        <TableHead className="w-[180px] text-center">{t('historico.company')}</TableHead>
-                        <TableHead className="w-[150px] text-center">{t('inconsistencias.analyst')}</TableHead>
-                        <TableHead className="text-center w-[120px]">{t('common.actions')}</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.ticketNumber')}</TableHead>
+                        <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.taskNumber')}</TableHead>
+                        <TableHead className="min-w-[90px] text-center text-xs sm:text-sm py-2">Status</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('common.type')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Detecção</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Resolução</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.activityDate')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.systemDate')}</TableHead>
+                        <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.time')}</TableHead>
+                        <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Cód. Resolução</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('historico.company')}</TableHead>
+                        <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.analyst')}</TableHead>
+                        <TableHead className="w-[60px] text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
                         {paginatedResolvidas.map((inc) => (
                           <TableRow key={inc.id} className="hover:bg-gray-50">
-                            <TableCell className="text-center"><div className="flex items-center justify-center gap-2 whitespace-nowrap"><ClipboardList className="h-4 w-4 text-green-600 flex-shrink-0" /><span className="font-mono text-foreground text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
-                            <TableCell className="text-center"><span className="font-mono text-xs sm:text-sm">{inc.nro_tarefa || '-'}</span></TableCell>
-                            <TableCell className="text-center"><Badge className={TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
-                            <TableCell className="text-center"><span className="text-xs sm:text-sm">{formatarData(inc.data_deteccao || null)}</span></TableCell>
-                            <TableCell className="text-center"><span className="text-xs sm:text-sm text-green-600 font-medium">{formatarData(inc.data_resolucao || null)}</span></TableCell>
-                            <TableCell className="text-xs sm:text-sm max-w-[180px] text-center">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
-                            <TableCell className="text-xs sm:text-sm text-center"><span>{inc.analista || '-'}</span></TableCell>
-                            <TableCell className="text-center"><Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }}><Eye className="h-4 w-4 text-blue-600" /></Button></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-green-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs">{inc.nro_tarefa || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2">{inc.status_chamado && inc.status_chamado.trim() !== '' ? <Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado}</Badge> : <span className="text-xs text-gray-400">-</span>}</TableCell>
+                            <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_deteccao || null)}>{formatarData(inc.data_deteccao || null)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs text-green-600 font-medium cursor-default" title={formatarDataCompleta(inc.data_resolucao || null)}>{formatarData(inc.data_resolucao || null)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_atividade)}>{formatarData(inc.data_atividade)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_sistema)}>{formatarData(inc.data_sistema)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-xs sm:text-sm font-medium">{inc.tempo_gasto_horas || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs" title={inc.cod_resolucao || ''}>{formatarCodResolucao(inc.cod_resolucao)}</span></TableCell>
+                            <TableCell className="text-center py-2 max-w-[120px]">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
+                            <TableCell className="text-center py-2"><span className="text-xs sm:text-sm">{inc.analista || '-'}</span></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex justify-center gap-1"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button></div></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
 
-                    {totalPagesResolvidas > 1 && (
-                      <div className="flex items-center justify-between px-2 py-4 border-t">
-                        <div className="text-sm text-gray-500">{startIndexResolvidas + 1}-{Math.min(endIndexResolvidas, resolvidas.length)} de {resolvidas.length}</div>
+                    {/* Paginação */}
+                    <div className="flex items-center justify-between px-2 py-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-700">{t('historico.show')}</span>
+                        <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="25">25</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem><SelectItem value="500">500</SelectItem></SelectContent></Select>
+                      </div>
+                      {totalPagesResolvidas > 1 && (
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm" disabled={currentPageResolvidas === 1} onClick={() => setCurrentPageResolvidas(prev => Math.max(1, prev - 1))}><ChevronLeft className="h-4 w-4" /></Button>
-                          <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">Página {currentPageResolvidas} de {totalPagesResolvidas}</span>
+                          <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">{t('historico.pageOf', { current: currentPageResolvidas, total: totalPagesResolvidas })}</span>
                           <Button variant="outline" size="sm" disabled={currentPageResolvidas === totalPagesResolvidas} onClick={() => setCurrentPageResolvidas(prev => Math.min(totalPagesResolvidas, prev + 1))}><ChevronRight className="h-4 w-4" /></Button>
                         </div>
-                        <div />
-                      </div>
-                    )}
+                      )}
+                      <div className="text-sm text-gray-600 dark:text-gray-400">{startIndexResolvidas + 1}-{Math.min(endIndexResolvidas, resolvidasFiltradas.length)} de {resolvidasFiltradas.length} {t('inconsistencias.inconsistenciesCount')}</div>
+                    </div>
                   </>
                 )}
               </CardContent>
