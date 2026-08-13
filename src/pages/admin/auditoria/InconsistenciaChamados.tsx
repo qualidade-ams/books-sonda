@@ -43,7 +43,7 @@ export default function InconsistenciaChamados() {
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState('inconsistencias_detectadas');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedInconsistencia, setSelectedInconsistencia] = useState<any>(null);
@@ -84,18 +84,6 @@ export default function InconsistenciaChamados() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [currentPageResolvidas, setCurrentPageResolvidas] = useState(1);
-
-  // Estado de filtros e paginação para Histórico (Tab 2)
-  const [showFiltersHistorico, setShowFiltersHistorico] = useState(false);
-  const [filtrosHistorico, setFiltrosHistorico] = useState({
-    busca: '',
-    tipo_inconsistencia: 'all' as string,
-    analista: 'all' as string,
-    origem: 'all' as string,
-    mesHistorico: 'all' as string,
-    codResolucao: 'all' as string,
-    statusChamado: 'all' as string,
-  });
 
   // Estado do formulário de email
   const [emailForm, setEmailForm] = useState({
@@ -161,19 +149,9 @@ export default function InconsistenciaChamados() {
     return { nome: nomeEmpresa, encontrada: false };
   };
 
-  // Lista de analistas únicos das inconsistências ativas
+  // Lista de analistas únicos das inconsistências ativas (usado no handler de email)
   const analistasUnicos = Array.from(
     new Set(inconsistencias.map(inc => inc.analista).filter(a => a && a.trim() !== ''))
-  ).sort() as string[];
-
-  // Lista de status de chamado únicos
-  const statusChamadoUnicos = Array.from(
-    new Set(inconsistencias.map(inc => inc.status_chamado).filter(s => s && s.trim() !== ''))
-  ).sort() as string[];
-
-  // Lista de códigos de resolução únicos (já formatados sem sufixo)
-  const codResolucaoUnicos = Array.from(
-    new Set(inconsistencias.map(inc => inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '').filter(c => c !== ''))
   ).sort() as string[];
 
   // Navegação de ano (mínimo: 2024)
@@ -191,6 +169,8 @@ export default function InconsistenciaChamados() {
     setMesAtual('all');
     setFiltroCodResolucao('all');
     setFiltros(prev => ({ ...prev, busca: '', tipo_inconsistencia: 'all', origem: 'all', analista: '', status_chamado: 'all' }));
+    setCurrentPage(1);
+    setCurrentPageResolvidas(1);
   };
 
   // Seleção múltipla
@@ -310,36 +290,25 @@ export default function InconsistenciaChamados() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedInconsistencias = inconsistenciasFiltradas.slice(startIndex, endIndex);
 
-  // Paginação - Resolvidas
+  // Paginação - Resolvidas (usa os MESMOS filtros da Tab 1 - compartilhados)
   const resolvidasFiltradas = resolvidas.filter(inc => {
     // Filtro de busca
-    if (filtrosHistorico.busca) {
-      const busca = filtrosHistorico.busca.toLowerCase();
+    if (filtros.busca) {
+      const busca = filtros.busca.toLowerCase();
       const matchBusca = (inc.nro_chamado || '').toLowerCase().includes(busca) ||
         (inc.nro_tarefa || '').toLowerCase().includes(busca) ||
         (inc.analista || '').toLowerCase().includes(busca) ||
         (inc.empresa || '').toLowerCase().includes(busca);
       if (!matchBusca) return false;
     }
-    // Filtro de tipo
-    if (filtrosHistorico.tipo_inconsistencia !== 'all' && inc.tipo_inconsistencia !== filtrosHistorico.tipo_inconsistencia) return false;
-    // Filtro de analista
-    if (filtrosHistorico.analista !== 'all' && inc.analista !== filtrosHistorico.analista) return false;
-    // Filtro de origem
-    if (filtrosHistorico.origem !== 'all' && inc.origem !== filtrosHistorico.origem) return false;
-    // Filtro de mês (baseado em data_deteccao)
-    if (filtrosHistorico.mesHistorico !== 'all' && inc.data_deteccao) {
-      const mes = new Date(inc.data_deteccao).getMonth() + 1;
-      if (String(mes).padStart(2, '0') !== filtrosHistorico.mesHistorico) return false;
-    }
     // Filtro de cód. resolução
-    if (filtrosHistorico.codResolucao !== 'all') {
+    if (filtroCodResolucao !== 'all') {
       const codFormatado = inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '';
-      if (codFormatado !== filtrosHistorico.codResolucao) return false;
+      if (codFormatado !== filtroCodResolucao) return false;
     }
-    // Filtro de status do chamado
-    if (filtrosHistorico.statusChamado !== 'all') {
-      if (inc.status_chamado !== filtrosHistorico.statusChamado) return false;
+    // Filtro de status do chamado (enriquecido)
+    if (filtros.status_chamado && filtros.status_chamado !== 'all') {
+      if (inc.status_chamado !== filtros.status_chamado) return false;
     }
     return true;
   });
@@ -348,28 +317,26 @@ export default function InconsistenciaChamados() {
   const endIndexResolvidas = startIndexResolvidas + itemsPerPage;
   const paginatedResolvidas = resolvidasFiltradas.slice(startIndexResolvidas, endIndexResolvidas);
 
-  // Listas únicas para filtros do Histórico
-  const analistasUnicosHistorico = Array.from(
-    new Set(resolvidas.map(inc => inc.analista).filter(a => a && a.trim() !== ''))
+  // Listas únicas combinadas para filtros (compartilhados entre abas)
+  // Combina analistas das duas listas para oferecer mais opções no dropdown
+  const analistasUnicosCombinados = Array.from(
+    new Set([
+      ...inconsistencias.map(inc => inc.analista),
+      ...resolvidas.map(inc => inc.analista)
+    ].filter(a => a && a.trim() !== ''))
   ).sort() as string[];
-  const statusChamadoUnicosHistorico = Array.from(
-    new Set(resolvidas.map(inc => inc.status_chamado).filter(s => s && s.trim() !== ''))
+  const statusChamadoUnicosCombinados = Array.from(
+    new Set([
+      ...inconsistencias.map(inc => inc.status_chamado),
+      ...resolvidas.map(inc => inc.status_chamado)
+    ].filter(s => s && s.trim() !== ''))
   ).sort() as string[];
-  const codResolucaoUnicosHistorico = Array.from(
-    new Set(resolvidas.map(inc => inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '').filter(c => c !== ''))
+  const codResolucaoUnicosCombinados = Array.from(
+    new Set([
+      ...inconsistencias.map(inc => inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : ''),
+      ...resolvidas.map(inc => inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '')
+    ].filter(c => c !== ''))
   ).sort() as string[];
-
-  // Filtros ativos - Histórico
-  const hasActiveFiltersHistorico = () => {
-    return filtrosHistorico.busca !== '' || filtrosHistorico.tipo_inconsistencia !== 'all' ||
-      filtrosHistorico.origem !== 'all' || filtrosHistorico.analista !== 'all' || 
-      filtrosHistorico.mesHistorico !== 'all' || filtrosHistorico.codResolucao !== 'all' ||
-      filtrosHistorico.statusChamado !== 'all';
-  };
-  const limparFiltrosHistorico = () => {
-    setFiltrosHistorico({ busca: '', tipo_inconsistencia: 'all', analista: 'all', origem: 'all', mesHistorico: 'all', codResolucao: 'all', statusChamado: 'all' });
-    setCurrentPageResolvidas(1);
-  };
 
   const handleItemsPerPageChange = (value: string) => { setItemsPerPage(Number(value)); setCurrentPage(1); setCurrentPageResolvidas(1); };
 
@@ -451,7 +418,7 @@ export default function InconsistenciaChamados() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-gray-100 p-1 rounded-lg">
             <TabsTrigger value="inconsistencias_detectadas" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium">
-              {t('inconsistencias.tabDetected')} ({inconsistencias.length})
+              {t('inconsistencias.tabDetected')} ({inconsistenciasFiltradas.length})
             </TabsTrigger>
             <TabsTrigger value="historico_resolvidas" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium">
               Histórico de Inconsistências ({resolvidasFiltradas.length})
@@ -461,30 +428,37 @@ export default function InconsistenciaChamados() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Filtros compartilhados - aplicados a todas as abas */}
+          <Card className="mt-4">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2"><Filter className="h-4 w-4" />Filtros</CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}><Filter className="h-4 w-4 mr-2" />{showFilters ? 'Ocultar' : 'Mostrar'} Filtros</Button>
+                  {hasActiveFilters() && (<Button variant="outline" size="sm" onClick={limparFiltros} className="hover:border-red-300"><X className="h-4 w-4 mr-2 text-red-600" />{t('common.clearFilter')}</Button>)}
+                </div>
+              </div>
+              {showFilters && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                    <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setCurrentPage(1); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
+                    <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
+                    <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasUnicosCombinados.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
+                    <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, origem: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
+                    <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
+                    <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosCombinados.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
+                    <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtros.status_chamado || 'all'} onValueChange={(value) => { setFiltros({ ...filtros, status_chamado: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicosCombinados.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+          </Card>
+
           {/* Tab 1: Inconsistências Detectadas */}
           <TabsContent value="inconsistencias_detectadas" className="mt-4">
             <Card>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                  <CardTitle className="text-lg flex items-center gap-2"><AlertTriangle className="h-5 w-5" />{t('inconsistencias.detectedTitle')}</CardTitle>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}><Filter className="h-4 w-4 mr-2" />{t('common.filter')}</Button>
-                    {hasActiveFilters() && (<Button variant="outline" size="sm" onClick={limparFiltros} className="hover:border-red-300"><X className="h-4 w-4 mr-2 text-red-600" />{t('common.clearFilter')}</Button>)}
-                  </div>
-                </div>
-                {showFilters && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                      <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
-                      <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => setFiltros({ ...filtros, tipo_inconsistencia: value })}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => setFiltros({ ...filtros, analista: value === 'all' ? '' : value })}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasUnicos.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => setFiltros({ ...filtros, origem: value })}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicos.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtros.status_chamado || 'all'} onValueChange={(value) => { setFiltros({ ...filtros, status_chamado: value }); setCurrentPage(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicos.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
-                    </div>
-                  </div>
-                )}
+                <CardTitle className="text-lg flex items-center gap-2"><AlertTriangle className="h-5 w-5" />{t('inconsistencias.detectedTitle')}</CardTitle>
               </CardHeader>
 
               <CardContent className="overflow-x-auto">
@@ -559,23 +533,8 @@ export default function InconsistenciaChamados() {
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-600" />Histórico de Inconsistências</CardTitle>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowFiltersHistorico(!showFiltersHistorico)}><Filter className="h-4 w-4 mr-2" />{t('common.filter')}</Button>
-                    {hasActiveFiltersHistorico() && (<Button variant="outline" size="sm" onClick={limparFiltrosHistorico} className="hover:border-red-300"><X className="h-4 w-4 mr-2 text-red-600" />{t('common.clearFilter')}</Button>)}
                   </div>
                 </div>
-                {showFiltersHistorico && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                      <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtrosHistorico.busca} onChange={(e) => { setFiltrosHistorico({ ...filtrosHistorico, busca: e.target.value }); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
-                      <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtrosHistorico.tipo_inconsistencia} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, tipo_inconsistencia: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtrosHistorico.analista} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, analista: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasUnicosHistorico.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtrosHistorico.origem} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, origem: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">Mês</div><Select value={filtrosHistorico.mesHistorico} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, mesHistorico: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtrosHistorico.codResolucao} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, codResolucao: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosHistorico.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
-                      <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtrosHistorico.statusChamado} onValueChange={(value) => { setFiltrosHistorico({ ...filtrosHistorico, statusChamado: value }); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicosHistorico.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
-                    </div>
-                  </div>
-                )}
               </CardHeader>
 
               <CardContent className="overflow-x-auto">

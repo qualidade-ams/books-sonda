@@ -132,12 +132,24 @@ export class InconsistenciasChamadosService {
           .eq('status', 'ativa')
           .order('data_abertura', { ascending: false });
 
-        // Filtro por período (data_atividade)
-        if (filtros?.data_inicio) {
-          query = query.gte('data_atividade', filtros.data_inicio);
-        }
-        if (filtros?.data_fim) {
-          query = query.lte('data_atividade', filtros.data_fim);
+        // Filtro por período:
+        // Para "mes_diferente", o registro deve aparecer no ano da data_sistema (data de lançamento).
+        // Para outros tipos, usa data_atividade.
+        // Como o PostgREST não suporta lógica condicional por tipo, usamos um range amplo
+        // que cobre ambas as datas e filtramos no client-side para evitar duplicatas.
+        // Busca registros onde data_atividade OU data_sistema esteja no range.
+        if (filtros?.data_inicio && filtros?.data_fim) {
+          query = query.or(
+            `and(data_atividade.gte.${filtros.data_inicio},data_atividade.lte.${filtros.data_fim}),and(data_sistema.gte.${filtros.data_inicio},data_sistema.lte.${filtros.data_fim})`
+          );
+        } else if (filtros?.data_inicio) {
+          query = query.or(
+            `data_atividade.gte.${filtros.data_inicio},data_sistema.gte.${filtros.data_inicio}`
+          );
+        } else if (filtros?.data_fim) {
+          query = query.or(
+            `data_atividade.lte.${filtros.data_fim},data_sistema.lte.${filtros.data_fim}`
+          );
         }
 
         // Filtro por tipo de inconsistência
@@ -163,10 +175,9 @@ export class InconsistenciasChamadosService {
           }
         }
 
-        // Filtro por status do chamado
-        if (filtros?.status_chamado && filtros.status_chamado !== 'all') {
-          query = query.eq('status_chamado', filtros.status_chamado);
-        }
+        // Filtro por status do chamado - NÃO aplicar no banco pois o campo é
+        // sobrescrito por enriquecerComStatusTicket() após a query.
+        // O filtro é aplicado client-side no componente (inconsistenciasFiltradas).
 
         return query;
       };
@@ -174,7 +185,35 @@ export class InconsistenciasChamadosService {
       const data = await this.buscarTodosPaginado(buildQuery);
 
       console.log('✅ Inconsistências ativas encontradas:', data.length);
-      const inconsistencias = (data as any[]) as InconsistenciaChamado[];
+      let inconsistencias = (data as any[]) as InconsistenciaChamado[];
+
+      // Filtro client-side para evitar duplicatas entre anos:
+      // Para "mes_diferente", o registro pertence ao período da data MAIS RECENTE
+      // entre data_atividade e data_sistema (GREATEST). Isso garante que:
+      // - Atividade em 12/2025, lançada em 01/2026 → aparece em 2026
+      // - Atividade em 01/2025, lançada em 12/2024 → aparece em 2025
+      // Para outros tipos, pertence ao período da data_atividade.
+      if (filtros?.data_inicio && filtros?.data_fim) {
+        const inicio = new Date(filtros.data_inicio);
+        const fim = new Date(filtros.data_fim);
+        fim.setHours(23, 59, 59, 999);
+
+        inconsistencias = inconsistencias.filter(inc => {
+          // Para "mes_diferente": usar a data MAIS RECENTE como referência do período
+          if (inc.tipo_inconsistencia === 'mes_diferente' && inc.data_sistema && inc.data_atividade) {
+            const dataSistema = new Date(inc.data_sistema);
+            const dataAtividade = new Date(inc.data_atividade);
+            const dataReferencia = dataSistema > dataAtividade ? dataSistema : dataAtividade;
+            return dataReferencia >= inicio && dataReferencia <= fim;
+          }
+          // Para outros tipos: usar data_atividade como referência
+          if (inc.data_atividade) {
+            const dataAtividade = new Date(inc.data_atividade);
+            return dataAtividade >= inicio && dataAtividade <= fim;
+          }
+          return true;
+        });
+      }
       
       // Enriquecer com status atual do ticket (sempre busca da tabela de tickets)
       return await this.enriquecerComStatusTicket(inconsistencias);
@@ -201,12 +240,20 @@ export class InconsistenciasChamadosService {
           .eq('status', 'resolvida')
           .order('data_resolucao', { ascending: false });
 
-        // Filtro por período (data_atividade)
-        if (filtros?.data_inicio) {
-          query = query.gte('data_atividade', filtros.data_inicio);
-        }
-        if (filtros?.data_fim) {
-          query = query.lte('data_atividade', filtros.data_fim);
+        // Filtro por período: incluir registros onde data_atividade OU data_sistema
+        // esteja no range. Essencial para "mes_diferente" onde as datas podem cruzar meses/anos.
+        if (filtros?.data_inicio && filtros?.data_fim) {
+          query = query.or(
+            `and(data_atividade.gte.${filtros.data_inicio},data_atividade.lte.${filtros.data_fim}),and(data_sistema.gte.${filtros.data_inicio},data_sistema.lte.${filtros.data_fim})`
+          );
+        } else if (filtros?.data_inicio) {
+          query = query.or(
+            `data_atividade.gte.${filtros.data_inicio},data_sistema.gte.${filtros.data_inicio}`
+          );
+        } else if (filtros?.data_fim) {
+          query = query.or(
+            `data_atividade.lte.${filtros.data_fim},data_sistema.lte.${filtros.data_fim}`
+          );
         }
 
         // Filtro por tipo de inconsistência
@@ -232,10 +279,9 @@ export class InconsistenciasChamadosService {
           }
         }
 
-        // Filtro por status do chamado
-        if (filtros?.status_chamado && filtros.status_chamado !== 'all') {
-          query = query.eq('status_chamado', filtros.status_chamado);
-        }
+        // Filtro por status do chamado - NÃO aplicar no banco pois o campo é
+        // sobrescrito por enriquecerComStatusTicket() após a query.
+        // O filtro é aplicado client-side no componente.
 
         return query;
       };
@@ -243,7 +289,30 @@ export class InconsistenciasChamadosService {
       const data = await this.buscarTodosPaginado(buildQuery);
 
       console.log('✅ Inconsistências resolvidas encontradas:', data.length);
-      const resolvidas = (data as any[]) as InconsistenciaChamado[];
+      let resolvidas = (data as any[]) as InconsistenciaChamado[];
+
+      // Filtro client-side para evitar duplicatas entre anos:
+      // Para "mes_diferente", usa a data MAIS RECENTE (GREATEST) entre data_atividade e data_sistema.
+      // Para outros tipos, pertence ao período da data_atividade.
+      if (filtros?.data_inicio && filtros?.data_fim) {
+        const inicio = new Date(filtros.data_inicio);
+        const fim = new Date(filtros.data_fim);
+        fim.setHours(23, 59, 59, 999);
+
+        resolvidas = resolvidas.filter(inc => {
+          if (inc.tipo_inconsistencia === 'mes_diferente' && inc.data_sistema && inc.data_atividade) {
+            const dataSistema = new Date(inc.data_sistema);
+            const dataAtividade = new Date(inc.data_atividade);
+            const dataReferencia = dataSistema > dataAtividade ? dataSistema : dataAtividade;
+            return dataReferencia >= inicio && dataReferencia <= fim;
+          }
+          if (inc.data_atividade) {
+            const dataAtividade = new Date(inc.data_atividade);
+            return dataAtividade >= inicio && dataAtividade <= fim;
+          }
+          return true;
+        });
+      }
       
       // Enriquecer com status atual do ticket
       return await this.enriquecerComStatusTicket(resolvidas);
