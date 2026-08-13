@@ -135,7 +135,8 @@ class InconsistenciasDeteccaoService {
     origem: string,
     nroChamado: string,
     tipoInconsistencia: string,
-    dataAtividade: string | null
+    dataAtividade: string | null,
+    nroTarefa?: string | null
   ): string {
     // Para tickets com tipos "por ticket", não incluir data na chave
     // Isso evita duplicatas quando data_abertura é populada entre sincronizações
@@ -160,7 +161,12 @@ class InconsistenciasDeteccaoService {
         dataNormalizada = dataAtividade;
       }
     }
-    return `${origem}-${nroChamado}-${tipoInconsistencia}-${dataNormalizada}`;
+
+    // Incluir nro_tarefa na chave para diferenciar tarefas distintas do mesmo chamado
+    // na mesma data (ex: 2 tarefas com tempo excessivo no mesmo chamado/data)
+    // Para tickets, nroTarefa será null/undefined e não afetará a chave
+    const tarefaPart = nroTarefa ? `-${nroTarefa}` : '';
+    return `${origem}-${nroChamado}-${tipoInconsistencia}-${dataNormalizada}${tarefaPart}`;
   }
 
   /**
@@ -469,7 +475,7 @@ class InconsistenciasDeteccaoService {
             analista: apt.analista_tarefa,
             status_chamado: null, // Apontamentos não têm status próprio
             cod_resolucao: apt.cod_resolucao || null,
-            chave_unica: this.gerarChaveUnica('apontamentos', nroFormatado, tipo, apt.data_atividade)
+            chave_unica: this.gerarChaveUnica('apontamentos', nroFormatado, tipo, apt.data_atividade, apt.nro_tarefa)
           });
         }
       }

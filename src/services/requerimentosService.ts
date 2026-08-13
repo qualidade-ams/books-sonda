@@ -34,10 +34,6 @@ export class RequerimentosService {
     await this.verificarClienteExiste(data.cliente_id);
 
     // Verificar se precisa criar requerimento adicional de análise EF
-    console.log('🔍 Verificando criação de requerimento de análise EF:');
-    console.log('  - Tipo de cobrança:', data.tipo_cobranca);
-    console.log('  - Horas análise EF:', data.horas_analise_ef);
-    console.log('  - Tipo de horas_analise_ef:', typeof data.horas_analise_ef);
     
     const criarRequerimentoAnaliseEF = data.tipo_cobranca === 'Reprovado' && data.horas_analise_ef;
     let horasAnaliseEFDecimal = 0;
@@ -46,9 +42,6 @@ export class RequerimentosService {
       horasAnaliseEFDecimal = typeof data.horas_analise_ef === 'string' 
         ? converterParaHorasDecimal(data.horas_analise_ef) 
         : data.horas_analise_ef || 0;
-      
-      console.log('  - Horas análise EF (decimal):', horasAnaliseEFDecimal);
-      console.log('  - Vai criar segundo requerimento?', horasAnaliseEFDecimal > 0);
     }
 
     // Preparar dados para inserção (converter horas para decimal se necessário)
@@ -111,13 +104,7 @@ export class RequerimentosService {
     }
 
     // Se tipo é "Reprovado" e há horas de análise EF, criar segundo requerimento
-    console.log('🔍 Verificando condições para criar segundo requerimento:');
-    console.log('  - criarRequerimentoAnaliseEF:', criarRequerimentoAnaliseEF);
-    console.log('  - horasAnaliseEFDecimal:', horasAnaliseEFDecimal);
-    console.log('  - horasAnaliseEFDecimal > 0:', horasAnaliseEFDecimal > 0);
-    
     if (criarRequerimentoAnaliseEF && horasAnaliseEFDecimal > 0) {
-      console.log('✅ Criando requerimento adicional de Banco de Horas para análise EF...');
       
       const requerimentoAnaliseEFData = {
         chamado: data.chamado.trim().toUpperCase(),
@@ -146,8 +133,6 @@ export class RequerimentosService {
         enviado_faturamento: false
       };
 
-      console.log('📝 Dados do segundo requerimento:', requerimentoAnaliseEFData);
-
       const { data: requerimentoAnaliseEF, error: errorAnaliseEF } = await supabase
         .from('requerimentos')
         .insert(requerimentoAnaliseEFData)
@@ -155,13 +140,9 @@ export class RequerimentosService {
         .single();
 
       if (errorAnaliseEF) {
-        console.error('❌ Erro ao criar requerimento de análise EF:', errorAnaliseEF);
+        console.error('❌ Erro ao criar requerimento de análise EF:', errorAnaliseEF.message);
         // Não falhar a operação principal, apenas logar o erro
-      } else {
-        console.log('✅ Requerimento adicional de análise EF criado com sucesso:', requerimentoAnaliseEF);
       }
-    } else {
-      console.log('⏭️ Não vai criar segundo requerimento (condições não atendidas)');
     }
 
     return this.formatarRequerimento(requerimento);
@@ -171,10 +152,7 @@ export class RequerimentosService {
    * Resolver nomes de usuários baseado nos IDs
    */
   private async resolverNomesUsuarios(userIds: string[]): Promise<Record<string, string>> {
-    console.log('🔍 resolverNomesUsuarios - Iniciando busca para IDs:', userIds);
-    
     if (userIds.length === 0) {
-      console.log('⚠️ resolverNomesUsuarios - Nenhum ID fornecido');
       return {};
     }
 
@@ -182,78 +160,55 @@ export class RequerimentosService {
 
     try {
       // Primeiro tentar buscar na tabela profiles
-      console.log('📊 resolverNomesUsuarios - Buscando na tabela profiles...');
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name')
         .in('id', userIds);
 
-      console.log('📊 resolverNomesUsuarios - Resultado da busca profiles:', {
-        encontrados: profiles?.length || 0,
-        erro: profilesError,
-        dados: profiles
-      });
-
       if (profilesError) {
-        console.error('❌ Erro ao buscar profiles:', profilesError);
+        console.error('❌ Erro ao buscar profiles:', profilesError.message);
       }
 
       if (profiles && profiles.length > 0) {
         profiles.forEach(profile => {
-          // Priorizar full_name, depois email
           const nome = profile.full_name?.trim() || profile.email || 'Usuário não identificado';
           usersMap[profile.id] = nome;
-          console.log(`✅ Profile encontrado: ${profile.id.substring(0, 8)}... -> "${nome}"`);
         });
-      } else {
-        console.warn('⚠️ Nenhum profile encontrado na busca inicial');
       }
 
       // Para IDs que não foram encontrados na profiles, buscar diretamente no auth.users via RPC
       const idsNaoEncontrados = userIds.filter(id => !usersMap[id]);
       if (idsNaoEncontrados.length > 0) {
-        console.warn('⚠️ Usuários não encontrados nos profiles:', idsNaoEncontrados.map(id => id.substring(0, 8) + '...'));
-        
         // Tentar buscar via função RPC que acessa auth.users
         try {
-          console.log('🔄 Tentando buscar via RPC get_users_by_ids...');
           const { data: authUsers, error: authError } = await supabase.rpc('get_users_by_ids', {
             user_ids: idsNaoEncontrados
           });
 
-          console.log('🔄 Resultado RPC:', {
-            encontrados: authUsers?.length || 0,
-            erro: authError,
-            dados: authUsers
-          });
-
           if (authError) {
-            console.error('❌ Erro ao buscar auth.users via RPC:', authError);
+            console.error('❌ Erro ao buscar auth.users via RPC:', authError.message);
           } else if (authUsers && authUsers.length > 0) {
             authUsers.forEach((user: any) => {
               const nome = user.raw_user_meta_data?.full_name || user.email || `Usuário ${user.id.substring(0, 8)}...`;
               usersMap[user.id] = nome;
-              console.log(`✅ Auth user encontrado via RPC: ${user.id.substring(0, 8)}... -> "${nome}"`);
             });
           }
         } catch (rpcError) {
-          console.warn('⚠️ Função RPC get_users_by_ids não disponível ou erro:', rpcError);
+          // Função RPC não disponível, usar fallback silencioso
         }
 
         // Para IDs ainda não encontrados, usar fallback
         const idsAindaNaoEncontrados = idsNaoEncontrados.filter(id => !usersMap[id]);
         if (idsAindaNaoEncontrados.length > 0) {
-          console.warn('⚠️ Usuários não encontrados em nenhuma fonte, usando fallback:', idsAindaNaoEncontrados.map(id => id.substring(0, 8) + '...'));
           idsAindaNaoEncontrados.forEach(id => {
             usersMap[id] = `Usuário ${id.substring(0, 8)}...`;
           });
         }
       }
     } catch (error) {
-      console.error('❌ Erro geral ao resolver nomes de usuários:', error);
+      console.error('❌ Erro geral ao resolver nomes de usuários');
     }
 
-    console.log('📋 Mapa final de usuários:', Object.entries(usersMap).map(([id, nome]) => `${id.substring(0, 8)}... -> "${nome}"`));
     return usersMap;
   }
 
@@ -422,12 +377,6 @@ export class RequerimentosService {
    * Atualizar requerimento
    */
   async atualizarRequerimento(id: string, data: Partial<RequerimentoFormData>): Promise<void> {
-    console.log('🔧 [atualizarRequerimento] Iniciando atualização:', {
-      id,
-      data,
-      empresa_segmentacao_nome: data.empresa_segmentacao_nome
-    });
-    
     if (!id?.trim()) {
       throw new Error('ID é obrigatório');
     }
@@ -451,12 +400,6 @@ export class RequerimentosService {
     if (data.cliente_id) updateData.cliente_id = data.cliente_id;
     if (data.empresa_segmentacao_nome !== undefined) {
       updateData.empresa_segmentacao_nome = data.empresa_segmentacao_nome?.trim() || null;
-      console.log('✅ [atualizarRequerimento] Campo empresa_segmentacao_nome será atualizado:', {
-        valor_original: data.empresa_segmentacao_nome,
-        valor_processado: updateData.empresa_segmentacao_nome
-      });
-    } else {
-      console.log('⚠️ [atualizarRequerimento] Campo empresa_segmentacao_nome NÃO foi fornecido nos dados');
     }
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
@@ -501,12 +444,6 @@ export class RequerimentosService {
       .from('requerimentos')
       .update(updateData)
       .eq('id', id);
-
-    console.log('📊 [atualizarRequerimento] Resultado do UPDATE:', {
-      updateData,
-      error: error?.message || 'Sem erro',
-      sucesso: !error
-    });
 
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
@@ -613,13 +550,6 @@ export class RequerimentosService {
       throw new Error('Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados');
     }
 
-    console.log('Rejeitando requerimento:', {
-      id,
-      chamado: requerimento.chamado,
-      mes_cobranca: requerimento.mes_cobranca,
-      status_atual: requerimento.status
-    });
-
     // Voltar para status lançado
     const { error } = await supabase
       .from('requerimentos')
@@ -635,8 +565,6 @@ export class RequerimentosService {
     if (error) {
       throw new Error(`Erro ao rejeitar requerimento: ${error.message}`);
     }
-
-    console.log('Requerimento rejeitado com sucesso:', id);
   }
 
   /**
@@ -646,8 +574,6 @@ export class RequerimentosService {
     if (!ids || ids.length === 0) {
       throw new Error('Lista de IDs é obrigatória');
     }
-
-    console.log('Marcando requerimentos como faturados:', { ids, quantidade: ids.length });
 
     // Verificar se todos os requerimentos existem e estão no status correto
     const { data: requerimentos, error: selectError } = await supabase
@@ -682,11 +608,6 @@ export class RequerimentosService {
     if (error) {
       throw new Error(`Erro ao marcar requerimentos como faturados: ${error.message}`);
     }
-
-    console.log('Requerimentos marcados como faturados com sucesso:', { 
-      ids, 
-      chamados: requerimentos.map(r => r.chamado) 
-    });
   }
 
   /**
@@ -720,7 +641,7 @@ export class RequerimentosService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Erro na consulta de requerimentos faturados:', error);
+        console.error('Erro na consulta de requerimentos faturados:', error?.message);
         // Retornar array vazio em caso de erro para não quebrar a interface
         return [];
       }
@@ -734,13 +655,6 @@ export class RequerimentosService {
         data.map(async (req) => {
           let cliente_nome = 'N/A';
           
-          console.log('Buscando cliente para requerimento:', {
-            requerimento_id: req.id,
-            chamado: req.chamado,
-            cliente_id: req.cliente_id,
-            tem_cliente_id: !!req.cliente_id
-          });
-          
           if (req.cliente_id) {
             try {
               const { data: cliente, error: clienteError } = await supabase
@@ -749,22 +663,12 @@ export class RequerimentosService {
                 .eq('id', req.cliente_id)
                 .maybeSingle();
 
-              console.log('Resultado da busca de cliente:', {
-                cliente_id: req.cliente_id,
-                encontrou: !!cliente,
-                erro: clienteError?.message,
-                nome_abreviado: cliente?.nome_abreviado,
-                nome_completo: cliente?.nome_completo
-              });
-
               if (!clienteError && cliente) {
                 cliente_nome = cliente.nome_abreviado || cliente.nome_completo || 'N/A';
               }
             } catch (clienteErr) {
-              console.warn('Erro ao buscar cliente:', clienteErr);
+              // Erro silencioso ao buscar cliente
             }
-          } else {
-            console.warn('Requerimento sem cliente_id:', req.id, req.chamado);
           }
 
           return {
@@ -776,7 +680,7 @@ export class RequerimentosService {
 
       return requerimentosComNomes.map(req => this.formatarRequerimento(req));
     } catch (error) {
-      console.error('Erro geral ao buscar requerimentos faturados:', error);
+      console.error('Erro geral ao buscar requerimentos faturados');
       // Retornar array vazio para não quebrar a interface
       return [];
     }
@@ -804,7 +708,7 @@ export class RequerimentosService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Erro na consulta de requerimentos enviados:', error);
+        console.error('Erro na consulta de requerimentos enviados:', error?.message);
         return [];
       }
 
@@ -861,7 +765,7 @@ export class RequerimentosService {
       // Formatar requerimentos para converter horas decimais para HH:MM
       return requerimentosFinais.map(req => this.formatarRequerimento(req));
     } catch (error) {
-      console.error('Erro ao buscar requerimentos enviados:', error);
+      console.error('Erro ao buscar requerimentos enviados');
       return [];
     }
   }
