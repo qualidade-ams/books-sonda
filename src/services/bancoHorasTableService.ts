@@ -365,6 +365,9 @@ export function gerarSecaoExcedentes(info: ExcedenteInfo | null, isEnglish: bool
   const labelHorasExcedentes = isEnglish ? 'Surplus Hours' : 'Horas Excedentes';
   const labelValorHora = isEnglish ? 'Surplus Rate/Hour' : 'Valor Hora Excedentes';
   const labelValorTotal = isEnglish ? 'Total Surplus Amount' : 'Valor total dos Excedentes';
+  const textoAguardo = isEnglish
+    ? 'We await the PO or your approval to proceed with billing.'
+    : 'Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.';
 
   return `
     <div style="margin-top:16px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-family:Inter,sans-serif;">
@@ -374,8 +377,11 @@ export function gerarSecaoExcedentes(info: ExcedenteInfo | null, isEnglish: bool
       <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:#92400e;">
         ${labelValorHora}: ${formatarMoeda(info.valorHoraExcedente)}
       </p>
-      <p style="margin:0;font-size:11px;font-weight:700;color:#92400e;">
+      <p style="margin:0 0 8px 0;font-size:11px;font-weight:700;color:#92400e;">
         ${labelValorTotal}: ${formatarMoeda(info.valorTotalExcedentes)}
+      </p>
+      <p style="margin:0;font-size:11px;font-weight:700;color:#475569;">
+        ${textoAguardo}
       </p>
     </div>
   `;
