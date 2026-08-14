@@ -9,44 +9,36 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface GrupoBookMapping {
-  categoria: string;
-  grupo_book: string;
-}
-
 /**
  * Hook para buscar o mapeamento completo de categorias para grupos
  * Retorna um Map para lookup rápido
+ * 
+ * Colunas da tabela de_para_categoria:
+ * - grupo: código de resolução / nome_grupo de origem (chave de lookup)
+ * - grupo_book: nome mapeado para exibição no book (valor final)
  */
 export function useGrupoBookMapping() {
   return useQuery({
     queryKey: ['grupo-book-mapping'],
     queryFn: async () => {
-      console.log('🔍 [useGrupoBookMapping] Buscando mapeamento de categorias...');
-      
       const { data, error } = await supabase
         .from('de_para_categoria')
-        .select('categoria, grupo')
+        .select('grupo, grupo_book')
         .eq('status', 'ativa')
-        .order('categoria');
+        .order('grupo');
 
       if (error) {
-        console.error('❌ [useGrupoBookMapping] Erro ao buscar mapeamento:', error);
+        console.error('Erro ao buscar mapeamento de grupos:', error.message);
         throw error;
       }
 
-      console.log('📊 [useGrupoBookMapping] Dados brutos:', data);
-
-      // Criar Map para lookup rápido: categoria -> grupo_book
+      // Criar Map para lookup rápido: grupo -> grupo_book
       const mappingMap = new Map<string, string>();
       
-      data.forEach((item) => {
-        mappingMap.set(item.categoria, item.grupo);
-      });
-
-      console.log('✅ [useGrupoBookMapping] Mapeamento criado:', {
-        total: mappingMap.size,
-        exemplos: Array.from(mappingMap.entries()).slice(0, 3)
+      data?.forEach((item) => {
+        if (item.grupo && item.grupo_book) {
+          mappingMap.set(item.grupo, item.grupo_book);
+        }
       });
       
       return mappingMap;
@@ -63,31 +55,23 @@ export function useGrupoBookPorCategoria(categoria?: string) {
     queryKey: ['grupo-book', categoria],
     queryFn: async () => {
       if (!categoria) {
-        console.log('⏭️ [useGrupoBookPorCategoria] Categoria não fornecida');
         return null;
       }
 
-      console.log('🔍 [useGrupoBookPorCategoria] Buscando grupo para categoria:', categoria);
-
       const { data, error } = await supabase
         .from('de_para_categoria')
-        .select('grupo')
-        .eq('categoria', categoria)
+        .select('grupo_book')
+        .eq('grupo', categoria)
         .eq('status', 'ativa')
         .limit(1)
         .single();
 
       if (error) {
-        console.error('❌ [useGrupoBookPorCategoria] Erro ao buscar grupo:', error);
+        console.error('Erro ao buscar grupo_book:', error.message);
         return null;
       }
 
-      console.log('✅ [useGrupoBookPorCategoria] Grupo encontrado:', {
-        categoria,
-        grupo: data?.grupo
-      });
-
-      return data?.grupo || null;
+      return data?.grupo_book || null;
     },
     enabled: !!categoria,
     staleTime: 1000 * 60 * 5, // Cache por 5 minutos
@@ -102,15 +86,7 @@ export function mapearCasoGrupoParaGrupoBook(
   casoGrupo: string,
   mappingMap: Map<string, string>
 ): string {
-  const grupoBook = mappingMap.get(casoGrupo);
-  
-  if (grupoBook) {
-    console.log(`📧 [Mapeamento] "${casoGrupo}" → "${grupoBook}"`);
-    return grupoBook;
-  }
-  
-  console.warn(`⚠️ [Mapeamento] Categoria "${casoGrupo}" não encontrada no mapeamento, mantendo original`);
-  return casoGrupo;
+  return mappingMap.get(casoGrupo) || casoGrupo;
 }
 
 /**

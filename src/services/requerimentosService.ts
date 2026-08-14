@@ -281,7 +281,28 @@ export class RequerimentosService {
     
     const usersMap = await this.resolverNomesUsuarios(userIds);
 
-    // Mapear requerimentos e atualizar nomes de autores
+    // Buscar ticket_externo para os chamados dos requerimentos
+    const chamadosNumeros = (data || [])
+      .map(req => (req.chamado || '').replace('RF-', ''))
+      .filter(Boolean);
+
+    let ticketExternoMap: Record<string, string> = {};
+    if (chamadosNumeros.length > 0) {
+      const { data: ticketsData } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('nro_solicitacao, ticket_externo')
+        .in('nro_solicitacao', chamadosNumeros);
+
+      if (ticketsData) {
+        ticketsData.forEach((t: any) => {
+          if (t.nro_solicitacao && t.ticket_externo) {
+            ticketExternoMap[t.nro_solicitacao] = t.ticket_externo.trim();
+          }
+        });
+      }
+    }
+
+    // Mapear requerimentos e atualizar nomes de autores e ticket_externo
     return (data || []).map(req => {
       const requerimento = this.formatarRequerimento(req);
       
@@ -289,6 +310,12 @@ export class RequerimentosService {
       const autorId = (req as any).autor_id;
       if (autorId && usersMap[autorId]) {
         requerimento.autor_nome = usersMap[autorId];
+      }
+
+      // Adicionar ticket_externo
+      const numChamado = (req.chamado || '').replace('RF-', '');
+      if (numChamado && ticketExternoMap[numChamado]) {
+        requerimento.ticket_externo = ticketExternoMap[numChamado];
       }
       
       return requerimento;

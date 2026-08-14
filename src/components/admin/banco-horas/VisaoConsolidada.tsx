@@ -430,6 +430,13 @@ export function VisaoConsolidada({
   // Estados para visualização de requerimento
   const [requerimentoSelecionado, setRequerimentoSelecionado] = useState<Requerimento | null>(null);
   const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
+
+  // Verificar se a coluna Ticket Externo deve ser exibida (pelo menos 1 requerimento tem ticket_externo)
+  const showTicketExternoReqPeriodo = requerimentos.some(r => r.ticket_externo);
+  const showTicketExternoReqDesenv = requerimentosEmDesenvolvimento.some(r => r.ticket_externo);
+  const showTicketExternoReqNaoConcluidos = requerimentosNaoConcluidos.some(r => r.ticket_externo);
+  // Flag geral (para simplificar nas 3 tabelas que compartilham a mesma estrutura)
+  const showTicketExterno = showTicketExternoReqPeriodo || showTicketExternoReqDesenv || showTicketExternoReqNaoConcluidos;
   
   // Estado para última sincronização de apontamentos
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
@@ -1398,6 +1405,7 @@ export function VisaoConsolidada({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+                    {showTicketExterno && <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">{t('requirements.externalTicket')}</TableHead>}
                     <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
                     <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
                     <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
@@ -1438,6 +1446,14 @@ export function VisaoConsolidada({
                             </span>
                           </div>
                         </TableCell>
+                        
+                        {showTicketExterno && (
+                        <TableCell className="py-2 text-center">
+                          <span className="text-xs sm:text-sm">
+                            {req.ticket_externo || '-'}
+                          </span>
+                        </TableCell>
+                        )}
                         
                         <TableCell className="py-2 text-center">
                           <span className="text-xs sm:text-sm font-medium">
@@ -1554,6 +1570,7 @@ export function VisaoConsolidada({
                 <TableHeader>
                   <TableRow className="bg-orange-50">
                     <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+                    {showTicketExterno && <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">{t('requirements.externalTicket')}</TableHead>}
                     <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
                     <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
                     <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
@@ -1594,6 +1611,14 @@ export function VisaoConsolidada({
                               </span>
                             </div>
                           </TableCell>
+                          
+                          {showTicketExterno && (
+                          <TableCell className="py-2 text-center">
+                            <span className="text-xs sm:text-sm">
+                              {req.ticket_externo || '-'}
+                            </span>
+                          </TableCell>
+                          )}
                           
                           <TableCell className="py-2 text-center">
                             <span className="text-xs sm:text-sm font-medium">
@@ -1710,6 +1735,7 @@ export function VisaoConsolidada({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+                    {showTicketExterno && <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">{t('requirements.externalTicket')}</TableHead>}
                     <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
                     <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
                     <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
@@ -1750,6 +1776,14 @@ export function VisaoConsolidada({
                             </span>
                           </div>
                         </TableCell>
+                        
+                        {showTicketExterno && (
+                        <TableCell className="py-2 text-center">
+                          <span className="text-xs sm:text-sm">
+                            {req.ticket_externo || '-'}
+                          </span>
+                        </TableCell>
+                        )}
                         
                         <TableCell className="py-2 text-center">
                           <span className="text-xs sm:text-sm font-medium">

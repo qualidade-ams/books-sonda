@@ -20,16 +20,25 @@ import BookFooterBar from './BookFooterBar';
 
 interface BookRequerimentosProps {
   data: RequerimentoEmDesenvolvimentoData[];
+  allData?: RequerimentoEmDesenvolvimentoData[];
   empresaNome?: string;
+  pageIndex?: number;
+  totalPages?: number;
 }
 
-export default function BookRequerimentos({ data, empresaNome }: BookRequerimentosProps) {
+export default function BookRequerimentos({ data, allData, empresaNome, pageIndex = 0, totalPages = 1 }: BookRequerimentosProps) {
   const { t } = useTranslation();
 
-  // Calcular total de horas
+  // Usar allData para os totais gerais, data para a tabela da página
+  const dadosGerais = allData || data;
+
+  // Verificar se deve exibir coluna Ticket Externo (pelo menos 1 requerimento tem ticket_externo)
+  const showTicketExterno = dadosGerais.some(r => r.ticket_externo);
+
+  // Calcular total de horas (de TODOS os requerimentos)
   const totalHoras = (() => {
     let totalMinutos = 0;
-    data.forEach(req => {
+    dadosGerais.forEach(req => {
       if (req.total_horas && req.total_horas !== '--') {
         const partes = req.total_horas.split(':');
         const h = parseInt(partes[0] || '0', 10);
@@ -64,7 +73,7 @@ export default function BookRequerimentos({ data, empresaNome }: BookRequeriment
                 <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-2">
                   <FileText className="h-5 w-5 text-orange-600" />
                 </div>
-                <div className="text-3xl font-bold text-orange-600">{data.length}</div>
+                <div className="text-3xl font-bold text-orange-600">{dadosGerais.length}</div>
                 <div className="text-xs font-medium text-gray-600 mt-1">
                   {t('books.bookContent.requirementsInDevelopmentTotal')}
                 </div>
@@ -122,6 +131,11 @@ export default function BookRequerimentos({ data, empresaNome }: BookRequeriment
                     <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>
                       {t('books.bookContent.ticketColumn')}
                     </TableHead>
+                    {showTicketExterno && (
+                      <TableHead className="text-center font-semibold text-white whitespace-nowrap" style={{ backgroundColor: '#666666' }}>
+                        {t('books.bookContent.externalTicketColumn')}
+                      </TableHead>
+                    )}
                     <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>
                       {t('books.bookContent.requirementsClientColumn')}
                     </TableHead>
@@ -159,6 +173,7 @@ export default function BookRequerimentos({ data, empresaNome }: BookRequeriment
                           </Badge>
                         </div>
                       </TableCell>
+                      {showTicketExterno && <TableCell className="text-center">{req.ticket_externo || '-'}</TableCell>}
                       <TableCell className="text-center font-medium">{req.cliente}</TableCell>
                       <TableCell className="text-center">
                         <Badge className="bg-orange-100 text-orange-800 text-xs">

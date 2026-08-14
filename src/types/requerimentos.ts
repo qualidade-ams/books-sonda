@@ -3,6 +3,7 @@
 export interface Requerimento {
   id: string;
   chamado: string;
+  ticket_externo?: string; // Ticket externo do apontamentos_tickets_aranda
   cliente_id: string;
   cliente_nome?: string; // Join com empresas_clientes
   empresa_segmentacao_nome?: string; // Nome lógico da empresa de segmentação (ex: "NIQUEL", "IOB")

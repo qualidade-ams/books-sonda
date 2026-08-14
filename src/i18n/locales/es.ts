@@ -1185,6 +1185,9 @@ const es = {
   requirements: {
     title: 'Registrar Requerimientos',
     subtitle: 'Administre especificaciones funcionales de tickets técnicos',
+    ticket: 'Chamado',
+    externalTicket: 'Ticket Externo',
+    client: 'Cliente',
     module: 'Módulo',
     billingType: 'Tipo de Cobro',
     functionalHours: 'H. Funcional',
