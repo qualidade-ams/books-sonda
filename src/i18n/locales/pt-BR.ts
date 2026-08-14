@@ -752,7 +752,7 @@ const ptBR = {
       noRequirementsMonth: 'Nenhum requerimento encontrado neste mês',
       // Requerimentos em Desenvolvimento
       requirementsInDevelopmentTitle: 'Requerimentos em Desenvolvimento',
-      requirementsInDevelopmentSubtitle: 'Requerimentos em andamento que ainda não foram enviados para faturamento',
+      requirementsInDevelopmentSubtitle: 'Requerimentos em andamento que ainda não foram considerados no banco de horas/faturamento',
       requirementsInDevelopmentTotal: 'Total de Requerimentos',
       requirementsInDevelopmentHours: 'Total de Horas',
       requirementsInDevelopmentStatus: 'Em Andamento',
@@ -1185,6 +1185,9 @@ const ptBR = {
   requirements: {
     title: 'Lançar Requerimentos',
     subtitle: 'Gerencie especificações funcionais de chamados técnicos',
+    ticket: 'Chamado',
+    externalTicket: 'Ticket Externo',
+    client: 'Cliente',
     module: 'Módulo',
     billingType: 'Tipo de Cobrança',
     functionalHours: 'H. Funcional',
@@ -1208,8 +1211,6 @@ const ptBR = {
     confirmSendDesc: 'Tem certeza que deseja enviar o requerimento "{{chamado}}" para faturamento? Esta ação não pode ser desfeita.',
     confirmSendBtn: 'Confirmar Envio',
     billingDate: 'Data Faturamento',
-    ticket: 'Chamado',
-    client: 'Cliente',
     description: 'Descrição',
     billingMonth: 'Mês de Cobrança',
     observation: 'Observação',

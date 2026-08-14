@@ -500,14 +500,22 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 </TabsTrigger>
               ))}
               {/* Aba Requerimentos em Desenvolvimento - visível apenas quando existirem */}
-              {requerimentosEmDesenvolvimento && requerimentosEmDesenvolvimento.length > 0 && (
-                <TabsTrigger
-                  value="requerimentos"
-                  className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
-                >
-                  {t('books.tabs.requerimentos')}
-                </TabsTrigger>
-              )}
+              {requerimentosEmDesenvolvimento && requerimentosEmDesenvolvimento.length > 0 && (() => {
+                const ITEMS_PER_PAGE = 11;
+                const totalPages = Math.ceil(requerimentosEmDesenvolvimento.length / ITEMS_PER_PAGE);
+                return Array.from({ length: totalPages }, (_, pageIdx) => (
+                  <TabsTrigger
+                    key={`requerimentos-${pageIdx}`}
+                    value={`requerimentos-${pageIdx}`}
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                  >
+                    {totalPages === 1
+                      ? t('books.tabs.requerimentos')
+                      : `${t('books.tabs.requerimentos')} ${pageIdx + 1}`
+                    }
+                  </TabsTrigger>
+                ));
+              })()}
               <TabsTrigger
                 value="pesquisa"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
@@ -590,15 +598,28 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                   </TabsContent>
                 ))}
 
-                {/* TabsContent: Requerimentos em Desenvolvimento */}
-                {requerimentosEmDesenvolvimento && requerimentosEmDesenvolvimento.length > 0 && (
-                  <TabsContent value="requerimentos" className="mt-0 h-full">
-                    <BookRequerimentos
-                      data={requerimentosEmDesenvolvimento}
-                      empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                    />
-                  </TabsContent>
-                )}
+                {/* TabsContent: Requerimentos em Desenvolvimento (paginado - máx 11 por página) */}
+                {requerimentosEmDesenvolvimento && requerimentosEmDesenvolvimento.length > 0 && (() => {
+                  const ITEMS_PER_PAGE = 11;
+                  const totalPages = Math.ceil(requerimentosEmDesenvolvimento.length / ITEMS_PER_PAGE);
+                  return Array.from({ length: totalPages }, (_, pageIdx) => {
+                    const pageData = requerimentosEmDesenvolvimento.slice(
+                      pageIdx * ITEMS_PER_PAGE,
+                      (pageIdx + 1) * ITEMS_PER_PAGE
+                    );
+                    return (
+                      <TabsContent key={`requerimentos-${pageIdx}`} value={`requerimentos-${pageIdx}`} className="mt-0 h-full">
+                        <BookRequerimentos
+                          data={pageData}
+                          allData={requerimentosEmDesenvolvimento}
+                          empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                          pageIndex={pageIdx}
+                          totalPages={totalPages}
+                        />
+                      </TabsContent>
+                    );
+                  });
+                })()}
 
                 <TabsContent value="pesquisa" className="mt-0 h-full">
                   <BookPesquisa 

@@ -1185,6 +1185,9 @@ const en = {
   requirements: {
     title: 'Register Requirements',
     subtitle: 'Manage functional specifications for technical tickets',
+    ticket: 'Ticket',
+    externalTicket: 'External Ticket',
+    client: 'Client',
     module: 'Module',
     billingType: 'Billing Type',
     functionalHours: 'Functional H.',

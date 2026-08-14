@@ -503,21 +503,33 @@ class BooksService {
           // Se forçando atualização (retificação), reabrir período do banco de horas
           // para que a coleta de dados use valores em tempo real (não o snapshot antigo)
           if (config.forcar_atualizacao) {
+            // 1. Reabrir período (deleta o fechamento/snapshot antigo)
+            // Não-crítico: se falhar, calcularMes() usará dados em tempo real de qualquer forma
             try {
-              // 1. Reabrir período (deleta o fechamento/snapshot antigo)
               await bancoHorasQuarentenaService.reabrirPeriodo(
                 empresaId,
                 config.mes,
                 config.ano
               );
               console.log(`🔓 Período ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retificação)`);
+            } catch (reabrirError) {
+              console.warn('⚠️ Erro ao reabrir período (não crítico, continuando):', reabrirError);
+            }
 
-              // 2. Recalcular banco de horas para atualizar banco_horas_calculos com dados frescos
-              // Isso garante que o próximo fecharPeriodo() salve um snapshot correto
+            // 2. Recalcular banco de horas para atualizar banco_horas_calculos com dados frescos
+            // CRÍTICO: Se falhar, o book seria gerado com valores antigos (requerimentos extemporâneos não refletidos)
+            try {
               await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
               console.log(`🔄 Banco de horas recalculado para empresa ${empresaId} - ${config.mes}/${config.ano}`);
-            } catch (reabrirError) {
-              console.warn('⚠️ Erro ao reabrir/recalcular período (não crítico):', reabrirError);
+            } catch (calcError: any) {
+              console.error(`❌ Erro ao recalcular banco de horas na retificação para ${empresa.nome_abreviado}:`, calcError);
+              resultados.push({
+                sucesso: false,
+                empresa_id: empresaId,
+                empresa_nome: empresa.nome_completo,
+                erro: `Banco de horas não pôde ser recalculado na retificação: ${calcError.message || 'Erro desconhecido'}`
+              });
+              continue;
             }
           } else {
             // SEMPRE recalcular o banco de horas antes de gerar o book.
