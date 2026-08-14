@@ -773,8 +773,15 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     const calculoFimPeriodo = calculos[calculos.length - 1];
     const isTicketMode = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
     
+    // Verificar se o mês de referência é o último mês do período de apuração.
+    // O quadro de excedentes só é exibido no último mês do período (ex: no 3º mês de um trimestre).
+    const ultimoMesPeriodo = mesesParaBuscar[mesesParaBuscar.length - 1];
+    const isUltimoMesDoPeriodo = ultimoMesPeriodo 
+      ? (mesReferencia === ultimoMesPeriodo.mes && anoReferencia === ultimoMesPeriodo.ano)
+      : true; // Fallback: se não conseguir determinar, exibe normalmente
+    
     let secaoExcedentes = '';
-    if (calculoFimPeriodo) {
+    if (calculoFimPeriodo && isUltimoMesDoPeriodo) {
       const temExcedente = isTicketMode
         ? (calculoFimPeriodo.excedentes_tickets && calculoFimPeriodo.excedentes_tickets > 0)
         : (calculoFimPeriodo.excedentes_horas && calculoFimPeriodo.excedentes_horas !== '00:00' && calculoFimPeriodo.excedentes_horas !== '0:00');
