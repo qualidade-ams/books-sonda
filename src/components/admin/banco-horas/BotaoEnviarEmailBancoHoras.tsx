@@ -38,6 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { emailService } from '@/services/emailService';
 import { gerarTabelaBancoHoras, gerarTabelaRequerimentos, gerarSecaoObservacoes, MESES_PT } from '@/services/bancoHorasTableService';
+import { isFimPeriodo } from '@/services/bancoHorasRepasseService';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
@@ -74,6 +75,8 @@ interface BotaoEnviarEmailBancoHorasProps {
   disabled?: boolean;
   diaInicioApuracao?: number;
   diaFimApuracao?: number;
+  /** Início da vigência da empresa (para cálculo de fim de período) */
+  inicioVigencia?: string;
   /** Se true, gera emails em inglês. Detectado pelo template padrão da empresa. */
   isEnglish?: boolean;
 }
@@ -295,6 +298,7 @@ export function BotaoEnviarEmailBancoHoras({
   disabled = false,
   diaInicioApuracao = 1,
   diaFimApuracao = 0,
+  inicioVigencia,
   isEnglish = false,
 }: BotaoEnviarEmailBancoHorasProps) {
   const { t } = useTranslation();
@@ -457,8 +461,13 @@ export function BotaoEnviarEmailBancoHoras({
     });
 
     // Encerramento diferenciado por tipo
+    // A mensagem de excedente/PO só é exibida no último mês do período de apuração
+    const isUltimoMesPeriodo = inicioVigencia
+      ? isFimPeriodo(mesAno.mes, mesAno.ano, new Date(inicioVigencia), periodoApuracao)
+      : true; // Se não tem inicio_vigencia, comportamento padrão (exibir sempre)
+    
     let encerramento = '';
-    if (tipo === 'saldo_mes' && valorExcedentes > 0) {
+    if (tipo === 'saldo_mes' && valorExcedentes > 0 && isUltimoMesPeriodo) {
       const formatarMoeda = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
       // Remover segundos do horasExcedentes se formato HH:MM:SS
       let horasExc = horasExcedentes;
@@ -741,8 +750,13 @@ export function BotaoEnviarEmailBancoHoras({
         });
         
         // Encerramento
+        // A mensagem de excedente/PO só é exibida no último mês do período de apuração
+        const isUltimoMesPeriodoImg = inicioVigencia
+          ? isFimPeriodo(mesAno.mes, mesAno.ano, new Date(inicioVigencia), periodoApuracao)
+          : true;
+        
         let encerramento = '';
-        if (tipoEmail === 'saldo_mes' && valorExcedentes > 0) {
+        if (tipoEmail === 'saldo_mes' && valorExcedentes > 0 && isUltimoMesPeriodoImg) {
           const formatarMoedaLocal = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
           let horasExc = horasExcedentes;
           const partes = horasExc.split(':');

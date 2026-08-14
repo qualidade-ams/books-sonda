@@ -842,6 +842,7 @@ export function VisaoConsolidada({
               disabled={disabled}
               diaInicioApuracao={(empresaAtual as any)?.dia_inicio_apuracao ?? 1}
               diaFimApuracao={(empresaAtual as any)?.dia_fim_apuracao ?? 0}
+              inicioVigencia={inicioVigencia || (empresaAtual as any)?.inicio_vigencia}
               isEnglish={isEnglish}
             />
 
