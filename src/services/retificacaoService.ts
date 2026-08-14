@@ -110,49 +110,119 @@ export async function marcarBookRetificacao(
  */
 export async function enviarEmailRetificacao(dados: DadosRetificacao): Promise<boolean> {
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #2563eb; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-        <img src="http://books-sonda.vercel.app/images/logo-sonda.png" alt="Sonda" style="height: 32px; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;" />
-        <h2 style="margin: 0;">⚠️ Retificação Necessária</h2>
-        <p style="margin: 5px 0 0 0; opacity: 0.9;">Requerimento lançado em mês já fechado</p>
-      </div>
-      <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
-        <p>Um requerimento foi lançado em um período que já estava fechado (book enviado). Será necessário <strong>retificar o book</strong> do período.</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+    <div style="font-family: Arial, sans-serif; width: 600px; margin: 0 auto;">
+
+  <table width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; border-collapse:collapse;">
+    <tr>
+      <td 
+        align="center"
+        bgcolor="#2563eb"
+        style="background-color:#2563eb; padding:12px 20px 10px 20px; text-align:center;"
+      >
+
+        <img
+          src="http://books-sonda.vercel.app/images/logo-sonda.png"
+          alt="Sonda"
+          width="90"
+          height="29"
+          style="display:block; width:90px !important; height:29px !important; margin:0 auto 5px auto;"
+        />
+
+        <div style="font-family:Arial,sans-serif; font-size:18px; line-height:22px; font-weight:bold; color:#ffffff;">
+          ⚠️ Retificação Necessária
+        </div>
+
+        <div style="font-family:Arial,sans-serif; font-size:11px; line-height:16px; color:#ffffff; margin-top:2px;">
+          Requerimento lançado em mês já fechado
+        </div>
+
+      </td>
+    </tr>
+  </table>
+
+
+  <table width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; border-collapse:collapse; border:1px solid #e5e7eb;">
+    <tr>
+      <td style="padding:14px 16px;">
+
+        <div style="font-family:Arial,sans-serif; font-size:12px; line-height:18px; color:#222222; margin-bottom:12px;">
+          Um requerimento foi lançado em um período que já estava fechado
+          (book enviado). Será necessário <strong>retificar o book</strong> do período.
+        </div>
+
+
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; font-family:Arial,sans-serif; font-size:11px;">
+
           <tr>
-            <td style="padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: 600; width: 40%;">Chamado</td>
-            <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${dados.chamado}</td>
+            <td width="35%" style="width:35%; padding:6px 9px; background-color:#f9fafb; border:1px solid #e5e7eb; font-weight:bold;">
+              Chamado
+            </td>
+            <td style="padding:6px 9px; border:1px solid #e5e7eb;">
+              ${dados.chamado}
+            </td>
           </tr>
+
           <tr>
-            <td style="padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: 600;">Cliente</td>
-            <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${dados.clienteNome}</td>
+            <td width="35%" style="width:35%; padding:6px 9px; background-color:#f9fafb; border:1px solid #e5e7eb; font-weight:bold;">
+              Cliente
+            </td>
+            <td style="padding:6px 9px; border:1px solid #e5e7eb;">
+              ${dados.clienteNome}
+            </td>
           </tr>
+
           <tr>
-            <td style="padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: 600;">Período (Mês/Ano)</td>
-            <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${dados.mesCobranca}</td>
+            <td width="35%" style="width:35%; padding:6px 9px; background-color:#f9fafb; border:1px solid #e5e7eb; font-weight:bold;">
+              Período
+            </td>
+            <td style="padding:6px 9px; border:1px solid #e5e7eb;">
+              ${dados.mesCobranca}
+            </td>
           </tr>
+
           <tr>
-            <td style="padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: 600;">Tipo de Cobrança</td>
-            <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${dados.tipoCobranca}</td>
+            <td width="35%" style="width:35%; padding:6px 9px; background-color:#f9fafb; border:1px solid #e5e7eb; font-weight:bold;">
+              Tipo de Cobrança
+            </td>
+            <td style="padding:6px 9px; border:1px solid #e5e7eb;">
+              ${dados.tipoCobranca}
+            </td>
           </tr>
+
           <tr>
-            <td style="padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: 600;">Lançado por</td>
-            <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${dados.autorNome}</td>
+            <td width="35%" style="width:35%; padding:6px 9px; background-color:#f9fafb; border:1px solid #e5e7eb; font-weight:bold;">
+              Lançado por
+            </td>
+            <td style="padding:6px 9px; border:1px solid #e5e7eb;">
+              ${dados.autorNome}
+            </td>
+          </tr>
+
+        </table>
+
+
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-top:10px;">
+          <tr>
+            <td
+              style="padding:8px 10px; background-color:#fef3c7; border:1px solid #f59e0b; font-family:Arial,sans-serif; font-size:11px; line-height:16px; color:#92400e;"
+            >
+              <strong>Ação necessária:</strong>
+              O book do período ${dados.mesCobranca} do cliente
+              ${dados.clienteNome} foi marcado para retificação no sistema.
+            </td>
           </tr>
         </table>
 
-        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin-top: 16px;">
-          <p style="margin: 0; color: #92400e; font-size: 14px;">
-            <strong>Ação necessária:</strong> O book do período ${dados.mesCobranca} do cliente ${dados.clienteNome} foi marcado para retificação no sistema.
-          </p>
+
+        <div style="font-family:Arial,sans-serif; font-size:9px; line-height:13px; color:#6b7280; text-align:center; margin-top:12px;">
+          Este é um e-mail automático enviado pelo Sonda Lyze.
         </div>
 
-        <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">
-          Este é um email automático enviado pelo Sonda Lyze.
-        </p>
-      </div>
-    </div>
+      </td>
+    </tr>
+  </table>
+
+</div>
   `;
 
   const emailData: EmailData = {
