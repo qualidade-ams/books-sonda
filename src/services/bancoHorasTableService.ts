@@ -67,16 +67,19 @@ export function gerarTabelaBancoHoras(
   diaFimApuracao?: number,
   isEnglish: boolean = false
 ): string {
-  // Se mais de 6 meses, dividir em duas tabelas (ex: 12 meses = 6 + 6, 8 meses = 4 + 4)
+  // Se mais de 6 meses, dividir em múltiplas tabelas de no máximo 4 meses cada
   if (calculos.length > 6) {
-    const metade = Math.ceil(calculos.length / 2);
-    const primeiraParte = calculos.slice(0, metade);
-    const segundaParte = calculos.slice(metade);
-    
-    const tabela1 = gerarTabelaBancoHoras(primeiraParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (1/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao, isEnglish);
-    const tabela2 = gerarTabelaBancoHoras(segundaParte, tipoCobranca, percentualRepasse, `${nomePeriodo} (2/${Math.ceil(calculos.length / metade)})`, diaInicioApuracao, diaFimApuracao, isEnglish);
-    
-    return `${tabela1}<div style="margin-top:12px;"></div>${tabela2}`;
+    const tamanhoGrupo = 4;
+    const totalPartes = Math.ceil(calculos.length / tamanhoGrupo);
+    const tabelas: string[] = [];
+
+    for (let i = 0; i < totalPartes; i++) {
+      const parte = calculos.slice(i * tamanhoGrupo, (i + 1) * tamanhoGrupo);
+      const tabela = gerarTabelaBancoHoras(parte, tipoCobranca, percentualRepasse, `${nomePeriodo} (${i + 1}/${totalPartes})`, diaInicioApuracao, diaFimApuracao, isEnglish);
+      tabelas.push(tabela);
+    }
+
+    return tabelas.join('<div style="margin-top:12px;"></div>');
   }
 
   const labels = getLabels(isEnglish);
@@ -881,12 +884,10 @@ export async function gerarImagemBancoHoras(
     }
 
     // 2. Calcular largura ideal baseado no número de meses/colunas visíveis por tabela
-    // Com a divisão automática em 2 tabelas para >6 meses, max 6 colunas por tabela
-    const numColunas = Math.min(resultado.calculos.length, 6); // máximo 6 por tabela após split
+    // Com a divisão automática em tabelas de 4 meses para >6 meses, max 4 colunas por tabela
+    const numColunas = Math.min(resultado.calculos.length, 4); // máximo 4 por tabela após split
     let viewportWidth = 600; // padrão para até 3 meses
-    if (numColunas >= 6) {
-      viewportWidth = 800;
-    } else if (numColunas >= 4) {
+    if (numColunas >= 4) {
       viewportWidth = 700;
     }
 
