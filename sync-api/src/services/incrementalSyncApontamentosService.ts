@@ -495,142 +495,146 @@ async function processarRegistro(
 }
 
 /**
- * Reconciliação por chamado: detecta e remove tarefas deletadas no SQL Server
+ * Sincroniza tarefas eliminadas usando a tabela AMSTarefas_Eliminadas do SQL Server.
  * 
- * Para cada chamado que teve registros modificados no sync, verifica quais tarefas
- * existem no SQL Server vs Supabase. As que existem APENAS no Supabase foram deletadas
- * na origem e devem ser removidas (hard-delete).
+ * Busca TODOS os registros de tarefas eliminadas na origem, verifica quais ainda existem
+ * na tabela apontamentos_aranda do Supabase, e executa hard-delete dos encontrados.
+ * 
+ * Substitui a antiga reconciliação por comparação (reconciliarDelecoesporChamado),
+ * usando a fonte oficial de deleções do Aranda.
  * 
  * @param pool Conexão com o SQL Server
- * @param chamadosProcessados Set com os Nro_Chamado que foram processados neste sync
- * @returns Resultado da reconciliação
+ * @returns Resultado da sincronização de deleções
  */
-async function reconciliarDelecoesporChamado(
-  pool: sql.ConnectionPool,
-  chamadosProcessados: Set<string>
+async function sincronizarTarefasEliminadas(
+  pool: sql.ConnectionPool
 ): Promise<{
-  total_chamados_verificados: number;
+  total_eliminadas_sql: number;
   total_deletados: number;
   erros: number;
   detalhes: string[];
   ids_externos_deletados: string[];
 }> {
   const resultado = {
-    total_chamados_verificados: 0,
+    total_eliminadas_sql: 0,
     total_deletados: 0,
     erros: 0,
     detalhes: [] as string[],
     ids_externos_deletados: [] as string[]
   };
 
-  if (chamadosProcessados.size === 0) {
-    console.log('⏭️ [RECONCILIAÇÃO] Nenhum chamado para reconciliar');
-    return resultado;
-  }
+  try {
+    console.log('🔍 [TAREFAS-ELIMINADAS] Buscando tarefas eliminadas no SQL Server (AMSTarefas_Eliminadas)...');
 
-  console.log(`🔍 [RECONCILIAÇÃO] Iniciando reconciliação de ${chamadosProcessados.size} chamados...`);
+    // 1. Buscar todos os registros de tarefas eliminadas no SQL Server
+    // Nota: AMSTarefas_Eliminadas não possui coluna Caso_Grupo.
+    // O filtro AMS SAP já é aplicado na tabela apontamentos_aranda (dados nunca são inseridos para AMS SAP).
+    const querySql = `
+      SELECT Nro_Chamado, Nro_Tarefa
+      FROM AMSTarefas_Eliminadas
+      WHERE Nro_Chamado IS NOT NULL
+        AND Nro_Tarefa IS NOT NULL
+    `;
 
-  // Processar em lotes de 50 chamados para não sobrecarregar as queries
-  const chamadosArray = Array.from(chamadosProcessados);
-  const BATCH_SIZE = 50;
+    const resultSql = await pool.request().query(querySql);
+    resultado.total_eliminadas_sql = resultSql.recordset.length;
 
-  for (let batchStart = 0; batchStart < chamadosArray.length; batchStart += BATCH_SIZE) {
-    const batch = chamadosArray.slice(batchStart, batchStart + BATCH_SIZE);
+    if (resultSql.recordset.length === 0) {
+      console.log('⏭️ [TAREFAS-ELIMINADAS] Nenhuma tarefa eliminada encontrada no SQL Server');
+      return resultado;
+    }
+
+    console.log(`📊 [TAREFAS-ELIMINADAS] ${resultSql.recordset.length} tarefas eliminadas encontradas no SQL Server`);
+
+    // 2. Montar id_externo para cada registro eliminado
+    // Nota: AMSTarefas_Eliminadas armazena Nro_Tarefa SEM prefixo "TK-",
+    // mas na apontamentos_aranda o id_externo usa o formato com "TK-"
+    const idsExternosEliminados: string[] = [];
+    for (const row of resultSql.recordset) {
+      if (row.Nro_Chamado && row.Nro_Tarefa) {
+        const nroTarefa = row.Nro_Tarefa.trim();
+        const nroTarefaFormatado = nroTarefa.startsWith('TK-') ? nroTarefa : `TK-${nroTarefa}`;
+        const idExterno = `AMSapontamento|${row.Nro_Chamado.trim()}|${nroTarefaFormatado}`;
+        idsExternosEliminados.push(idExterno);
+      }
+    }
+
+    if (idsExternosEliminados.length === 0) {
+      console.log('⏭️ [TAREFAS-ELIMINADAS] Nenhum id_externo válido para verificar');
+      return resultado;
+    }
+
+    // 3. Processar em lotes de 50 (id_externo são strings longas, lotes maiores estouram headers HTTP)
+    const BATCH_SIZE = 50;
     
-    try {
-      // 1. Buscar todas as tarefas desses chamados no SQL Server
-      const chamadosLista = batch.map(c => `'${c.replace(/'/g, "''")}'`).join(',');
-      
-      const querySql = `
-        SELECT Nro_Chamado, Nro_Tarefa
-        FROM AMSapontamento
-        WHERE Nro_Chamado IN (${chamadosLista})
-          AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
-      `;
-      
-      const resultSql = await pool.request().query(querySql);
-      
-      // Criar set de id_externo que existem no SQL Server
-      const idsExistentesNoSql = new Set<string>();
-      for (const row of resultSql.recordset) {
-        if (row.Nro_Chamado && row.Nro_Tarefa) {
-          const idExterno = `AMSapontamento|${row.Nro_Chamado.trim()}|${row.Nro_Tarefa.trim()}`;
-          idsExistentesNoSql.add(idExterno);
+    for (let batchStart = 0; batchStart < idsExternosEliminados.length; batchStart += BATCH_SIZE) {
+      const batch = idsExternosEliminados.slice(batchStart, batchStart + BATCH_SIZE);
+
+      try {
+        // Buscar quais desses id_externo existem no Supabase
+        const { data: registrosExistentes, error: errBusca } = await supabase
+          .from('apontamentos_aranda')
+          .select('id, id_externo')
+          .in('id_externo', batch);
+
+        if (errBusca) {
+          console.error(`❌ [TAREFAS-ELIMINADAS] Erro ao buscar batch ${batchStart}:`, errBusca);
+          resultado.erros++;
+          resultado.detalhes.push(`Erro ao buscar batch ${batchStart}: ${errBusca.message}`);
+          continue;
         }
-      }
 
-      // 2. Buscar todas as tarefas desses chamados no Supabase
-      const { data: registrosSupabase, error: errSupabase } = await supabase
-        .from('apontamentos_aranda')
-        .select('id, id_externo, nro_chamado, nro_tarefa')
-        .in('nro_chamado', batch)
-        .eq('origem', 'sql_server');
-
-      if (errSupabase) {
-        console.error('❌ [RECONCILIAÇÃO] Erro ao buscar registros do Supabase:', errSupabase);
-        resultado.erros++;
-        resultado.detalhes.push(`Erro ao buscar batch ${batchStart}: ${errSupabase.message}`);
-        continue;
-      }
-
-      if (!registrosSupabase || registrosSupabase.length === 0) {
-        resultado.total_chamados_verificados += batch.length;
-        continue;
-      }
-
-      // 3. Identificar registros que existem no Supabase mas NÃO no SQL Server
-      const idsParaDeletar: string[] = [];
-      const idsExternosParaDeletar: string[] = [];
-      
-      for (const reg of registrosSupabase) {
-        if (reg.id_externo && !idsExistentesNoSql.has(reg.id_externo)) {
-          idsParaDeletar.push(reg.id);
-          idsExternosParaDeletar.push(reg.id_externo);
-          console.log(`🗑️ [RECONCILIAÇÃO] Tarefa deletada na origem: ${reg.id_externo} (Chamado: ${reg.nro_chamado}, Tarefa: ${reg.nro_tarefa})`);
+        if (!registrosExistentes || registrosExistentes.length === 0) {
+          continue; // Nenhum deste lote existe no Supabase, já foram deletados anteriormente
         }
-      }
 
-      // 4. Hard-delete dos registros órfãos em lotes de 100
-      if (idsParaDeletar.length > 0) {
+        // 4. Hard-delete dos registros encontrados em lotes de 100
+        const idsParaDeletar = registrosExistentes.map(r => r.id);
+        const idsExternosDeletados = registrosExistentes.map(r => r.id_externo);
+
         const DELETE_BATCH = 100;
         for (let i = 0; i < idsParaDeletar.length; i += DELETE_BATCH) {
           const deleteBatch = idsParaDeletar.slice(i, i + DELETE_BATCH);
-          
+
           const { error: errDelete } = await supabase
             .from('apontamentos_aranda')
             .delete()
             .in('id', deleteBatch);
 
           if (errDelete) {
-            console.error('❌ [RECONCILIAÇÃO] Erro ao deletar registros:', errDelete);
+            console.error('❌ [TAREFAS-ELIMINADAS] Erro ao deletar registros:', errDelete);
             resultado.erros++;
-            resultado.detalhes.push(`Erro ao deletar batch: ${errDelete.message}`);
+            resultado.detalhes.push(`Erro ao deletar: ${errDelete.message}`);
           } else {
             resultado.total_deletados += deleteBatch.length;
-            console.log(`✅ [RECONCILIAÇÃO] ${deleteBatch.length} registros removidos do Supabase`);
+            console.log(`🗑️ [TAREFAS-ELIMINADAS] ${deleteBatch.length} registros removidos do Supabase`);
           }
         }
 
         // Coletar ids_externos deletados para atualizar ajustes retroativos
-        resultado.ids_externos_deletados.push(...idsExternosParaDeletar);
+        resultado.ids_externos_deletados.push(...idsExternosDeletados);
 
-        resultado.detalhes.push(
-          `Chamados ${batch.slice(0, 5).join(', ')}${batch.length > 5 ? '...' : ''}: ${idsParaDeletar.length} tarefas removidas`
-        );
+      } catch (erro) {
+        console.error(`❌ [TAREFAS-ELIMINADAS] Erro no batch ${batchStart}:`, erro);
+        resultado.erros++;
+        resultado.detalhes.push(`Erro no batch ${batchStart}: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`);
       }
-
-      resultado.total_chamados_verificados += batch.length;
-
-    } catch (erro) {
-      console.error(`❌ [RECONCILIAÇÃO] Erro no batch ${batchStart}:`, erro);
-      resultado.erros++;
-      resultado.detalhes.push(`Erro no batch ${batchStart}: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`);
     }
-  }
 
-  console.log(`✅ [RECONCILIAÇÃO] Concluída: ${resultado.total_chamados_verificados} chamados verificados, ${resultado.total_deletados} tarefas removidas, ${resultado.erros} erros`);
-  
-  return resultado;
+    if (resultado.total_deletados > 0) {
+      resultado.detalhes.push(`${resultado.total_deletados} tarefas removidas do Supabase (eliminadas na origem)`);
+    }
+
+    console.log(`✅ [TAREFAS-ELIMINADAS] Concluída: ${resultado.total_eliminadas_sql} tarefas verificadas, ${resultado.total_deletados} removidas do Supabase, ${resultado.erros} erros`);
+
+    return resultado;
+
+  } catch (erro) {
+    console.error('💥 [TAREFAS-ELIMINADAS] Erro crítico:', erro);
+    resultado.erros++;
+    resultado.detalhes.push(`Erro crítico: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`);
+    return resultado;
+  }
 }
 
 /**
@@ -1226,21 +1230,44 @@ export async function sincronizarApontamentosIncremental(
       console.log('✅ [SYNC] Nenhum registro novo ou modificado encontrado');
       resultado.sucesso = true;
       resultado.mensagens.push('Nenhum registro novo ou modificado para sincronizar');
+      
+      // Mesmo sem registros novos, verificar tarefas eliminadas
+      console.log('🔍 [SYNC] Iniciando sincronização de tarefas eliminadas (AMSTarefas_Eliminadas)...');
+      resultado.mensagens.push('🔍 Verificando tarefas eliminadas na origem (AMSTarefas_Eliminadas)');
+      
+      const resultadoEliminadas = await sincronizarTarefasEliminadas(pool);
+      resultado.deletados = resultadoEliminadas.total_deletados;
+      
+      if (resultadoEliminadas.total_eliminadas_sql > 0) {
+        resultado.mensagens.push(`📊 ${resultadoEliminadas.total_eliminadas_sql} tarefas na lista de eliminadas do SQL Server`);
+      }
+      if (resultadoEliminadas.total_deletados > 0) {
+        resultado.mensagens.push(`🗑️ ${resultadoEliminadas.total_deletados} tarefas removidas do Supabase (eliminadas na origem)`);
+      }
+      if (resultadoEliminadas.erros > 0) {
+        resultado.mensagens.push(`⚠️ Tarefas eliminadas: ${resultadoEliminadas.erros} erros durante verificação`);
+      }
+      
+      // Atualizar ajustes retroativos se houve deleções
+      if (resultadoEliminadas.ids_externos_deletados.length > 0) {
+        const resultadoAjustes = await atualizarAjustesRetroativosAposDeleção(resultadoEliminadas.ids_externos_deletados);
+        if (resultadoAjustes.ajustes_atualizados > 0) {
+          resultado.mensagens.push(`🔄 Ajustes retroativos: ${resultadoAjustes.ajustes_atualizados} recalculados`);
+        }
+        if (resultadoAjustes.ajustes_deletados > 0) {
+          resultado.mensagens.push(`🗑️ Ajustes retroativos: ${resultadoAjustes.ajustes_deletados} removidos`);
+        }
+      }
+      
       return resultado;
     }
 
-    // 4. Processar cada registro e coletar chamados processados
+    // 4. Processar cada registro
     console.log(`🔄 [SYNC] Processando ${registros.length} registros...`);
-    const chamadosProcessados = new Set<string>();
     const idsExternosAtualizados: string[] = [];
     
     for (let i = 0; i < registros.length; i++) {
       const registro = registros[i];
-      
-      // Coletar Nro_Chamado para reconciliação posterior
-      if (registro.Nro_Chamado && registro.Nro_Chamado.trim()) {
-        chamadosProcessados.add(registro.Nro_Chamado.trim());
-      }
       
       // Log de progresso a cada 50 registros
       if (i % 50 === 0 && i > 0) {
@@ -1276,27 +1303,30 @@ export async function sincronizarApontamentosIncremental(
       }
     }
 
-    // 5. Reconciliação: detectar e remover tarefas deletadas no SQL Server
-    console.log(`🔍 [SYNC] Iniciando reconciliação de deleções para ${chamadosProcessados.size} chamados...`);
-    resultado.mensagens.push(`🔍 Reconciliando deleções para ${chamadosProcessados.size} chamados distintos`);
+    // 5. Sincronizar tarefas eliminadas (AMSTarefas_Eliminadas)
+    console.log('🔍 [SYNC] Iniciando sincronização de tarefas eliminadas (AMSTarefas_Eliminadas)...');
+    resultado.mensagens.push('🔍 Verificando tarefas eliminadas na origem (AMSTarefas_Eliminadas)');
     
-    const resultadoReconciliacao = await reconciliarDelecoesporChamado(pool, chamadosProcessados);
-    resultado.deletados = resultadoReconciliacao.total_deletados;
+    const resultadoEliminadas = await sincronizarTarefasEliminadas(pool);
+    resultado.deletados = resultadoEliminadas.total_deletados;
     
-    if (resultadoReconciliacao.total_deletados > 0) {
-      resultado.mensagens.push(`🗑️ Reconciliação: ${resultadoReconciliacao.total_deletados} tarefas removidas (deletadas na origem)`);
+    if (resultadoEliminadas.total_eliminadas_sql > 0) {
+      resultado.mensagens.push(`📊 ${resultadoEliminadas.total_eliminadas_sql} tarefas na lista de eliminadas do SQL Server`);
     }
-    if (resultadoReconciliacao.erros > 0) {
-      resultado.mensagens.push(`⚠️ Reconciliação: ${resultadoReconciliacao.erros} erros durante verificação`);
+    if (resultadoEliminadas.total_deletados > 0) {
+      resultado.mensagens.push(`🗑️ ${resultadoEliminadas.total_deletados} tarefas removidas do Supabase (eliminadas na origem)`);
     }
-    if (resultadoReconciliacao.detalhes.length > 0) {
-      resultado.mensagens.push(...resultadoReconciliacao.detalhes.slice(0, 10)); // Limitar a 10 detalhes
+    if (resultadoEliminadas.erros > 0) {
+      resultado.mensagens.push(`⚠️ Tarefas eliminadas: ${resultadoEliminadas.erros} erros durante verificação`);
+    }
+    if (resultadoEliminadas.detalhes.length > 0) {
+      resultado.mensagens.push(...resultadoEliminadas.detalhes.slice(0, 10));
     }
 
     // 6. Atualizar ajustes retroativos afetados pelas deleções
-    if (resultadoReconciliacao.ids_externos_deletados.length > 0) {
-      console.log(`🔄 [SYNC] Atualizando ajustes retroativos afetados por ${resultadoReconciliacao.ids_externos_deletados.length} apontamentos deletados...`);
-      const resultadoAjustes = await atualizarAjustesRetroativosAposDeleção(resultadoReconciliacao.ids_externos_deletados);
+    if (resultadoEliminadas.ids_externos_deletados.length > 0) {
+      console.log(`🔄 [SYNC] Atualizando ajustes retroativos afetados por ${resultadoEliminadas.ids_externos_deletados.length} apontamentos deletados...`);
+      const resultadoAjustes = await atualizarAjustesRetroativosAposDeleção(resultadoEliminadas.ids_externos_deletados);
       
       if (resultadoAjustes.ajustes_atualizados > 0) {
         resultado.mensagens.push(`🔄 Ajustes retroativos: ${resultadoAjustes.ajustes_atualizados} recalculados`);
