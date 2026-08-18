@@ -491,8 +491,11 @@ export class BancoHorasQuarentenaService {
   }
 
   /**
-   * Detecta extemporâneos de horas reutilizando fechamento já carregado.
-   * Evita query duplicada ao buscarFechamento.
+   * Detecta apontamentos de horas lançados após o fechamento.
+   * Reutiliza fechamento já carregado para evitar query duplicada.
+   * 
+   * Regra: Busca TODOS os apontamentos válidos com data_atividade no período,
+   * depois filtra os que NÃO estão no snapshot (lançados após fechamento).
    */
   private async detectarExtemporaneosComFechamento(
     empresaId: string,
@@ -1123,9 +1126,9 @@ export class BancoHorasQuarentenaService {
   }
 
   /**
-   * Busca IDs de apontamentos EXTEMPORÂNEOS para um período fechado.
+   * Busca IDs de apontamentos extemporâneos para um período fechado.
    * Extemporâneo = data_atividade no período, mas data_sistema em mês POSTERIOR.
-   * Isso significa que o apontamento foi lançado atrasado, depois do fechamento.
+   * Retorna os IDs para comparação com o snapshot no chamador.
    */
   private async buscarIdsApontamentosExtemporaneos(
     empresaId: string,
@@ -1206,7 +1209,8 @@ export class BancoHorasQuarentenaService {
       if (!apontamentos) return [];
 
       // Filtrar APENAS extemporâneos: data_sistema em mês POSTERIOR ao da data_atividade
-      // Isso significa que o apontamento foi lançado ATRASADO
+      // E que não estejam no snapshot (verificação feita no chamador)
+      // Extemporâneo = tarefa lançada com atraso (data_sistema de mês diferente)
       return apontamentos
         .filter((a: any) => {
           if (!a.data_atividade || !a.data_sistema) return false;
