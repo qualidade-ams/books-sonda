@@ -1052,6 +1052,7 @@ const LancarRequerimentos = () => {
                                             loading={isLoading}
                                             onEdit={handleEdit}
                                             onDelete={handleDelete}
+                                            onView={handleView}
                                             selectedRequerimentos={selectedRequerimentos}
                                             onToggleSelection={toggleRequerimentoSelection}
                                             onSelectAll={selectAllRequerimentos}

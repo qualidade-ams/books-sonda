@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calculator, HelpCircle } from 'lucide-react';
+import { X, Calculator, HelpCircle, Paperclip, Download, FileText, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -21,6 +21,8 @@ import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 import { InputHoras } from '@/components/ui/input-horas';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
+import { useRequerimentoAnexos } from '@/hooks/useRequerimentoAnexos';
+import { requerimentoAnexosService } from '@/services/requerimentoAnexosService';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 
 interface RequerimentoViewModalProps {
@@ -36,6 +38,13 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { data: clientes = [] } = useClientesRequerimentos();
+
+  // Hook para gerenciamento de anexos (somente leitura + download)
+  const {
+    anexosSalvos,
+    isLoadingAnexos,
+    downloadAnexo,
+  } = useRequerimentoAnexos(requerimento?.id);
 
   if (!requerimento) return null;
 
@@ -398,6 +407,63 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Seção: Anexos */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4 text-gray-500" />
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Anexos</h4>
+                {!isLoadingAnexos && (
+                  <span className="text-xs text-gray-500">
+                    ({anexosSalvos.length})
+                  </span>
+                )}
+              </div>
+
+              {isLoadingAnexos ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  <span className="ml-2 text-xs text-gray-500">Carregando anexos...</span>
+                </div>
+              ) : anexosSalvos.length > 0 ? (
+                <div className="space-y-2">
+                  {anexosSalvos.map((anexo) => (
+                    <div
+                      key={anexo.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                            {anexo.nome_original}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {requerimentoAnexosService.formatarTamanho(anexo.tamanho_bytes)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 flex-shrink-0"
+                        onClick={() => downloadAnexo(anexo)}
+                        title="Baixar anexo"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-4 text-center">
+                  <Paperclip className="h-5 w-5 text-gray-300 mr-2" />
+                  <p className="text-xs text-gray-500">Nenhum anexo neste requerimento</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
