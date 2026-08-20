@@ -560,7 +560,7 @@ export default function GeracaoBooks() {
       }
 
       const emailResult = await emailService.sendEmail({
-        to: ['qualidadeams@sonda.com'],
+        to: ['willian.faria@sonda.com'],
         subject: assunto,
         html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
         anexos: {
@@ -574,7 +574,7 @@ export default function GeracaoBooks() {
         // 7. Registrar envio no versionamento
         await booksVersioningService.registrarEnvio(
           bookGerado.book_id!,
-          ['qualidadeams@sonda.com']
+          ['willian.faria@sonda.com']
         );
 
         toast({
