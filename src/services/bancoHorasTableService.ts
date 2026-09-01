@@ -631,10 +631,13 @@ export async function buscarDadosEGerarTabelaBancoHoras(
           reajustes_tickets: 0,
           consumo_total_horas: '00:00',
           consumo_total_tickets: 0,
+          // Mês futuro: saldo = saldo_a_utilizar (nenhum consumo ainda)
           saldo_horas: c.saldo_a_utilizar_horas || c.baseline_horas || '00:00',
           saldo_tickets: c.saldo_a_utilizar_tickets || c.baseline_tickets || 0,
-          repasse_horas: c.saldo_a_utilizar_horas || c.baseline_horas || '00:00',
-          repasse_tickets: c.saldo_a_utilizar_tickets || c.baseline_tickets || 0,
+          // Mês futuro: repasse ainda não foi calculado (período não fechou) — deve ser 00:00
+          // CORREÇÃO: não usar saldo_a_utilizar_horas aqui pois gera valor incorreto no quadro do email
+          repasse_horas: '00:00',
+          repasse_tickets: 0,
           excedentes_horas: '00:00',
           excedentes_tickets: 0,
           valor_excedentes_horas: 0,
