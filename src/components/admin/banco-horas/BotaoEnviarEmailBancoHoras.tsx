@@ -84,7 +84,7 @@ interface BotaoEnviarEmailBancoHorasProps {
 /** Assinatura padrão do email - imagem única */
 const ASSINATURA_HTML = `
 <div style="margin-top:24px;">
-  <img src="https://books-sonda.vercel.app/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+  <img src="https://www.sondalyze.com.br/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
 </div>
 `;
 
@@ -344,7 +344,7 @@ export function BotaoEnviarEmailBancoHoras({
           </style>
         </head>
         <body>
-          <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
+          <div style="font-family:Calibri,sans-serif;max-width:1200px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
             ${htmlTabelas}
           </div>
         </body>
@@ -354,7 +354,7 @@ export function BotaoEnviarEmailBancoHoras({
       const response = await fetch('/api/email/render-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html: htmlParaRenderizar, width: 1100 })
+        body: JSON.stringify({ html: htmlParaRenderizar, width: 1200 })
       });
       
       if (response.ok) {
@@ -427,9 +427,86 @@ export function BotaoEnviarEmailBancoHoras({
     return `${saudacao}\n\nComplementando o e-mail dos indicadores, segue fechamento do banco de horas:`;
   };
 
+  /**
+   * Para meses futuros (posteriores ao mês atual do calendário), zera apenas o
+   * consumo de chamados e recalcula Consumo Total, Saldo e Repasse a partir disso.
+   * Para todos os meses, se repasse_horas estiver zerado mas saldo_horas não estiver,
+   * recalcula o repasse aplicando o percentualRepasse sobre o saldo — corrige casos
+   * onde o registro foi persistido antes de o saldo ser calculado corretamente.
+   */
+  const mascararMesesFuturos = (calculos: BancoHorasCalculo[]): BancoHorasCalculo[] => {
+    const hoje = new Date();
+    const mesRef = hoje.getMonth() + 1;
+    const anoRef = hoje.getFullYear();
+
+    // Converte "HH:MM" para minutos totais
+    const toMin = (h: string | null | undefined): number => {
+      if (!h || h === '00:00') return 0;
+      const neg = h.startsWith('-');
+      const limpo = h.replace('-', '');
+      const [hh, mm] = limpo.split(':').map(Number);
+      const total = (hh || 0) * 60 + (mm || 0);
+      return neg ? -total : total;
+    };
+    // Converte minutos totais para "HH:MM"
+    const toHoras = (min: number): string => {
+      const neg = min < 0;
+      const abs = Math.abs(min);
+      const hh = Math.floor(abs / 60);
+      const mm = abs % 60;
+      return `${neg ? '-' : ''}${hh}:${String(mm).padStart(2, '0')}`;
+    };
+
+    return calculos.map(c => {
+      const isFuturo = (c.ano > anoRef) || (c.ano === anoRef && c.mes > mesRef);
+
+      let resultado = { ...c };
+
+      if (isFuturo) {
+        // Mês futuro: zera consumo e recalcula saldo
+        resultado = {
+          ...resultado,
+          consumo_horas: '00:00',
+          consumo_tickets: 0,
+          requerimentos_horas: '00:00',
+          requerimentos_tickets: 0,
+          reajustes_horas: '00:00',
+          reajustes_tickets: 0,
+          consumo_total_horas: '00:00',
+          consumo_total_tickets: 0,
+          saldo_horas: c.saldo_a_utilizar_horas || c.baseline_horas || '00:00',
+          saldo_tickets: c.saldo_a_utilizar_tickets || c.baseline_tickets || 0,
+        };
+      }
+
+      // Último mês do período de apuração: repasse sempre 00:00 (período fecha/zera)
+      const isUltimoMes = inicioVigencia
+        ? isFimPeriodo(c.mes, c.ano, new Date(inicioVigencia), periodoApuracao)
+        : false;
+
+      if (isUltimoMes) {
+        return { ...resultado, repasse_horas: '00:00', repasse_tickets: 0 };
+      }
+
+      // Para todos os outros meses: se repasse está zerado mas saldo não está,
+      // recalcula o repasse aplicando o percentual sobre o saldo
+      const saldoMin = toMin(resultado.saldo_horas);
+      const repasseMin = toMin(resultado.repasse_horas);
+      if (repasseMin === 0 && saldoMin > 0 && percentualRepasse > 0) {
+        resultado = {
+          ...resultado,
+          repasse_horas: toHoras(Math.round(saldoMin * percentualRepasse / 100)),
+        };
+      }
+
+      return resultado;
+    });
+  };
+
   // Gera apenas o HTML das tabelas (para renderizar como imagem)
   const gerarHtmlTabelas = () => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const calculosMascarados = mascararMesesFuturos(calculos);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculosMascarados, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
     const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
@@ -439,7 +516,8 @@ export function BotaoEnviarEmailBancoHoras({
 
   // Gera o HTML final combinando texto editável + tabelas
   const gerarHtmlFinal = (texto: string, tipo: TipoEmailBancoHoras) => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const calculosMascarados = mascararMesesFuturos(calculos);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculosMascarados, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
     const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
@@ -802,11 +880,11 @@ export function BotaoEnviarEmailBancoHoras({
         // Montar imagem das tabelas
         const imgSrc = tabelasImagemUrl || `data:image/png;base64,${tabelasImagemBase64}`;
         const imgHtml = `
-          <!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1100"><tr><td><![endif]-->
-          <table cellpadding="0" cellspacing="0" border="0" width="1100" style="width:1100px;min-width:1100px;max-width:1100px;margin-top:16px;">
+          <!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1200"><tr><td><![endif]-->
+          <table cellpadding="0" cellspacing="0" border="0" width="1200" style="width:1200px;min-width:1200px;max-width:1200px;margin-top:16px;">
           <tr>
           <td style="padding:0;margin:0;line-height:0;font-size:0;">
-          <img src="${imgSrc}" alt="Banco de Horas" width="1100" style="display:block;width:1100px;min-width:1100px;max-width:1100px;height:auto;border:0;outline:none;text-decoration:none;" />
+          <img src="${imgSrc}" alt="Banco de Horas" width="1200" style="display:block;width:1200px;min-width:1200px;max-width:1200px;height:auto;border:0;outline:none;text-decoration:none;" />
           </td>
           </tr>
           </table>
