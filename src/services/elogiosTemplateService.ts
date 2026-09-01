@@ -256,19 +256,19 @@ export class ElogiosTemplateService {
 
     if (ranking.qtd1 > 0) {
       posicoes.push({
-        medalhaImg: 'https://books-sonda.vercel.app/images/elogios/1.png',
+        medalhaImg: 'https://www.sondalyze.com.br/images/elogios/1.png',
         conteudo: ranking.primeiro
       });
     }
     if (ranking.qtd2 > 0) {
       posicoes.push({
-        medalhaImg: 'https://books-sonda.vercel.app/images/elogios/2.png',
+        medalhaImg: 'https://www.sondalyze.com.br/images/elogios/2.png',
         conteudo: ranking.segundo
       });
     }
     if (ranking.qtd3 > 0) {
       posicoes.push({
-        medalhaImg: 'https://books-sonda.vercel.app/images/elogios/3.png',
+        medalhaImg: 'https://www.sondalyze.com.br/images/elogios/3.png',
         conteudo: ranking.terceiro
       });
     }
@@ -399,7 +399,7 @@ export class ElogiosTemplateService {
 <body>
     <div class="email-container">
         <!-- Header -->
-        <img src="https://books-sonda.vercel.app/images/header-elogios.png" alt="Header" class="header-image">
+        <img src="https://www.sondalyze.com.br/images/header-elogios.png" alt="Header" class="header-image">
         
         <!-- Título -->
         <div class="title-section">
@@ -414,7 +414,7 @@ export class ElogiosTemplateService {
         </div>
         
         <!-- Footer -->
-        <img src="https://books-sonda.vercel.app/images/rodape-elogios.png" alt="Footer" class="footer-image">
+        <img src="https://www.sondalyze.com.br/images/rodape-elogios.png" alt="Footer" class="footer-image">
     </div>
 </body>
 </html>`;
@@ -548,8 +548,8 @@ export class ElogiosTemplateService {
       'TITULO_PRINCIPAL': 'ELOGIOS AOS COLABORADORES',
       'SUBTITULO': 'DE SOLUÇÕES DE NEGÓCIOS',
       'MES_REFERENCIA': nomesMeses[mesSelecionado - 1],
-      'HEADER_IMAGE_URL': 'https://books-sonda.vercel.app/images/header-elogios.png',
-      'FOOTER_IMAGE_URL': 'https://books-sonda.vercel.app/images/rodape-elogios.png',
+      'HEADER_IMAGE_URL': 'https://www.sondalyze.com.br/images/header-elogios.png',
+      'FOOTER_IMAGE_URL': 'https://www.sondalyze.com.br/images/rodape-elogios.png',
       'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`,
       'elogio.primeiro': ranking.primeiro,
       'elogio.qtd1': ranking.qtd1.toString(),
@@ -705,8 +705,8 @@ export class ElogiosTemplateService {
 
           // Fundo alternativo a partir do 2º bloco (índice 1+)
           const bgImage = blocoIndex >= 1
-            ? 'https://books-sonda.vercel.app/images/elogios/detalhes-fundo-demais-paginas-3.png'
-            : 'https://books-sonda.vercel.app/images/elogios/detalhes-fundo-demais-paginas.png';
+            ? 'https://www.sondalyze.com.br/images/elogios/detalhes-fundo-demais-paginas-3.png'
+            : 'https://www.sondalyze.com.br/images/elogios/detalhes-fundo-demais-paginas.png';
 
           // Abrir bloco 1500x1080
           html += `
@@ -723,7 +723,7 @@ export class ElogiosTemplateService {
         <td align="top" style="padding:0px 20px 10px 20px;vertical-align:top;">
           <p style="font-size:22px;font-weight:900;margin:0;text-align:center;font-family:'Roboto',Arial,sans-serif;">ELOGIOS AOS COLABORADORES DE SOLUÇÕES DE NEGÓCIOS</p>
           <p style="font-size:16px;font-weight:700;color:#1f5df5;margin:10px 0 15px;text-align:center;font-family:'Roboto',Arial,sans-serif;">${labelMesAno}</p>
-          <img src="https://books-sonda.vercel.app/images/elogios/balao-elogios-recebidos.png" width="420" style="max-width:90%;display:block;margin:0 auto;">
+          <img src="https://www.sondalyze.com.br/images/elogios/balao-elogios-recebidos.png" width="420" style="max-width:90%;display:block;margin:0 auto;">
         </td>
       </tr>
       <!-- GRID DE ELOGIOS -->
@@ -793,7 +793,7 @@ export class ElogiosTemplateService {
           html += `
           <!-- COMO ENVIAR -->
           <div style="padding-top:75px;text-align:center;">
-            <img src="https://books-sonda.vercel.app/images/elogios/balao-como-enviar-elogios.png" width="600" style="max-width:90%;display:block;margin:0 auto;">
+            <img src="https://www.sondalyze.com.br/images/elogios/balao-como-enviar-elogios.png" width="600" style="max-width:90%;display:block;margin:0 auto;">
           </div>
         </td>
       </tr>`;
@@ -804,7 +804,7 @@ export class ElogiosTemplateService {
       <!-- LOGO -->
       <tr>
         <td align="center" style="padding:20px 0 40px;">
-          <img src="https://books-sonda.vercel.app/images/elogios/logo-elogios.png" width="180" style="display:block;margin:0 auto;">
+          <img src="https://www.sondalyze.com.br/images/elogios/logo-elogios.png" width="180" style="display:block;margin:0 auto;">
         </td>
       </tr>`;
           }
@@ -847,8 +847,8 @@ export class ElogiosTemplateService {
       'sistema.mesNomeAtual': nomesMeses[mesSelecionado - 1],
       'TITULO_PRINCIPAL': 'ELOGIOS AOS COLABORADORES',
       'SUBTITULO': 'DE SOLUÇÕES DE NEGÓCIOS',
-      'HEADER_IMAGE_URL': 'https://books-sonda.vercel.app/images/header-elogios.png',
-      'FOOTER_IMAGE_URL': 'https://books-sonda.vercel.app/images/rodape-elogios.png',
+      'HEADER_IMAGE_URL': 'https://www.sondalyze.com.br/images/header-elogios.png',
+      'FOOTER_IMAGE_URL': 'https://www.sondalyze.com.br/images/rodape-elogios.png',
       'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`,
       'elogio.primeiro': ranking.primeiro,
       'elogio.qtd1': ranking.qtd1.toString(),
@@ -960,13 +960,13 @@ export class ElogiosTemplateService {
       {
         variavel: '{{HEADER_IMAGE_URL}}',
         descricao: 'URL da imagem do cabeçalho',
-        exemplo: 'https://books-sonda.vercel.app/images/header-elogios.png',
+        exemplo: 'https://www.sondalyze.com.br/images/header-elogios.png',
         categoria: 'Cabeçalho'
       },
       {
         variavel: '{{FOOTER_IMAGE_URL}}',
         descricao: 'URL da imagem do rodapé',
-        exemplo: 'https://books-sonda.vercel.app/images/rodape-elogios.png',
+        exemplo: 'https://www.sondalyze.com.br/images/rodape-elogios.png',
         categoria: 'Cabeçalho'
       },
       

@@ -898,6 +898,9 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
+      // Obter ID do usuário logado para registrar no histórico
+      const usuarioLogadoId = await this.getUsuarioLogadoId();
+
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
@@ -2147,8 +2150,8 @@ class BooksDisparoService {
 
         // Escolher imagem baseado na altura
         const imagemFundo = alturaConteudo < 768
-          ? 'https://books-sonda.vercel.app/images/book_fundo_novo_nordisk.jpg'
-          : 'https://books-sonda.vercel.app/images/book_fundo_novo_nordisk_2.jpg';
+          ? 'https://www.sondalyze.com.br/images/book_fundo_novo_nordisk.jpg'
+          : 'https://www.sondalyze.com.br/images/book_fundo_novo_nordisk_2.jpg';
 
         console.log(`🖼️ Altura: ${alturaConteudo}px → Usando imagem: ${alturaConteudo < 768 ? 'pequena' : 'grande'}`);
 
