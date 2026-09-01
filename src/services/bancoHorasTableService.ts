@@ -567,6 +567,14 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     // a tabela do email exibe apenas o que foi efetivamente calculado.
     const calculos: BancoHorasCalculo[] = [];
 
+    console.log(`📊 [bancoHorasTableService] ===== INÍCIO DEBUG GERAÇÃO QUADRO EMAIL =====`);
+    console.log(`📊 [bancoHorasTableService] Parâmetros recebidos: mes=${mes}, ano=${ano}`);
+    console.log(`📊 [bancoHorasTableService] Mês de referência do book: ${mesReferencia}/${anoReferencia}`);
+    console.log(`📊 [bancoHorasTableService] Empresa: ${empresaId}`);
+    console.log(`📊 [bancoHorasTableService] Período de apuração: ${periodoApuracao} meses`);
+    console.log(`📊 [bancoHorasTableService] Início vigência: ${inicioVigencia}`);
+    console.log(`📊 [bancoHorasTableService] Meses do período a buscar:`, mesesParaBuscar);
+
     for (const periodo of mesesParaBuscar) {
       const { data: calculo, error: calculoError } = await supabase
         .from('banco_horas_calculos')
@@ -579,9 +587,24 @@ export async function buscarDadosEGerarTabelaBancoHoras(
         .maybeSingle();
 
       if (!calculoError && calculo) {
-        calculos.push(calculo as unknown as BancoHorasCalculo);
+        const c = calculo as unknown as BancoHorasCalculo;
+        console.log(`📥 [bancoHorasTableService] LIDO DO BANCO ${periodo.mes}/${periodo.ano}:`, {
+          id: (c as any).id,
+          baseline_horas: c.baseline_horas,
+          repasse_horas: c.repasse_horas,
+          saldo_a_utilizar_horas: c.saldo_a_utilizar_horas,
+          consumo_horas: c.consumo_horas,
+          requerimentos_horas: c.requerimentos_horas,
+          reajustes_horas: c.reajustes_horas,
+          consumo_total_horas: c.consumo_total_horas,
+          saldo_horas: c.saldo_horas,
+          repasse_horas_campo: c.repasse_horas,
+          created_at: (c as any).created_at,
+          updated_at: (c as any).updated_at,
+        });
+        calculos.push(c);
       } else {
-        console.log(`ℹ️ Sem dados para ${periodo.mes}/${periodo.ano} — coluna omitida da tabela`);
+        console.log(`ℹ️ [bancoHorasTableService] Sem dados para ${periodo.mes}/${periodo.ano} — coluna omitida da tabela`);
       }
     }
 
@@ -592,7 +615,12 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       const c = calculos[i];
       const isFuturo = (c.ano > anoReferencia) || (c.ano === anoReferencia && c.mes > mesReferencia);
       if (isFuturo) {
-        console.log(`ℹ️ Zerando consumo/req/reajuste do mês ${c.mes}/${c.ano} (posterior ao mês de referência ${mesReferencia}/${anoReferencia})`);
+        console.log(`⚙️ [bancoHorasTableService] Mês FUTURO ${c.mes}/${c.ano} — ANTES da zeragem:`, {
+          repasse_horas: c.repasse_horas,
+          saldo_a_utilizar_horas: c.saldo_a_utilizar_horas,
+          baseline_horas: c.baseline_horas,
+          saldo_horas: c.saldo_horas,
+        });
         calculos[i] = {
           ...c,
           consumo_horas: '00:00',
@@ -613,8 +641,35 @@ export async function buscarDadosEGerarTabelaBancoHoras(
           valor_excedentes_tickets: 0,
           valor_a_faturar: 0,
         };
+        console.log(`⚙️ [bancoHorasTableService] Mês FUTURO ${c.mes}/${c.ano} — DEPOIS da zeragem:`, {
+          repasse_horas: calculos[i].repasse_horas,
+          saldo_a_utilizar_horas: calculos[i].saldo_a_utilizar_horas,
+          saldo_horas: calculos[i].saldo_horas,
+          observacao: 'repasse_horas foi sobrescrito com saldo_a_utilizar_horas — VERIFIQUE SE ESTÁ CORRETO',
+        });
+      } else {
+        console.log(`✅ [bancoHorasTableService] Mês NORMAL ${c.mes}/${c.ano} — mantido como lido do banco:`, {
+          repasse_horas: c.repasse_horas,
+          saldo_a_utilizar_horas: c.saldo_a_utilizar_horas,
+          saldo_horas: c.saldo_horas,
+        });
       }
     }
+
+    console.log(`📊 [bancoHorasTableService] SNAPSHOT FINAL que vai para gerarTabelaBancoHoras:`);
+    calculos.forEach(c => {
+      console.log(`  Mês ${c.mes}/${c.ano}:`, {
+        baseline: c.baseline_horas,
+        repasse_mes_anterior: c.repasse_horas,
+        saldo_a_utilizar: c.saldo_a_utilizar_horas,
+        consumo: c.consumo_horas,
+        requerimentos: c.requerimentos_horas,
+        reajuste: c.reajustes_horas,
+        consumo_total: c.consumo_total_horas,
+        saldo: c.saldo_horas,
+      });
+    });
+    console.log(`📊 [bancoHorasTableService] ===== FIM SNAPSHOT =====`);
 
     if (calculos.length === 0) {
       console.log(`ℹ️ Nenhum dado de banco de horas encontrado para empresa ${empresaId} no período`);
