@@ -2,7 +2,7 @@
  * Formulário de cadastro/edição de elogios
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
@@ -38,9 +38,10 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ElogioCompleto } from '@/types/elogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCategorias } from '@/hooks/useDeParaCategoria';
-import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
+import { MultiSelectEspecialistas, type EspecialistaOption } from '@/components/ui/multi-select-especialistas';
 import { useEspecialistasIdsElogio } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
+import { useEspecialistasComBusca } from '@/hooks/useEspecialistasOtimizado';
 
 interface ElogioFormData {
   empresa: string;
@@ -71,11 +72,28 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   // Flag para controlar se o formulário já foi preenchido com os dados do elogio
   const formPopulatedRef = useRef(false);
   const especialistasPopulatedRef = useRef(false);
+
+  // Consultores manuais (IDs "manual_...") gerados/selecionados no MultiSelect.
+  // Estado "vivo" alimentado pelo callback onConsultoresManuaisChange — é a fonte de
+  // verdade usada no submit para compor o campo prestador.
+  const [consultoresManuais, setConsultoresManuais] = useState<EspecialistaOption[]>([]);
+
+  // Consultores manuais reconstruídos a partir do prestador ao ABRIR para edição.
+  // Estado separado (só de entrada) passado como initialConsultoresManuais ao MultiSelect,
+  // para evitar ciclo de feedback com o callback onConsultoresManuaisChange.
+  const [manuaisIniciais, setManuaisIniciais] = useState<EspecialistaOption[]>([]);
+
+  // Controla se os consultores manuais já foram reconstruídos a partir do prestador
+  // (para edição), evitando reprocessar a cada render.
+  const manuaisReconstruidosRef = useRef(false);
   
   // Reset da flag quando o elogio muda (ex: abrir outro elogio)
   useEffect(() => {
     formPopulatedRef.current = false;
     especialistasPopulatedRef.current = false;
+    manuaisReconstruidosRef.current = false;
+    setConsultoresManuais([]);
+    setManuaisIniciais([]);
   }, [elogio?.id]);
   
   // Buscar categorias e grupos da tabela DE-PARA
@@ -102,6 +120,10 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
       especialistas_ids: []
     }
   });
+
+  // Lista completa de especialistas do banco (mesma fonte da correlação) —
+  // usada para reconstruir consultores manuais de forma confiável, sem query extra.
+  const { todosEspecialistas, isLoading: loadingEspecialistasBase } = useEspecialistasComBusca();
 
   // Buscar especialistas relacionados ao elogio (para edição)
   const especialistasIdsRelacionados = useEspecialistasIdsElogio(elogio?.id);
@@ -204,6 +226,71 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     }
   }, [especialistasIds, elogio, loadingCorrelacao]); // Removido 'form' da dependência para evitar loops
 
+  // Reconstruir consultores manuais a partir do campo prestador (para edição).
+  // Espelha o comportamento do PesquisaForm: os nomes presentes no `prestador` que NÃO
+  // correspondem a nenhum especialista do banco são consultores manuais. Recriamos um
+  // chip "manual_..." para cada um, de modo que reapareçam no MultiSelect ao reeditar e
+  // não sejam perdidos no próximo salvamento.
+  useEffect(() => {
+    const prestador = elogio?.pesquisa?.prestador;
+
+    // Aguardar as dependências assíncronas estabilizarem antes de reconstruir:
+    // - correlação de nomes concluída
+    // - lista base de especialistas carregada (para comparar nomes com segurança)
+    if (
+      !elogio ||
+      !prestador ||
+      loadingCorrelacao ||
+      loadingEspecialistasBase ||
+      todosEspecialistas.length === 0 ||
+      manuaisReconstruidosRef.current
+    ) {
+      return;
+    }
+
+    // Nomes que já correspondem a especialistas do banco (via IDs relacionados/correlacionados).
+    // Resolvidos a partir da lista em memória — sem query assíncrona, evitando timing/RLS.
+    const idsDoBanco = new Set(especialistasIds);
+    const nomesDoBanco = new Set<string>();
+    todosEspecialistas.forEach(esp => {
+      if (idsDoBanco.has(esp.id) && esp.nome) {
+        nomesDoBanco.add(esp.nome.toLowerCase().trim());
+      }
+    });
+
+    // Nomes presentes no prestador que NÃO correspondem a especialistas do banco → manuais
+    const nomesPrestador = prestador.split(/[,;|\n]/).map(n => n.trim()).filter(Boolean);
+    const manuaisExtraidos: EspecialistaOption[] = [];
+    const idsManuais: string[] = [];
+
+    nomesPrestador.forEach(nome => {
+      if (!nomesDoBanco.has(nome.toLowerCase().trim())) {
+        const idManual = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        manuaisExtraidos.push({ label: nome, value: idManual });
+        idsManuais.push(idManual);
+      }
+    });
+
+    manuaisReconstruidosRef.current = true;
+
+    if (manuaisExtraidos.length > 0) {
+      console.log('📋 [ElogioForm] Consultores manuais reconstruídos do prestador:', manuaisExtraidos.map(c => c.label));
+      // manuaisIniciais → alimenta o MultiSelect para exibir os chips (M)
+      setManuaisIniciais(manuaisExtraidos);
+      // consultoresManuais → fonte de verdade para o submit (caso salve sem editar o seletor)
+      setConsultoresManuais(manuaisExtraidos);
+
+      // Adicionar os IDs manuais ao campo, preservando os IDs do banco já presentes
+      const idsAtuais = form.getValues('especialistas_ids') || [];
+      const idsCombinados = [...new Set([...idsAtuais, ...idsManuais])];
+      form.setValue('especialistas_ids', idsCombinados, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false
+      });
+    }
+  }, [elogio, especialistasIds, loadingCorrelacao, loadingEspecialistasBase, todosEspecialistas]); // 'form' omitido intencionalmente
+
   // Preencher grupo automaticamente quando categoria for selecionada
   const handleSubmit = async (dados: ElogioFormData) => {
     // Validação manual: comentário obrigatório para elogios (sempre manuais)
@@ -221,28 +308,67 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
       try {
         console.log('🔄 [ElogioForm] Convertendo especialistas IDs para nomes:', dados.especialistas_ids);
-        
-        // Buscar nomes dos especialistas
-        const { data: especialistas, error } = await supabase
-          .from('especialistas')
-          .select('id, nome')
-          .in('id', dados.especialistas_ids)
-          .order('nome');
 
-        if (error) {
-          console.error('❌ [ElogioForm] Erro ao buscar especialistas:', error);
-          throw error;
+        // Separar IDs do banco de dados e IDs manuais.
+        // IDs manuais (começam com "manual_") NÃO são UUIDs válidos e não existem
+        // na tabela especialistas — não podem ser usados em queries nem em FKs.
+        const idsDb = dados.especialistas_ids.filter(id => !id.startsWith('manual_'));
+        const idsManuais = dados.especialistas_ids.filter(id => id.startsWith('manual_'));
+
+        console.log('🔄 [ElogioForm] IDs do banco:', idsDb);
+        console.log('🔄 [ElogioForm] IDs manuais:', idsManuais);
+
+        const nomes: string[] = [];
+
+        // Buscar nomes apenas dos especialistas do banco de dados
+        if (idsDb.length > 0) {
+          const { data: especialistas, error } = await supabase
+            .from('especialistas')
+            .select('id, nome')
+            .in('id', idsDb)
+            .order('nome');
+
+          if (error) {
+            console.error('❌ [ElogioForm] Erro ao buscar especialistas:', error);
+            throw error;
+          }
+
+          nomes.push(...(especialistas?.map(esp => esp.nome) || []));
         }
 
-        const nomes = especialistas?.map(esp => esp.nome) || [];
+        // Adicionar nomes dos consultores manuais (apenas nomes, sem persistir no banco).
+        // Combinar as duas fontes de labels (estado vivo + reconstruídos) para garantir
+        // que nenhum consultor manual seja perdido por descompasso de sincronização.
+        if (idsManuais.length > 0) {
+          const mapaManuais = new Map<string, string>();
+          [...manuaisIniciais, ...consultoresManuais].forEach(c => {
+            if (c?.value && c?.label) mapaManuais.set(c.value, c.label);
+          });
+
+          const nomesManuais = idsManuais
+            .map(id => mapaManuais.get(id))
+            .filter((label): label is string => Boolean(label));
+
+          nomes.push(...nomesManuais);
+
+          const idsSemNome = idsManuais.filter(id => !mapaManuais.has(id));
+          if (idsSemNome.length > 0) {
+            console.warn('⚠️ [ElogioForm] IDs manuais sem nome correspondente (ignorados):', idsSemNome.length);
+          }
+          console.log('ℹ️ [ElogioForm] Consultores manuais salvos apenas no campo prestador:', nomesManuais);
+        }
+
         const nomesConcat = nomes.join(', ');
-        
+
         console.log('✅ [ElogioForm] Nomes dos especialistas:', nomes);
         console.log('✅ [ElogioForm] Prestador concatenado:', nomesConcat);
-        
-        // Atualizar o campo prestador com os nomes concatenados
+
+        // Atualizar o campo prestador com os nomes concatenados (inclui manuais)
         dados.prestador = nomesConcat;
-        
+
+        // Usar apenas IDs do banco para os relacionamentos em elogio_especialistas
+        dados.especialistas_ids = idsDb;
+
       } catch (error) {
         console.error('❌ [ElogioForm] Erro ao converter especialistas:', error);
         // Em caso de erro, manter o valor original do prestador
@@ -351,6 +477,8 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
                         // Forçar re-render do campo
                         form.trigger('especialistas_ids');
                       }}
+                      onConsultoresManuaisChange={setConsultoresManuais}
+                      initialConsultoresManuais={manuaisIniciais}
                       placeholder="Selecione os consultores..."
                     />
                   </FormControl>
