@@ -503,7 +503,6 @@ export async function buscarDadosEGerarTabelaBancoHoras(
 
     const tipoCobranca = (empresa as any).tipo_cobranca || 'horas';
     const periodoApuracao = (empresa as any).periodo_apuracao || 3;
-    const percentualRepasse = (empresa as any).percentual_repasse_mensal ?? 0;
     const diaInicioApuracao = (empresa as any).dia_inicio_apuracao || 1;
     const diaFimApuracao = (empresa as any).dia_fim_apuracao || 0;
     const inicioVigencia = (empresa as any).inicio_vigencia;
@@ -511,6 +510,27 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     // O mês de referência do book é o mês anterior ao mês de disparo
     const mesReferencia = mes === 1 ? 12 : mes - 1;
     const anoReferencia = mes === 1 ? ano - 1 : ano;
+
+    // Buscar percentual de repasse vigente da tabela percentual_repasse_historico
+    // (mesma lógica do bancoHorasService.buscarParametrosEmpresa)
+    // O campo percentual_repasse_mensal da empresa pode estar desatualizado (legado)
+    let percentualRepasse: number = (empresa as any).percentual_repasse_mensal ?? 0;
+    try {
+      const dataReferenciaRepasse = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-01`;
+      const { data: repasseVigente, error: repasseError } = await (supabase as any)
+        .rpc('get_percentual_repasse_vigente', {
+          p_empresa_id: empresaId,
+          p_data: dataReferenciaRepasse
+        });
+      if (!repasseError && repasseVigente && repasseVigente.length > 0) {
+        percentualRepasse = repasseVigente[0].percentual;
+        console.log(`✅ [bancoHorasTableService] Percentual de repasse vigente: ${percentualRepasse}% (histórico)`);
+      } else {
+        console.warn(`⚠️ [bancoHorasTableService] Percentual histórico não encontrado, usando campo legado: ${percentualRepasse}%`);
+      }
+    } catch (e) {
+      console.warn(`⚠️ [bancoHorasTableService] Erro ao buscar percentual vigente, usando campo legado: ${percentualRepasse}%`);
+    }
 
     // Calcular os meses do período usando a MESMA lógica da tela de banco de horas:
     // O período é alinhado ao inicio_vigencia da empresa
