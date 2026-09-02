@@ -208,6 +208,17 @@ export function useSalvarEspecialistasElogio() {
       elogioId: string; 
       especialistasIds: string[] 
     }) => {
+      // Este hook cuida APENAS do relacionamento elogio_especialistas.
+      // O campo `prestador` (texto, em pesquisas_satisfacao) é responsabilidade exclusiva
+      // do ElogioForm + elogiosService, que já o montam corretamente com os nomes do banco
+      // + consultores manuais. NÃO sincronizamos o prestador aqui, pois isso reconstruiria
+      // o campo apenas com os nomes do banco e apagaria os consultores manuais.
+
+      // Salvaguarda: IDs manuais (começam com "manual_") não são UUIDs válidos e
+      // não existem na tabela especialistas. Devem ficar apenas no campo prestador,
+      // nunca na FK elogio_especialistas.especialista_id.
+      const idsValidos = especialistasIds.filter(id => !id.startsWith('manual_'));
+
       // 1. Remover relacionamentos existentes
       const { error: deleteError } = await supabase
         .from('elogio_especialistas')
@@ -219,9 +230,9 @@ export function useSalvarEspecialistasElogio() {
         throw deleteError;
       }
 
-      // 2. Inserir novos relacionamentos
-      if (especialistasIds.length > 0) {
-        const relacionamentos = especialistasIds.map(especialistaId => ({
+      // 2. Inserir novos relacionamentos (apenas especialistas reais do banco)
+      if (idsValidos.length > 0) {
+        const relacionamentos = idsValidos.map(especialistaId => ({
           elogio_id: elogioId,
           especialista_id: especialistaId
         }));
@@ -233,50 +244,6 @@ export function useSalvarEspecialistasElogio() {
         if (insertError) {
           console.error('Erro ao inserir novos relacionamentos:', insertError);
           throw insertError;
-        }
-
-        // 3. Sincronizar campo prestador na pesquisas_satisfacao vinculada ao elogio
-        const { data: elogioData } = await supabase
-          .from('elogios')
-          .select('pesquisa_id')
-          .eq('id', elogioId)
-          .single();
-
-        if (elogioData?.pesquisa_id) {
-          const { data: especialistaData } = await supabase
-            .from('especialistas')
-            .select('nome')
-            .in('id', especialistasIds);
-
-          if (especialistaData && especialistaData.length > 0) {
-            const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
-            if (nomesPrestadores) {
-              const { error: updateError } = await supabase
-                .from('pesquisas_satisfacao')
-                .update({ prestador: nomesPrestadores })
-                .eq('id', elogioData.pesquisa_id);
-
-              if (updateError) {
-                console.warn('⚠️ Erro ao sincronizar prestador na pesquisa (elogio):', updateError);
-              } else {
-                console.log('✅ Prestador sincronizado na pesquisa (via elogio):', nomesPrestadores);
-              }
-            }
-          }
-        }
-      } else {
-        // Se removeu todos os especialistas, limpar o prestador na pesquisa vinculada
-        const { data: elogioData } = await supabase
-          .from('elogios')
-          .select('pesquisa_id')
-          .eq('id', elogioId)
-          .single();
-
-        if (elogioData?.pesquisa_id) {
-          await supabase
-            .from('pesquisas_satisfacao')
-            .update({ prestador: null })
-            .eq('id', elogioData.pesquisa_id);
         }
       }
 

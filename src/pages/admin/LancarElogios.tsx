@@ -447,19 +447,22 @@ function LancarElogios() {
 
   // Função para obter nomes dos consultores de um elogio
   const obterNomesConsultores = (elogio: ElogioCompleto): string => {
-    if (!elogio.especialistas || elogio.especialistas.length === 0) {
-      return elogio.pesquisa?.prestador || '-';
+    // O campo `prestador` é a fonte completa: no salvamento ele é montado com os nomes
+    // dos especialistas do banco + os consultores manuais (que não existem em
+    // elogio_especialistas). Por isso ele é priorizado — assim os consultores manuais
+    // como "Equipe Qualidade" também aparecem aqui, de forma consistente com a tela de
+    // Enviar Elogios e com o corpo do e-mail.
+    const prestador = elogio.pesquisa?.prestador?.trim();
+    if (prestador) {
+      return prestador;
     }
-    
-    const nomes = elogio.especialistas
+
+    // Fallback: se por algum motivo não houver prestador, usar os nomes do relacionamento.
+    const nomes = (elogio.especialistas || [])
       .map(esp => esp.especialistas?.nome)
       .filter(Boolean);
-    
-    if (nomes.length === 0) {
-      return elogio.pesquisa?.prestador || '-';
-    }
-    
-    return nomes.join(', ');
+
+    return nomes.length > 0 ? nomes.join(', ') : '-';
   };
 
   return (
