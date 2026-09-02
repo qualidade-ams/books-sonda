@@ -84,7 +84,7 @@ interface BotaoEnviarEmailBancoHorasProps {
 /** Assinatura padrão do email - imagem única */
 const ASSINATURA_HTML = `
 <div style="margin-top:24px;">
-  <img src="https://books-sonda.vercel.app/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+  <img src="https://www.sondalyze.com.br/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
 </div>
 `;
 
@@ -344,7 +344,7 @@ export function BotaoEnviarEmailBancoHoras({
           </style>
         </head>
         <body>
-          <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
+          <div style="font-family:Calibri,sans-serif;max-width:1200px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
             ${htmlTabelas}
           </div>
         </body>
@@ -354,7 +354,7 @@ export function BotaoEnviarEmailBancoHoras({
       const response = await fetch('/api/email/render-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html: htmlParaRenderizar, width: 1100 })
+        body: JSON.stringify({ html: htmlParaRenderizar, width: 1200 })
       });
       
       if (response.ok) {
@@ -427,9 +427,148 @@ export function BotaoEnviarEmailBancoHoras({
     return `${saudacao}\n\nComplementando o e-mail dos indicadores, segue fechamento do banco de horas:`;
   };
 
+  /**
+   * Regra do EMAIL: para o mês atual do calendário E meses posteriores, zera o
+   * consumo de chamados e requerimentos e recalcula Consumo Total, Saldo e Repasse
+   * a partir do saldo a utilizar. Meses ANTERIORES ao mês atual mantêm os dados reais.
+   * Exemplo (hoje=Set/26, trimestre Ago/Set/Out): Ago real; Set e Out zerados.
+   * Para todos os meses, se repasse_horas estiver zerado mas saldo_horas não estiver,
+   * recalcula o repasse aplicando o percentualRepasse sobre o saldo — corrige casos
+   * onde o registro foi persistido antes de o saldo ser calculado corretamente.
+   */
+  const mascararMesesFuturos = (calculos: BancoHorasCalculo[]): BancoHorasCalculo[] => {
+    const hoje = new Date();
+    const mesRef = hoje.getMonth() + 1;
+    const anoRef = hoje.getFullYear();
+
+    // Converte "HH:MM" para minutos totais
+    const toMin = (h: string | null | undefined): number => {
+      if (!h || h === '00:00') return 0;
+      const neg = h.startsWith('-');
+      const limpo = h.replace('-', '');
+      const [hh, mm] = limpo.split(':').map(Number);
+      const total = (hh || 0) * 60 + (mm || 0);
+      return neg ? -total : total;
+    };
+    // Converte minutos totais para "HH:MM"
+    const toHoras = (min: number): string => {
+      const neg = min < 0;
+      const abs = Math.abs(min);
+      const hh = Math.floor(abs / 60);
+      const mm = abs % 60;
+      return `${neg ? '-' : ''}${hh}:${String(mm).padStart(2, '0')}`;
+    };
+
+    // Ordena cronologicamente para o recálculo em cascata
+    const ordenados = [...calculos].sort((a, b) => (a.ano - b.ano) || (a.mes - b.mes));
+
+    // Recálculo EM CASCATA: reencadeia o "Repasse mês anterior" de cada mês com o
+    // "Repasse" do mês imediatamente anterior JÁ recalculado em memória. Garante que,
+    // por exemplo, Outubro receba o repasse recalculado de Setembro (com consumo 0),
+    // e não o valor antigo persistido no banco (calculado com consumo real).
+    let repasseAntHoras: string | null = null;
+    let repasseAntTickets: number | null = null;
+
+    return ordenados.map(c => {
+      // Mês atual OU posterior => zera consumo/requerimentos (corte inclui o mês atual)
+      const zerarConsumo = (c.ano > anoRef) || (c.ano === anoRef && c.mes >= mesRef);
+
+      // Último mês do período de apuração: repasse sempre 00:00 (período fecha/zera)
+      const isUltimoMes = inicioVigencia
+        ? isFimPeriodo(c.mes, c.ano, new Date(inicioVigencia), periodoApuracao)
+        : false;
+
+      // Repasse mês anterior encadeado (primeiro mês mantém o valor do banco)
+      const repasseMesAntHoras = repasseAntHoras !== null
+        ? repasseAntHoras
+        : (c.repasses_mes_anterior_horas || '00:00');
+      const repasseMesAntTickets = repasseAntTickets !== null
+        ? repasseAntTickets
+        : (c.repasses_mes_anterior_tickets || 0);
+
+      const baselineMin = toMin(c.baseline_horas);
+      const baselineTickets = c.baseline_tickets || 0;
+
+      // Saldo a utilizar = baseline + repasse mês anterior
+      const saldoAUtilizarMin = baselineMin + toMin(repasseMesAntHoras);
+      const saldoAUtilizarHoras = toHoras(saldoAUtilizarMin);
+      const saldoAUtilizarTickets = baselineTickets + repasseMesAntTickets;
+
+      let resultado = { ...c };
+
+      if (zerarConsumo) {
+        // Mês atual/futuro: consumo e requerimentos zerados => Saldo = Saldo a utilizar
+        const saldoMin = saldoAUtilizarMin;
+        const saldoTicketsCalc = saldoAUtilizarTickets;
+        const repasseMin = !isUltimoMes && saldoMin > 0 && percentualRepasse > 0
+          ? Math.round(saldoMin * percentualRepasse / 100)
+          : 0;
+        const repasseCalc = repasseMin > 0 ? toHoras(repasseMin) : '00:00';
+        const repasseTicketsCalc = !isUltimoMes && saldoTicketsCalc > 0 && percentualRepasse > 0
+          ? Math.round(saldoTicketsCalc * percentualRepasse / 100)
+          : 0;
+
+        resultado = {
+          ...resultado,
+          repasses_mes_anterior_horas: repasseMesAntHoras,
+          repasses_mes_anterior_tickets: repasseMesAntTickets,
+          saldo_a_utilizar_horas: saldoAUtilizarHoras,
+          saldo_a_utilizar_tickets: saldoAUtilizarTickets,
+          consumo_horas: '00:00',
+          consumo_tickets: 0,
+          requerimentos_horas: '00:00',
+          requerimentos_tickets: 0,
+          reajustes_horas: '00:00',
+          reajustes_tickets: 0,
+          consumo_total_horas: '00:00',
+          consumo_total_tickets: 0,
+          saldo_horas: toHoras(saldoMin),
+          saldo_tickets: saldoTicketsCalc,
+          repasse_horas: repasseCalc,
+          repasse_tickets: repasseTicketsCalc,
+        };
+
+        repasseAntHoras = repasseCalc;
+        repasseAntTickets = repasseTicketsCalc;
+      } else {
+        // Mês anterior ao atual: consumo real. Reencadeia repasse mês anterior e
+        // recalcula saldo/repasse a partir do consumo total real do banco.
+        const consumoTotalMin = toMin(c.consumo_total_horas);
+        const consumoTotalTickets = c.consumo_total_tickets || 0;
+        const saldoMin = saldoAUtilizarMin - consumoTotalMin;
+        const saldoTicketsCalc = saldoAUtilizarTickets - consumoTotalTickets;
+        const repasseMin = !isUltimoMes && saldoMin > 0 && percentualRepasse > 0
+          ? Math.round(saldoMin * percentualRepasse / 100)
+          : 0;
+        const repasseCalc = repasseMin > 0 ? toHoras(repasseMin) : '00:00';
+        const repasseTicketsCalc = !isUltimoMes && saldoTicketsCalc > 0 && percentualRepasse > 0
+          ? Math.round(saldoTicketsCalc * percentualRepasse / 100)
+          : 0;
+
+        resultado = {
+          ...resultado,
+          repasses_mes_anterior_horas: repasseMesAntHoras,
+          repasses_mes_anterior_tickets: repasseMesAntTickets,
+          saldo_a_utilizar_horas: saldoAUtilizarHoras,
+          saldo_a_utilizar_tickets: saldoAUtilizarTickets,
+          saldo_horas: toHoras(saldoMin),
+          saldo_tickets: saldoTicketsCalc,
+          repasse_horas: repasseCalc,
+          repasse_tickets: repasseTicketsCalc,
+        };
+
+        repasseAntHoras = repasseCalc;
+        repasseAntTickets = repasseTicketsCalc;
+      }
+
+      return resultado;
+    });
+  };
+
   // Gera apenas o HTML das tabelas (para renderizar como imagem)
   const gerarHtmlTabelas = () => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const calculosMascarados = mascararMesesFuturos(calculos);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculosMascarados, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
     const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
@@ -439,7 +578,8 @@ export function BotaoEnviarEmailBancoHoras({
 
   // Gera o HTML final combinando texto editável + tabelas
   const gerarHtmlFinal = (texto: string, tipo: TipoEmailBancoHoras) => {
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    const calculosMascarados = mascararMesesFuturos(calculos);
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculosMascarados, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
     const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
@@ -802,11 +942,11 @@ export function BotaoEnviarEmailBancoHoras({
         // Montar imagem das tabelas
         const imgSrc = tabelasImagemUrl || `data:image/png;base64,${tabelasImagemBase64}`;
         const imgHtml = `
-          <!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1100"><tr><td><![endif]-->
-          <table cellpadding="0" cellspacing="0" border="0" width="1100" style="width:1100px;min-width:1100px;max-width:1100px;margin-top:16px;">
+          <!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1200"><tr><td><![endif]-->
+          <table cellpadding="0" cellspacing="0" border="0" width="1200" style="width:1200px;min-width:1200px;max-width:1200px;margin-top:16px;">
           <tr>
           <td style="padding:0;margin:0;line-height:0;font-size:0;">
-          <img src="${imgSrc}" alt="Banco de Horas" width="1100" style="display:block;width:1100px;min-width:1100px;max-width:1100px;height:auto;border:0;outline:none;text-decoration:none;" />
+          <img src="${imgSrc}" alt="Banco de Horas" width="1200" style="display:block;width:1200px;min-width:1200px;max-width:1200px;height:auto;border:0;outline:none;text-decoration:none;" />
           </td>
           </tr>
           </table>

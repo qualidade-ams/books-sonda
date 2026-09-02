@@ -1166,10 +1166,10 @@ export class BancoHorasService {
       anoAnterior
     });
 
-    // Buscar cálculo do mês anterior (sem versão)
+    // Buscar cálculo do mês anterior incluindo is_fim_periodo
     const { data: calculoAnterior, error } = await supabase
       .from('banco_horas_calculos' as any)
-      .select('repasse_horas, repasse_tickets')
+      .select('repasse_horas, repasse_tickets, is_fim_periodo')
       .eq('empresa_id', empresaId)
       .eq('mes', mesAnterior)
       .eq('ano', anoAnterior)
@@ -1181,6 +1181,7 @@ export class BancoHorasService {
       mesAtual: `${mes}/${ano}`,
       repasseHoras: (calculoAnterior as any)?.repasse_horas,
       repasseTickets: (calculoAnterior as any)?.repasse_tickets,
+      isFimPeriodo: (calculoAnterior as any)?.is_fim_periodo,
       error: error?.message,
       errorCode: error?.code,
       '⚠️ IMPORTANTE': 'Este valor vem do campo repasse_horas do mês anterior',
@@ -1209,6 +1210,23 @@ export class BancoHorasService {
     // Se não encontrou cálculo anterior, retornar zero
     if (!calculoAnterior) {
       console.log('⚠️ Nenhum cálculo anterior encontrado, retornando 0:00');
+      return {
+        repasseHoras: '0:00',
+        repasseTickets: 0
+      };
+    }
+
+    // ✅ CORREÇÃO Bug 1: Se o mês anterior é fim de período, o período fechou e
+    // o próximo ciclo começa do zero — NÃO repassa o saldo especial para o mês atual.
+    // O campo repasse_horas de um mês de fim de período representa o repasse especial
+    // calculado para fechamento do ciclo, que NÃO deve fluir para o próximo período.
+    if ((calculoAnterior as any).is_fim_periodo === true) {
+      console.log('✅ Mês anterior é fim de período — zerando repasse para o mês atual:', {
+        mesAnterior: `${mesAnterior}/${anoAnterior}`,
+        mesAtual: `${mes}/${ano}`,
+        repasseAnterior: (calculoAnterior as any).repasse_horas,
+        motivo: 'Fim de período: o próximo ciclo inicia do zero, sem herdar repasse especial'
+      });
       return {
         repasseHoras: '0:00',
         repasseTickets: 0

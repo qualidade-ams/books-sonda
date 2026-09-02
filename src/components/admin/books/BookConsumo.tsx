@@ -485,6 +485,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         if (mesReferencia && anoReferencia) {
           const mesComDados = data.banco_horas_trimestre!.find(r => r.dados?.baseline_horas);
           const baselineHoras = mesComDados?.dados?.baseline_horas || null;
+          // Baseline de tickets de referência (para encadear a visão de tickets nos meses projetados)
+          const baselineTicketsRef = mesComDados?.dados?.baseline_tickets ?? null;
           
           const resultadosProcessados: typeof data.banco_horas_trimestre = [];
           const totalMesesCiclo = data.banco_horas_trimestre!.length;
@@ -506,20 +508,38 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               // ✅ CORREÇÃO: Verificar se é o último mês do ciclo para zerar repasse
               const isUltimoMesCiclo = idx === (totalMesesCiclo - 1);
               const repasse = isUltimoMesCiclo ? 0 : Math.floor(saldoUtilizar * percentualRepasse / 100);
+
+              // Encadear também a visão de TICKETS (contratos 'ambos'/ticket exibem essa coluna).
+              // Sem isso, o repasse em tickets dos meses projetados fica 0/undefined no book.
+              const baselineTickets = Number(resultado.dados?.baseline_tickets ?? baselineTicketsRef ?? 0);
+              const repasseTicketsAnterior = Number(dadosMesAnterior?.repasse_tickets ?? 0);
+              const saldoUtilizarTickets = baselineTickets + repasseTicketsAnterior;
+              const repasseTickets = isUltimoMesCiclo ? 0 : Math.floor(saldoUtilizarTickets * percentualRepasse / 100);
               
               resultadosProcessados!.push({
                 ...resultado,
                 dados: {
+                  ...(resultado.dados as any),
                   baseline_horas: baselineMes,
+                  baseline_tickets: baselineTickets,
                   repasses_mes_anterior_horas: repasseMesAnterior,
+                  repasses_mes_anterior_tickets: repasseTicketsAnterior,
                   saldo_a_utilizar_horas: minutosParaHoras(saldoUtilizar),
+                  saldo_a_utilizar_tickets: saldoUtilizarTickets,
                   consumo_horas: '00:00:00',
+                  consumo_tickets: 0,
                   requerimentos_horas: '00:00:00',
+                  requerimentos_tickets: 0,
                   reajustes_horas: '00:00:00',
+                  reajustes_tickets: 0,
                   consumo_total_horas: '00:00:00',
+                  consumo_total_tickets: 0,
                   saldo_horas: minutosParaHoras(saldoUtilizar),
+                  saldo_tickets: saldoUtilizarTickets,
                   repasse_horas: minutosParaHoras(repasse),
+                  repasse_tickets: repasseTickets,
                   excedentes_horas: '00:00:00',
+                  excedentes_tickets: 0,
                   valor_excedentes_horas: 0,
                   taxa_hora_utilizada: null
                 }
@@ -695,6 +715,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         // Encontrar o baseline a partir de qualquer mês que tenha dados
         const mesComDados = resultados.find(r => r.dados?.baseline_horas);
         const baselineHoras = mesComDados?.dados?.baseline_horas || null;
+        // Baseline de tickets de referência (para encadear a visão de tickets nos meses projetados)
+        const baselineTicketsRef = mesComDados?.dados?.baseline_tickets ?? null;
         
         // Para cada mês futuro, zerar consumo e recalcular saldo (loop imperativo para encadear repasses)
         const resultadosProcessados: typeof resultados = [];
@@ -729,6 +751,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               // Meses normais: repasse = percentual × saldo
               repasse = Math.floor(saldoUtilizar * percentualRepasse / 100);
             }
+
+            // Encadear também a visão de TICKETS (contratos 'ambos'/ticket exibem essa coluna).
+            // Sem isso, o repasse em tickets dos meses projetados fica 0/undefined no book.
+            const baselineTickets = Number(resultado.dados?.baseline_tickets ?? baselineTicketsRef ?? 0);
+            const repasseTicketsAnterior = Number(dadosMesAnterior?.repasse_tickets ?? 0);
+            const saldoUtilizarTickets = baselineTickets + repasseTicketsAnterior;
+            const repasseTickets = isUltimoMesCiclo ? 0 : Math.floor(saldoUtilizarTickets * percentualRepasse / 100);
             
             console.log(`📅 Mês futuro ${resultado.mes}/${resultado.ano}: preenchendo com consumo zerado`, {
               baseline: baselineMes,
@@ -736,22 +765,35 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               saldoUtilizar: minutosParaHoras(saldoUtilizar),
               saldo: minutosParaHoras(saldoUtilizar),
               repasse: minutosParaHoras(repasse),
+              saldoUtilizarTickets,
+              repasseTickets,
               isUltimoMesCiclo
             });
             
             resultadosProcessados.push({
               ...resultado,
               dados: {
+                ...(resultado.dados as any),
                 baseline_horas: baselineMes,
+                baseline_tickets: baselineTickets,
                 repasses_mes_anterior_horas: repasseMesAnterior,
+                repasses_mes_anterior_tickets: repasseTicketsAnterior,
                 saldo_a_utilizar_horas: minutosParaHoras(saldoUtilizar),
+                saldo_a_utilizar_tickets: saldoUtilizarTickets,
                 consumo_horas: '00:00:00',
+                consumo_tickets: 0,
                 requerimentos_horas: '00:00:00',
+                requerimentos_tickets: 0,
                 reajustes_horas: '00:00:00',
+                reajustes_tickets: 0,
                 consumo_total_horas: '00:00:00',
+                consumo_total_tickets: 0,
                 saldo_horas: minutosParaHoras(saldoUtilizar),
+                saldo_tickets: saldoUtilizarTickets,
                 repasse_horas: minutosParaHoras(repasse),
+                repasse_tickets: repasseTickets,
                 excedentes_horas: '00:00:00',
+                excedentes_tickets: 0,
                 valor_excedentes_horas: 0,
                 taxa_hora_utilizada: null
               } as any

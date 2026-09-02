@@ -765,7 +765,7 @@ class BooksPDFServicePuppeteer {
   <!-- CAPA -->
   <div class="page capa">
     <div class="capa-superior">
-      <img src="https://books-sonda.vercel.app/images/logo-capa-book.png" alt="Logo N" class="capa-logo-n" />
+      <img src="https://www.sondalyze.com.br/images/logo-capa-book.png" alt="Logo N" class="capa-logo-n" />
       <div class="capa-conteudo">
         <div class="capa-empresa">${(bookData.capa.empresa_nome_abreviado || bookData.empresa_nome).toUpperCase()}</div>
         <div class="capa-titulo">Book Mensal</div>
@@ -776,7 +776,7 @@ class BooksPDFServicePuppeteer {
         <div class="capa-periodo-box">${bookData.capa.periodo}</div>
         <div class="capa-fonte">Fonte: Aranda</div>
       </div>
-      <img src="https://books-sonda.vercel.app//images/sonda-logo.png" alt="Sonda" class="capa-logo-sonda" />
+      <img src="https://www.sondalyze.com.br//images/sonda-logo.png" alt="Sonda" class="capa-logo-sonda" />
     </div>
   </div>
 
