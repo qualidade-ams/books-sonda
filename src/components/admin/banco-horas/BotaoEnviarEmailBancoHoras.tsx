@@ -428,8 +428,10 @@ export function BotaoEnviarEmailBancoHoras({
   };
 
   /**
-   * Para meses futuros (posteriores ao mês atual do calendário), zera apenas o
-   * consumo de chamados e recalcula Consumo Total, Saldo e Repasse a partir disso.
+   * Regra do EMAIL: para o mês atual do calendário E meses posteriores, zera o
+   * consumo de chamados e requerimentos e recalcula Consumo Total, Saldo e Repasse
+   * a partir do saldo a utilizar. Meses ANTERIORES ao mês atual mantêm os dados reais.
+   * Exemplo (hoje=Set/26, trimestre Ago/Set/Out): Ago real; Set e Out zerados.
    * Para todos os meses, se repasse_horas estiver zerado mas saldo_horas não estiver,
    * recalcula o repasse aplicando o percentualRepasse sobre o saldo — corrige casos
    * onde o registro foi persistido antes de o saldo ser calculado corretamente.
@@ -457,15 +459,61 @@ export function BotaoEnviarEmailBancoHoras({
       return `${neg ? '-' : ''}${hh}:${String(mm).padStart(2, '0')}`;
     };
 
-    return calculos.map(c => {
-      const isFuturo = (c.ano > anoRef) || (c.ano === anoRef && c.mes > mesRef);
+    // Ordena cronologicamente para o recálculo em cascata
+    const ordenados = [...calculos].sort((a, b) => (a.ano - b.ano) || (a.mes - b.mes));
+
+    // Recálculo EM CASCATA: reencadeia o "Repasse mês anterior" de cada mês com o
+    // "Repasse" do mês imediatamente anterior JÁ recalculado em memória. Garante que,
+    // por exemplo, Outubro receba o repasse recalculado de Setembro (com consumo 0),
+    // e não o valor antigo persistido no banco (calculado com consumo real).
+    let repasseAntHoras: string | null = null;
+    let repasseAntTickets: number | null = null;
+
+    return ordenados.map(c => {
+      // Mês atual OU posterior => zera consumo/requerimentos (corte inclui o mês atual)
+      const zerarConsumo = (c.ano > anoRef) || (c.ano === anoRef && c.mes >= mesRef);
+
+      // Último mês do período de apuração: repasse sempre 00:00 (período fecha/zera)
+      const isUltimoMes = inicioVigencia
+        ? isFimPeriodo(c.mes, c.ano, new Date(inicioVigencia), periodoApuracao)
+        : false;
+
+      // Repasse mês anterior encadeado (primeiro mês mantém o valor do banco)
+      const repasseMesAntHoras = repasseAntHoras !== null
+        ? repasseAntHoras
+        : (c.repasses_mes_anterior_horas || '00:00');
+      const repasseMesAntTickets = repasseAntTickets !== null
+        ? repasseAntTickets
+        : (c.repasses_mes_anterior_tickets || 0);
+
+      const baselineMin = toMin(c.baseline_horas);
+      const baselineTickets = c.baseline_tickets || 0;
+
+      // Saldo a utilizar = baseline + repasse mês anterior
+      const saldoAUtilizarMin = baselineMin + toMin(repasseMesAntHoras);
+      const saldoAUtilizarHoras = toHoras(saldoAUtilizarMin);
+      const saldoAUtilizarTickets = baselineTickets + repasseMesAntTickets;
 
       let resultado = { ...c };
 
-      if (isFuturo) {
-        // Mês futuro: zera consumo e recalcula saldo
+      if (zerarConsumo) {
+        // Mês atual/futuro: consumo e requerimentos zerados => Saldo = Saldo a utilizar
+        const saldoMin = saldoAUtilizarMin;
+        const saldoTicketsCalc = saldoAUtilizarTickets;
+        const repasseMin = !isUltimoMes && saldoMin > 0 && percentualRepasse > 0
+          ? Math.round(saldoMin * percentualRepasse / 100)
+          : 0;
+        const repasseCalc = repasseMin > 0 ? toHoras(repasseMin) : '00:00';
+        const repasseTicketsCalc = !isUltimoMes && saldoTicketsCalc > 0 && percentualRepasse > 0
+          ? Math.round(saldoTicketsCalc * percentualRepasse / 100)
+          : 0;
+
         resultado = {
           ...resultado,
+          repasses_mes_anterior_horas: repasseMesAntHoras,
+          repasses_mes_anterior_tickets: repasseMesAntTickets,
+          saldo_a_utilizar_horas: saldoAUtilizarHoras,
+          saldo_a_utilizar_tickets: saldoAUtilizarTickets,
           consumo_horas: '00:00',
           consumo_tickets: 0,
           requerimentos_horas: '00:00',
@@ -474,29 +522,43 @@ export function BotaoEnviarEmailBancoHoras({
           reajustes_tickets: 0,
           consumo_total_horas: '00:00',
           consumo_total_tickets: 0,
-          saldo_horas: c.saldo_a_utilizar_horas || c.baseline_horas || '00:00',
-          saldo_tickets: c.saldo_a_utilizar_tickets || c.baseline_tickets || 0,
+          saldo_horas: toHoras(saldoMin),
+          saldo_tickets: saldoTicketsCalc,
+          repasse_horas: repasseCalc,
+          repasse_tickets: repasseTicketsCalc,
         };
-      }
 
-      // Último mês do período de apuração: repasse sempre 00:00 (período fecha/zera)
-      const isUltimoMes = inicioVigencia
-        ? isFimPeriodo(c.mes, c.ano, new Date(inicioVigencia), periodoApuracao)
-        : false;
+        repasseAntHoras = repasseCalc;
+        repasseAntTickets = repasseTicketsCalc;
+      } else {
+        // Mês anterior ao atual: consumo real. Reencadeia repasse mês anterior e
+        // recalcula saldo/repasse a partir do consumo total real do banco.
+        const consumoTotalMin = toMin(c.consumo_total_horas);
+        const consumoTotalTickets = c.consumo_total_tickets || 0;
+        const saldoMin = saldoAUtilizarMin - consumoTotalMin;
+        const saldoTicketsCalc = saldoAUtilizarTickets - consumoTotalTickets;
+        const repasseMin = !isUltimoMes && saldoMin > 0 && percentualRepasse > 0
+          ? Math.round(saldoMin * percentualRepasse / 100)
+          : 0;
+        const repasseCalc = repasseMin > 0 ? toHoras(repasseMin) : '00:00';
+        const repasseTicketsCalc = !isUltimoMes && saldoTicketsCalc > 0 && percentualRepasse > 0
+          ? Math.round(saldoTicketsCalc * percentualRepasse / 100)
+          : 0;
 
-      if (isUltimoMes) {
-        return { ...resultado, repasse_horas: '00:00', repasse_tickets: 0 };
-      }
-
-      // Para todos os outros meses: se repasse está zerado mas saldo não está,
-      // recalcula o repasse aplicando o percentual sobre o saldo
-      const saldoMin = toMin(resultado.saldo_horas);
-      const repasseMin = toMin(resultado.repasse_horas);
-      if (repasseMin === 0 && saldoMin > 0 && percentualRepasse > 0) {
         resultado = {
           ...resultado,
-          repasse_horas: toHoras(Math.round(saldoMin * percentualRepasse / 100)),
+          repasses_mes_anterior_horas: repasseMesAntHoras,
+          repasses_mes_anterior_tickets: repasseMesAntTickets,
+          saldo_a_utilizar_horas: saldoAUtilizarHoras,
+          saldo_a_utilizar_tickets: saldoAUtilizarTickets,
+          saldo_horas: toHoras(saldoMin),
+          saldo_tickets: saldoTicketsCalc,
+          repasse_horas: repasseCalc,
+          repasse_tickets: repasseTicketsCalc,
         };
+
+        repasseAntHoras = repasseCalc;
+        repasseAntTickets = repasseTicketsCalc;
       }
 
       return resultado;
