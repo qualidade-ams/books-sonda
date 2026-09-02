@@ -38,7 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { emailService } from '@/services/emailService';
 import { gerarTabelaBancoHoras, gerarTabelaRequerimentos, gerarSecaoObservacoes, MESES_PT } from '@/services/bancoHorasTableService';
-import { isFimPeriodo } from '@/services/bancoHorasRepasseService';
+import { isFimPeriodo, calcularRepasse } from '@/services/bancoHorasRepasseService';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
@@ -500,13 +500,14 @@ export function BotaoEnviarEmailBancoHoras({
         // Mês atual/futuro: consumo e requerimentos zerados => Saldo = Saldo a utilizar
         const saldoMin = saldoAUtilizarMin;
         const saldoTicketsCalc = saldoAUtilizarTickets;
-        const repasseMin = !isUltimoMes && saldoMin > 0 && percentualRepasse > 0
-          ? Math.round(saldoMin * percentualRepasse / 100)
-          : 0;
-        const repasseCalc = repasseMin > 0 ? toHoras(repasseMin) : '00:00';
-        const repasseTicketsCalc = !isUltimoMes && saldoTicketsCalc > 0 && percentualRepasse > 0
-          ? Math.round(saldoTicketsCalc * percentualRepasse / 100)
-          : 0;
+        // Repasse (mesma regra da tela): fim de período => 00:00; saldo negativo
+        // repassa o déficit inteiro; saldo positivo aplica o percentual.
+        const repasseCalc = isUltimoMes ? '00:00' : calcularRepasse(toHoras(saldoMin), percentualRepasse);
+        const repasseTicketsCalc = isUltimoMes
+          ? 0
+          : (saldoTicketsCalc < 0
+              ? saldoTicketsCalc
+              : (percentualRepasse > 0 ? Math.round(saldoTicketsCalc * percentualRepasse / 100) : 0));
 
         resultado = {
           ...resultado,
@@ -537,13 +538,13 @@ export function BotaoEnviarEmailBancoHoras({
         const consumoTotalTickets = c.consumo_total_tickets || 0;
         const saldoMin = saldoAUtilizarMin - consumoTotalMin;
         const saldoTicketsCalc = saldoAUtilizarTickets - consumoTotalTickets;
-        const repasseMin = !isUltimoMes && saldoMin > 0 && percentualRepasse > 0
-          ? Math.round(saldoMin * percentualRepasse / 100)
-          : 0;
-        const repasseCalc = repasseMin > 0 ? toHoras(repasseMin) : '00:00';
-        const repasseTicketsCalc = !isUltimoMes && saldoTicketsCalc > 0 && percentualRepasse > 0
-          ? Math.round(saldoTicketsCalc * percentualRepasse / 100)
-          : 0;
+        // Repasse com a mesma regra da tela (via calcularRepasse)
+        const repasseCalc = isUltimoMes ? '00:00' : calcularRepasse(toHoras(saldoMin), percentualRepasse);
+        const repasseTicketsCalc = isUltimoMes
+          ? 0
+          : (saldoTicketsCalc < 0
+              ? saldoTicketsCalc
+              : (percentualRepasse > 0 ? Math.round(saldoTicketsCalc * percentualRepasse / 100) : 0));
 
         resultado = {
           ...resultado,
