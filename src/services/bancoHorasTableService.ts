@@ -511,9 +511,9 @@ export async function buscarDadosEGerarTabelaBancoHoras(
     const mesReferencia = mes === 1 ? 12 : mes - 1;
     const anoReferencia = mes === 1 ? ano - 1 : ano;
 
-    // Buscar percentual de repasse vigente da tabela percentual_repasse_historico
-    // (mesma lógica do bancoHorasService.buscarParametrosEmpresa)
-    // O campo percentual_repasse_mensal da empresa pode estar desatualizado (legado)
+    // Buscar percentual de repasse vigente da tabela percentual_repasse_historico.
+    // O campo percentual_repasse_mensal da empresa pode estar desatualizado (legado).
+    // Mesma lógica usada em bancoHorasService.buscarParametrosEmpresa.
     let percentualRepasse: number = (empresa as any).percentual_repasse_mensal ?? 0;
     try {
       const dataReferenciaRepasse = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-01`;
@@ -583,16 +583,23 @@ export async function buscarDadosEGerarTabelaBancoHoras(
       }
     }
 
-    // Forçar recálculo sequencial de todos os meses do período antes de ler os dados.
-    // Isso garante que repasses entre meses (repasse_horas → repasses_mes_anterior_horas)
-    // estejam atualizados no banco, evitando valores stale quando o book é disparado
-    // sem que o usuário tenha aberto a tela de banco de horas previamente.
+    // Forçar recálculo sequencial dos meses ANTERIORES ao mês de referência.
+    // Garante que repasses entre meses estejam atualizados sem sobrescrever o mês
+    // de referência (que já foi calculado corretamente pela tela de banco de horas).
+    // IMPORTANTE: NÃO recalcular o mesReferencia — ao recalcular fim de período o
+    // bancoHorasService zera o repasse_tickets/repasse_horas, corrompendo o valor
+    // que a tela exibe corretamente (ex: Set/26 com repasse_tickets=6).
     try {
       const { bancoHorasService } = await import('@/services/bancoHorasService');
-      console.log(`🔄 [bancoHorasTableService] Recalculando ${mesesParaBuscar.length} meses do período para garantir repasses atualizados...`);
-      for (const periodo of mesesParaBuscar) {
-        await bancoHorasService.calcularMes(empresaId, periodo.mes, periodo.ano);
-        console.log(`✅ [bancoHorasTableService] Mês ${periodo.mes}/${periodo.ano} recalculado`);
+      const mesesParaRecalcular = mesesParaBuscar.filter(
+        p => !(p.mes === mesReferencia && p.ano === anoReferencia)
+      );
+      if (mesesParaRecalcular.length > 0) {
+        console.log(`🔄 [bancoHorasTableService] Recalculando ${mesesParaRecalcular.length} meses anteriores ao mês de referência (excluindo ${mesReferencia}/${anoReferencia})...`);
+        for (const periodo of mesesParaRecalcular) {
+          await bancoHorasService.calcularMes(empresaId, periodo.mes, periodo.ano);
+          console.log(`✅ [bancoHorasTableService] Mês ${periodo.mes}/${periodo.ano} recalculado`);
+        }
       }
     } catch (recalcError) {
       console.warn('⚠️ [bancoHorasTableService] Erro ao recalcular meses do período (continuando com dados do banco):', recalcError);
