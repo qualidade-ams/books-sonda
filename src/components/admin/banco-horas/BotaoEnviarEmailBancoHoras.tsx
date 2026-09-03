@@ -38,7 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { emailService } from '@/services/emailService';
 import { gerarTabelaBancoHoras, gerarTabelaRequerimentos, gerarSecaoObservacoes, MESES_PT } from '@/services/bancoHorasTableService';
-import { isFimPeriodo, calcularRepasse } from '@/services/bancoHorasRepasseService';
+import { isFimPeriodo } from '@/services/bancoHorasRepasseService';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
@@ -427,149 +427,13 @@ export function BotaoEnviarEmailBancoHoras({
     return `${saudacao}\n\nComplementando o e-mail dos indicadores, segue fechamento do banco de horas:`;
   };
 
-  /**
-   * Regra do EMAIL: para o mês atual do calendário E meses posteriores, zera o
-   * consumo de chamados e requerimentos e recalcula Consumo Total, Saldo e Repasse
-   * a partir do saldo a utilizar. Meses ANTERIORES ao mês atual mantêm os dados reais.
-   * Exemplo (hoje=Set/26, trimestre Ago/Set/Out): Ago real; Set e Out zerados.
-   * Para todos os meses, se repasse_horas estiver zerado mas saldo_horas não estiver,
-   * recalcula o repasse aplicando o percentualRepasse sobre o saldo — corrige casos
-   * onde o registro foi persistido antes de o saldo ser calculado corretamente.
-   */
-  const mascararMesesFuturos = (calculos: BancoHorasCalculo[]): BancoHorasCalculo[] => {
-    const hoje = new Date();
-    const mesRef = hoje.getMonth() + 1;
-    const anoRef = hoje.getFullYear();
-
-    // Converte "HH:MM" para minutos totais
-    const toMin = (h: string | null | undefined): number => {
-      if (!h || h === '00:00') return 0;
-      const neg = h.startsWith('-');
-      const limpo = h.replace('-', '');
-      const [hh, mm] = limpo.split(':').map(Number);
-      const total = (hh || 0) * 60 + (mm || 0);
-      return neg ? -total : total;
-    };
-    // Converte minutos totais para "HH:MM"
-    const toHoras = (min: number): string => {
-      const neg = min < 0;
-      const abs = Math.abs(min);
-      const hh = Math.floor(abs / 60);
-      const mm = abs % 60;
-      return `${neg ? '-' : ''}${hh}:${String(mm).padStart(2, '0')}`;
-    };
-
-    // Ordena cronologicamente para o recálculo em cascata
-    const ordenados = [...calculos].sort((a, b) => (a.ano - b.ano) || (a.mes - b.mes));
-
-    // Recálculo EM CASCATA: reencadeia o "Repasse mês anterior" de cada mês com o
-    // "Repasse" do mês imediatamente anterior JÁ recalculado em memória. Garante que,
-    // por exemplo, Outubro receba o repasse recalculado de Setembro (com consumo 0),
-    // e não o valor antigo persistido no banco (calculado com consumo real).
-    let repasseAntHoras: string | null = null;
-    let repasseAntTickets: number | null = null;
-
-    return ordenados.map(c => {
-      // Mês atual OU posterior => zera consumo/requerimentos (corte inclui o mês atual)
-      const zerarConsumo = (c.ano > anoRef) || (c.ano === anoRef && c.mes >= mesRef);
-
-      // Último mês do período de apuração: repasse sempre 00:00 (período fecha/zera)
-      const isUltimoMes = inicioVigencia
-        ? isFimPeriodo(c.mes, c.ano, new Date(inicioVigencia), periodoApuracao)
-        : false;
-
-      // Repasse mês anterior encadeado (primeiro mês mantém o valor do banco)
-      const repasseMesAntHoras = repasseAntHoras !== null
-        ? repasseAntHoras
-        : (c.repasses_mes_anterior_horas || '00:00');
-      const repasseMesAntTickets = repasseAntTickets !== null
-        ? repasseAntTickets
-        : (c.repasses_mes_anterior_tickets || 0);
-
-      const baselineMin = toMin(c.baseline_horas);
-      const baselineTickets = c.baseline_tickets || 0;
-
-      // Saldo a utilizar = baseline + repasse mês anterior
-      const saldoAUtilizarMin = baselineMin + toMin(repasseMesAntHoras);
-      const saldoAUtilizarHoras = toHoras(saldoAUtilizarMin);
-      const saldoAUtilizarTickets = baselineTickets + repasseMesAntTickets;
-
-      let resultado = { ...c };
-
-      if (zerarConsumo) {
-        // Mês atual/futuro: consumo e requerimentos zerados => Saldo = Saldo a utilizar
-        const saldoMin = saldoAUtilizarMin;
-        const saldoTicketsCalc = saldoAUtilizarTickets;
-        // Repasse (mesma regra da tela): fim de período => 00:00; saldo negativo
-        // repassa o déficit inteiro; saldo positivo aplica o percentual.
-        const repasseCalc = isUltimoMes ? '00:00' : calcularRepasse(toHoras(saldoMin), percentualRepasse);
-        const repasseTicketsCalc = isUltimoMes
-          ? 0
-          : (saldoTicketsCalc < 0
-              ? saldoTicketsCalc
-              : (percentualRepasse > 0 ? Math.round(saldoTicketsCalc * percentualRepasse / 100) : 0));
-
-        resultado = {
-          ...resultado,
-          repasses_mes_anterior_horas: repasseMesAntHoras,
-          repasses_mes_anterior_tickets: repasseMesAntTickets,
-          saldo_a_utilizar_horas: saldoAUtilizarHoras,
-          saldo_a_utilizar_tickets: saldoAUtilizarTickets,
-          consumo_horas: '00:00',
-          consumo_tickets: 0,
-          requerimentos_horas: '00:00',
-          requerimentos_tickets: 0,
-          reajustes_horas: '00:00',
-          reajustes_tickets: 0,
-          consumo_total_horas: '00:00',
-          consumo_total_tickets: 0,
-          saldo_horas: toHoras(saldoMin),
-          saldo_tickets: saldoTicketsCalc,
-          repasse_horas: repasseCalc,
-          repasse_tickets: repasseTicketsCalc,
-        };
-
-        repasseAntHoras = repasseCalc;
-        repasseAntTickets = repasseTicketsCalc;
-      } else {
-        // Mês anterior ao atual: consumo real. Reencadeia repasse mês anterior e
-        // recalcula saldo/repasse a partir do consumo total real do banco.
-        const consumoTotalMin = toMin(c.consumo_total_horas);
-        const consumoTotalTickets = c.consumo_total_tickets || 0;
-        const saldoMin = saldoAUtilizarMin - consumoTotalMin;
-        const saldoTicketsCalc = saldoAUtilizarTickets - consumoTotalTickets;
-        // Repasse com a mesma regra da tela (via calcularRepasse)
-        const repasseCalc = isUltimoMes ? '00:00' : calcularRepasse(toHoras(saldoMin), percentualRepasse);
-        const repasseTicketsCalc = isUltimoMes
-          ? 0
-          : (saldoTicketsCalc < 0
-              ? saldoTicketsCalc
-              : (percentualRepasse > 0 ? Math.round(saldoTicketsCalc * percentualRepasse / 100) : 0));
-
-        resultado = {
-          ...resultado,
-          repasses_mes_anterior_horas: repasseMesAntHoras,
-          repasses_mes_anterior_tickets: repasseMesAntTickets,
-          saldo_a_utilizar_horas: saldoAUtilizarHoras,
-          saldo_a_utilizar_tickets: saldoAUtilizarTickets,
-          saldo_horas: toHoras(saldoMin),
-          saldo_tickets: saldoTicketsCalc,
-          repasse_horas: repasseCalc,
-          repasse_tickets: repasseTicketsCalc,
-        };
-
-        repasseAntHoras = repasseCalc;
-        repasseAntTickets = repasseTicketsCalc;
-      }
-
-      return resultado;
-    });
-  };
-
   // Gera apenas o HTML das tabelas (para renderizar como imagem)
   const gerarHtmlTabelas = () => {
-    const calculosMascarados = mascararMesesFuturos(calculos);
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculosMascarados, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    // Usa os cálculos exatamente como exibidos na tela de Banco de Horas (sem mascarar
+    // meses futuros). O email de Saldo Parcial/Mensal deve refletir a tela 1:1.
+    // A regra de mascaramento de meses futuros permanece exclusiva do fluxo de Disparo
+    // (bancoHorasTableService.buscarDadosEGerarTabelaBancoHoras), sem impacto aqui.
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
     const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
@@ -579,8 +443,9 @@ export function BotaoEnviarEmailBancoHoras({
 
   // Gera o HTML final combinando texto editável + tabelas
   const gerarHtmlFinal = (texto: string, tipo: TipoEmailBancoHoras) => {
-    const calculosMascarados = mascararMesesFuturos(calculos);
-    const tabelaBancoHoras = gerarTabelaBancoHoras(calculosMascarados, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
+    // Usa os cálculos exatamente como exibidos na tela de Banco de Horas (sem mascarar
+    // meses futuros), para que o email de Saldo Parcial/Mensal reflita a tela 1:1.
+    const tabelaBancoHoras = gerarTabelaBancoHoras(calculos, tipoCobranca, percentualRepasse, nomePeriodo, diaInicioApuracao, diaFimApuracao, isEnglish);
     const tabelaReqPeriodo = gerarTabelaRequerimentos(requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish);
     const tabelaReqDesenv = gerarTabelaRequerimentos(requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish);
     const secaoObs = gerarSecaoObservacoes(observacoes, isEnglish);
