@@ -17,6 +17,7 @@ import {
   formatarHorasParaExibicao 
 } from '@/utils/horasUtils';
 import { converterParaBanco, converterDoBanco } from '@/utils/mesCobrancaUtils';
+import { RequerimentoErrorFactory } from '@/errors/requerimentosErrors';
 
 /**
  * Serviço para gerenciamento de requerimentos
@@ -32,6 +33,9 @@ export class RequerimentosService {
 
     // Verificar se cliente existe
     await this.verificarClienteExiste(data.cliente_id);
+
+    // Verificar se já existe requerimento duplicado no banco
+    await this.verificarRequerimentoDuplicado(data);
 
     // Verificar se precisa criar requerimento adicional de análise EF
     
@@ -1027,6 +1031,59 @@ export class RequerimentosService {
 
     if (error || !data) {
       throw new Error('Cliente não encontrado ou inativo');
+    }
+  }
+
+  /**
+   * Verificar se já existe um requerimento duplicado no banco.
+   *
+   * Chave de duplicidade: chamado + cliente_id + tipo_cobranca + mes_cobranca.
+   * Quando há horas técnicas > 0, a linguagem também entra na chave (permite o
+   * mesmo tipo desde que a linguagem técnica seja diferente).
+   * Considera todos os requerimentos existentes, independente do status.
+   */
+  private async verificarRequerimentoDuplicado(data: RequerimentoFormData): Promise<void> {
+    const chamadoNormalizado = data.chamado.trim().toUpperCase();
+    const mesCobranca = data.mes_cobranca?.trim() || null;
+
+    // Determinar se a linguagem entra na chave (horas técnicas > 0)
+    const horasTecnico = typeof data.horas_tecnico === 'string'
+      ? converterParaHorasDecimal(data.horas_tecnico)
+      : (data.horas_tecnico || 0);
+    const linguagem = data.linguagem?.trim() || null;
+
+    let query = supabase
+      .from('requerimentos')
+      .select('id')
+      .eq('chamado', chamadoNormalizado)
+      .eq('cliente_id', data.cliente_id)
+      .eq('tipo_cobranca', data.tipo_cobranca);
+
+    // mes_cobranca entra na chave: mesmo chamado/tipo pode repetir em mês diferente
+    query = mesCobranca === null
+      ? query.is('mes_cobranca', null)
+      : query.eq('mes_cobranca', mesCobranca);
+
+    // Quando há horas técnicas, a linguagem diferencia os requerimentos
+    if (horasTecnico > 0) {
+      query = linguagem === null
+        ? query.is('linguagem', null)
+        : query.eq('linguagem', linguagem);
+    }
+
+    const { data: existentes, error } = await query.limit(1);
+
+    if (error) {
+      throw RequerimentoErrorFactory.databaseError('verificar duplicidade de requerimento', error);
+    }
+
+    if (existentes && existentes.length > 0) {
+      throw RequerimentoErrorFactory.requerimentoDuplicateChamado(chamadoNormalizado, {
+        tipoCobranca: data.tipo_cobranca,
+        // Linguagem só faz parte da chave quando há horas técnicas
+        linguagem: horasTecnico > 0 ? (linguagem || undefined) : undefined,
+        mesCobranca: mesCobranca || undefined
+      });
     }
   }
 

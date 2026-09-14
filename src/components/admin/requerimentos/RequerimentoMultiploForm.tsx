@@ -340,17 +340,28 @@ export function RequerimentoMultiploForm({
     });
 
     // Verificar tipos de cobrança duplicados
-    // Para "Hora Extra", considerar também tipo_hora_extra e linguagem_tecnica
+    // Regras de chave de duplicidade:
+    // - "Hora Extra": tipo_cobranca + tipo_hora_extra + linguagem
+    // - Demais tipos com horas técnicas > 0: tipo_cobranca + linguagem
+    //   (permite mesmo tipo desde que a linguagem técnica seja diferente)
+    // - Demais tipos sem horas técnicas: apenas tipo_cobranca
     const combinacoesUsadas = new Map<string, number>();
     
     blocos.forEach((bloco, index) => {
+      const horasTecnico = typeof bloco.horas_tecnico === 'string'
+        ? converterParaHorasDecimal(bloco.horas_tecnico)
+        : bloco.horas_tecnico || 0;
+
       let chave: string;
       
       if (bloco.tipo_cobranca === 'Hora Extra') {
         // Para Hora Extra, a chave única é: tipo_cobranca + tipo_hora_extra + linguagem
         chave = `${bloco.tipo_cobranca}|${bloco.tipo_hora_extra || ''}|${bloco.linguagem || ''}`;
+      } else if (horasTecnico > 0) {
+        // Para os demais tipos com horas técnicas, a chave inclui a linguagem
+        chave = `${bloco.tipo_cobranca}|${bloco.linguagem || ''}`;
       } else {
-        // Para outros tipos, apenas tipo_cobranca
+        // Para os demais tipos sem horas técnicas, apenas tipo_cobranca
         chave = bloco.tipo_cobranca;
       }
       
@@ -361,6 +372,11 @@ export function RequerimentoMultiploForm({
           erros.push(
             `Blocos ${primeiroIndex + 1} e ${index + 1}: Combinação duplicada de Hora Extra ` +
             `(${bloco.tipo_hora_extra || 'não definido'} + ${bloco.linguagem || 'sem linguagem'})`
+          );
+        } else if (horasTecnico > 0) {
+          erros.push(
+            `Blocos ${primeiroIndex + 1} e ${index + 1}: Tipo de cobrança "${bloco.tipo_cobranca}" duplicado ` +
+            `(mesma Linguagem Técnica: ${bloco.linguagem || 'sem linguagem'})`
           );
         } else {
           erros.push(`Blocos ${primeiroIndex + 1} e ${index + 1}: Tipo de cobrança "${bloco.tipo_cobranca}" duplicado`);
@@ -422,8 +438,10 @@ export function RequerimentoMultiploForm({
       // Resetar flag de tentativa após sucesso
       setTentouSubmeter(false);
     } catch (error) {
+      // A mensagem de erro específica (ex.: duplicidade) já é exibida pelo
+      // onError do hook useCreateRequerimento. Aqui apenas registramos no console
+      // para evitar um segundo toast genérico que mascararia o motivo real.
       console.error('Erro ao criar requerimentos:', error);
-      toast.error('Erro ao criar requerimentos');
     }
   };
 
