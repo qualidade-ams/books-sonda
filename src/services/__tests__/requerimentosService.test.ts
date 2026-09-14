@@ -116,6 +116,17 @@ describe('RequerimentosService', () => {
         })
       });
 
+      // Mock da verificação de duplicidade (nenhum requerimento existente)
+      // A query encadeia .eq() x3, depois .is()/.eq() para mes_cobranca e por fim .limit()
+      const mockDuplicidadeChain: any = {
+        eq: vi.fn(() => mockDuplicidadeChain),
+        is: vi.fn(() => mockDuplicidadeChain),
+        limit: vi.fn().mockResolvedValue({ data: [], error: null })
+      };
+      mockSupabaseFrom.mockReturnValueOnce({
+        select: vi.fn(() => mockDuplicidadeChain)
+      });
+
       mockSupabaseFrom.mockReturnValueOnce({
         insert: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({

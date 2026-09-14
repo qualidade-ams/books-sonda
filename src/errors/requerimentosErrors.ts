@@ -458,11 +458,25 @@ export class RequerimentoErrorFactory {
     );
   }
 
-  static requerimentoDuplicateChamado(chamado: string): RequerimentoError {
+  static requerimentoDuplicateChamado(
+    chamado: string,
+    contexto?: { tipoCobranca?: string; linguagem?: string; mesCobranca?: string }
+  ): RequerimentoError {
+    const partes: string[] = [`chamado ${chamado}`];
+    if (contexto?.tipoCobranca) {
+      partes.push(`tipo de cobrança "${contexto.tipoCobranca}"`);
+    }
+    if (contexto?.linguagem) {
+      partes.push(`linguagem "${contexto.linguagem}"`);
+    }
+    if (contexto?.mesCobranca) {
+      partes.push(`mês de cobrança ${contexto.mesCobranca}`);
+    }
+
     return new RequerimentoError(
-      `Já existe um requerimento com o chamado ${chamado}`,
+      `Já existe um requerimento com ${partes.join(', ')}`,
       'REQUERIMENTO_DUPLICATE_CHAMADO',
-      { chamado }
+      { chamado, ...contexto }
     );
   }
 
@@ -633,6 +647,12 @@ export class RequerimentoErrorHandler {
       'CONFIGURATION_ERROR': 'Erro de configuração',
       'EMAIL_CONFIGURATION_ERROR': 'Erro na configuração de email'
     };
+
+    // Para duplicidade, usar a mensagem específica do erro (inclui tipo de cobrança,
+    // linguagem e mês) para que o usuário entenda exatamente o que colidiu
+    if (error.code === 'REQUERIMENTO_DUPLICATE_CHAMADO' && error.message) {
+      return error.message;
+    }
 
     return messages[error.code] || 'Erro inesperado';
   }
