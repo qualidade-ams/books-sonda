@@ -12,7 +12,8 @@ import {
   FileText,
   Filter,
   Search,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
@@ -56,6 +57,7 @@ import ProtectedAction from '@/components/auth/ProtectedAction';
 import { AnexoUpload } from '@/components/admin/anexos/AnexoUpload';
 import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton';
 import FiltrosStatusDisparos from '@/components/admin/FiltrosStatusDisparos';
+import PreviewEmailBookModal from '@/components/admin/disparos/PreviewEmailBookModal';
 import type {
   AgendamentoDisparo,
   StatusControleMensal,
@@ -90,6 +92,15 @@ const ControleDisparosPersonalizados = () => {
   // Estados para anexos
   const [showAnexoModal, setShowAnexoModal] = useState(false);
   const [empresaAnexoSelecionada, setEmpresaAnexoSelecionada] = useState<string>('');
+
+  // Estados para pré-visualização de e-mail
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [empresaPreview, setEmpresaPreview] = useState<{ id: string; nome: string } | null>(null);
+
+  const handleAbrirPreview = (empresaId: string, empresaNome: string) => {
+    setEmpresaPreview({ id: empresaId, nome: empresaNome });
+    setShowPreviewModal(true);
+  };
 
   // Estados para filtros
   const [statusFiltro, setStatusFiltro] = useState<StatusControleMensal | 'todos'>('todos');
@@ -797,6 +808,19 @@ const ControleDisparosPersonalizados = () => {
                         {status.status === 'agendado' && t('disparos.badgeScheduled')}
                       </Badge>
 
+                      <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAbrirPreview(status.empresaId, status.empresa.nome_abreviado || status.empresa.nome_completo)}
+                          className="h-8 w-8 p-0"
+                          title={t('disparos.preview.buttonTooltip')}
+                          aria-label={t('disparos.preview.buttonTooltip')}
+                        >
+                          <Eye className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      </ProtectedAction>
+
                       {status.empresa.anexo && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                           <Button
@@ -946,6 +970,18 @@ const ControleDisparosPersonalizados = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Modal de pré-visualização de e-mail */}
+        {empresaPreview && (
+          <PreviewEmailBookModal
+            open={showPreviewModal}
+            onOpenChange={setShowPreviewModal}
+            empresaId={empresaPreview.id}
+            empresaNome={empresaPreview.nome}
+            mes={mesAtual}
+            ano={anoAtual}
+          />
+        )}
       </div>
     </AdminLayout>
   );

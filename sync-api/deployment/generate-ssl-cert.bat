@@ -45,7 +45,7 @@ echo.
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 ^
   -keyout private.key ^
   -out certificate.crt ^
-  -subj "/C=BR/ST=SP/L=SaoPaulo/O=Sonda/OU=IT/CN=sync-api.seudominio.com.br"
+  -subj "/C=BR/ST=SP/L=SaoPaulo/O=Sonda/OU=IT/CN=sync-api.sondalyze.com.br"
 
 if %errorLevel% neq 0 (
     echo [ERRO] Falha ao gerar certificado!

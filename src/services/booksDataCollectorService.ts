@@ -364,13 +364,13 @@ class BooksDataCollectorService {
       .not('nome_grupo', 'like', 'BPO %')
       .not('nome_grupo', 'like', 'PROJETOS APL %');
 
-    // FECHADOS: Buscar por data_solucao no mês com filtros específicos (apenas status Closed)
+    // FECHADOS: Buscar por data_fechamento no mês com filtros específicos (apenas status Closed)
     const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
       .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-      .gte('data_solucao', dataInicio.toISOString())
-      .lt('data_solucao', proximoMesInicio.toISOString())
+      .gte('data_fechamento', dataInicio.toISOString())
+      .lt('data_fechamento', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
       .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
@@ -498,7 +498,7 @@ class BooksDataCollectorService {
       }))
     });
 
-    // FECHADOS | MÊS: Usar tickets já filtrados por data_solucao
+    // FECHADOS | MÊS: Usar tickets já filtrados por data_fechamento
     const fechadosIncidente = ticketsFechados.filter(a => 
       a.cod_tipo === 'Incidente'
     ).length;
@@ -647,8 +647,8 @@ class BooksDataCollectorService {
         .from('apontamentos_tickets_aranda')
         .select('*')
         .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-        .gte('data_solucao', dataInicio.toISOString())
-        .lt('data_solucao', proximoMesInicio.toISOString())
+        .gte('data_fechamento', dataInicio.toISOString())
+        .lt('data_fechamento', proximoMesInicio.toISOString())
         .eq('cod_tipo', 'Incidente')
         .eq('status', 'Closed')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
@@ -780,10 +780,10 @@ class BooksDataCollectorService {
     // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query) — apenas status Closed
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
-      .select('nro_solicitacao, cod_tipo, data_solucao')
+      .select('nro_solicitacao, cod_tipo, data_fechamento')
       .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-      .gte('data_solucao', dataInicio.toISOString())
-      .lte('data_solucao', dataFim.toISOString())
+      .gte('data_fechamento', dataInicio.toISOString())
+      .lte('data_fechamento', dataFim.toISOString())
       .neq('cod_tipo', 'Problema')
       .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
@@ -804,7 +804,7 @@ class BooksDataCollectorService {
       amostra: ticketsFechados?.slice(0, 3).map(t => ({
         nro: t.nro_solicitacao,
         tipo: t.cod_tipo,
-        data: t.data_solucao
+        data: t.data_fechamento
       }))
     });
     
@@ -831,8 +831,8 @@ class BooksDataCollectorService {
       
       // Contar fechados deste mês
       const fechadosDoMes = (ticketsFechados || []).filter(t => {
-        const dataSolucao = new Date(t.data_solucao);
-        return dataSolucao >= mesInicio && dataSolucao <= mesFim;
+        const dataFechamento = new Date(t.data_fechamento);
+        return dataFechamento >= mesInicio && dataFechamento <= mesFim;
       }).length;
       
       console.log(`📊 ${MESES_NOMES[mes - 1]}/${ano}:`, {
@@ -1165,13 +1165,13 @@ class BooksDataCollectorService {
       dataFim: dataFim.toISOString()
     });
 
-    // FECHADOS: Todos os chamados fechados no mês (com data_solucao) — apenas status Closed
+    // FECHADOS: Todos os chamados fechados no mês (com data_fechamento) — apenas status Closed
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
       .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-      .gte('data_solucao', dataInicio.toISOString())
-      .lt('data_solucao', proximoMesInicio.toISOString())
+      .gte('data_fechamento', dataInicio.toISOString())
+      .lt('data_fechamento', proximoMesInicio.toISOString())
       .neq('cod_tipo', 'Problema')
       .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
@@ -2866,8 +2866,8 @@ class BooksDataCollectorService {
         .from('apontamentos_tickets_aranda')
         .select('*')
         .ilike('organizacao', empresaNomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-        .gte('data_solucao', dataInicio.toISOString())
-        .lt('data_solucao', proximoMesInicio.toISOString())
+        .gte('data_fechamento', dataInicio.toISOString())
+        .lt('data_fechamento', proximoMesInicio.toISOString())
         .neq('cod_tipo', 'Problema')
         .eq('status', 'Closed')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
