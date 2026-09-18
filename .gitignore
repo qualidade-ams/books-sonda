@@ -33,3 +33,10 @@ dist-ssr
 .env.production
 .vercel
 .kiro
+
+# Sync API - garantir que nenhum .env com segredos reais seja versionado
+# (arquivos de exemplo/modelo sem segredos são permitidos com exceção explícita)
+sync-api/.env
+sync-api/.env.*
+!sync-api/.env.example
+!sync-api/deployment/.env.production.sondalyze

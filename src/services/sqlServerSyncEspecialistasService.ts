@@ -73,7 +73,7 @@ function gerarIdUnico(registro: DadosEspecialistaSqlServer): string {
  * Usa a API Node.js que faz todo o processamento
  */
 export async function sincronizarEspecialistas(): Promise<ResultadoSincronizacaoEspecialistas> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
   
   try {
     console.log('Chamando API de sincronização de especialistas...');
@@ -180,7 +180,7 @@ export async function verificarUltimaSincronizacaoEspecialistas(): Promise<{
  * Testar conexão com tabela AMSespecialistas via API
  */
 export async function testarConexaoEspecialistas(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
   
   try {
     console.log('Testando conexão com tabela AMSespecialistas via API...');
@@ -206,7 +206,7 @@ export async function testarConexaoEspecialistas(): Promise<boolean> {
  * Obter estrutura da tabela AMSespecialistas
  */
 export async function obterEstruturaEspecialistas(): Promise<any> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
   
   try {
     console.log('Consultando estrutura da tabela AMSespecialistas...');

@@ -24,8 +24,40 @@ import type {
 import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
-import { gerarExcelDetalhadoBook } from '@/utils/gerarExcelDetalhadoBook';
 import { gerarImagemBancoHoras } from './bancoHorasTableService';
+import type { EmailTemplate } from '@/types/approval';
+
+/** Anexo em base64 pronto para envio (ex.: Excel de consumo) */
+interface EmailAttachmentBase64 {
+  filename: string;
+  content: string;
+  contentType: string;
+}
+
+/** Resultado da montagem do e-mail de um book, reutilizado por envio real, preview e teste */
+export interface EmailBookMontado {
+  template: EmailTemplate;
+  clienteReferencia: Cliente;
+  /** E-mails dos clientes que iriam no campo "Para" no envio real */
+  emailsClientes: string[];
+  /** E-mails em cópia (grupos responsáveis + gestor) */
+  emailsCC: string[];
+  assunto: string;
+  /** HTML final do e-mail (100% fiel ao envio real) */
+  corpo: string;
+  anexosWebhook: AnexoWebhookData[];
+  excelAttachment: EmailAttachmentBase64 | null;
+}
+
+/** Dados retornados para a pré-visualização do e-mail de uma empresa */
+export interface PreviewBookEmpresa {
+  assunto: string;
+  corpo: string;
+  emailsPara: string[];
+  emailsCC: string[];
+  temAnexos: boolean;
+  nomesAnexos: string[];
+}
 
 class BooksDisparoService {
   /** Utilitário de sleep para rate limiting */
@@ -1853,56 +1885,202 @@ class BooksDisparoService {
 
   // ...
 
-  private async enviarBookEmpresa(
+  /**
+   * Resolve empresa, clientes ativos e e-mails de CC (grupos responsáveis + gestor)
+   * de uma empresa, reutilizando exatamente o mesmo padrão do disparo real.
+   */
+  private async resolverEmpresaClientesCC(
+    empresaId: string
+  ): Promise<{ empresa: EmpresaCliente; clientes: Cliente[]; emailsCC: string[] }> {
+    // Buscar empresa
+    const { data: empresa, error: empresaError } = await supabase
+      .from('empresas_clientes')
+      .select('*')
+      .eq('id', empresaId)
+      .single();
+
+    if (empresaError || !empresa) {
+      throw new Error('Empresa não encontrada');
+    }
+
+    // Buscar clientes ativos da empresa
+    const { data: clientes, error: clientesError } = await supabase
+      .from('clientes')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('status', 'ativo');
+
+    if (clientesError || !clientes || clientes.length === 0) {
+      throw new Error('Nenhum cliente ativo encontrado para a empresa');
+    }
+
+    // Buscar grupos de e-mail para CC
+    const { data: gruposEmpresas } = await supabase
+      .from('empresa_grupos')
+      .select(`
+        grupos_responsaveis(
+          grupo_emails(email, nome)
+        )
+      `)
+      .eq('empresa_id', empresaId);
+
+    const emailsCC: string[] = [];
+    if (gruposEmpresas) {
+      gruposEmpresas.forEach(grupo => {
+        if (grupo.grupos_responsaveis?.grupo_emails) {
+          grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+            emailsCC.push(email.email);
+          });
+        }
+      });
+    }
+
+    // Adicionar e-mail do gestor se existir
+    if ((empresa as any).email_gestor) {
+      emailsCC.push((empresa as any).email_gestor);
+    }
+
+    return {
+      empresa: empresa as unknown as EmpresaCliente,
+      clientes: clientes as unknown as Cliente[],
+      emailsCC
+    };
+  }
+
+  /**
+   * Gera a pré-visualização do e-mail do book de uma empresa (100% fiel ao envio real).
+   * Não envia e-mail nem grava histórico.
+   */
+  async previewBookEmpresa(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<PreviewBookEmpresa> {
+    const { empresa, clientes, emailsCC } = await this.resolverEmpresaClientesCC(empresaId);
+
+    const emailMontado = await this.montarEmailBookEmpresa(empresa, clientes, emailsCC, mes, ano);
+
+    const nomesAnexos: string[] = [
+      ...emailMontado.anexosWebhook.map(a => a.nome),
+      ...(emailMontado.excelAttachment ? [emailMontado.excelAttachment.filename] : [])
+    ];
+
+    return {
+      assunto: emailMontado.assunto,
+      corpo: emailMontado.corpo,
+      emailsPara: emailMontado.emailsClientes,
+      emailsCC: emailMontado.emailsCC,
+      temAnexos: nomesAnexos.length > 0,
+      nomesAnexos
+    };
+  }
+
+  /**
+   * Envia o e-mail do book de uma empresa para um e-mail de teste arbitrário.
+   * Usa o MESMO conteúdo e anexos do envio real (100% fiel), porém:
+   * - envia apenas para o e-mail informado (sem clientes reais, sem CC);
+   * - NÃO grava histórico de disparos;
+   * - NÃO altera o status mensal da empresa;
+   * - NÃO altera o status dos anexos da empresa.
+   */
+  async enviarEmailTesteEmpresa(
+    empresaId: string,
+    mes: number,
+    ano: number,
+    emailTeste: string
+  ): Promise<{ sucesso: boolean; erro?: string }> {
+    const emailNormalizado = (emailTeste || '').trim();
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalizado);
+    if (!emailValido) {
+      return { sucesso: false, erro: 'E-mail de teste inválido' };
+    }
+
+    try {
+      const { empresa, clientes, emailsCC } = await this.resolverEmpresaClientesCC(empresaId);
+
+      const emailMontado = await this.montarEmailBookEmpresa(empresa, clientes, emailsCC, mes, ano);
+
+      // Montar payload de e-mail apenas para o destinatário de teste (sem CC real)
+      const assuntoTeste = `[TESTE] ${emailMontado.assunto}`;
+      const emailData: any = {
+        to: emailNormalizado,
+        subject: assuntoTeste,
+        html: emailMontado.corpo
+      };
+
+      // Incluir attachments base64 (ex: Excel de consumo) — igual ao envio real
+      if (emailMontado.excelAttachment) {
+        emailData.attachments = [emailMontado.excelAttachment];
+      }
+
+      // Incluir dados dos anexos da empresa no payload, se houver
+      if (emailMontado.anexosWebhook.length > 0) {
+        const dadosAnexos = this.prepararDadosAnexosWebhook(emailMontado.anexosWebhook);
+        if (dadosAnexos) {
+          emailData.anexos = dadosAnexos;
+        }
+      }
+
+      const resultado = await emailService.sendEmail(emailData);
+
+      if (resultado.success) {
+        return { sucesso: true };
+      }
+      return { sucesso: false, erro: resultado.error || 'Falha ao enviar e-mail de teste' };
+    } catch (error) {
+      return {
+        sucesso: false,
+        erro: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
+    }
+  }
+
+  /**
+   * Monta o e-mail do book de uma empresa (assunto, corpo HTML, destinatários e anexos)
+   * reproduzindo 100% do pipeline de envio real (template, banco de horas, Novo Nordisk,
+   * conversão em imagem, sidebar, Excel e anexos), SEM enviar nem gravar histórico.
+   *
+   * É a fonte única de verdade usada tanto pelo envio real (enviarBookEmpresa) quanto
+   * pela pré-visualização e pelo envio de teste.
+   */
+  private async montarEmailBookEmpresa(
     empresa: EmpresaCliente,
     clientes: Cliente[],
     emailsCC: string[],
     mes: number,
     ano: number
-  ): Promise<{ sucesso: boolean; erro?: string; clientesProcessados: string[] }> {
+  ): Promise<EmailBookMontado> {
     // Declarar anexosWebhook no escopo da função para estar disponível em todos os blocos
     let anexosWebhook: AnexoWebhookData[] = [];
 
-    // Obter ID do usuário logado para registrar no histórico
-    const usuarioLogadoId = await this.getUsuarioLogadoId();
+    if (clientes.length === 0) {
+      throw new Error('Nenhum cliente ativo encontrado para a empresa');
+    }
 
-    try {
-      if (clientes.length === 0) {
-        return {
-          sucesso: false,
-          erro: 'Nenhum cliente ativo encontrado para a empresa',
-          clientesProcessados: []
-        };
+    // Debug: verificar template_padrao da empresa
+    const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+    console.log(`🏢 Empresa: ${empresa.nome_completo}`);
+    console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
+
+    // Verificar se empresa tem anexos habilitados
+    const temAnexos = empresa.anexo === true;
+
+    // Buscar anexos da empresa se habilitado
+    if (temAnexos) {
+      try {
+        anexosWebhook = await this.buscarAnexosEmpresa(empresa.id);
+      } catch (error) {
+        console.error('Erro ao buscar anexos:', error);
+        // Continuar sem anexos em caso de erro
       }
+    }
 
-      // Debug: verificar template_padrao da empresa
-      const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
-      console.log(`🏢 Empresa: ${empresa.nome_completo}`);
-      console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
+    // Buscar template apropriado para books
+    const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
 
-      // Verificar se empresa tem anexos habilitados
-      const temAnexos = empresa.anexo === true;
-
-      // Buscar anexos da empresa se habilitado
-      if (temAnexos) {
-        try {
-          anexosWebhook = await this.buscarAnexosEmpresa(empresa.id);
-        } catch (error) {
-          console.error('Erro ao buscar anexos:', error);
-          // Continuar sem anexos em caso de erro
-        }
-      }
-
-      // Buscar template apropriado para books
-      const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
-
-      if (!template) {
-        return {
-          sucesso: false,
-          erro: 'Template de e-mail não encontrado para books',
-          clientesProcessados: []
-        };
-      }
+    if (!template) {
+      throw new Error('Template de e-mail não encontrado para books');
+    }
 
       // Usar o primeiro cliente como referência para o template (todos da mesma empresa)
       const clienteReferencia = clientes[0];
@@ -2165,53 +2343,46 @@ class BooksDisparoService {
       const emailsClientes = clientes.map(cliente => cliente.email).filter(email => email);
 
       if (emailsClientes.length === 0) {
-        return {
-          sucesso: false,
-          erro: 'Nenhum cliente possui e-mail válido',
-          clientesProcessados: []
-        };
+        throw new Error('Nenhum cliente possui e-mail válido');
       }
 
-      // Gerar Excel detalhado (8 abas) para anexar ao email
-      let excelAttachment: { filename: string; content: string; contentType: string } | null = null;
-      try {
-        // Calcular mês de referência (mês anterior ao mês de disparo)
-        const mesRef = mes === 1 ? 12 : mes - 1;
-        const anoRef = mes === 1 ? ano - 1 : ano;
-        const empresaNome = empresa.nome_abreviado || empresa.nome_completo || '';
+      // Retornar o e-mail totalmente montado (sem enviar nem gravar histórico)
+      return {
+        template,
+        clienteReferencia,
+        emailsClientes,
+        emailsCC,
+        assunto: templateProcessado.assunto,
+        corpo: templateProcessado.corpo,
+        anexosWebhook,
+        excelAttachment: null
+      };
+  }
 
-        console.log(`📊 Gerando Excel detalhado para ${empresaNome} (${mesRef}/${anoRef})...`);
+  /**
+   * Envia o book de uma empresa (e-mail consolidado) e registra o histórico.
+   * Usa montarEmailBookEmpresa como fonte única para o conteúdo do e-mail.
+   */
+  private async enviarBookEmpresa(
+    empresa: EmpresaCliente,
+    clientes: Cliente[],
+    emailsCC: string[],
+    mes: number,
+    ano: number
+  ): Promise<{ sucesso: boolean; erro?: string; clientesProcessados: string[] }> {
+    // Obter ID do usuário logado para registrar no histórico
+    const usuarioLogadoId = await this.getUsuarioLogadoId();
 
-        const excelFile = await gerarExcelDetalhadoBook({
-          empresaId: empresa.id,
-          empresaNome,
-          mes: mesRef,
-          ano: anoRef,
-          diaInicioApuracao: (empresa as any).dia_inicio_apuracao ?? 1,
-          diaFimApuracao: (empresa as any).dia_fim_apuracao ?? 0,
-        });
+    // Disponível no catch externo (pode estar vazio se a exceção ocorrer antes da montagem)
+    let anexosWebhook: AnexoWebhookData[] = [];
 
-        if (excelFile) {
-          // Converter File para base64
-          const arrayBuffer = await excelFile.arrayBuffer();
-          const base64 = btoa(
-            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-          );
+    try {
+      // Montar o e-mail (mesma lógica usada no preview e no envio de teste)
+      const emailMontado = await this.montarEmailBookEmpresa(empresa, clientes, emailsCC, mes, ano);
 
-          excelAttachment = {
-            filename: excelFile.name,
-            content: base64,
-            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          };
-
-          console.log(`✅ Excel gerado: ${excelFile.name} (${(excelFile.size / 1024).toFixed(1)} KB)`);
-        } else {
-          console.log(`⚠️ Não foi possível gerar Excel detalhado para ${empresaNome}`);
-        }
-      } catch (excelError) {
-        console.warn(`⚠️ Erro ao gerar Excel detalhado (não bloqueia envio):`, excelError);
-        // Não falhar o envio do book por erro no Excel
-      }
+      const { template, clienteReferencia, emailsClientes, excelAttachment } = emailMontado;
+      anexosWebhook = emailMontado.anexosWebhook;
+      const templateProcessado = { assunto: emailMontado.assunto, corpo: emailMontado.corpo };
 
       // Enviar e-mail consolidado usando o emailService (com anexos se houver)
       const resultadoEnvio = await this.enviarEmailConsolidadoComAnexos(

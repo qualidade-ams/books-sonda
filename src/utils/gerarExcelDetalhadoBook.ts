@@ -252,8 +252,8 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-    .gte('data_solucao', dataInicio.toISOString())
-    .lt('data_solucao', proximoMesInicio.toISOString())
+    .gte('data_fechamento', dataInicio.toISOString())
+    .lt('data_fechamento', proximoMesInicio.toISOString())
     .neq('cod_tipo', 'Problema')
     .eq('status', 'Closed')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
@@ -264,7 +264,7 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
     .not('nome_grupo', 'like', 'AMS SAP %')
     .not('nome_grupo', 'like', 'BPO %')
     .not('nome_grupo', 'like', 'PROJETOS APL %')
-    .order('data_solucao', { ascending: true })
+    .order('data_fechamento', { ascending: true })
     .limit(10000);
 
   if (error) {
@@ -330,8 +330,8 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
     .from('apontamentos_tickets_aranda')
     .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-    .gte('data_solucao', dataInicio.toISOString())
-    .lt('data_solucao', proximoMesInicio.toISOString())
+    .gte('data_fechamento', dataInicio.toISOString())
+    .lt('data_fechamento', proximoMesInicio.toISOString())
     .eq('cod_tipo', 'Incidente')
     .eq('status', 'Closed')
     .eq('tds_cumprido', 'TDS Vencido')
@@ -344,7 +344,7 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
     .not('nome_grupo', 'like', 'AMS SAP %')
     .not('nome_grupo', 'like', 'BPO %')
     .not('nome_grupo', 'like', 'PROJETOS APL %')
-    .order('data_solucao', { ascending: true })
+    .order('data_fechamento', { ascending: true })
     .limit(10000);
 
   if (error) {

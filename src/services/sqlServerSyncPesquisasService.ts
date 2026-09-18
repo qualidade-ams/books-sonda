@@ -49,7 +49,7 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
  */
 async function buscarDadosSqlServer(): Promise<DadosSqlServer[]> {
   // URL da API de sincronização
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
   
   try {
     const response = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
@@ -175,7 +175,7 @@ export async function sincronizarDados(
     tickets: number;
   };
 }> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
   
   // Se não foram especificadas tabelas, sincronizar todas por padrão (comportamento anterior)
   const tabelasParaSincronizar = tabelas || {
@@ -555,7 +555,7 @@ export async function sincronizarDados(
         console.log('🔍 [INCONSISTENCIAS] Executando detecção de inconsistências via Sync API...');
         onLog?.('🔍 Detectando inconsistências nos dados sincronizados...');
         
-        const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+        const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
         const response = await fetch(`${API_URL}/api/detectar-inconsistencias`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
@@ -778,7 +778,7 @@ export async function atualizarSyncMetadata(
  * Testar conexão com SQL Server via API
  */
 export async function testarConexao(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api-p3jr.onrender.com:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze.com.br';
   
   try {
     console.log('Testando conexão com SQL Server via API...');

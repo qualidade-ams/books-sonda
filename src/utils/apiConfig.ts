@@ -25,18 +25,14 @@ export function getApiBaseUrl(): string {
     return import.meta.env.VITE_SYNC_API_URL;
   }
 
-  // Configuração automática baseada no ambiente
-  const baseHost = 'SAPSERVDB.sondait.com.br:3001';
-  
+  // Configuração automática baseada no ambiente (fallback quando VITE_SYNC_API_URL não está definido)
   if (isDevelopment()) {
-    // Em desenvolvimento, sempre HTTP
-    return `http://${baseHost}`;
-  } else {
-    // Em produção, usa HTTP por enquanto (servidor não suporta HTTPS)
-    // TODO: Quando o servidor suportar HTTPS, mudar para:
-    // return isHttpsEnvironment() ? `https://${baseHost}` : `http://${baseHost}`;
-    return `http://${baseHost}`;
+    // Em desenvolvimento, API local via HTTP
+    return 'http://localhost:3001';
   }
+
+  // Em produção, a sync-api é exposta via Nginx com HTTPS no domínio sondalyze
+  return 'https://sync-api.sondalyze.com.br';
 }
 
 /**
