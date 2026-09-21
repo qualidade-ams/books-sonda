@@ -1,0 +1,97 @@
+---
+name: sync-api
+description: Serviço Node separado (sync-api/) que sincroniza o SQL Server Aranda com o Supabase — pesquisas, especialistas, apontamentos e tickets. Use ao mexer em sincronização, quando dados do Aranda não aparecem no sistema, ao adicionar ou depurar um endpoint de sync, ou ao mexer em deploy/variáveis do serviço no Render.
+---
+
+# sync-api — sincronização SQL Server → Supabase
+
+## Objetivo
+
+Trazer dados do SQL Server **Aranda** (rede privada da Sonda) para tabelas do Supabase, de forma incremental.
+
+## Quando utilizar
+
+Pesquisa/apontamento/ticket que não apareceu no sistema, endpoint de sync novo, ajuste em mapeamento de campo, deploy ou variável do serviço no Render.
+
+Isto é um projeto Node **separado** do frontend: `package.json`, `tsconfig` e deploy próprios. Não é build pelo Vite, não passa pelo ESLint da raiz (`eslint.config.js` ignora `sync-api/**`) e não tem suíte Vitest — o TDD obrigatório do frontend não tem infraestrutura equivalente aqui.
+
+## Regras essenciais
+
+- **Requer VPN.** O SQL Server está em rede privada (`172.26.2.136`). Sem VPN ativa, toda chamada falha por timeout de conexão — antes de investigar qualquer bug de sync, confirme a VPN (`ping 172.26.2.136`).
+- **Nunca hardcode credencial.** Toda configuração vem de `process.env`, sem valor de fallback literal no código. Existe dívida histórica exatamente disso neste diretório — não a replique.
+- Nenhum arquivo `.env` novo versionado. O `.gitignore` já cobre `sync-api/**/.env*`; a única exceção legítima é `.env.example`, com valores de placeholder.
+- Sync é **incremental por padrão**: só traz registros novos/alterados. Os endpoints `-full` reprocessam tudo e são caros — use só quando a base estiver inconsistente.
+- O serviço usa a **service key** do Supabase (escreve ignorando RLS). Toda escrita nova precisa ser conferida à mão: aqui não há rede de proteção do banco.
+
+## Estrutura
+
+```
+sync-api/
+├── src/
+│   ├── server.ts          # Express, ~4.000 linhas, todas as rotas
+│   ├── routes/
+│   └── services/
+│       ├── incrementalSyncPesquisasService.ts
+│       ├── incrementalSyncApontamentosService.ts
+│       ├── incrementalSyncTicketsService.ts
+│       ├── inconsistenciasDeteccaoService.ts
+│       └── fixNullFieldsService.ts
+├── scripts/               # validação e diagnóstico pontual
+├── migrations/            # SQL aplicado ao Supabase por este serviço
+└── deployment/            # instalação como serviço Windows, nginx, guias
+```
+
+`server.ts` tem ~4.000 linhas e concentra todas as rotas. Lógica nova vai para `src/services/`, não para o final do `server.ts`.
+
+## Tabelas sincronizadas
+
+| SQL Server (Aranda) | Supabase | Observação |
+|---|---|---|
+| `AMSpesquisa` | `pesquisas_satisfacao` | pesquisas de satisfação |
+| `AMSespecialistas` | `especialistas` | especialistas/analistas |
+| `AMSapontamento` | `apontamentos_aranda` | desde 01/01/2026 |
+| `AMSticketsabertos` | `apontamentos_tickets_aranda` | desde 01/01/2026 |
+
+## Endpoints principais
+
+Por domínio, o padrão se repete: `test-connection*`, `table-structure*`, `sync-*`, `sync-*-full`, `sync-*-incremental`.
+
+| Rota | Uso |
+|---|---|
+| `GET /health` | liveness |
+| `GET /api/test-connection` | valida VPN + credenciais do SQL Server — **primeiro passo de qualquer diagnóstico** |
+| `GET /api/table-structure` | colunas da tabela de origem (útil quando o Aranda muda schema) |
+| `POST /api/sync-pesquisas` / `-full` / `-por-chamados` | sync de pesquisas |
+| `POST /api/sync-especialistas` | sync de especialistas |
+| `POST /api/sync-apontamentos` / `-full` / `-incremental` / `-por-chamados` | sync de apontamentos |
+| `POST /api/sync-tickets` | sync de tickets |
+| `GET /api/validate-sync` | compara origem e destino |
+| `GET /api/stats`, `/api/stats-pesquisas` | contagens |
+| `POST /api/fix-null-fields-apontamentos` | corrige campos nulos após sync parcial |
+
+## Fluxo de diagnóstico
+
+1. VPN ativa? `ping 172.26.2.136`.
+2. `GET /api/test-connection` — isola problema de rede/credencial de problema de dados.
+3. `GET /api/table-structure` — confirma que a coluna esperada ainda existe na origem.
+4. `GET /api/validate-sync` — quantifica a divergência antes de decidir por incremental ou `-full`.
+5. Só então leia o service do domínio em `src/services/`.
+6. Logs no Render.
+
+## Ambiente
+
+```bash
+cd sync-api
+npm install
+cp .env.example .env   # preencher com credenciais reais, nunca commitar
+npm run dev            # ts-node src/server.ts
+npm run build && npm start
+```
+
+Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `NODE_ENV`.
+
+Produção: Render, `https://sync-api-p3jr.onrender.com`. O frontend chega nele por `VITE_SYNC_API_URL`. `deployment/` guarda o caminho alternativo (serviço Windows + nginx) usado no ambiente Sondalyze.
+
+## Referências relacionadas
+
+Skill `seguranca` (secrets) · skill `deploy`, `references/infra.md` (ambientes e variáveis) · `.claude/references/dominios.md` (domínios que consomem esses dados: Pesquisas, Banco de Horas, Requerimentos).

@@ -15,7 +15,7 @@ API Node.js para sincronizar dados do SQL Server (Aranda) para o Supabase.
 
 Antes de usar esta API:
 1. ✅ Conectar à VPN da empresa
-2. ✅ Verificar conectividade: `ping 172.26.2.136`
+2. ✅ Verificar conectividade: `ping <host-do-sql-server>`
 3. ✅ Então iniciar a API
 
 📖 Ver `INSTRUCOES_VPN_SQL_SERVER.md` para detalhes completos.
@@ -43,10 +43,10 @@ Edite o arquivo `.env` com suas credenciais:
 
 ```env
 # SQL Server Configuration
-SQL_SERVER=172.26.2.136
+SQL_SERVER=<host-do-sql-server>
 SQL_DATABASE=Aranda
-SQL_USER=amsconsulta
-SQL_PASSWORD=ams@2023
+SQL_USER=<usuario>
+SQL_PASSWORD=<senha>
 SQL_TABLE=AMSpesquisa
 
 # Supabase Configuration
@@ -94,7 +94,7 @@ GET /health
   "status": "ok",
   "timestamp": "2025-11-25T10:00:00.000Z",
   "config": {
-    "server": "172.26.2.136",
+    "server": "<host-do-sql-server>",
     "database": "Aranda",
     "table": "AMSpesquisa"
   }
@@ -465,15 +465,15 @@ Certifique-se de que o servidor onde a API roda tem acesso ao SQL Server:
 
 ```bash
 # Testar conectividade
-telnet 172.26.2.136 1433
+telnet <host-do-sql-server> 1433
 ```
 
 ### Permissões SQL Server
 
-O usuário `amsconsulta` precisa de permissão de leitura na tabela:
+O usuário `<usuario>` precisa de permissão de leitura na tabela:
 
 ```sql
-GRANT SELECT ON AMSpesquisa TO amsconsulta;
+GRANT SELECT ON AMSpesquisa TO <usuario>;
 ```
 
 ## 📊 Monitoramento

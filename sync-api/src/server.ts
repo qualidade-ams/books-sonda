@@ -21,13 +21,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Credenciais vêm exclusivamente do ambiente — nunca hardcode valor real aqui.
+const requireEnv = (name: string): string => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `Variável de ambiente obrigatória ausente: ${name}. Configure-a antes de iniciar o serviço.`
+    );
+  }
+  return value;
+};
+
 // Configuração SQL Server
 const sqlConfig: sql.config = {
-  server: process.env.SQL_SERVER || '172.26.2.136',
+  server: requireEnv('SQL_SERVER'),
   port: parseInt(process.env.SQL_PORT || '10443'),
-  database: process.env.SQL_DATABASE || 'Aranda',
-  user: process.env.SQL_USER || 'amsconsulta',
-  password: process.env.SQL_PASSWORD || 'ams@2023',
+  database: requireEnv('SQL_DATABASE'),
+  user: requireEnv('SQL_USER'),
+  password: requireEnv('SQL_PASSWORD'),
   options: {
     encrypt: false, // Para SQL Server local
     trustServerCertificate: true,

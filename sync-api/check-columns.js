@@ -5,12 +5,20 @@
 const sql = require('mssql');
 require('dotenv').config();
 
+const requireEnv = (name) => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Variável de ambiente obrigatória ausente: ${name}.`);
+  }
+  return value;
+};
+
 const sqlConfig = {
-  server: process.env.SQL_SERVER || '172.26.2.136',
+  server: requireEnv('SQL_SERVER'),
   port: parseInt(process.env.SQL_PORT || '1433'),
-  database: process.env.SQL_DATABASE || 'Aranda',
-  user: process.env.SQL_USER || 'amsconsulta',
-  password: process.env.SQL_PASSWORD || 'ams@2023',
+  database: requireEnv('SQL_DATABASE'),
+  user: requireEnv('SQL_USER'),
+  password: requireEnv('SQL_PASSWORD'),
   options: {
     encrypt: false,
     trustServerCertificate: true,

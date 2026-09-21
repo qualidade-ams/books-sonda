@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Sincronizar Traduções i18n",
+      "description": "Quando um novo arquivo de componente ou página é criado (.tsx), lembra o agente de adicionar as traduções correspondentes nos três idiomas (pt-BR, en, es) nos arquivos de locale em src/i18n/locales/.",
+      "trigger": "PostFileCreate",
+      "matcher": "src/.*[^/]*\\.tsx$",
+      "action": {
+        "type": "agent",
+        "prompt": "Um novo arquivo .tsx foi criado. Verifique se ele contém textos hardcoded (strings em português ou qualquer idioma fixo). Se contiver, você DEVE:\n\n1. Identificar todos os textos estáticos do componente (labels, títulos, mensagens, placeholders, descrições)\n2. Adicionar as chaves de tradução correspondentes nos 3 arquivos de locale:\n   - src/i18n/locales/pt-BR.ts (Português Brasil)\n   - src/i18n/locales/en.ts (English)\n   - src/i18n/locales/es.ts (Español)\n3. Atualizar o componente para usar `useTranslation()` e a função `t()` em vez de textos hardcoded\n4. Seguir o padrão de namespace: usar o nome do domínio como prefixo (ex: books.title, compliments.register)\n\nExemplo de uso no componente:\n```tsx\nimport { useTranslation } from 'react-i18next';\nconst { t } = useTranslation();\n// Usar: t('namespace.chave') em vez de texto fixo\n```\n\nMantenha consistência com as chaves já existentes nos arquivos de locale."
+      },
+      "enabled": true
+    }
+  ]
+}

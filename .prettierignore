@@ -1,0 +1,6 @@
+dist
+node_modules
+sync-api/
+supabase/functions
+package-lock.json
+src/integrations/supabase/types.ts

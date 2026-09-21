@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vercel
+
+# Environment variables
+.env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+.vercel
+.kiro
+
+# Estado de sessão/lock do harness Claude Code, não é config de projeto
+.claude/scheduled_tasks.lock
+
+# Sync API - garantir que nenhum .env com segredos reais seja versionado.
+# IMPORTANTE: use sempre um padrão recursivo (**) aqui. Um padrão sem ** só
+# ignora arquivos diretamente dentro de sync-api/, não em subpastas como
+# sync-api/deployment/ — foi exatamente essa lacuna que deixou sync-api/.env.temp
+# (com credenciais reais de SQL Server) ser versionado sem que ninguém percebesse
+# (ver CLAUDE.md, "Avisos conhecidos").
+sync-api/**/.env
+sync-api/**/.env.*
+# Exceções: só arquivos-modelo confirmados sem segredo real (todos os valores
+# sensíveis neles são placeholder — confira o conteúdo antes de adicionar
+# qualquer exceção nova aqui, não assuma pelo nome do arquivo).
+!sync-api/**/.env.example

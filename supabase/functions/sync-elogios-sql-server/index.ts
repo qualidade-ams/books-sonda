@@ -6,13 +6,24 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Configuração do SQL Server
+// Configuração do SQL Server — credenciais vêm de secrets, nunca do código.
+// Definir com: supabase secrets set SQL_SERVER=... SQL_DATABASE=... SQL_USER=... SQL_PASSWORD=...
+const requireSecret = (name: string): string => {
+  const value = Deno.env.get(name);
+  if (!value) {
+    throw new Error(
+      `Secret obrigatório ausente: ${name}. Configure com "supabase secrets set ${name}=..." antes de invocar esta função.`
+    );
+  }
+  return value;
+};
+
 const SQL_CONFIG = {
-  server: '172.26.2.136',
-  database: 'Aranda',
-  user: 'amsconsulta',
-  password: 'ams@2023',
-  table: 'AMSpesquisa'
+  server: requireSecret('SQL_SERVER'),
+  database: requireSecret('SQL_DATABASE'),
+  user: requireSecret('SQL_USER'),
+  password: requireSecret('SQL_PASSWORD'),
+  table: Deno.env.get('SQL_TABLE') ?? 'AMSpesquisa'
 };
 
 interface DadosSqlServer {
