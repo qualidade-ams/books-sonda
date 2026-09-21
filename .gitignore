@@ -1,1 +1,12 @@
 node_modules
+
+# Arquivos de ambiente (contêm segredos - nunca versionar)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Manter apenas os templates de exemplo
+!.env.example
+!.env.local.example
+!**/.env.example
