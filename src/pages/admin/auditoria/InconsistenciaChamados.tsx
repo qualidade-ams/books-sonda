@@ -360,7 +360,7 @@ export default function InconsistenciaChamados() {
           destinatario,
           cc: '',
           bcc: '',
-          assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`,
+          assunto: '[AUDITORIA ARANDA] – Regularização de Chamados e Tarefas',
           anexos: [],
         };
         return envelope;
@@ -554,7 +554,7 @@ Atenciosamente.`;
           <!-- HEADER -->
           <tr>
             <td align="center" style="background-color: #2563eb; padding: 24px 16px;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif;">Inconsistências em Chamados</h1>
+              <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif;">Auditoria de Chamados e Tarefas</h1>
               <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px; font-family: Arial, sans-serif;">${totalItens} inconsistência${totalItens > 1 ? 's' : ''} identificada${totalItens > 1 ? 's' : ''}</p>
             </td>
           </tr>
@@ -1182,7 +1182,7 @@ Atenciosamente.`;
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                       {/* Header azul */}
                       <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-center">
-                        <h2 className="text-white text-lg font-bold">Inconsistências em Chamados</h2>
+                        <h2 className="text-white text-lg font-bold">Auditoria de Chamados e Tarefas</h2>
                         <p className="text-blue-200 text-sm mt-1">
                           {envelope.itens.length} inconsistência{envelope.itens.length > 1 ? 's' : ''} identificada{envelope.itens.length > 1 ? 's' : ''}
                         </p>
