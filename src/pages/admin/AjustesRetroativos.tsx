@@ -326,18 +326,23 @@ export default function AjustesRetroativos() {
 
     const corpo = `Prezado(a) ${primeiroNome},
 
-Identificamos que ${plural ? 'foram realizados apontamentos incorretos em tarefas' : 'foi realizado um apontamento incorreto em uma tarefa'}. Em função ${plural ? 'desses apontamentos' : 'desse apontamento'}, as horas registradas não serão contabilizadas no banco de horas do cliente.
+Durante a auditoria dos apontamentos, identificamos ${plural ? 'registros de horas realizados' : 'o registro de horas realizado'} após o fechamento do período, ${plural ? 'referentes a atividades executadas em competências anteriores' : 'referente a uma atividade executada em competência anterior'}.
 
-Caso ${plural ? 'os chamados ainda estejam Abertos ou com status Resolved' : 'o chamado ainda esteja Aberto ou com status Resolved'}, solicitamos que seja realizado o ajuste da seguinte forma:
+Como o banco de horas do cliente referente ao período já havia sido processado, ${plural ? 'esses apontamentos retroativos não foram considerados' : 'esse apontamento retroativo não foi considerado'} na apuração original. Dessa forma, é necessário regularizar as horas no período vigente, garantindo a atualização correta do saldo do cliente.
 
-- Excluir ${plural ? 'as tarefas com os apontamentos incorretos' : 'a tarefa com o apontamento incorreto'};
-- Criar ${plural ? 'novas tarefas' : 'uma nova tarefa'} para que o desconto das horas ocorra no período vigente.
+Caso ${plural ? 'os chamados ainda estejam Abertos ou com status Resolved' : 'o chamado ainda esteja Aberto ou com status Resolved'}, solicitamos realizar o seguinte ajuste:
 
-Essa ação é necessária para garantir que as horas sejam contabilizadas corretamente no banco do cliente.
+- Excluir ${plural ? 'as tarefas que contêm os apontamentos retroativos' : 'a tarefa que contém o apontamento retroativo'};
+- Criar ${plural ? 'novas tarefas' : 'uma nova tarefa'} no período vigente;
+- Registrar novamente as horas, para que sejam descontadas corretamente do banco de horas atual do cliente.
 
-Em caso de dúvidas, por favor, entre em contato.
+Os dados ${plural ? 'dos apontamentos que necessitam' : 'do apontamento que necessita'} de regularização estão apresentados abaixo.
 
-Obrigado.`;
+Após a conclusão, pedimos que confirme a realização do ajuste.
+
+Em caso de dúvidas ou impossibilidade de realizar a correção, entre em contato com a equipe de Qualidade.
+
+Atenciosamente.`;
 
     return corpo;
   };
@@ -391,16 +396,17 @@ Obrigado.`;
 
     const tabelaRows = itens.map(item => `
           <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;">${item.empresa}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;">${item.chamado}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; color: #2563eb;">${item.tarefa || '-'}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;">${item.consultor || '-'}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${item.empresa}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${item.chamado}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; color: #2563eb; text-align: center;">${item.tarefa || '-'}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${item.consultor || '-'}</td>
           </tr>`).join('');
 
     const corpoHtml = corpoTexto
       .replace(/\n\n/g, '</p><p style="margin: 12px 0; font-size: 14px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif;">')
-      .replace(/\n- /g, '<br/>&#8226; ')
-      .replace(/\n/g, '<br/>');
+      .replace(/\n- (.+)/g, '<br/>&#8226; <strong>$1</strong>')
+      .replace(/\n/g, '<br/>')
+      .replace(/Qualidade/g, '<strong>Qualidade</strong>');
 
     return `<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -459,15 +465,15 @@ Obrigado.`;
             </td>
           </tr>
 
-          <!-- SEÇÃO: APONTAMENTOS IDENTIFICADOS -->
+          <!-- SEÇÃO: APONTAMENTOS RETROATIVOS IDENTIFICADOS -->
           <tr>
             <td style="padding: 16px 24px; background-color: #f9fafb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;">
               
-              <!-- Header amarelo "Apontamentos Identificados" -->
+              <!-- Header amarelo "Apontamentos Retroativos Identificados" -->
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 12px;">
                 <tr>
                   <td style="background-color: #f59e0b; color: #ffffff; padding: 8px 16px; font-weight: 600; font-size: 13px; font-family: Arial, sans-serif;">
-                    Apontamentos Identificados
+                    Apontamentos Retroativos Identificados
                   </td>
                   <td style="background-color: #f59e0b; color: #ffffff; padding: 8px 16px; font-size: 12px; font-family: Arial, sans-serif; text-align: right;">
                     ${itens.length} item${itens.length > 1 ? 's' : ''}
@@ -479,10 +485,10 @@ Obrigado.`;
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: #ffffff; border: 1px solid #e5e7eb;">
                 <thead>
                   <tr>
-                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Empresa</th>
-                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Chamado</th>
-                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Tarefa</th>
-                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Consultor</th>
+                    <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Empresa</th>
+                    <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Chamado</th>
+                    <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Tarefa</th>
+                    <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Consultor</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -499,6 +505,28 @@ Obrigado.`;
   </table>
 </body>
 </html>`;
+  };
+
+  // Destaca a palavra "Qualidade" em negrito dentro de uma linha do corpo do email
+  const renderizarLinhaComDestaque = (linha: string, keyPrefix: string): React.ReactNode[] => {
+    const partes = linha.split(/(Qualidade)/g);
+    return partes.map((parte, i) =>
+      parte === 'Qualidade' ? <strong key={`${keyPrefix}-${i}`}>Qualidade</strong> : parte
+    );
+  };
+
+  // Renderiza o corpo do email (preview) aplicando negrito nos itens do ajuste e na palavra "Qualidade"
+  const renderizarCorpoEmail = (texto: string): React.ReactNode[] => {
+    return texto.split('\n').map((linha, idx) => {
+      if (linha.startsWith('- ')) {
+        return (
+          <div key={idx} className="font-semibold">
+            {renderizarLinhaComDestaque(linha, `b-${idx}`)}
+          </div>
+        );
+      }
+      return <div key={idx}>{linha === '' ? ' ' : renderizarLinhaComDestaque(linha, `l-${idx}`)}</div>;
+    });
   };
 
   // Abrir modal de email
@@ -1632,8 +1660,8 @@ Obrigado.`;
                     </div>
 
                     {/* Corpo da mensagem */}
-                    <div className="p-5 bg-white text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                      {emailCorpo}
+                    <div className="p-5 bg-white text-sm text-gray-700 leading-relaxed">
+                      {renderizarCorpoEmail(emailCorpo)}
                     </div>
 
                     {/* Resumo: Período, Requerimentos, Horas */}
@@ -1648,26 +1676,26 @@ Obrigado.`;
                     {/* Tabela de apontamentos */}
                     <div className="p-4 bg-gray-50 border-t">
                       <div className="bg-amber-500 text-white px-4 py-2 rounded-t flex items-center justify-between">
-                        <span className="font-semibold text-sm">Apontamentos Identificados</span>
+                        <span className="font-semibold text-sm">Apontamentos Retroativos Identificados</span>
                         <span className="text-xs">{getItensSelecionados().length} item{getItensSelecionados().length > 1 ? 's' : ''}</span>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm border border-gray-200 bg-white">
                           <thead>
                             <tr className="bg-gray-100">
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Empresa</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Chamado</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Tarefa</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Consultor</th>
+                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Empresa</th>
+                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Chamado</th>
+                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Tarefa</th>
+                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Consultor</th>
                             </tr>
                           </thead>
                           <tbody>
                             {getItensSelecionados().map((item, idx) => (
                               <tr key={idx} className="border-b border-gray-100">
-                                <td className="px-3 py-2 text-xs text-gray-700">{item.empresa}</td>
-                                <td className="px-3 py-2 text-xs text-gray-700">{item.chamado}</td>
-                                <td className="px-3 py-2 text-xs text-blue-600 font-medium">{item.tarefa || '-'}</td>
-                                <td className="px-3 py-2 text-xs text-gray-700">{item.consultor || '-'}</td>
+                                <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.empresa}</td>
+                                <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.chamado}</td>
+                                <td className="px-3 py-2 text-xs text-blue-600 font-medium text-center">{item.tarefa || '-'}</td>
+                                <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.consultor || '-'}</td>
                               </tr>
                             ))}
                           </tbody>

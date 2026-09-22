@@ -1,9 +1,11 @@
 # 🚀 Deploy da Sync API em Produção — sondalyze.com.br
 
-Guia consolidado para colocar a **sync-api** em produção no **servidor Windows interno** (mesmo servidor do SQL Server), exposta por HTTPS via Nginx no subdomínio `sync-api.sondalyze.com.br`.
+Guia consolidado para colocar a **sync-api** em produção no **servidor Windows interno** (mesmo servidor do SQL Server), exposta por HTTPS no subdomínio `sync-api.sondalyze.com.br` via **Cloudflare Tunnel**.
 
-> **Arquitetura (Opção A):**
-> `Frontend (https://sondalyze.com.br)` → `Nginx HTTPS (443)` → `sync-api (localhost:3001)` → `SQL Server (localhost)` + `Supabase`
+> **Arquitetura:**
+> `Frontend (https://sondalyze.com.br)` → `Cloudflare Edge (HTTPS)` → `cloudflared (túnel outbound)` → `sync-api (localhost:3001)` → `SQL Server (localhost)` + `Supabase`
+
+> ℹ️ **Por que Cloudflare Tunnel em vez de Nginx + Let's Encrypt?** O túnel é uma conexão de **saída** iniciada pelo próprio servidor — não precisa de IP público estático, nem de portas 80/443 abertas na entrada, nem de certificado gerenciado manualmente. A Cloudflare já entrega HTTPS válido na borda. O fluxo antigo (Nginx + win-acme + registro DNS `A` manual) continua documentado em `ARCHITECTURE.md` como alternativa, caso o túnel não possa ser usado.
 
 > ⚠️ **A homologação NÃO é afetada.** Ela continua usando `.env.local` com `VITE_SYNC_API_URL=http://localhost:3001`. Nada neste guia altera o ambiente de homologação/dev.
 
@@ -13,10 +15,11 @@ Guia consolidado para colocar a **sync-api** em produção no **servidor Windows
 
 - Acesso **Administrador** ao servidor Windows onde roda o SQL Server
 - Node.js LTS 18+ instalado ([nodejs.org](https://nodejs.org/))
-- Nginx para Windows ([nginx.org](http://nginx.org/en/download.html))
-- Git for Windows (traz o OpenSSL) ([git-scm.com](https://git-scm.com/download/win))
-- Capacidade de criar registro DNS `A` para `sync-api.sondalyze.com.br`
-- Portas 80 e 443 liberadas no firewall/entrada de rede para o servidor
+- Conta Cloudflare com a zona `sondalyze.com.br` já ativa (nameservers apontando para a Cloudflare)
+- `cloudflared` para Windows ([github.com/cloudflare/cloudflared/releases](https://github.com/cloudflare/cloudflared/releases))
+- Git for Windows (traz o OpenSSL, útil para outras ferramentas) ([git-scm.com](https://git-scm.com/download/win))
+
+Não é preciso: IP público estático, portas 80/443 abertas para a internet, ou certificado SSL manual.
 
 ---
 
@@ -92,7 +95,7 @@ Se `/api/test-connection` retornar `success: true`, o acesso ao SQL Server está
 
 ---
 
-## 5. Instalar como serviço Windows
+## 5. Instalar a sync-api como serviço Windows
 
 ```powershell
 npm install -g node-windows
@@ -108,96 +111,57 @@ O serviço fica configurado para iniciar automaticamente com o Windows.
 
 ## 6. Firewall
 
+Não é necessário abrir nenhuma porta de entrada. O túnel é 100% outbound — o servidor só precisa conseguir *sair* para a internet na porta 443 (o que normalmente já está liberado).
+
 ```powershell
-# HTTP e HTTPS (Nginx) - expostos externamente
-netsh advfirewall firewall add rule name="Nginx HTTP" dir=in action=allow protocol=TCP localport=80
-netsh advfirewall firewall add rule name="Nginx HTTPS" dir=in action=allow protocol=TCP localport=443
+# Se existirem regras antigas do fluxo Nginx (portas 80/443/3001 de ENTRADA), remova-as:
+netsh advfirewall firewall show rule name="Nginx HTTP"
+netsh advfirewall firewall show rule name="Nginx HTTPS"
+netsh advfirewall firewall delete rule name="Nginx HTTP"
+netsh advfirewall firewall delete rule name="Nginx HTTPS"
 ```
 
-> **Não** exponha a porta **3001** externamente. A sync-api deve ser acessível apenas pelo Nginx (localhost). Se houver uma regra antiga abrindo a 3001, remova-a.
+> A porta **3001** nunca deve ficar acessível de fora do servidor — nem pelo Nginx, nem diretamente. Só o `cloudflared`, rodando no mesmo servidor, fala com ela via `localhost`.
 
 ---
 
-## 7. Instalar e configurar o Nginx
+## 7. Instalar e configurar o Cloudflare Tunnel
 
 ```powershell
-# 1. Extrair Nginx para C:\nginx\
-
-# 2. Copiar a configuração (já vem com server_name sync-api.sondalyze.com.br)
-copy C:\apps\books-sonda-sync-api\deployment\nginx.conf C:\nginx\conf\nginx.conf
-
-# 3. Testar a configuração
-cd C:\nginx
-nginx -t
+# 1. Baixar cloudflared-windows-amd64.exe em:
+#    https://github.com/cloudflare/cloudflared/releases
+# 2. Renomear para cloudflared.exe e colocar em C:\cloudflared\
 ```
 
----
+No painel [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networks → Tunnels**:
 
-## 8. Certificado SSL
+1. **Create a tunnel** → tipo `Cloudflared` → nome, ex.: `books-sonda-sync-api`
+2. Copiar o **token** de instalação exibido na tela (string longa gerada para esse túnel)
+3. Em **Public Hostname**, adicionar:
+   - **Subdomain**: `sync-api`
+   - **Domain**: `sondalyze.com.br`
+   - **Service**: `HTTP` → `localhost:3001`
+4. Salvar. A Cloudflare cria automaticamente o registro DNS (`CNAME` apontando para o túnel) — não é preciso mexer em DNS manualmente.
 
-### Opção recomendada — Let's Encrypt (win-acme)
-
-```powershell
-# Baixar win-acme: https://www.win-acme.com/
-cd C:\win-acme
-.\wacs.exe
-# Wizard:
-#   - Create certificate (full options)
-#   - Manual input → domínio: sync-api.sondalyze.com.br
-#   - Validação: HTTP (a porta 80 precisa estar acessível externamente)
-#   - Salvar em C:\nginx\ssl\ (certificate.crt / private.key)
-```
-
-### Alternativa — Certificado comercial da Sonda
-
-Copie os arquivos para `C:\nginx\ssl\certificate.crt` e `C:\nginx\ssl\private.key` (ou ajuste os caminhos no `nginx.conf`).
-
-### Apenas para teste — Self-signed
+Instalar o conector como serviço Windows, para iniciar junto com o boot igual à sync-api:
 
 ```powershell
-cd C:\apps\books-sonda-sync-api\deployment
-.\generate-ssl-cert.bat   # CN já configurado para sync-api.sondalyze.com.br
-```
+cd C:\cloudflared
+.\cloudflared.exe service install <TOKEN-copiado-no-passo-2>
 
-> Self-signed gera aviso de segurança no navegador. Não use em produção real.
-
-Após ter os certificados:
-
-```powershell
-cd C:\nginx
-nginx -t          # validar
-nginx -s reload   # aplicar (ou 'start nginx' se ainda não estiver rodando)
+# Verificar
+sc query Cloudflared
 ```
 
 ---
 
-## 9. DNS
-
-Criar registro no provedor do domínio `sondalyze.com.br`:
-
-```
-Tipo:  A
-Nome:  sync-api        (resulta em sync-api.sondalyze.com.br)
-Valor: IP_PUBLICO_DO_SERVIDOR
-TTL:   3600
-```
-
-Validar a propagação:
-
-```powershell
-nslookup sync-api.sondalyze.com.br
-```
-
----
-
-## 10. Testes de aceitação (do servidor e de fora)
+## 8. Testes de aceitação (do servidor e de fora)
 
 ```powershell
 # Local (no servidor)
 curl http://localhost:3001/health
-curl -k https://localhost/health
 
-# Externo (de outra máquina)
+# Externo (de outra máquina, sem VPN)
 curl https://sync-api.sondalyze.com.br/health
 curl https://sync-api.sondalyze.com.br/api/test-connection
 ```
@@ -208,11 +172,11 @@ Resposta esperada do `/health`:
 { "status": "ok", "config": { "server": "localhost", "database": "Aranda" } }
 ```
 
-No navegador, abrir `https://sync-api.sondalyze.com.br/health` e conferir o cadeado válido (sem aviso de certificado).
+No navegador, abrir `https://sync-api.sondalyze.com.br/health` e conferir o cadeado válido — o certificado é emitido pela própria Cloudflare, sem aviso de segurança.
 
 ---
 
-## 11. Publicar o frontend com a nova URL
+## 9. Publicar o frontend com a nova URL
 
 O arquivo `.env.production` do frontend já foi atualizado para:
 
@@ -226,7 +190,7 @@ Após publicar, valide na tela de diagnóstico da aplicação (componente `Diagn
 
 ---
 
-## 12. Validar a sincronização ponta a ponta
+## 10. Validar a sincronização ponta a ponta
 
 Pela interface do Books SND (módulo Pesquisas), rode uma sincronização e confirme que os dados chegam ao Supabase. Ou via curl:
 
@@ -241,9 +205,10 @@ curl https://sync-api.sondalyze.com.br/api/validate-sync
 
 1. **Rotacionar a senha do SQL `amsconsulta`.** O arquivo `sync-api/.env.temp` esteve versionado no histórico do git com a senha em texto plano. Remover do índice (já feito) não apaga o histórico — a forma segura é trocar a senha no SQL Server e atualizar o `.env` do servidor.
 2. **Rotacionar a `SUPABASE_SERVICE_KEY`** se houver qualquer suspeita de que tenha sido versionada ou compartilhada.
-3. Manter a porta **3001 fechada** para acesso externo (somente Nginx acessa via localhost).
-4. Restringir o CORS: hoje o `nginx.conf` usa `Access-Control-Allow-Origin: *`. Depois de estabilizar, considere trocar por `https://sondalyze.com.br` (e a origem da homologação, se aplicável).
+3. Manter a porta **3001 fechada** para acesso externo (somente o `cloudflared`, no mesmo servidor, acessa via `localhost`).
+4. **Restringir o CORS**: hoje a sync-api usa `app.use(cors())` sem restrição de origem (`sync-api/src/server.ts`). Depois de estabilizar, considere restringir para `https://sondalyze.com.br` (e a origem da homologação, se aplicável).
 5. Proteger o `.env` do servidor: `icacls C:\apps\books-sonda-sync-api\.env` — apenas Administradores devem ter acesso.
+6. Restringir quem pode editar o túnel e o Public Hostname no painel Cloudflare Zero Trust (acesso equivalente a controlar para onde o tráfego de `sync-api.sondalyze.com.br` é roteado).
 
 ---
 
@@ -256,12 +221,10 @@ net stop "Books SND Sync API"
 sc query "Books SND Sync API"
 type C:\apps\books-sonda-sync-api\logs\service.log
 
-# Nginx
-cd C:\nginx
-start nginx
-nginx -s reload
-nginx -s stop
-type C:\nginx\logs\error.log
+# Cloudflare Tunnel
+sc query Cloudflared
+net start Cloudflared
+net stop Cloudflared
 ```
 
 ---
@@ -276,11 +239,12 @@ VITE_SYNC_API_URL=https://sync-api-p3jr.onrender.com
 
 e refazendo o deploy. Isso não afeta a homologação.
 
+Se o problema for especificamente no túnel (não na sync-api), basta parar o serviço `Cloudflared` — o hostname `sync-api.sondalyze.com.br` volta a responder erro 502 pela Cloudflare, sem impacto no restante da rede do servidor.
+
 ---
 
 **Arquivos deste deploy:**
 - `deployment/.env.production.sondalyze` — modelo do `.env` de produção
-- `deployment/nginx.conf` — configuração do Nginx (server_name já ajustado)
-- `deployment/generate-ssl-cert.bat` — geração de certificado self-signed (CN ajustado)
-- `deployment/install-service.js` — instalação do serviço Windows
+- `deployment/install-service.js` — instalação do serviço Windows da sync-api
 - `.env.production` (raiz do projeto) — `VITE_SYNC_API_URL` do frontend
+- `deployment/nginx.conf`, `deployment/generate-ssl-cert.bat` — fluxo alternativo (Nginx + Let's Encrypt/self-signed), mantidos como *fallback* caso o Cloudflare Tunnel não possa ser usado; ver `ARCHITECTURE.md`
