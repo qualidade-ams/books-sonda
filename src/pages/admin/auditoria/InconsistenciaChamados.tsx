@@ -515,14 +515,12 @@ Atenciosamente.`;
             </thead>
             <tbody>
               ${linhas}
+              <tr>
+                <td colspan="4" style="padding: 10px 12px; font-size: 13px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif; background-color: #ffffff;">
+                  <strong>Ação:</strong> ${acaoCorrecao}
+                </td>
+              </tr>
             </tbody>
-          </table>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-            <tr>
-              <td style="padding: 10px 12px 0 12px; font-size: 13px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif;">
-                <strong>Ação:</strong> ${acaoCorrecao}
-              </td>
-            </tr>
           </table>`;
     }).join(
       // Spacer entre seções: margin/padding em <table> ou <div> é ignorado pelo Outlook
@@ -1241,12 +1239,14 @@ Atenciosamente.`;
                                         <td className="px-3 py-2 text-xs text-gray-700 text-center">{envelope.analista}</td>
                                       </tr>
                                     ))}
+                                    <tr className="border-b border-gray-100">
+                                      <td colSpan={4} className="px-3 py-2 text-xs text-gray-700 bg-white">
+                                        <strong>Ação:</strong> {acaoCorrecao}
+                                      </td>
+                                    </tr>
                                   </tbody>
                                 </table>
                               </div>
-                              <p className="text-xs text-gray-700 mt-2">
-                                <strong>Ação:</strong> {acaoCorrecao}
-                              </p>
                             </div>
                           );
                         })}

@@ -24,6 +24,7 @@ import type {
 import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
+import { auditService } from './auditService';
 import { gerarImagemBancoHoras } from './bancoHorasTableService';
 import type { EmailTemplate } from '@/types/approval';
 
@@ -82,19 +83,13 @@ class BooksDisparoService {
     newValues: Record<string, any>,
     userId: string | null
   ): Promise<void> {
-    try {
-      await supabase.from('permission_audit_logs').insert({
-        table_name: 'historico_disparos',
-        record_id: recordId,
-        action,
-        new_values: newValues as any,
-        changed_by: userId,
-        changed_at: new Date().toISOString(),
-      });
-    } catch (error) {
-      // Não bloquear o processo principal por erro de auditoria
-      console.warn('⚠️ Erro ao registrar audit log de disparo:', error);
-    }
+    await auditService.registrarLog({
+      table_name: 'historico_disparos',
+      record_id: recordId,
+      action,
+      new_values: newValues,
+      changed_by: userId,
+    });
   }
 
   /**

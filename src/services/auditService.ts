@@ -8,6 +8,52 @@ import type {
 
 export class AuditService {
   /**
+   * Registra um log de auditoria.
+   *
+   * Auditoria nunca derruba o fluxo de negócio, mas a falha precisa ficar visível:
+   * o supabase-js não lança em erro de banco, ele devolve `{ error }`. Sem checar
+   * esse retorno o log some sem deixar rastro — que era o comportamento anterior.
+   *
+   * @returns true se o log foi gravado, false se falhou (motivo vai para o console).
+   */
+  async registrarLog(entrada: {
+    table_name: string;
+    record_id: string;
+    action: 'INSERT' | 'UPDATE' | 'DELETE';
+    old_values?: Record<string, any> | null;
+    new_values?: Record<string, any> | null;
+    changed_by: string | null;
+  }): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('permission_audit_logs').insert({
+        table_name: entrada.table_name,
+        record_id: entrada.record_id,
+        action: entrada.action,
+        old_values: (entrada.old_values ?? null) as any,
+        new_values: (entrada.new_values ?? null) as any,
+        changed_by: entrada.changed_by,
+        changed_at: new Date().toISOString()
+      });
+
+      if (error) {
+        console.error(
+          `Falha ao gravar log de auditoria [${error.code || 'sem código'}]: ${error.message}`,
+          { table_name: entrada.table_name, action: entrada.action }
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error(
+        `Falha ao gravar log de auditoria: ${error instanceof Error ? error.message : String(error)}`,
+        { table_name: entrada.table_name, action: entrada.action }
+      );
+      return false;
+    }
+  }
+
+  /**
    * Get audit logs with optional filters and pagination
    */
   async getAuditLogs(
