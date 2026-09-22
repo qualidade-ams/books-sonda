@@ -1054,7 +1054,7 @@ export class BancoHorasQuarentenaService {
         'Alocação (Banco=S| SLA=N)',
         'Alocação - T&M',
         'Alocação T&M',
-        'Alocação - T&M (Banco=S |SLA=N)',
+        'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
         'Alocação - T&M (Banco=S| SLA=N)',
         'AMS SAP',
         'AMS SAP (Banco=S |SLA=S)',
@@ -1165,7 +1165,7 @@ export class BancoHorasQuarentenaService {
       const codigosResolucaoValidos = [
         'Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocação (Banco=S| SLA=N)',
         'Alocação - T&M', 'Alocação T&M',
-        'Alocação - T&M (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
+        'Alocação - T&M Banco de Horas (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
         'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
         'Aplicação de Nota / Licença - Contratados',
         'Aplicação de Nota / Licença (Banco=S |SLA=N)',

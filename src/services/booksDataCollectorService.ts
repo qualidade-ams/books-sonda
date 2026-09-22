@@ -1569,7 +1569,7 @@ class BooksDataCollectorService {
           'Alocação (Banco=S |SLA=N)',
           'Alocação (Banco=S| SLA=N)',
           'Alocação - T&M',
-          'Alocação - T&M (Banco=S |SLA=N)',
+          'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
           'Alocação - T&M (Banco=S| SLA=N)',
           'AMS SAP',
           'AMS SAP (Banco=S |SLA=S)',
@@ -1774,7 +1774,7 @@ class BooksDataCollectorService {
         .neq('item_configuracao', '000000 - PROJETOS APL')
         .in('cod_resolucao', [
           'Alocação',
-          'Alocação (Banco=S |SLA=N)','Alocação (Banco=S| SLA=N)','Alocação - T&M','Alocação T&M','Alocação - T&M (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
+          'Alocação (Banco=S |SLA=N)','Alocação (Banco=S| SLA=N)','Alocação - T&M','Alocação T&M','Alocação - T&M Banco de Horas (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
           'AMS SAP','AMS SAP (Banco=S |SLA=S)','AMS SAP (Banco=S| SLA=S)',
           'Aplicação de Nota / Licença - Contratados','Aplicação de Nota / Licença (Banco=S |SLA=N)',
           'Consultoria','Consultoria (Banco=S |SLA=S)','Consultoria (Banco=S| SLA=S)',
@@ -3035,7 +3035,7 @@ class BooksDataCollectorService {
             'Alocação (Banco=S |SLA=N)',
             'Alocação (Banco=S| SLA=N)',
             'Alocação - T&M',
-            'Alocação - T&M (Banco=S |SLA=N)',
+            'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
             'Alocação - T&M (Banco=S| SLA=N)',
             'AMS SAP',
             'AMS SAP (Banco=S |SLA=S)',
@@ -3120,7 +3120,7 @@ class BooksDataCollectorService {
           .eq('status', 'Closed')
           .neq('item_configuracao', '000000 - PROJETOS APL')
           .in('cod_resolucao', [
-            'Alocação - T&M','Alocação T&M','Alocação - T&M (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
+            'Alocação - T&M','Alocação T&M','Alocação - T&M Banco de Horas (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
             'AMS SAP','AMS SAP (Banco=S |SLA=S)','AMS SAP (Banco=S| SLA=S)',
             'Aplicação de Nota / Licença - Contratados','Aplicação de Nota / Licença (Banco=S |SLA=N)',
             'Consultoria','Consultoria (Banco=S |SLA=S)','Consultoria (Banco=S| SLA=S)',
