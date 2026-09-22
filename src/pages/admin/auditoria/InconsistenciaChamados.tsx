@@ -472,9 +472,10 @@ export default function InconsistenciaChamados() {
     const totalItens = envelope.itens.length;
 
     const corpoIntroducao = `Prezado(a) ${primeiroNome},<br/><br/>
-Durante a auditoria dos chamados, identificamos inconsistências nos registros abaixo, relacionadas a você.<br/><br/>
-Solicitamos que realize a correção conforme a orientação indicada em cada item, o mais breve possível.<br/><br/>
+Durante a auditoria dos chamados, identificamos inconsistências nos registros abaixo, sob sua responsabilidade.<br/><br/>
+Solicitamos a regularização conforme a orientação indicada em cada item, o mais breve possível.<br/><br/>
 Em caso de dúvidas, entre em contato com a equipe de <strong>Qualidade</strong>.<br/><br/>
+Após a conclusão, confirme a realização dos ajustes.<br/><br/>
 Atenciosamente.`;
 
     const secoesPorTipo = Array.from(agruparPorTipoOrdenado(envelope.itens).entries()).map(([tipo, itensDoTipo]) => {
@@ -1192,9 +1193,10 @@ Atenciosamente.`;
                       {/* Corpo introdutório */}
                       <div className="p-5 bg-white text-sm text-gray-700 leading-relaxed space-y-2">
                         <p>Prezado(a) {primeiroNome},</p>
-                        <p>Durante a auditoria dos chamados, identificamos inconsistências nos registros abaixo, relacionadas a você.</p>
-                        <p>Solicitamos que realize a correção conforme a orientação indicada em cada item, o mais breve possível.</p>
+                        <p>Durante a auditoria dos chamados, identificamos inconsistências nos registros abaixo, sob sua responsabilidade.</p>
+                        <p>Solicitamos a regularização conforme a orientação indicada em cada item, o mais breve possível.</p>
                         <p>Em caso de dúvidas, entre em contato com a equipe de <strong>Qualidade</strong>.</p>
+                        <p>Após a conclusão, confirme a realização dos ajustes.</p>
                         <p>Atenciosamente.</p>
                       </div>
 
