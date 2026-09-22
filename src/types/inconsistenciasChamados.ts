@@ -107,6 +107,7 @@ export interface EnviarNotificacaoRequest {
   inconsistencias: InconsistenciaChamado[];
   mes_referencia?: number;
   ano_referencia: number;
+  email_analista?: string;
 }
 
 // Labels para exibição
@@ -128,6 +129,26 @@ export const TIPO_INCONSISTENCIA_COLORS: Record<TipoInconsistencia, string> = {
   tempo_excessivo: 'bg-orange-100 text-orange-800',
   ic_999999: 'bg-purple-100 text-purple-800',
   sem_atualizacao: 'bg-sky-100 text-sky-800'
+};
+
+// Ordem fixa de exibição dos tipos de inconsistência (usada para agrupar itens por tipo dentro de um envelope de email)
+export const TIPO_INCONSISTENCIA_ORDEM: TipoInconsistencia[] = [
+  'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao'
+];
+
+// Hex equivalentes às classes Tailwind de TIPO_INCONSISTENCIA_COLORS, para uso em HTML de email (não processa Tailwind)
+export const TIPO_INCONSISTENCIA_COR_EMAIL_HEX: Record<TipoInconsistencia, { bg: string; text: string }> = {
+  mes_diferente:    { bg: '#FEF9C3', text: '#854D0E' },
+  tempo_excessivo:  { bg: '#FFEDD5', text: '#9A3412' },
+  ic_999999:        { bg: '#F3E8FF', text: '#6B21A8' },
+  sem_atualizacao:  { bg: '#E0F2FE', text: '#075985' },
+};
+
+// Texto da ação de correção recomendada para cada tipo de inconsistência (exceto ic_999999, que é dinâmico)
+export const ACAO_CORRECAO_TEXTO: Record<Exclude<TipoInconsistencia, 'ic_999999'>, string> = {
+  mes_diferente: 'Excluir a tarefa com data retroativa e criar um novo apontamento no mês vigente, mantendo a mesma quantidade de horas. Isso garante que as horas sejam contabilizadas corretamente.',
+  tempo_excessivo: 'Validar o tempo apontado, corrigir o apontamento caso necessário (Excluir a tarefa indicada >> Incluir uma nova tarefa com a período correto).',
+  sem_atualizacao: 'Atualizar o chamado e verificar se o status está adequado à situação atual.',
 };
 
 export const ORIGEM_COLORS: Record<OrigemInconsistencia, string> = {

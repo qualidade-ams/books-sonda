@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,25 +18,183 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { 
+import {
   AlertTriangle, Calendar, Clock, Filter, X, Search, Download, Eye, Send,
   ChevronLeft, ChevronRight, History, Mail, Paperclip, ClipboardList, Settings, CheckCircle, Archive
 } from 'lucide-react';
-import { 
+import {
   useInconsistenciasChamados, useInconsistenciasEstatisticas,
   useInconsistenciasResolvidas, useHistoricoEmailsInconsistencias, useEnviarNotificacao,
   useArquivarInconsistencia
 } from '@/hooks/useInconsistenciasChamados';
-import type { InconsistenciasChamadosFiltros } from '@/types/inconsistenciasChamados';
-import { TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS } from '@/types/inconsistenciasChamados';
+import type { InconsistenciasChamadosFiltros, InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
+import {
+  TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS, TIPO_INCONSISTENCIA_ORDEM,
+  TIPO_INCONSISTENCIA_COR_EMAIL_HEX, ACAO_CORRECAO_TEXTO,
+} from '@/types/inconsistenciasChamados';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { isClienteEspecialBRFONSDAGUIRRE } from '@/utils/clienteEspecialUtils';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
+import { emailService } from '@/services/emailService';
 
 const DEFAULT_ITEMS_PER_PAGE = 25;
+
+// Empresa cadastrada (subconjunto de campos usados na resolução de nome/gestor)
+export interface EmpresaCadastradaResumo {
+  nome_abreviado: string | null;
+  nome_completo: string | null;
+  email_gestor: string | null;
+}
+
+// Envelope de email: um por analista, com destinatário/CC/BCC/assunto/anexos independentes.
+// Pode conter múltiplos tipos de inconsistência do mesmo analista.
+export interface InconsistenciaEmailEnvelope {
+  analista: string;
+  itens: InconsistenciaChamado[];
+  destinatario: string;
+  cc: string;
+  bcc: string;
+  assunto: string;
+  anexos: File[];
+}
+
+/**
+ * Agrupa uma lista de inconsistências pelo nome do analista.
+ * Itens sem analista definido são agrupados sob a chave "Sem analista".
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function agruparInconsistenciasPorAnalista(itens: InconsistenciaChamado[]): Map<string, InconsistenciaChamado[]> {
+  const grupos = new Map<string, InconsistenciaChamado[]>();
+  itens.forEach(item => {
+    const chave = item.analista || 'Sem analista';
+    const lista = grupos.get(chave);
+    if (lista) {
+      lista.push(item);
+    } else {
+      grupos.set(chave, [item]);
+    }
+  });
+  return grupos;
+}
+
+/**
+ * Agrupa itens por tipo de inconsistência, retornando as chaves sempre na ordem fixa
+ * TIPO_INCONSISTENCIA_ORDEM (mes_diferente → tempo_excessivo → ic_999999 → sem_atualizacao),
+ * omitindo tipos sem nenhum item.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function agruparPorTipoOrdenado(itens: InconsistenciaChamado[]): Map<TipoInconsistencia, InconsistenciaChamado[]> {
+  const grupos = new Map<TipoInconsistencia, InconsistenciaChamado[]>();
+  TIPO_INCONSISTENCIA_ORDEM.forEach(tipo => {
+    const doTipo = itens.filter(item => item.tipo_inconsistencia === tipo);
+    if (doTipo.length > 0) {
+      grupos.set(tipo, doTipo);
+    }
+  });
+  return grupos;
+}
+
+/**
+ * Resolve a empresa cadastrada correspondente a um nome de empresa vindo do chamado,
+ * por match exato (nome completo ou abreviado) ou parcial (startsWith bidirecional).
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function encontrarEmpresaCadastrada(
+  nomeEmpresa: string | null,
+  empresasCadastradas: EmpresaCadastradaResumo[]
+): EmpresaCadastradaResumo | null {
+  if (!nomeEmpresa) return null;
+
+  const nomeNormalizado = nomeEmpresa.toUpperCase().trim();
+
+  const empresaExata = empresasCadastradas.find(
+    e => e.nome_completo?.toUpperCase().trim() === nomeNormalizado ||
+         e.nome_abreviado?.toUpperCase().trim() === nomeNormalizado
+  );
+  if (empresaExata) return empresaExata;
+
+  const empresaParcial = empresasCadastradas.find(e => {
+    const abrev = e.nome_abreviado?.toUpperCase().trim() || '';
+    const completo = e.nome_completo?.toUpperCase().trim() || '';
+    return completo.startsWith(nomeNormalizado) ||
+           nomeNormalizado.startsWith(completo) ||
+           abrev.startsWith(nomeNormalizado) ||
+           nomeNormalizado.startsWith(abrev);
+  });
+
+  return empresaParcial || null;
+}
+
+/**
+ * Agrupa uma lista de {empresa, emailGestor} (do IC 999999) por gestor: empresas com o mesmo
+ * email caem no mesmo grupo; empresas sem email cadastrado geram um grupo próprio cada.
+ * Faz dedupe por nome de empresa preservando a ordem de primeira aparição.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function agruparGestoresIC999999(
+  infos: Array<{ empresa: string; emailGestor: string | null }>
+): Array<{ emailGestor: string | null; empresas: string[] }> {
+  const empresasVistas = new Set<string>();
+  const deduplicadas: Array<{ empresa: string; emailGestor: string | null }> = [];
+  infos.forEach(info => {
+    if (!empresasVistas.has(info.empresa)) {
+      empresasVistas.add(info.empresa);
+      deduplicadas.push(info);
+    }
+  });
+
+  const gruposComEmail = new Map<string, { emailGestor: string; empresas: string[] }>();
+  const gruposSemEmail: Array<{ emailGestor: null; empresas: string[] }> = [];
+
+  deduplicadas.forEach(info => {
+    const emailNormalizado = info.emailGestor?.trim();
+    if (emailNormalizado) {
+      const chave = emailNormalizado.toLowerCase();
+      const existente = gruposComEmail.get(chave);
+      if (existente) {
+        existente.empresas.push(info.empresa);
+      } else {
+        gruposComEmail.set(chave, { emailGestor: emailNormalizado, empresas: [info.empresa] });
+      }
+    } else {
+      gruposSemEmail.push({ emailGestor: null, empresas: [info.empresa] });
+    }
+  });
+
+  return [...Array.from(gruposComEmail.values()), ...gruposSemEmail];
+}
+
+/**
+ * Monta o trecho "{DETALHE}" da frase fixa do IC 999999 a partir dos grupos de gestor
+ * já agrupados por agruparGestoresIC999999.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function montarTextoGestorIC999999(
+  grupos: Array<{ emailGestor: string | null; empresas: string[] }>
+): string {
+  if (grupos.length === 0) return 'o gestor responsável pela empresa';
+
+  if (grupos.length === 1) {
+    const grupo = grupos[0];
+    if (grupo.emailGestor) return grupo.emailGestor;
+    return `e-mail do gestor não cadastrado para ${grupo.empresas[0]}`;
+  }
+
+  const segmentos = grupos.map(grupo => {
+    if (grupo.emailGestor) {
+      if (grupo.empresas.length > 1) {
+        return `${grupo.emailGestor} (${grupo.empresas.join(', ')})`;
+      }
+      return `${grupo.emailGestor} para ${grupo.empresas[0]}`;
+    }
+    return `e-mail do gestor não cadastrado para ${grupo.empresas[0]}`;
+  });
+
+  return segmentos.join('; ');
+}
 
 export default function InconsistenciaChamados() {
   const { toast } = useToast();
@@ -85,28 +243,25 @@ export default function InconsistenciaChamados() {
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [currentPageResolvidas, setCurrentPageResolvidas] = useState(1);
 
-  // Estado do formulário de email
-  const [emailForm, setEmailForm] = useState({
-    destinatarios: '', cc: '', bcc: '',
-    assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`,
-    anexos: [] as File[]
-  });
+  // Estado do modal de email — um envelope (destinatário/cc/bcc/assunto/anexos) por analista
+  const [emailEnvelopes, setEmailEnvelopes] = useState<InconsistenciaEmailEnvelope[]>([]);
+  const [enviandoEmail, setEnviandoEmail] = useState(false);
 
   // Hooks de dados
   const { inconsistencias, isLoading, refetch } = useInconsistenciasChamados(filtros);
   const { estatisticas, isLoading: isLoadingStats } = useInconsistenciasEstatisticas(filtros);
   const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtros);
   const { historico, isLoading: isLoadingHistorico } = useHistoricoEmailsInconsistencias(anoAtual);
-  const { enviarNotificacao, isEnviando } = useEnviarNotificacao();
+  const { enviarNotificacaoAsync } = useEnviarNotificacao();
   const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
 
-  // Query para empresas cadastradas (validação visual e de-para nome abreviado)
+  // Query para empresas cadastradas (validação visual, de-para nome abreviado e email do gestor)
   const { data: empresasCadastradas } = useQuery({
     queryKey: ['empresas-nomes-cadastradas'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresas_clientes')
-        .select('nome_abreviado, nome_completo')
+        .select('nome_abreviado, nome_completo, email_gestor')
         .order('nome_abreviado');
       if (error) throw error;
       return data || [];
@@ -118,35 +273,20 @@ export default function InconsistenciaChamados() {
   const obterDadosEmpresa = (nomeEmpresa: string | null): { nome: string; encontrada: boolean } => {
     if (!nomeEmpresa) return { nome: '-', encontrada: false };
     if (!empresasCadastradas) return { nome: nomeEmpresa, encontrada: true };
-    
-    const nomeNormalizado = nomeEmpresa.toUpperCase().trim();
-    
-    // Busca exata por nome_completo ou nome_abreviado
-    const empresaExata = empresasCadastradas.find(
-      e => e.nome_completo?.toUpperCase().trim() === nomeNormalizado || 
-           e.nome_abreviado?.toUpperCase().trim() === nomeNormalizado
-    );
-    if (empresaExata) {
-      return { nome: empresaExata.nome_abreviado || nomeEmpresa, encontrada: true };
+
+    const match = encontrarEmpresaCadastrada(nomeEmpresa, empresasCadastradas);
+    if (match) {
+      return { nome: match.nome_abreviado || nomeEmpresa, encontrada: true };
     }
-    
-    // Busca parcial: nome do chamado começa com nome abreviado cadastrado
-    // ou nome cadastrado começa com nome do chamado
-    const empresaParcial = empresasCadastradas.find(
-      e => {
-        const abrev = e.nome_abreviado?.toUpperCase().trim() || '';
-        const completo = e.nome_completo?.toUpperCase().trim() || '';
-        return completo.startsWith(nomeNormalizado) || 
-               nomeNormalizado.startsWith(completo) ||
-               abrev.startsWith(nomeNormalizado) || 
-               nomeNormalizado.startsWith(abrev);
-      }
-    );
-    if (empresaParcial) {
-      return { nome: empresaParcial.nome_abreviado || nomeEmpresa, encontrada: true };
-    }
-    
+
     return { nome: nomeEmpresa, encontrada: false };
+  };
+
+  // Retorna o email do gestor cadastrado para a empresa (usado no texto do IC 999999)
+  const obterEmailGestorEmpresa = (nomeEmpresa: string | null): string | null => {
+    if (!empresasCadastradas) return null;
+    const match = encontrarEmpresaCadastrada(nomeEmpresa, empresasCadastradas);
+    return match?.email_gestor ?? null;
   };
 
   // Lista de analistas únicos das inconsistências ativas (usado no handler de email)
@@ -183,41 +323,57 @@ export default function InconsistenciaChamados() {
     else { setSelectedIds(selectedIds.filter(sid => sid !== id)); }
   };
 
-  // Email - abrir modal
+  // Busca o email do analista na tabela especialistas
+  const buscarEmailAnalista = async (nomeAnalista: string): Promise<string | null> => {
+    try {
+      const { data } = await supabase
+        .from('especialistas')
+        .select('email')
+        .ilike('nome', `%${nomeAnalista}%`)
+        .limit(1)
+        .maybeSingle();
+      return data?.email || null;
+    } catch (error) {
+      console.error('Erro ao buscar email do analista:', error instanceof Error ? error.message : 'erro desconhecido');
+      return null;
+    }
+  };
+
+  // Email - abrir modal — agrupa os itens selecionados por analista em envelopes independentes
   const handleAbrirModalEmail = async () => {
     const selecionadas = inconsistencias.filter(inc => selectedIds.includes(inc.id));
     if (selecionadas.length === 0) {
       toast({ title: t('inconsistencias.noInconsistencySelected'), description: t('inconsistencias.selectAtLeastOne'), variant: "destructive" });
       return;
     }
-    const analistasUnicos = Array.from(new Set(selecionadas.map(inc => inc.analista).filter(Boolean)));
-    const emails: string[] = [];
-    for (const analista of analistasUnicos) {
-      try {
-        const { data } = await supabase.from('especialistas').select('email').ilike('nome', `%${analista}%`).limit(1).maybeSingle();
-        if (data?.email) emails.push(data.email);
-      } catch (error) { console.error(`Erro ao buscar email de ${analista}:`, error); }
-    }
-    setEmailForm({ destinatarios: emails.join('; '), cc: '', bcc: '', assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`, anexos: [] });
+
+    const grupos = agruparInconsistenciasPorAnalista(selecionadas);
+    const envelopes = await Promise.all(
+      Array.from(grupos.entries()).map(async ([analista, itensDoAnalista]) => {
+        let destinatario = '';
+        if (analista && analista !== 'Sem analista') {
+          destinatario = (await buscarEmailAnalista(analista)) || '';
+        }
+        const envelope: InconsistenciaEmailEnvelope = {
+          analista,
+          itens: itensDoAnalista,
+          destinatario,
+          cc: '',
+          bcc: '',
+          assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`,
+          anexos: [],
+        };
+        return envelope;
+      })
+    );
+
+    setEmailEnvelopes(envelopes);
     setShowEmailModal(true);
   };
 
-  // Email - enviar
-  const handleEnviarNotificacoes = () => {
-    const selecionadas = inconsistencias.filter(inc => selectedIds.includes(inc.id));
-    if (!emailForm.destinatarios.trim()) {
-      toast({ title: t('inconsistencias.recipientsRequired'), description: t('inconsistencias.enterAtLeastOneRecipient'), variant: "destructive" });
-      return;
-    }
-    enviarNotificacao({ inconsistencias: selecionadas, ano_referencia: anoAtual }, {
-      onSuccess: () => {
-        toast({ title: t('inconsistencias.notificationsSent'), description: t('inconsistencias.notificationsSentDesc', { count: selecionadas.length }) });
-        setSelectedIds([]); setShowEmailModal(false);
-        setEmailForm({ destinatarios: '', cc: '', bcc: '', assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${anoAtual}`, anexos: [] });
-        refetch();
-      },
-      onError: (error) => { toast({ title: t('inconsistencias.sendError'), description: error instanceof Error ? error.message : t('common.error'), variant: "destructive" }); }
-    });
+  // Atualiza um campo específico de um envelope pelo índice
+  const atualizarEnvelope = <K extends keyof InconsistenciaEmailEnvelope>(index: number, campo: K, valor: InconsistenciaEmailEnvelope[K]) => {
+    setEmailEnvelopes(prev => prev.map((env, i) => (i === index ? { ...env, [campo]: valor } : env)));
   };
 
   // Arquivar individual
@@ -250,26 +406,264 @@ export default function InconsistenciaChamados() {
     });
   };
 
-  // Anexos
-  const handleAnexoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Anexos (por envelope)
+  const handleAnexoChange = (envelopeIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
+      const envelope = emailEnvelopes[envelopeIndex];
       const novosAnexos = Array.from(e.target.files);
-      const totalSize = [...emailForm.anexos, ...novosAnexos].reduce((acc, file) => acc + file.size, 0);
+      const totalSize = [...envelope.anexos, ...novosAnexos].reduce((acc, file) => acc + file.size, 0);
       if (totalSize > 25 * 1024 * 1024) {
         toast({ title: t('inconsistencias.attachmentLimitExceeded'), description: t('inconsistencias.attachmentLimitDesc'), variant: "destructive" });
         return;
       }
-      setEmailForm({ ...emailForm, anexos: [...emailForm.anexos, ...novosAnexos] });
+      atualizarEnvelope(envelopeIndex, 'anexos', [...envelope.anexos, ...novosAnexos]);
     }
   };
-  const handleRemoverAnexo = (index: number) => {
-    setEmailForm({ ...emailForm, anexos: emailForm.anexos.filter((_, i) => i !== index) });
+  const handleRemoverAnexo = (envelopeIndex: number, anexoIndex: number) => {
+    const envelope = emailEnvelopes[envelopeIndex];
+    atualizarEnvelope(envelopeIndex, 'anexos', envelope.anexos.filter((_, i) => i !== anexoIndex));
   };
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024; const sizes = ['Bytes', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  // Parsear destinatários (separados por ; ou ,)
+  const parseEmails = (str: string) => str.split(/[;,]/).map(e => e.trim()).filter(Boolean);
+
+  // Converte um File[] para o formato de anexos base64 esperado pelo emailService
+  const converterAnexosParaBase64 = async (anexos: File[]) => {
+    return Promise.all(
+      anexos.map(async (file) => {
+        return new Promise<{ filename: string; content: string; contentType: string }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve({
+              filename: file.name,
+              content: base64,
+              contentType: file.type
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      })
+    );
+  };
+
+  // Monta a ação de correção para um tipo de inconsistência dentro de um envelope
+  const montarAcaoCorrecao = (tipo: TipoInconsistencia, itensDoTipo: InconsistenciaChamado[]): string => {
+    if (tipo === 'ic_999999') {
+      const empresasUnicas = Array.from(new Set(itensDoTipo.map(item => item.empresa).filter((e): e is string => !!e)));
+      const infos = empresasUnicas.map(empresa => ({ empresa, emailGestor: obterEmailGestorEmpresa(empresa) }));
+      const grupos = agruparGestoresIC999999(infos);
+      const detalhe = montarTextoGestorIC999999(grupos);
+      return `Substituir o IC 999999 pelo IC correspondente ao cliente atendido. Caso o IC não esteja vigente, solicitar ao Customer Success responsável a criação do IC correto para o cliente (${detalhe}) e, após a criação, atualizar o chamado.`;
+    }
+    return ACAO_CORRECAO_TEXTO[tipo];
+  };
+
+  // Gera o HTML do email de um envelope (compatível com Outlook), com uma tabela por tipo de inconsistência
+  const gerarHtmlEmailInconsistencia = (envelope: InconsistenciaEmailEnvelope): string => {
+    const primeiroNome = envelope.analista.split(' ')[0];
+    const totalItens = envelope.itens.length;
+
+    const corpoIntroducao = `Prezado(a) ${primeiroNome},<br/><br/>
+Durante a auditoria dos chamados, identificamos inconsistências nos registros abaixo, relacionadas a você.<br/><br/>
+Solicitamos que realize a correção conforme a orientação indicada em cada item, o mais breve possível.<br/><br/>
+Em caso de dúvidas, entre em contato com a equipe de <strong>Qualidade</strong>.<br/><br/>
+Atenciosamente.`;
+
+    const secoesPorTipo = Array.from(agruparPorTipoOrdenado(envelope.itens).entries()).map(([tipo, itensDoTipo]) => {
+      const cor = TIPO_INCONSISTENCIA_COR_EMAIL_HEX[tipo];
+      const linhas = itensDoTipo.map(item => {
+        const nomeEmpresa = encontrarEmpresaCadastrada(item.empresa, empresasCadastradas || [])?.nome_abreviado || item.empresa || '-';
+        return `
+          <tr>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${nomeEmpresa}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${item.nro_chamado}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; color: #2563eb; text-align: center;">${item.nro_tarefa || '-'}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${envelope.analista}</td>
+          </tr>`;
+      }).join('');
+
+      const acaoCorrecao = montarAcaoCorrecao(tipo, itensDoTipo);
+
+      return `
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td style="background-color: ${cor.bg}; color: ${cor.text}; padding: 8px 16px; font-weight: 600; font-size: 13px; font-family: Arial, sans-serif;">
+                ${TIPO_INCONSISTENCIA_LABELS[tipo]}
+              </td>
+              <td style="background-color: ${cor.bg}; color: ${cor.text}; padding: 8px 16px; font-size: 12px; font-family: Arial, sans-serif; text-align: right;">
+                ${itensDoTipo.length} item${itensDoTipo.length > 1 ? 's' : ''}
+              </td>
+            </tr>
+          </table>
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: #ffffff; border: 1px solid #e5e7eb;">
+            <thead>
+              <tr>
+                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Empresa</th>
+                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Chamado</th>
+                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Tarefa</th>
+                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Analista</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${linhas}
+            </tbody>
+          </table>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 10px 12px 0 12px; font-size: 13px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif;">
+                <strong>Ação:</strong> ${acaoCorrecao}
+              </td>
+            </tr>
+          </table>`;
+    }).join(
+      // Spacer entre seções: margin/padding em <table> ou <div> é ignorado pelo Outlook
+      // (motor Word), então usamos uma linha de tabela vazia com altura fixa.
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td style="height:28px; line-height:28px; font-size:1px; mso-line-height-rule:exactly;">&nbsp;</td></tr></table>'
+    );
+
+    return `<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: Arial, sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 24px 16px;">
+        <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="700"><tr><td><![endif]-->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 700px; margin: 0 auto;">
+
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background-color: #2563eb; padding: 24px 16px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif;">Inconsistências em Chamados</h1>
+              <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px; font-family: Arial, sans-serif;">${totalItens} inconsistência${totalItens > 1 ? 's' : ''} identificada${totalItens > 1 ? 's' : ''}</p>
+            </td>
+          </tr>
+
+          <!-- CORPO DO EMAIL -->
+          <tr>
+            <td style="padding: 24px; background-color: #ffffff; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+              <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif;">${corpoIntroducao}</p>
+            </td>
+          </tr>
+
+          <!-- SEÇÕES POR TIPO DE INCONSISTÊNCIA -->
+          <tr>
+            <td style="padding: 16px 24px; background-color: #f9fafb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;">
+              ${secoesPorTipo}
+            </td>
+          </tr>
+
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  };
+
+  // Enviar email — dispara um email por envelope (analista), continuando mesmo se algum falhar
+  const handleEnviarEmail = async () => {
+    setEnviandoEmail(true);
+    try {
+      const puladosPorFaltaDeEmail: string[] = [];
+      const enviosASeremTentados = emailEnvelopes.filter(envelope => {
+        if (!envelope.destinatario.trim()) {
+          puladosPorFaltaDeEmail.push(envelope.analista);
+          return false;
+        }
+        return true;
+      });
+
+      const resultados = await Promise.allSettled(
+        enviosASeremTentados.map(async (envelope) => {
+          const html = gerarHtmlEmailInconsistencia(envelope);
+          const destinatarios = parseEmails(envelope.destinatario);
+          const cc = envelope.cc.trim() ? parseEmails(envelope.cc) : undefined;
+          const bcc = envelope.bcc.trim() ? parseEmails(envelope.bcc) : undefined;
+          const anexosBase64 = await converterAnexosParaBase64(envelope.anexos);
+
+          const resultado = await emailService.sendEmail({
+            to: destinatarios,
+            cc,
+            bcc,
+            subject: envelope.assunto,
+            html,
+            attachments: anexosBase64.length > 0 ? anexosBase64 : undefined,
+          });
+
+          if (!resultado.success) {
+            throw new Error(resultado.error || 'Erro ao enviar email.');
+          }
+
+          try {
+            await enviarNotificacaoAsync({
+              inconsistencias: envelope.itens,
+              ano_referencia: anoAtual,
+              email_analista: destinatarios[0],
+            });
+          } catch (erroHistorico) {
+            console.error('Erro ao gravar histórico:', erroHistorico instanceof Error ? erroHistorico.message : 'erro desconhecido');
+          }
+
+          return envelope;
+        })
+      );
+
+      const envelopesComSucesso: InconsistenciaEmailEnvelope[] = [];
+      const falhas: string[] = [];
+      resultados.forEach((resultado, idx) => {
+        if (resultado.status === 'fulfilled') {
+          envelopesComSucesso.push(resultado.value);
+        } else {
+          const motivo = resultado.reason instanceof Error ? resultado.reason.message : 'erro desconhecido';
+          falhas.push(`${enviosASeremTentados[idx].analista} (${motivo})`);
+        }
+      });
+
+      if (envelopesComSucesso.length > 0) {
+        toast({ title: t('inconsistencias.notificationsSent'), description: `${envelopesComSucesso.length} email(s) enviado(s) com sucesso.` });
+      }
+      if (falhas.length > 0) {
+        toast({ title: t('inconsistencias.sendError'), description: `Falha ao enviar email para: ${falhas.join(', ')}`, variant: 'destructive' });
+      }
+      if (puladosPorFaltaDeEmail.length > 0) {
+        toast({ title: t('inconsistencias.recipientsRequired'), description: `Pulado por falta de email cadastrado: ${puladosPorFaltaDeEmail.join(', ')}`, variant: 'destructive' });
+      }
+
+      if (envelopesComSucesso.length > 0) {
+        setShowEmailModal(false);
+        setSelectedIds([]);
+        setEmailEnvelopes([]);
+        refetch();
+      }
+    } catch (error) {
+      console.error('Erro ao enviar email:', error instanceof Error ? error.message : 'erro desconhecido');
+      toast({ title: t('inconsistencias.sendError'), description: t('common.error'), variant: 'destructive' });
+    } finally {
+      setEnviandoEmail(false);
+    }
   };
 
   // Paginação - Detectadas (aplica filtros locais de cod_resolucao e status_chamado)
@@ -390,7 +784,7 @@ export default function InconsistenciaChamados() {
                 <Button size="sm" variant="outline" onClick={handleArquivarSelecionados} disabled={isArquivandoMultiplas}>
                   <Archive className="h-4 w-4 mr-2" />Arquivar ({selectedIds.length})
                 </Button>
-                <Button size="sm" onClick={handleAbrirModalEmail} disabled={isEnviando} className="bg-sonda-blue hover:bg-sonda-dark-blue">
+                <Button size="sm" onClick={handleAbrirModalEmail} disabled={enviandoEmail} className="bg-sonda-blue hover:bg-sonda-dark-blue">
                   <Send className="h-4 w-4 mr-2" />{t('inconsistencias.sendEmail')} ({selectedIds.length})
                 </Button>
               </>
@@ -680,28 +1074,198 @@ export default function InconsistenciaChamados() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Envio de Email */}
+      {/* Modal de Envio de Email — um envelope (cartão) por analista */}
       <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2"><Mail className="h-5 w-5" />{t('inconsistencias.emailTitle')}</DialogTitle>
-            <DialogDescription className="text-sm text-gray-500">{t('inconsistencias.emailDescription')}</DialogDescription>
+            <DialogDescription className="text-sm text-gray-500">
+              {emailEnvelopes.length > 1
+                ? `${emailEnvelopes.length} emails serão enviados, um para cada analista.`
+                : t('inconsistencias.emailDescription')}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2"><Label htmlFor="destinatarios" className="text-sm font-medium text-gray-700">{t('inconsistencias.recipients')} <span className="text-red-500">*</span></Label><Textarea id="destinatarios" placeholder={t('inconsistencias.recipientsPlaceholder')} value={emailForm.destinatarios} onChange={(e) => setEmailForm({ ...emailForm, destinatarios: e.target.value })} className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[80px]" /></div>
-            <div className="space-y-2"><Label htmlFor="cc" className="text-sm font-medium text-gray-700">{t('inconsistencias.ccRecipients')}</Label><Textarea id="cc" placeholder={t('inconsistencias.recipientsPlaceholder')} value={emailForm.cc} onChange={(e) => setEmailForm({ ...emailForm, cc: e.target.value })} className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]" /></div>
-            <div className="space-y-2"><Label htmlFor="bcc" className="text-sm font-medium text-gray-700">{t('inconsistencias.bccRecipients')}</Label><Textarea id="bcc" placeholder={t('inconsistencias.recipientsPlaceholder')} value={emailForm.bcc} onChange={(e) => setEmailForm({ ...emailForm, bcc: e.target.value })} className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]" /></div>
-            <div className="space-y-2"><Label htmlFor="assunto" className="text-sm font-medium text-gray-700">{t('inconsistencias.emailSubject')}</Label><Input id="assunto" value={emailForm.assunto} onChange={(e) => setEmailForm({ ...emailForm, assunto: e.target.value })} className="focus:ring-sonda-blue focus:border-sonda-blue" /></div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.attachments')}</Label>
-              <div className="flex items-center gap-2"><Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('file-upload')?.click()} className="flex items-center gap-2"><Paperclip className="h-4 w-4" />{t('inconsistencias.addFiles')}</Button><span className="text-xs text-gray-500">{t('inconsistencias.totalLimit')}</span></div>
-              <input id="file-upload" type="file" multiple onChange={handleAnexoChange} className="hidden" />
-              {emailForm.anexos.length > 0 && (<div className="space-y-2 mt-3">{emailForm.anexos.map((file, index) => (<div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border"><div className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-gray-500" /><span className="text-sm">{file.name}</span><span className="text-xs text-gray-500">({formatFileSize(file.size)})</span></div><Button type="button" variant="ghost" size="sm" onClick={() => handleRemoverAnexo(index)} className="h-6 w-6 p-0 text-red-600 hover:text-red-800"><X className="h-4 w-4" /></Button></div>))}</div>)}
-            </div>
+
+          <div className="space-y-6 py-2">
+            {emailEnvelopes.map((envelope, i) => {
+              const primeiroNome = envelope.analista.split(' ')[0];
+              const gruposPorTipo = Array.from(agruparPorTipoOrdenado(envelope.itens).entries());
+
+              return (
+                <div key={envelope.analista} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900">{envelope.analista}</h3>
+                    <Badge variant="outline">
+                      {envelope.itens.length} item{envelope.itens.length > 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+
+                  {/* Destinatário */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.recipients')} <span className="text-red-500">*</span></Label>
+                    <Textarea
+                      placeholder={t('inconsistencias.recipientsPlaceholder')}
+                      value={envelope.destinatario}
+                      onChange={(e) => atualizarEnvelope(i, 'destinatario', e.target.value)}
+                      className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
+                      rows={2}
+                    />
+                    {!envelope.destinatario && (
+                      <p className="text-xs text-yellow-600">Email não encontrado na tabela de especialistas. Preencha manualmente.</p>
+                    )}
+                  </div>
+
+                  {/* CC */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.ccRecipients')}</Label>
+                    <Textarea
+                      placeholder={t('inconsistencias.recipientsPlaceholder')}
+                      value={envelope.cc}
+                      onChange={(e) => atualizarEnvelope(i, 'cc', e.target.value)}
+                      className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* BCC */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.bccRecipients')}</Label>
+                    <Textarea
+                      placeholder={t('inconsistencias.recipientsPlaceholder')}
+                      value={envelope.bcc}
+                      onChange={(e) => atualizarEnvelope(i, 'bcc', e.target.value)}
+                      className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Assunto */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.emailSubject')}</Label>
+                    <Input
+                      value={envelope.assunto}
+                      onChange={(e) => atualizarEnvelope(i, 'assunto', e.target.value)}
+                      className="focus:ring-sonda-blue focus:border-sonda-blue"
+                    />
+                  </div>
+
+                  {/* Anexos */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.attachments')}</Label>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`file-upload-inc-${i}`)?.click()} className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" />{t('inconsistencias.addFiles')}
+                      </Button>
+                      <span className="text-xs text-gray-500">{t('inconsistencias.totalLimit')}</span>
+                    </div>
+                    <input id={`file-upload-inc-${i}`} type="file" multiple onChange={(e) => handleAnexoChange(i, e)} className="hidden" />
+                    {envelope.anexos.length > 0 && (
+                      <div className="space-y-2 mt-3">
+                        {envelope.anexos.map((file, anexoIndex) => (
+                          <div key={anexoIndex} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                            <div className="flex items-center gap-2">
+                              <Paperclip className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm">{file.name}</span>
+                              <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                            </div>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoverAnexo(i, anexoIndex)} className="h-6 w-6 p-0 text-red-600 hover:text-red-800">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview do email */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-900">Preview do Email</Label>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      {/* Header azul */}
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-center">
+                        <h2 className="text-white text-lg font-bold">Inconsistências em Chamados</h2>
+                        <p className="text-blue-200 text-sm mt-1">
+                          {envelope.itens.length} inconsistência{envelope.itens.length > 1 ? 's' : ''} identificada{envelope.itens.length > 1 ? 's' : ''}
+                        </p>
+                      </div>
+
+                      {/* Corpo introdutório */}
+                      <div className="p-5 bg-white text-sm text-gray-700 leading-relaxed space-y-2">
+                        <p>Prezado(a) {primeiroNome},</p>
+                        <p>Durante a auditoria dos chamados, identificamos inconsistências nos registros abaixo, relacionadas a você.</p>
+                        <p>Solicitamos que realize a correção conforme a orientação indicada em cada item, o mais breve possível.</p>
+                        <p>Em caso de dúvidas, entre em contato com a equipe de <strong>Qualidade</strong>.</p>
+                        <p>Atenciosamente.</p>
+                      </div>
+
+                      {/* Seções por tipo de inconsistência */}
+                      <div className="p-4 bg-gray-50 border-t space-y-4">
+                        {gruposPorTipo.map(([tipo, itensDoTipo]) => {
+                          const cor = TIPO_INCONSISTENCIA_COR_EMAIL_HEX[tipo];
+                          let acaoCorrecao: React.ReactNode;
+                          if (tipo === 'ic_999999') {
+                            const empresasUnicas = Array.from(new Set(itensDoTipo.map(item => item.empresa).filter((e): e is string => !!e)));
+                            const infos = empresasUnicas.map(empresa => ({ empresa, emailGestor: obterEmailGestorEmpresa(empresa) }));
+                            const detalhe = montarTextoGestorIC999999(agruparGestoresIC999999(infos));
+                            acaoCorrecao = `Substituir o IC 999999 pelo IC correspondente ao cliente atendido. Caso o IC não esteja vigente, solicitar ao Customer Success responsável a criação do IC correto para o cliente (${detalhe}) e, após a criação, atualizar o chamado.`;
+                          } else {
+                            acaoCorrecao = ACAO_CORRECAO_TEXTO[tipo];
+                          }
+
+                          return (
+                            <div key={tipo}>
+                              <div className="flex items-center justify-between px-4 py-2 rounded-t" style={{ backgroundColor: cor.bg, color: cor.text }}>
+                                <span className="font-semibold text-sm">{TIPO_INCONSISTENCIA_LABELS[tipo]}</span>
+                                <span className="text-xs">{itensDoTipo.length} item{itensDoTipo.length > 1 ? 's' : ''}</span>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm border border-gray-200 bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-100">
+                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Empresa</th>
+                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Chamado</th>
+                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Tarefa</th>
+                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Analista</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {itensDoTipo.map((item) => (
+                                      <tr key={item.id} className="border-b border-gray-100">
+                                        <td className="px-3 py-2 text-xs text-gray-700 text-center">
+                                          {encontrarEmpresaCadastrada(item.empresa, empresasCadastradas || [])?.nome_abreviado || item.empresa || '-'}
+                                        </td>
+                                        <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.nro_chamado}</td>
+                                        <td className="px-3 py-2 text-xs text-blue-600 font-medium text-center">{item.nro_tarefa || '-'}</td>
+                                        <td className="px-3 py-2 text-xs text-gray-700 text-center">{envelope.analista}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p className="text-xs text-gray-700 mt-2">
+                                <strong>Ação:</strong> {acaoCorrecao}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
           <DialogFooter className="pt-6 border-t">
             <Button type="button" variant="outline" onClick={() => setShowEmailModal(false)}>{t('common.cancel')}</Button>
-            <Button type="button" onClick={handleEnviarNotificacoes} disabled={isEnviando || !emailForm.destinatarios.trim()} className="bg-sonda-blue hover:bg-sonda-dark-blue"><Send className="h-4 w-4 mr-2" />{isEnviando ? t('inconsistencias.sending') : t('inconsistencias.sendEmail')}</Button>
+            <Button
+              type="button"
+              onClick={handleEnviarEmail}
+              disabled={enviandoEmail || emailEnvelopes.every(e => !e.destinatario.trim())}
+              className="bg-sonda-blue hover:bg-sonda-dark-blue"
+            >
+              <Send className="h-4 w-4 mr-2" />{enviandoEmail ? t('inconsistencias.sending') : t('inconsistencias.sendEmail')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

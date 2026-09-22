@@ -487,7 +487,7 @@ export class InconsistenciasChamadosService {
             analista: inc.analista,
             tipo_chamado: inc.tipo_chamado,
             descricao_inconsistencia: inc.descricao_inconsistencia,
-            email_analista: null,
+            email_analista: request.email_analista ?? null,
             enviado_por: user.id,
             enviado_por_nome: enviadoPorNome,
             mes_referencia: request.mes_referencia,

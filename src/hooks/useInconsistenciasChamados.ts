@@ -161,6 +161,7 @@ export function useEnviarNotificacao() {
 
   return {
     enviarNotificacao: mutation.mutate,
+    enviarNotificacaoAsync: mutation.mutateAsync,
     isEnviando: mutation.isPending,
     erro: mutation.error
   };
