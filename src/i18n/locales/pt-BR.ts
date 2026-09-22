@@ -509,7 +509,7 @@ const ptBR = {
     bankHours: 'Banco de Horas',
     controlBankHours: 'Controle Banco de Horas',
     auditBankHours: 'Auditoria Banco de Horas',
-    retroactiveAdjustments: 'Ajustes Retroativos',
+    retroactiveAdjustments: 'Apontamentos Retroativos',
     compliments: 'Elogios',
     registerCompliments: 'Validar Elogios',
     sendCompliments: 'Enviar Elogios',
@@ -1785,14 +1785,14 @@ const ptBR = {
 
   // Ajustes Retroativos
   ajustesRetroativos: {
-    title: 'Ajustes Retroativos',
+    title: 'Apontamentos Retroativos',
     subtitle: 'Atualizações que chegaram após o fechamento do período do banco de horas',
     // Cards
     pending: 'Pendentes',
     approved: 'Aprovados',
     discarded: 'Descartados',
     // Tabela
-    tableTitle: 'Ajustes Retroativos',
+    tableTitle: 'Apontamentos Retroativos',
     company: 'Empresa',
     refPeriod: 'Período Ref.',
     type: 'Tipo',
