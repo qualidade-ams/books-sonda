@@ -18,6 +18,37 @@ import type {
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
 import type { Requerimento } from '@/types/requerimentos';
 
+/**
+ * Calcula o período de apuração (mês) de uma empresa, respeitando a periodicidade
+ * customizada (dia_inicio_apuracao/dia_fim_apuracao), ex.: Samarco 16 a 15 do mês seguinte.
+ * Compartilhado entre os cards de volumetria do mês e o gráfico de semestre, para que
+ * ambos usem exatamente a mesma janela de datas.
+ */
+export function calcularPeriodoApuracao(
+  mes: number,
+  ano: number,
+  diaInicioApuracao: number = 1,
+  diaFimApuracao: number = 0
+): { dataInicio: Date; dataFim: Date; proximoPeriodoInicio: Date } {
+  if (diaInicioApuracao > 1) {
+    const mesSeguinte = mes === 12 ? 1 : mes + 1;
+    const anoSeguinte = mes === 12 ? ano + 1 : ano;
+
+    const dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
+    const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+    const dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59);
+    const proximoPeriodoInicio = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal + 1);
+
+    return { dataInicio, dataFim, proximoPeriodoInicio };
+  }
+
+  const dataInicio = new Date(ano, mes - 1, 1);
+  const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+  const proximoPeriodoInicio = new Date(ano, mes, 1);
+
+  return { dataInicio, dataFim, proximoPeriodoInicio };
+}
+
 class BooksDataCollectorService {
   /**
    * Coleta todos os dados necessários para gerar um book
@@ -220,7 +251,9 @@ class BooksDataCollectorService {
           tipoContrato,
           empresa.nome_completo,
           mes,
-          ano
+          ano,
+          diaInicioApuracao,
+          diaFimApuracao
         ),
         sla: await this.gerarDadosSLA(
           empresaId,
@@ -302,33 +335,21 @@ class BooksDataCollectorService {
     ticketsFechados: any[];
   }> {
     // Calcular datas de início e fim baseado na periodicidade
-    let dataInicio: Date;
-    let dataFim: Date;
-    let proximoMesInicio: Date;
+    const { dataInicio, dataFim, proximoPeriodoInicio: proximoMesInicio } = calcularPeriodoApuracao(
+      mes,
+      ano,
+      diaInicioApuracao,
+      diaFimApuracao
+    );
 
     if (diaInicioApuracao > 1) {
-      // Periodicidade customizada (ex: dia 16 do mês de referência até dia 15 do mês seguinte)
-      // Para o book de referência Fevereiro/2025 com dia_inicio=16: período = 16/02/2025 a 15/03/2025
-      const mesSeguinte = mes === 12 ? 1 : mes + 1;
-      const anoSeguinte = mes === 12 ? ano + 1 : ano;
-      
-      dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
-      const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
-      dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59);
-      proximoMesInicio = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal + 1);
-      
       console.log('📅 Periodicidade CUSTOMIZADA:', {
         empresa: empresaNomeAbreviado,
         diaInicioApuracao,
-        diaFimApuracao: diaFimReal,
+        diaFimApuracao: diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1,
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString()
       });
-    } else {
-      // Periodicidade padrão (dia 1 ao último dia do mês)
-      dataInicio = new Date(ano, mes - 1, 1);
-      dataFim = new Date(ano, mes, 0, 23, 59, 59);
-      proximoMesInicio = new Date(ano, mes, 1);
     }
 
     console.log('🔍 Buscando apontamentos:', {
@@ -461,7 +482,9 @@ class BooksDataCollectorService {
     tipoContrato: 'horas' | 'tickets' | 'ambos' | null,
     empresaNomeCompleto: string,
     mes: number,
-    ano: number
+    ano: number,
+    diaInicioApuracao: number = 1,
+    diaFimApuracao: number = 0
   ): Promise<BookVolumetriaData> {
     console.log('📊 Processando volumetria (APENAS TICKETS):', {
       tipoContrato,
@@ -577,7 +600,13 @@ class BooksDataCollectorService {
     });
 
     // Gerar dados do semestre (últimos 6 meses) - buscar dados reais
-    const chamadosSemestre = await this.buscarChamadosSemestre(empresaNomeCompleto, mes, ano);
+    const chamadosSemestre = await this.buscarChamadosSemestre(
+      empresaNomeCompleto,
+      mes,
+      ano,
+      diaInicioApuracao,
+      diaFimApuracao
+    );
 
     // Agrupar por grupo - passar os tickets abertos e fechados separadamente
     const chamadosPorGrupo = await this.agruparPorGrupo(ticketsAbertos, ticketsFechados);
@@ -718,7 +747,9 @@ class BooksDataCollectorService {
   private async buscarChamadosSemestre(
     empresaNomeCompleto: string,
     mesAtual: number,
-    anoAtual: number
+    anoAtual: number,
+    diaInicioApuracao: number = 1,
+    diaFimApuracao: number = 0
   ): Promise<ChamadosSemestreData[]> {
     const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
                          'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
@@ -732,9 +763,9 @@ class BooksDataCollectorService {
       anoInicial -= 1;
     }
     
-    const dataInicio = new Date(anoInicial, mesInicial - 1, 1);
-    const dataFim = new Date(anoAtual, mesAtual, 0, 23, 59, 59, 999);
-    
+    const { dataInicio } = calcularPeriodoApuracao(mesInicial, anoInicial, diaInicioApuracao, diaFimApuracao);
+    const { dataFim } = calcularPeriodoApuracao(mesAtual, anoAtual, diaInicioApuracao, diaFimApuracao);
+
     console.log('📅 Buscando dados do semestre:', {
       empresa: empresaNomeCompleto,
       periodo: `${MESES_NOMES[mesInicial - 1]}/${anoInicial} até ${MESES_NOMES[mesAtual - 1]}/${anoAtual}`,
@@ -820,8 +851,12 @@ class BooksDataCollectorService {
         ano -= 1;
       }
       
-      const mesInicio = new Date(ano, mes - 1, 1);
-      const mesFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      const { dataInicio: mesInicio, dataFim: mesFim } = calcularPeriodoApuracao(
+        mes,
+        ano,
+        diaInicioApuracao,
+        diaFimApuracao
+      );
       
       // Contar abertos deste mês
       const abertosDoMes = (ticketsAbertos || []).filter(t => {

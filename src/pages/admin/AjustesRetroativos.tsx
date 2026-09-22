@@ -77,13 +77,59 @@ import { emailService } from '@/services/emailService';
 import { supabase } from '@/integrations/supabase/client';
 
 // Interface para item de detalhe selecionável
-interface DetalheItem {
+export interface DetalheItem {
   id: string; // unique key: ajusteId-idx
   ajusteId: string;
   chamado: string;
   tarefa: string | null;
   consultor: string | null;
   empresa: string;
+}
+
+// Envelope de email: um por consultor, com destinatário/CC/BCC/assunto/anexos independentes
+export interface EmailEnvelope {
+  consultor: string;
+  itens: DetalheItem[];
+  destinatario: string;
+  cc: string;
+  bcc: string;
+  assunto: string;
+  anexos: File[];
+}
+
+// Status de seleção em massa (checkbox "selecionar todos" do cabeçalho da tabela)
+export type StatusSelecao = 'all' | 'partial' | 'none';
+
+/**
+ * Agrupa uma lista de itens de detalhe pelo nome do consultor.
+ * Itens sem consultor definido são agrupados sob a chave "Sem consultor".
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- função pura exportada para teste isolado (TDD), ver src/pages/admin/__tests__/AjustesRetroativos.test.tsx
+export function agruparItensPorConsultor(itens: DetalheItem[]): Map<string, DetalheItem[]> {
+  const grupos = new Map<string, DetalheItem[]>();
+  itens.forEach(item => {
+    const chave = item.consultor || 'Sem consultor';
+    const lista = grupos.get(chave);
+    if (lista) {
+      lista.push(item);
+    } else {
+      grupos.set(chave, [item]);
+    }
+  });
+  return grupos;
+}
+
+/**
+ * Calcula o status de seleção (para o checkbox "selecionar todos") comparando
+ * a lista de itemIds elegíveis com o conjunto de itemIds atualmente selecionados.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- função pura exportada para teste isolado (TDD), ver src/pages/admin/__tests__/AjustesRetroativos.test.tsx
+export function calcularStatusSelecao(elegiveis: string[], selecionados: Set<string>): StatusSelecao {
+  if (elegiveis.length === 0) return 'none';
+  const totalSelecionados = elegiveis.filter(id => selecionados.has(id)).length;
+  if (totalSelecionados === 0) return 'none';
+  if (totalSelecionados === elegiveis.length) return 'all';
+  return 'partial';
 }
 
 export default function AjustesRetroativos() {
@@ -129,15 +175,10 @@ export default function AjustesRetroativos() {
     localStorage.setItem('ajustes_sent_items', JSON.stringify(Array.from(sentItems)));
   }, [sentItems]);
 
-  // Estado do modal de email
+  // Estado do modal de email — um envelope (destinatário/cc/bcc/assunto/anexos) por consultor
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
-  const [emailDestinatario, setEmailDestinatario] = useState('');
-  const [emailCC, setEmailCC] = useState('');
-  const [emailBCC, setEmailBCC] = useState('');
-  const [emailAssunto, setEmailAssunto] = useState('Ajuste de Apontamento - Banco de Horas');
-  const [emailCorpo, setEmailCorpo] = useState('');
+  const [emailEnvelopes, setEmailEnvelopes] = useState<EmailEnvelope[]>([]);
   const [enviandoEmail, setEnviandoEmail] = useState(false);
-  const [anexos, setAnexos] = useState<File[]>([]);
   const [mesAplicacao, setMesAplicacao] = useState<number>(() => {
     const hoje = new Date();
     return hoje.getMonth() + 1;
@@ -529,7 +570,10 @@ Atenciosamente.`;
     });
   };
 
-  // Abrir modal de email
+  // Parsear destinatários (separados por ; ou ,)
+  const parseEmails = (str: string) => str.split(/[;,]/).map(e => e.trim()).filter(Boolean);
+
+  // Abrir modal de email — agrupa os itens selecionados por consultor em envelopes independentes
   const handleAbrirModalEmail = async () => {
     const itens = getItensSelecionados();
     if (itens.length === 0) {
@@ -537,29 +581,43 @@ Atenciosamente.`;
       return;
     }
 
-    // Buscar email do consultor
-    const consultor = itens[0]?.consultor;
-    let email = '';
-    if (consultor) {
-      const emailEncontrado = await buscarEmailConsultor(consultor);
-      email = emailEncontrado || '';
-    }
+    const grupos = agruparItensPorConsultor(itens);
+    const envelopes = await Promise.all(
+      Array.from(grupos.entries()).map(async ([consultor, itensDoConsultor]) => {
+        let destinatario = '';
+        if (consultor && consultor !== 'Sem consultor') {
+          const emailEncontrado = await buscarEmailConsultor(consultor);
+          destinatario = emailEncontrado || '';
+        }
+        const envelope: EmailEnvelope = {
+          consultor,
+          itens: itensDoConsultor,
+          destinatario,
+          cc: '',
+          bcc: '',
+          assunto: 'Ajuste de Apontamento - Banco de Horas',
+          anexos: [],
+        };
+        return envelope;
+      })
+    );
 
-    setEmailDestinatario(email);
-    setEmailCC('');
-    setEmailBCC('');
-    setAnexos([]);
-    setEmailCorpo(gerarCorpoEmail(itens));
-    setEmailAssunto('Ajuste de Apontamento - Banco de Horas');
+    setEmailEnvelopes(envelopes);
     setModalEmailAberto(true);
   };
 
-  // Gerenciar anexos
-  const handleAdicionarAnexos = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Atualiza um campo específico de um envelope pelo índice
+  const atualizarEnvelope = <K extends keyof EmailEnvelope>(index: number, campo: K, valor: EmailEnvelope[K]) => {
+    setEmailEnvelopes(prev => prev.map((env, i) => (i === index ? { ...env, [campo]: valor } : env)));
+  };
+
+  // Gerenciar anexos (por envelope)
+  const handleAdicionarAnexos = (envelopeIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
+      const envelope = emailEnvelopes[envelopeIndex];
       const novosAnexos = Array.from(files);
-      const tamanhoTotal = [...anexos, ...novosAnexos].reduce((acc, file) => acc + file.size, 0);
+      const tamanhoTotal = [...envelope.anexos, ...novosAnexos].reduce((acc, file) => acc + file.size, 0);
       const limiteBytes = 25 * 1024 * 1024;
 
       if (tamanhoTotal > limiteBytes) {
@@ -567,12 +625,13 @@ Atenciosamente.`;
         return;
       }
 
-      setAnexos(prev => [...prev, ...novosAnexos]);
+      atualizarEnvelope(envelopeIndex, 'anexos', [...envelope.anexos, ...novosAnexos]);
     }
   };
 
-  const handleRemoverAnexo = (index: number) => {
-    setAnexos(prev => prev.filter((_, i) => i !== index));
+  const handleRemoverAnexo = (envelopeIndex: number, anexoIndex: number) => {
+    const envelope = emailEnvelopes[envelopeIndex];
+    atualizarEnvelope(envelopeIndex, 'anexos', envelope.anexos.filter((_, i) => i !== anexoIndex));
   };
 
   const formatarTamanhoArquivo = (bytes: number): string => {
@@ -583,65 +642,100 @@ Atenciosamente.`;
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // Enviar email
-  const handleEnviarEmail = async () => {
-    if (!emailDestinatario.trim()) {
-      toast.error('Informe o email do destinatário.');
-      return;
-    }
+  // Converte um File[] para o formato de anexos base64 esperado pelo emailService
+  const converterAnexosParaBase64 = async (anexos: File[]) => {
+    return Promise.all(
+      anexos.map(async (file) => {
+        return new Promise<{ filename: string; content: string; contentType: string }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve({
+              filename: file.name,
+              content: base64,
+              contentType: file.type
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      })
+    );
+  };
 
+  // Enviar email — dispara um email por envelope (consultor), continuando mesmo se algum falhar
+  const handleEnviarEmail = async () => {
     setEnviandoEmail(true);
     try {
-      const itens = getItensSelecionados();
-      const htmlEmail = gerarHtmlEmail(itens, emailCorpo);
+      const puladosPorFaltaDeEmail: string[] = [];
+      const enviosASeremTentados = emailEnvelopes.filter(envelope => {
+        if (!envelope.destinatario.trim()) {
+          puladosPorFaltaDeEmail.push(envelope.consultor);
+          return false;
+        }
+        return true;
+      });
 
-      // Parsear destinatários (separados por ; ou ,)
-      const parseEmails = (str: string) => str.split(/[;,]/).map(e => e.trim()).filter(Boolean);
-      const destinatarios = parseEmails(emailDestinatario);
-      const cc = emailCC.trim() ? parseEmails(emailCC) : undefined;
-      const bcc = emailBCC.trim() ? parseEmails(emailBCC) : undefined;
+      const resultados = await Promise.allSettled(
+        enviosASeremTentados.map(async (envelope) => {
+          const corpo = gerarCorpoEmail(envelope.itens);
+          const htmlEmail = gerarHtmlEmail(envelope.itens, corpo);
+          const destinatarios = parseEmails(envelope.destinatario);
+          const cc = envelope.cc.trim() ? parseEmails(envelope.cc) : undefined;
+          const bcc = envelope.bcc.trim() ? parseEmails(envelope.bcc) : undefined;
+          const anexosBase64 = await converterAnexosParaBase64(envelope.anexos);
 
-      // Converter anexos File[] para base64
-      const anexosBase64 = await Promise.all(
-        anexos.map(async (file) => {
-          return new Promise<{ filename: string; content: string; contentType: string }>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const base64 = (reader.result as string).split(',')[1];
-              resolve({
-                filename: file.name,
-                content: base64,
-                contentType: file.type
-              });
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
+          const resultado = await emailService.sendEmail({
+            to: destinatarios,
+            cc,
+            bcc,
+            subject: envelope.assunto,
+            html: htmlEmail,
+            attachments: anexosBase64.length > 0 ? anexosBase64 : undefined,
           });
+
+          if (!resultado.success) {
+            throw new Error(resultado.error || 'Erro ao enviar email.');
+          }
+          return envelope;
         })
       );
 
-      const resultado = await emailService.sendEmail({
-        to: destinatarios,
-        cc,
-        bcc,
-        subject: emailAssunto,
-        html: htmlEmail,
-        attachments: anexosBase64.length > 0 ? anexosBase64 : undefined,
+      const envelopesComSucesso: EmailEnvelope[] = [];
+      const falhas: string[] = [];
+      resultados.forEach((resultado, idx) => {
+        if (resultado.status === 'fulfilled') {
+          envelopesComSucesso.push(resultado.value);
+        } else {
+          const motivo = resultado.reason instanceof Error ? resultado.reason.message : 'erro desconhecido';
+          falhas.push(`${enviosASeremTentados[idx].consultor} (${motivo})`);
+        }
       });
 
-      if (resultado.success) {
-        toast.success(`Email enviado com sucesso para ${destinatarios.length} destinatário(s)!`);
-        // Marcar itens como enviados
+      if (envelopesComSucesso.length > 0) {
         setSentItems(prev => {
           const next = new Set(prev);
-          selectedItems.forEach(id => next.add(id));
+          envelopesComSucesso.forEach(envelope => {
+            envelope.itens.forEach(item => next.add(item.id));
+          });
           return next;
         });
+      }
+
+      if (envelopesComSucesso.length > 0) {
+        toast.success(`${envelopesComSucesso.length} email(s) enviado(s) com sucesso.`);
+      }
+      if (falhas.length > 0) {
+        toast.error(`Falha ao enviar email para: ${falhas.join(', ')}`);
+      }
+      if (puladosPorFaltaDeEmail.length > 0) {
+        toast.error(`Pulado por falta de email cadastrado: ${puladosPorFaltaDeEmail.join(', ')}`);
+      }
+
+      if (envelopesComSucesso.length > 0) {
         setModalEmailAberto(false);
         setSelectedItems(new Set());
-        setAnexos([]);
-      } else {
-        toast.error(resultado.error || 'Erro ao enviar email.');
+        setEmailEnvelopes([]);
       }
     } catch (error) {
       console.error('Erro ao enviar email:', error);
@@ -961,6 +1055,39 @@ Atenciosamente.`;
     return itens;
   };
 
+  // itemIds elegíveis para a seleção em massa: visíveis sob o filtro atual e ainda não enviados
+  const itensElegiveisSelecaoTotal = useMemo(() => {
+    const elegiveis: string[] = [];
+    ajustesFiltrados.forEach(ajuste => {
+      const detalhesItensBruto = extrairDetalhesAgrupados(ajuste);
+      const detalhesItens = filtros.consultor !== 'all'
+        ? detalhesItensBruto.filter(item => item.consultor === filtros.consultor)
+        : detalhesItensBruto;
+      detalhesItens.forEach(item => {
+        const itemId = `${ajuste.id}-${item.itemKey}`;
+        if (!sentItems.has(itemId)) {
+          elegiveis.push(itemId);
+        }
+      });
+    });
+    return elegiveis;
+  }, [ajustesFiltrados, filtros.consultor, sentItems]);
+
+  const statusSelecaoTotal = calcularStatusSelecao(itensElegiveisSelecaoTotal, selectedItems);
+
+  // Alterna a seleção de todos os itens elegíveis de uma vez
+  const handleToggleSelecionarTodos = () => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (statusSelecaoTotal === 'all') {
+        itensElegiveisSelecaoTotal.forEach(id => next.delete(id));
+      } else {
+        itensElegiveisSelecaoTotal.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -1199,7 +1326,18 @@ Atenciosamente.`;
                 <Table className="w-full text-xs sm:text-sm min-w-[900px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10 py-2"></TableHead>
+                      <TableHead className="w-10 py-2">
+                        {itensElegiveisSelecaoTotal.length > 0 && (
+                          <Checkbox
+                            checked={statusSelecaoTotal === 'all' ? true : statusSelecaoTotal === 'partial' ? 'indeterminate' : false}
+                            onCheckedChange={handleToggleSelecionarTodos}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4"
+                            aria-label="Selecionar todos os apontamentos pendentes de envio"
+                            title="Selecionar todos os apontamentos pendentes de envio"
+                          />
+                        )}
+                      </TableHead>
                       <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.company')}</TableHead>
                       <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.refPeriod')}</TableHead>
                       <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.previousValue')}</TableHead>
@@ -1516,7 +1654,7 @@ Atenciosamente.`;
             </DialogContent>
           </Dialog>
 
-          {/* Modal Enviar Email */}
+          {/* Modal Enviar Email — um envelope (cartão) por consultor */}
           <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
             <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -1524,186 +1662,211 @@ Atenciosamente.`;
                   <Mail className="h-5 w-5 text-sonda-blue" />
                   Disparar Ajuste por Email
                 </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  {emailEnvelopes.length > 1
+                    ? `${emailEnvelopes.length} emails serão enviados, um para cada consultor.`
+                    : 'Revise os dados antes de enviar.'}
+                </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-5 py-2">
-                {/* Destinatários */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900">Destinatários</Label>
-                  <Textarea
-                    placeholder="Cole ou digite emails separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com"
-                    value={emailDestinatario}
-                    onChange={(e) => setEmailDestinatario(e.target.value)}
-                    className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
-                    rows={2}
-                  />
-                  {!emailDestinatario && (
-                    <p className="text-xs text-yellow-600">
-                      Email não encontrado na tabela de especialistas. Preencha manualmente.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-6 py-2">
+                {emailEnvelopes.map((envelope, i) => {
+                  const corpoEnvelope = gerarCorpoEmail(envelope.itens);
+                  const periodoEnvelope = obterPeriodoReferencia(envelope.itens);
+                  const minutosEnvelope = calcularHorasItensSelecionados(envelope.itens);
+                  const horasEnvelope = Math.floor(minutosEnvelope / 60);
+                  const minEnvelope = minutosEnvelope % 60;
+                  const horasFormatadasEnvelope = `${horasEnvelope}h${minEnvelope > 0 ? String(minEnvelope).padStart(2, '0') + 'min' : ''}`;
 
-                {/* CC */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900">
-                    Destinatários em Cópia (CC) - Opcional
-                  </Label>
-                  <Textarea
-                    placeholder="Cole ou digite emails em cópia separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com"
-                    value={emailCC}
-                    onChange={(e) => setEmailCC(e.target.value)}
-                    className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
-                    rows={2}
-                  />
-                </div>
-
-                {/* BCC */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900">
-                    Destinatários em Cópia Oculta (BCC) - Opcional
-                  </Label>
-                  <Textarea
-                    placeholder="Cole ou digite emails em cópia oculta separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com"
-                    value={emailBCC}
-                    onChange={(e) => setEmailBCC(e.target.value)}
-                    className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
-                    rows={2}
-                  />
-                </div>
-
-                {/* Assunto */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900">Assunto</Label>
-                  <Input
-                    value={emailAssunto}
-                    onChange={(e) => setEmailAssunto(e.target.value)}
-                    className="focus:ring-sonda-blue focus:border-sonda-blue"
-                  />
-                </div>
-
-                {/* Anexos */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900">Anexos</Label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('file-input-ajustes')?.click()}
-                      className="flex items-center gap-2"
-                    >
-                      <FileText className="h-4 w-4" />
-                      Adicionar Arquivos
-                    </Button>
-                    <input
-                      id="file-input-ajustes"
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={handleAdicionarAnexos}
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
-                    />
-                    <span className="text-xs text-gray-500">
-                      Limite: 25MB total
-                    </span>
-                  </div>
-
-                  {anexos.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center justify-between text-sm font-medium text-gray-700">
-                        <span>{anexos.length} arquivo(s) anexado(s)</span>
-                        <span className="text-xs text-gray-500">
-                          Total: {formatarTamanhoArquivo(anexos.reduce((acc, file) => acc + file.size, 0))}
-                        </span>
+                  return (
+                    <div key={envelope.consultor} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-900">{envelope.consultor}</h3>
+                        <Badge variant="outline">
+                          {envelope.itens.length} item{envelope.itens.length > 1 ? 's' : ''}
+                        </Badge>
                       </div>
-                      <div className="border rounded-lg divide-y">
-                        {anexos.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {file.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {formatarTamanhoArquivo(file.size)}
-                                </p>
-                              </div>
+
+                      {/* Destinatários */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-900">Destinatários</Label>
+                        <Textarea
+                          placeholder="Cole ou digite emails separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com"
+                          value={envelope.destinatario}
+                          onChange={(e) => atualizarEnvelope(i, 'destinatario', e.target.value)}
+                          className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
+                          rows={2}
+                        />
+                        {!envelope.destinatario && (
+                          <p className="text-xs text-yellow-600">
+                            Email não encontrado na tabela de especialistas. Preencha manualmente.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* CC */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-900">
+                          Destinatários em Cópia (CC) - Opcional
+                        </Label>
+                        <Textarea
+                          placeholder="Cole ou digite emails em cópia separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com"
+                          value={envelope.cc}
+                          onChange={(e) => atualizarEnvelope(i, 'cc', e.target.value)}
+                          className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
+                          rows={2}
+                        />
+                      </div>
+
+                      {/* BCC */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-900">
+                          Destinatários em Cópia Oculta (BCC) - Opcional
+                        </Label>
+                        <Textarea
+                          placeholder="Cole ou digite emails em cópia oculta separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com"
+                          value={envelope.bcc}
+                          onChange={(e) => atualizarEnvelope(i, 'bcc', e.target.value)}
+                          className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
+                          rows={2}
+                        />
+                      </div>
+
+                      {/* Assunto */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-900">Assunto</Label>
+                        <Input
+                          value={envelope.assunto}
+                          onChange={(e) => atualizarEnvelope(i, 'assunto', e.target.value)}
+                          className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+
+                      {/* Anexos */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-900">Anexos</Label>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById(`file-input-ajustes-${i}`)?.click()}
+                            className="flex items-center gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Adicionar Arquivos
+                          </Button>
+                          <input
+                            id={`file-input-ajustes-${i}`}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => handleAdicionarAnexos(i, e)}
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+                          />
+                          <span className="text-xs text-gray-500">
+                            Limite: 25MB total
+                          </span>
+                        </div>
+
+                        {envelope.anexos.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex items-center justify-between text-sm font-medium text-gray-700">
+                              <span>{envelope.anexos.length} arquivo(s) anexado(s)</span>
+                              <span className="text-xs text-gray-500">
+                                Total: {formatarTamanhoArquivo(envelope.anexos.reduce((acc, file) => acc + file.size, 0))}
+                              </span>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoverAnexo(index)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            <div className="border rounded-lg divide-y">
+                              {envelope.anexos.map((file, anexoIndex) => (
+                                <div key={anexoIndex} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        {file.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {formatarTamanhoArquivo(file.size)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemoverAnexo(i, anexoIndex)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
+                        )}
+                      </div>
+
+                      {/* Preview do Relatório */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-900">Preview do Relatório</Label>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          {/* Header azul */}
+                          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-center">
+                            <h2 className="text-white text-lg font-bold">Ajuste de Apontamento</h2>
+                            <p className="text-blue-200 text-sm mt-1">
+                              Banco de Horas - {envelope.itens.length} apontamento{envelope.itens.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
+
+                          {/* Corpo da mensagem */}
+                          <div className="p-5 bg-white text-sm text-gray-700 leading-relaxed">
+                            {renderizarCorpoEmail(corpoEnvelope)}
+                          </div>
+
+                          {/* Resumo: Período, Requerimentos, Horas */}
+                          <div className="px-5 py-3 bg-blue-50 border-t border-blue-100">
+                            <div className="flex gap-6 text-sm text-blue-800">
+                              <span><strong>Período:</strong> {periodoEnvelope}</span>
+                              <span><strong>Requerimentos:</strong> {envelope.itens.length}</span>
+                              <span><strong>Horas:</strong> {horasFormatadasEnvelope}</span>
+                            </div>
+                          </div>
+
+                          {/* Tabela de apontamentos */}
+                          <div className="p-4 bg-gray-50 border-t">
+                            <div className="bg-amber-500 text-white px-4 py-2 rounded-t flex items-center justify-between">
+                              <span className="font-semibold text-sm">Apontamentos Retroativos Identificados</span>
+                              <span className="text-xs">{envelope.itens.length} item{envelope.itens.length > 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm border border-gray-200 bg-white">
+                                <thead>
+                                  <tr className="bg-gray-100">
+                                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Empresa</th>
+                                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Chamado</th>
+                                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Tarefa</th>
+                                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Consultor</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {envelope.itens.map((item, idx) => (
+                                    <tr key={idx} className="border-b border-gray-100">
+                                      <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.empresa}</td>
+                                      <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.chamado}</td>
+                                      <td className="px-3 py-2 text-xs text-blue-600 font-medium text-center">{item.tarefa || '-'}</td>
+                                      <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.consultor || '-'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Preview do Relatório */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900">Preview do Relatório</Label>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    {/* Header azul */}
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-center">
-                      <h2 className="text-white text-lg font-bold">Ajuste de Apontamento</h2>
-                      <p className="text-blue-200 text-sm mt-1">
-                        Banco de Horas - {getItensSelecionados().length} apontamento{getItensSelecionados().length > 1 ? 's' : ''}
-                      </p>
-                    </div>
-
-                    {/* Corpo da mensagem */}
-                    <div className="p-5 bg-white text-sm text-gray-700 leading-relaxed">
-                      {renderizarCorpoEmail(emailCorpo)}
-                    </div>
-
-                    {/* Resumo: Período, Requerimentos, Horas */}
-                    <div className="px-5 py-3 bg-blue-50 border-t border-blue-100">
-                      <div className="flex gap-6 text-sm text-blue-800">
-                        <span><strong>Período:</strong> {obterPeriodoReferencia(getItensSelecionados())}</span>
-                        <span><strong>Requerimentos:</strong> {getItensSelecionados().length}</span>
-                        <span><strong>Horas:</strong> {(() => { const m = calcularHorasItensSelecionados(getItensSelecionados()); const h = Math.floor(m / 60); const min = m % 60; return `${h}h${min > 0 ? String(min).padStart(2, '0') + 'min' : ''}`; })()}</span>
-                      </div>
-                    </div>
-
-                    {/* Tabela de apontamentos */}
-                    <div className="p-4 bg-gray-50 border-t">
-                      <div className="bg-amber-500 text-white px-4 py-2 rounded-t flex items-center justify-between">
-                        <span className="font-semibold text-sm">Apontamentos Retroativos Identificados</span>
-                        <span className="text-xs">{getItensSelecionados().length} item{getItensSelecionados().length > 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm border border-gray-200 bg-white">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Empresa</th>
-                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Chamado</th>
-                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Tarefa</th>
-                              <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Consultor</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {getItensSelecionados().map((item, idx) => (
-                              <tr key={idx} className="border-b border-gray-100">
-                                <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.empresa}</td>
-                                <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.chamado}</td>
-                                <td className="px-3 py-2 text-xs text-blue-600 font-medium text-center">{item.tarefa || '-'}</td>
-                                <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.consultor || '-'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
 
               <DialogFooter className="pt-4 border-t">
@@ -1713,7 +1876,7 @@ Atenciosamente.`;
                 <Button
                   className="bg-sonda-blue hover:bg-sonda-dark-blue"
                   onClick={handleEnviarEmail}
-                  disabled={enviandoEmail || !emailDestinatario.trim()}
+                  disabled={enviandoEmail || emailEnvelopes.every(env => !env.destinatario.trim())}
                 >
                   <Send className="h-4 w-4 mr-2" />
                   {enviandoEmail ? 'Enviando...' : 'Enviar'}

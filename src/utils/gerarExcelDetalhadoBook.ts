@@ -527,7 +527,7 @@ async function buscarTicketsConsumo(nomeCompleto: string, mes: number, ano: numb
 const TICKET_HEADERS = [
   'TIPO', 'CHAMADO', 'SOLICITANTE', 'CATEGORIA',
   'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'CÓDIGO RESOLUÇÃO',
-  'ESTADO', 'DATA ABERTURA', 'DATA SOLUÇÃO',
+  'ESTADO', 'DATA ABERTURA', 'DATA SOLUÇÃO', 'DATA ENCERRAMENTO',
   'TICKET EXTERNO', 'NÚMERO PAI', 'STATUS TDS',
   'VIOLADO', 'DESCRIÇÃO',
 ];
@@ -536,7 +536,7 @@ const TICKET_HEADERS = [
 const TICKET_COL_WIDTHS = [
   { width: 12 }, { width: 12 }, { width: 25 }, { width: 30 },
   { width: 25 }, { width: 25 }, { width: 35 },
-  { width: 12 }, { width: 14 }, { width: 14 },
+  { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 },
   { width: 14 }, { width: 14 }, { width: 14 },
   { width: 10 }, { width: 60 },
 ];
@@ -559,6 +559,7 @@ function ticketParaRow(t: TicketAranda): any[] {
     t.status || '',
     formatarData(t.data_abertura),
     formatarData(t.data_solucao),
+    formatarData(t.data_fechamento),
     t.ticket_externo || '',
     t.numero_pai || '',
     t.tds_cumprido || '',
