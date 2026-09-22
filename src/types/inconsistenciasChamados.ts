@@ -147,7 +147,7 @@ export const TIPO_INCONSISTENCIA_COR_EMAIL_HEX: Record<TipoInconsistencia, { bg:
 // Texto da ação de correção recomendada para cada tipo de inconsistência (exceto ic_999999, que é dinâmico)
 export const ACAO_CORRECAO_TEXTO: Record<Exclude<TipoInconsistencia, 'ic_999999'>, string> = {
   mes_diferente: 'Excluir a tarefa com data retroativa e criar um novo apontamento no mês vigente, mantendo a mesma quantidade de horas. Isso garante que as horas sejam contabilizadas corretamente.',
-  tempo_excessivo: 'Validar o tempo apontado, corrigir o apontamento caso necessário (Excluir a tarefa indicada >> Incluir uma nova tarefa com a período correto).',
+  tempo_excessivo: 'Validar o tempo apontado e, caso esteja incorreto, excluir a tarefa indicada e incluir uma nova tarefa com o período correto.',
   sem_atualizacao: 'Atualizar o chamado e verificar se o status está adequado à situação atual.',
 };
 
