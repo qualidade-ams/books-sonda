@@ -49,6 +49,23 @@ export interface EmpresaCadastradaResumo {
   email_gestor: string | null;
 }
 
+// Especialista cadastrado (subconjunto de campos usados na resolução de email do analista)
+export interface EspecialistaResumo {
+  nome: string | null;
+  email: string | null;
+}
+
+// Normaliza um nome de pessoa pra comparação tolerante a acentuação, caixa e espaços
+// duplicados/nas pontas — dados sincronizados do Aranda frequentemente têm esses artefatos,
+// o que quebra uma comparação de substring exata (ex: "Nome  Sobrenome" com espaço duplo).
+const normalizarNomePessoa = (nome: string): string =>
+  nome
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
 // Envelope de email: um por analista, com destinatário/CC/BCC/assunto/anexos independentes.
 // Pode conter múltiplos tipos de inconsistência do mesmo analista.
 export interface InconsistenciaEmailEnvelope {
@@ -126,6 +143,35 @@ export function encontrarEmpresaCadastrada(
   });
 
   return empresaParcial || null;
+}
+
+/**
+ * Resolve o email de um especialista a partir do nome do analista vindo do chamado.
+ * Compara por nome normalizado (sem acento, sem espaços duplicados, case-insensitive) —
+ * uma comparação de substring exata contra `especialistas.nome` falha quando os dados
+ * sincronizados têm espaçamento diferente do valor do chamado, mesmo com o nome idêntico
+ * visualmente. Tenta match exato primeiro; se não achar, tenta parcial bidirecional
+ * (tolera um dos nomes ser um trecho contíguo do outro, ex: nome truncado sem sobrenome).
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function encontrarEmailEspecialista(
+  nomeAnalista: string | null,
+  especialistas: EspecialistaResumo[]
+): string | null {
+  if (!nomeAnalista) return null;
+  const alvo = normalizarNomePessoa(nomeAnalista);
+  if (!alvo) return null;
+
+  const exato = especialistas.find(e => e.nome && normalizarNomePessoa(e.nome) === alvo);
+  if (exato) return exato.email || null;
+
+  const parcial = especialistas.find(e => {
+    if (!e.nome) return false;
+    const nomeNormalizado = normalizarNomePessoa(e.nome);
+    return nomeNormalizado.includes(alvo) || alvo.includes(nomeNormalizado);
+  });
+
+  return parcial?.email || null;
 }
 
 /**
@@ -323,22 +369,6 @@ export default function InconsistenciaChamados() {
     else { setSelectedIds(selectedIds.filter(sid => sid !== id)); }
   };
 
-  // Busca o email do analista na tabela especialistas
-  const buscarEmailAnalista = async (nomeAnalista: string): Promise<string | null> => {
-    try {
-      const { data } = await supabase
-        .from('especialistas')
-        .select('email')
-        .ilike('nome', `%${nomeAnalista}%`)
-        .limit(1)
-        .maybeSingle();
-      return data?.email || null;
-    } catch (error) {
-      console.error('Erro ao buscar email do analista:', error instanceof Error ? error.message : 'erro desconhecido');
-      return null;
-    }
-  };
-
   // Email - abrir modal — agrupa os itens selecionados por analista em envelopes independentes
   const handleAbrirModalEmail = async () => {
     const selecionadas = inconsistencias.filter(inc => selectedIds.includes(inc.id));
@@ -347,25 +377,33 @@ export default function InconsistenciaChamados() {
       return;
     }
 
+    // Busca todos os especialistas de uma vez (em vez de 1 query por analista) — a resolução
+    // do email é feita em memória via encontrarEmailEspecialista, tolerante a diferenças de
+    // espaçamento/acentuação nos dados sincronizados.
+    let especialistas: EspecialistaResumo[] = [];
+    try {
+      const { data, error } = await supabase.from('especialistas').select('nome, email');
+      if (error) throw error;
+      especialistas = data || [];
+    } catch (error) {
+      console.error('Erro ao buscar especialistas:', error instanceof Error ? error.message : 'erro desconhecido');
+    }
+
     const grupos = agruparInconsistenciasPorAnalista(selecionadas);
-    const envelopes = await Promise.all(
-      Array.from(grupos.entries()).map(async ([analista, itensDoAnalista]) => {
-        let destinatario = '';
-        if (analista && analista !== 'Sem analista') {
-          destinatario = (await buscarEmailAnalista(analista)) || '';
-        }
-        const envelope: InconsistenciaEmailEnvelope = {
-          analista,
-          itens: itensDoAnalista,
-          destinatario,
-          cc: '',
-          bcc: '',
-          assunto: '[AUDITORIA ARANDA] – Regularização de Chamados e Tarefas',
-          anexos: [],
-        };
-        return envelope;
-      })
-    );
+    const envelopes: InconsistenciaEmailEnvelope[] = Array.from(grupos.entries()).map(([analista, itensDoAnalista]) => {
+      const destinatario = analista !== 'Sem analista'
+        ? encontrarEmailEspecialista(analista, especialistas) || ''
+        : '';
+      return {
+        analista,
+        itens: itensDoAnalista,
+        destinatario,
+        cc: '',
+        bcc: '',
+        assunto: '[AUDITORIA ARANDA] – Regularização de Chamados e Tarefas',
+        anexos: [],
+      };
+    });
 
     setEmailEnvelopes(envelopes);
     setShowEmailModal(true);

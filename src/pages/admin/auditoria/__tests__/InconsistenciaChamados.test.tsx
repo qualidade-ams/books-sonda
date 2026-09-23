@@ -3,6 +3,7 @@ import {
   agruparInconsistenciasPorAnalista,
   agruparPorTipoOrdenado,
   encontrarEmpresaCadastrada,
+  encontrarEmailEspecialista,
   agruparGestoresIC999999,
   montarTextoGestorIC999999,
 } from '../InconsistenciaChamados';
@@ -116,6 +117,45 @@ describe('encontrarEmpresaCadastrada', () => {
 
   it('retorna null quando nomeEmpresa é null', () => {
     expect(encontrarEmpresaCadastrada(null, empresas)).toBeNull();
+  });
+});
+
+describe('encontrarEmailEspecialista', () => {
+  // Reproduz o bug reportado: "Guilherme Augusto Baptista Marques" está cadastrado,
+  // mas com espaçamento diferente do valor sincronizado no chamado (espaço duplo/trailing),
+  // o que quebrava a busca antiga por ILIKE de substring exata.
+  const especialistas = [
+    { nome: 'Guilherme  Augusto Baptista Marques ', email: 'guilherme.baptista@sonda.com' },
+    { nome: 'Maria Souza', email: 'maria.souza@sonda.com' },
+  ];
+
+  it('encontra por match exato após normalizar espaços duplicados e trailing', () => {
+    const resultado = encontrarEmailEspecialista('Guilherme Augusto Baptista Marques', especialistas);
+    expect(resultado).toBe('guilherme.baptista@sonda.com');
+  });
+
+  it('encontra ignorando diferença de acentuação e caixa', () => {
+    const resultado = encontrarEmailEspecialista('MARIA SOUZA', especialistas);
+    expect(resultado).toBe('maria.souza@sonda.com');
+  });
+
+  it('encontra por match parcial quando o nome do chamado é um trecho contíguo do nome cadastrado', () => {
+    const resultado = encontrarEmailEspecialista('Augusto Baptista Marques', especialistas);
+    expect(resultado).toBe('guilherme.baptista@sonda.com');
+  });
+
+  it('retorna null quando o analista não está cadastrado', () => {
+    expect(encontrarEmailEspecialista('Pessoa Inexistente', especialistas)).toBeNull();
+  });
+
+  it('retorna null quando nomeAnalista é null ou vazio', () => {
+    expect(encontrarEmailEspecialista(null, especialistas)).toBeNull();
+    expect(encontrarEmailEspecialista('   ', especialistas)).toBeNull();
+  });
+
+  it('retorna null quando o especialista não tem email cadastrado', () => {
+    const semEmail = [{ nome: 'Sem Email', email: null }];
+    expect(encontrarEmailEspecialista('Sem Email', semEmail)).toBeNull();
   });
 });
 
