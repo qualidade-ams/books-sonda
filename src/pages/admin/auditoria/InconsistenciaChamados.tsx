@@ -30,6 +30,7 @@ import {
 import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailEnviadoIndicador';
 import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import { passaFiltroEnvioEmail, type FiltroEnvioEmail } from '@/utils/filtroEnvioEmail';
+import { colunasEmailPorTipo, valorColunaEmail } from '@/utils/colunasEmailInconsistencia';
 import type { InconsistenciasChamadosFiltros, InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
 import {
   TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS, TIPO_INCONSISTENCIA_ORDEM,
@@ -522,15 +523,17 @@ Atenciosamente.`;
 
     const secoesPorTipo = Array.from(agruparPorTipoOrdenado(envelope.itens).entries()).map(([tipo, itensDoTipo]) => {
       const cor = TIPO_INCONSISTENCIA_COR_EMAIL_HEX[tipo];
+      const colunas = colunasEmailPorTipo(tipo);
+      const cabecalho = colunas.map(col =>
+        `<th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">${col.titulo}</th>`
+      ).join('');
       const linhas = itensDoTipo.map(item => {
         const nomeEmpresa = encontrarEmpresaCadastrada(item.empresa, empresasCadastradas || [])?.nome_abreviado || item.empresa || '-';
+        const celulas = colunas.map(col =>
+          `<td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif;${col.destaque ? ' color: #2563eb;' : ''} text-align: center;">${valorColunaEmail(col.chave, item, { empresa: nomeEmpresa, analista: envelope.analista })}</td>`
+        ).join('');
         return `
-          <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${nomeEmpresa}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${item.nro_chamado}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; color: #2563eb; text-align: center;">${item.nro_tarefa || '-'}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: Arial, sans-serif; text-align: center;">${envelope.analista}</td>
-          </tr>`;
+          <tr>${celulas}</tr>`;
       }).join('');
 
       const acaoCorrecao = montarAcaoCorrecao(tipo, itensDoTipo);
@@ -548,17 +551,12 @@ Atenciosamente.`;
           </table>
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: #ffffff; border: 1px solid #e5e7eb;">
             <thead>
-              <tr>
-                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Empresa</th>
-                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Chamado</th>
-                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Tarefa</th>
-                <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6; font-family: Arial, sans-serif;">Analista</th>
-              </tr>
+              <tr>${cabecalho}</tr>
             </thead>
             <tbody>
               ${linhas}
               <tr>
-                <td colspan="4" style="padding: 10px 12px; font-size: 13px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif; background-color: #ffffff;">
+                <td colspan="${colunas.length}" style="padding: 10px 12px; font-size: 13px; color: #374151; line-height: 1.6; font-family: Arial, sans-serif; background-color: #ffffff;">
                   <strong>Ação:</strong> ${acaoCorrecao}
                 </td>
               </tr>
@@ -1231,25 +1229,29 @@ Atenciosamente.`;
                                 <table className="w-full text-sm border border-gray-200 bg-white">
                                   <thead>
                                     <tr className="bg-gray-100">
-                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Empresa</th>
-                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Chamado</th>
-                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Tarefa</th>
-                                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">Analista</th>
+                                      {colunasEmailPorTipo(tipo).map(col => (
+                                        <th key={col.chave} className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border-b-2 border-gray-200">{col.titulo}</th>
+                                      ))}
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {itensDoTipo.map((item) => (
-                                      <tr key={item.id} className="border-b border-gray-100">
-                                        <td className="px-3 py-2 text-xs text-gray-700 text-center">
-                                          {encontrarEmpresaCadastrada(item.empresa, empresasCadastradas || [])?.nome_abreviado || item.empresa || '-'}
-                                        </td>
-                                        <td className="px-3 py-2 text-xs text-gray-700 text-center">{item.nro_chamado}</td>
-                                        <td className="px-3 py-2 text-xs text-blue-600 font-medium text-center">{item.nro_tarefa || '-'}</td>
-                                        <td className="px-3 py-2 text-xs text-gray-700 text-center">{envelope.analista}</td>
-                                      </tr>
-                                    ))}
+                                    {itensDoTipo.map((item) => {
+                                      const contexto = {
+                                        empresa: encontrarEmpresaCadastrada(item.empresa, empresasCadastradas || [])?.nome_abreviado || item.empresa || '-',
+                                        analista: envelope.analista,
+                                      };
+                                      return (
+                                        <tr key={item.id} className="border-b border-gray-100">
+                                          {colunasEmailPorTipo(tipo).map(col => (
+                                            <td key={col.chave} className={`px-3 py-2 text-xs text-center ${col.destaque ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
+                                              {valorColunaEmail(col.chave, item, contexto)}
+                                            </td>
+                                          ))}
+                                        </tr>
+                                      );
+                                    })}
                                     <tr className="border-b border-gray-100">
-                                      <td colSpan={4} className="px-3 py-2 text-xs text-gray-700 bg-white">
+                                      <td colSpan={colunasEmailPorTipo(tipo).length} className="px-3 py-2 text-xs text-gray-700 bg-white">
                                         <strong>Ação:</strong> {acaoCorrecao}
                                       </td>
                                     </tr>
