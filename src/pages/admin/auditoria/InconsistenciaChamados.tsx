@@ -29,6 +29,7 @@ import {
 } from '@/hooks/useInconsistenciasChamados';
 import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailEnviadoIndicador';
 import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
+import { passaFiltroEnvioEmail, type FiltroEnvioEmail } from '@/utils/filtroEnvioEmail';
 import type { InconsistenciasChamadosFiltros, InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
 import {
   TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS, TIPO_INCONSISTENCIA_ORDEM,
@@ -258,6 +259,7 @@ export default function InconsistenciaChamados() {
   const [anoAtual, setAnoAtual] = useState(Math.max(new Date().getFullYear(), 2024));
   const [mesAtual, setMesAtual] = useState<string>('all');
   const [filtroCodResolucao, setFiltroCodResolucao] = useState<string>('all');
+  const [filtroEnvioEmail, setFiltroEnvioEmail] = useState<FiltroEnvioEmail>('all');
   
   // Estado de filtros
   const [filtros, setFiltros] = useState<InconsistenciasChamadosFiltros>({
@@ -350,11 +352,12 @@ export default function InconsistenciaChamados() {
   // Filtros ativos
   const hasActiveFilters = () => {
     return filtros.busca !== '' || filtros.tipo_inconsistencia !== 'all' ||
-      filtros.origem !== 'all' || filtros.analista !== '' || mesAtual !== 'all' || filtroCodResolucao !== 'all' || (filtros.status_chamado && filtros.status_chamado !== 'all');
+      filtros.origem !== 'all' || filtros.analista !== '' || mesAtual !== 'all' || filtroCodResolucao !== 'all' || filtroEnvioEmail !== 'all' || (filtros.status_chamado && filtros.status_chamado !== 'all');
   };
   const limparFiltros = () => {
     setMesAtual('all');
     setFiltroCodResolucao('all');
+    setFiltroEnvioEmail('all');
     setFiltros(prev => ({ ...prev, busca: '', tipo_inconsistencia: 'all', origem: 'all', analista: '', status_chamado: 'all' }));
     setCurrentPage(1);
     setCurrentPageResolvidas(1);
@@ -706,7 +709,14 @@ Atenciosamente.`;
   };
 
   // Paginação - Detectadas (aplica filtros locais de cod_resolucao e status_chamado)
+  // Emails enviados de todas as linhas das duas abas (bolinha verde e filtro "Email")
+  const { envios: enviosPorInconsistencia } = useEnviosEmailInconsistencias([
+    ...inconsistencias.map(inc => inc.id),
+    ...resolvidas.map(inc => inc.id),
+  ]);
+
   const inconsistenciasFiltradas = inconsistencias.filter(inc => {
+    if (!passaFiltroEnvioEmail(inc.id, enviosPorInconsistencia, filtroEnvioEmail)) return false;
     // Filtro local de cód. resolução
     if (filtroCodResolucao !== 'all') {
       const codFormatado = inc.cod_resolucao ? inc.cod_resolucao.replace(/\s*\(Banco.*$/, '').trim() : '';
@@ -725,6 +735,7 @@ Atenciosamente.`;
 
   // Paginação - Resolvidas (usa os MESMOS filtros da Tab 1 - compartilhados)
   const resolvidasFiltradas = resolvidas.filter(inc => {
+    if (!passaFiltroEnvioEmail(inc.id, enviosPorInconsistencia, filtroEnvioEmail)) return false;
     // Filtro de busca
     if (filtros.busca) {
       const busca = filtros.busca.toLowerCase();
@@ -749,12 +760,6 @@ Atenciosamente.`;
   const startIndexResolvidas = (currentPageResolvidas - 1) * itemsPerPage;
   const endIndexResolvidas = startIndexResolvidas + itemsPerPage;
   const paginatedResolvidas = resolvidasFiltradas.slice(startIndexResolvidas, endIndexResolvidas);
-
-  // Emails enviados das linhas visíveis nas duas abas (bolinha verde ao lado do nº do chamado)
-  const { envios: enviosPorInconsistencia } = useEnviosEmailInconsistencias([
-    ...paginatedInconsistencias.map(inc => inc.id),
-    ...paginatedResolvidas.map(inc => inc.id),
-  ]);
 
   // Analistas do filtro: somente os da aba ativa
   const analistasDaAba = listarAnalistasDaAba(
@@ -810,6 +815,29 @@ Atenciosamente.`;
     return <span className={`font-medium ${!encontrada ? 'text-red-600' : ''}`}>{nome}</span>;
   };
 
+  // Filtros (compartilhados entre as abas) — renderizados dentro do card de cada aba
+  const botoesFiltro = (
+    <div className="flex gap-2">
+      <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="flex items-center justify-center space-x-2"><Filter className="h-4 w-4" /><span>Filtros</span></Button>
+      {hasActiveFilters() && (<Button variant="outline" size="sm" onClick={limparFiltros} className="hover:border-red-300"><X className="h-4 w-4 mr-2 text-red-600" />{t('common.clearFilter')}</Button>)}
+    </div>
+  );
+
+  const camposFiltro = showFilters && (
+    <div className="space-y-4 pt-4 border-t">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setCurrentPage(1); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
+        <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasDaAba.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, origem: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosCombinados.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtros.status_chamado || 'all'} onValueChange={(value) => { setFiltros({ ...filtros, status_chamado: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicosCombinados.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">Email</div><Select value={filtroEnvioEmail} onValueChange={(value: FiltroEnvioEmail) => { setFiltroEnvioEmail(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="enviado">Email enviado</SelectItem><SelectItem value="nao_enviado">Email não enviado</SelectItem></SelectContent></Select></div>
+      </div>
+    </div>
+  );
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -863,37 +891,15 @@ Atenciosamente.`;
             </TabsTrigger>
           </TabsList>
 
-          {/* Filtros compartilhados - aplicados a todas as abas */}
-          <Card className="mt-4">
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2"><Filter className="h-4 w-4" />Filtros</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}><Filter className="h-4 w-4 mr-2" />{showFilters ? 'Ocultar' : 'Mostrar'} Filtros</Button>
-                  {hasActiveFilters() && (<Button variant="outline" size="sm" onClick={limparFiltros} className="hover:border-red-300"><X className="h-4 w-4 mr-2 text-red-600" />{t('common.clearFilter')}</Button>)}
-                </div>
-              </div>
-              {showFilters && (
-                <div className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setCurrentPage(1); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
-                    <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
-                    <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasDaAba.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
-                    <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, origem: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
-                    <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
-                    <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosCombinados.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
-                    <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtros.status_chamado || 'all'} onValueChange={(value) => { setFiltros({ ...filtros, status_chamado: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicosCombinados.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
-                  </div>
-                </div>
-              )}
-            </CardHeader>
-          </Card>
-
           {/* Tab 1: Inconsistências Detectadas */}
           <TabsContent value="inconsistencias_detectadas" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><AlertTriangle className="h-5 w-5" />{t('inconsistencias.detectedTitle')}</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2"><AlertTriangle className="h-5 w-5" />{t('inconsistencias.detectedTitle')}</CardTitle>
+                  {botoesFiltro}
+                </div>
+                {camposFiltro}
               </CardHeader>
 
               <CardContent className="overflow-x-auto">
@@ -967,9 +973,9 @@ Atenciosamente.`;
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-600" />Histórico de Inconsistências</CardTitle>
-                  <div className="flex gap-2">
-                  </div>
+                  {botoesFiltro}
                 </div>
+                {camposFiltro}
               </CardHeader>
 
               <CardContent className="overflow-x-auto">
