@@ -81,33 +81,27 @@ export interface InconsistenciaDetalhada extends InconsistenciaChamado {
   tempo_decimal?: number;
 }
 
-export interface HistoricoInconsistencia {
-  id: string;
-  origem: OrigemInconsistencia;
-  nro_chamado: string;
-  tipo_inconsistencia: TipoInconsistencia;
-  data_atividade: string;
-  data_sistema: string;
-  tempo_gasto_horas: string | null;
-  tempo_gasto_minutos: number | null;
-  empresa: string | null;
-  analista: string | null;
-  tipo_chamado: string | null;
-  descricao_inconsistencia: string;
+/**
+ * Um envio de email registrado para uma inconsistência
+ * (vem de historico_inconsistencias_chamados)
+ */
+export interface EnvioEmailInconsistencia {
+  email_para: string | null;
+  email_cc: string | null;
   data_envio: string;
-  email_analista: string | null;
-  enviado_por: string | null;
-  enviado_por_nome: string | null;
-  mes_referencia: number;
-  ano_referencia: number;
-  created_at: string;
 }
+
+/** Envios agrupados por id da inconsistência, do mais recente para o mais antigo */
+export type EnviosPorInconsistencia = Record<string, EnvioEmailInconsistencia[]>;
 
 export interface EnviarNotificacaoRequest {
   inconsistencias: InconsistenciaChamado[];
   mes_referencia?: number;
   ano_referencia: number;
+  /** Destinatários (Para), separados por ", " */
   email_analista?: string;
+  /** Destinatários em cópia, separados por ", " */
+  email_cc?: string;
 }
 
 // Labels para exibição

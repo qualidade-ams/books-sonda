@@ -7,6 +7,7 @@ import {
   agruparGestoresIC999999,
   montarTextoGestorIC999999,
 } from '../InconsistenciaChamados';
+import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import type { InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
 
 // Helper para criar uma inconsistência de teste com defaults, sobrescrevendo só o necessário
@@ -238,5 +239,35 @@ describe('montarTextoGestorIC999999', () => {
       { emailGestor: null, empresas: ['Empresa B'] },
     ]);
     expect(texto).toBe('gestorA@x.com (Empresa A, Empresa C); e-mail do gestor não cadastrado para Empresa B');
+  });
+});
+
+describe('listarAnalistasDaAba', () => {
+  it('lista apenas os analistas dos itens da aba, sem repetição e em ordem alfabética', () => {
+    const itens = [
+      criarInconsistencia({ id: '1', analista: 'Maria Souza' }),
+      criarInconsistencia({ id: '2', analista: 'Ana Lima' }),
+      criarInconsistencia({ id: '3', analista: 'Maria Souza' }),
+    ];
+    expect(listarAnalistasDaAba(itens)).toEqual(['Ana Lima', 'Maria Souza']);
+  });
+
+  it('ignora analista vazio ou nulo', () => {
+    const itens = [
+      criarInconsistencia({ id: '1', analista: null }),
+      criarInconsistencia({ id: '2', analista: '  ' }),
+      criarInconsistencia({ id: '3', analista: 'Ana Lima' }),
+    ];
+    expect(listarAnalistasDaAba(itens)).toEqual(['Ana Lima']);
+  });
+
+  it('mantém o analista selecionado mesmo que ele não tenha itens na aba', () => {
+    const itens = [criarInconsistencia({ analista: 'Ana Lima' })];
+    expect(listarAnalistasDaAba(itens, 'Zeca Pereira')).toEqual(['Ana Lima', 'Zeca Pereira']);
+  });
+
+  it('não duplica o analista selecionado quando ele já está na aba', () => {
+    const itens = [criarInconsistencia({ analista: 'Ana Lima' })];
+    expect(listarAnalistasDaAba(itens, 'Ana Lima')).toEqual(['Ana Lima']);
   });
 });

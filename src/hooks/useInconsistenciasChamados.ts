@@ -4,7 +4,7 @@ import type {
   InconsistenciaChamado,
   InconsistenciasChamadosFiltros,
   InconsistenciasChamadosEstatisticas,
-  HistoricoInconsistencia,
+  EnviosPorInconsistencia,
   EnviarNotificacaoRequest
 } from '@/types/inconsistenciasChamados';
 
@@ -77,35 +77,20 @@ export function useInconsistenciasEstatisticas(filtros?: InconsistenciasChamados
   };
 }
 
+const ENVIOS_VAZIO: EnviosPorInconsistencia = {};
+
 /**
- * Hook para buscar histórico de emails enviados
+ * Hook para buscar os emails enviados de cada inconsistência (por id)
  */
-export function useHistoricoEmailsInconsistencias(ano: number) {
-  const {
-    data: historico = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery<HistoricoInconsistencia[]>({
-    queryKey: ['historico-emails-inconsistencias', ano],
-    queryFn: () => inconsistenciasChamadosService.buscarHistoricoEmails(ano),
+export function useEnviosEmailInconsistencias(ids: string[]) {
+  const { data: envios = ENVIOS_VAZIO, isLoading } = useQuery<EnviosPorInconsistencia>({
+    queryKey: ['historico-emails-inconsistencias', ids],
+    queryFn: () => inconsistenciasChamadosService.buscarEnviosPorInconsistencia(ids),
+    enabled: ids.length > 0,
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
 
-  return {
-    historico,
-    isLoading,
-    error,
-    refetch
-  };
-}
-
-/**
- * @deprecated Use useHistoricoEmailsInconsistencias instead
- * Mantido para compatibilidade
- */
-export function useHistoricoInconsistencias(ano: number) {
-  return useHistoricoEmailsInconsistencias(ano);
+  return { envios, isLoading };
 }
 
 /**

@@ -24,9 +24,11 @@ import {
 } from 'lucide-react';
 import {
   useInconsistenciasChamados, useInconsistenciasEstatisticas,
-  useInconsistenciasResolvidas, useHistoricoEmailsInconsistencias, useEnviarNotificacao,
+  useInconsistenciasResolvidas, useEnviosEmailInconsistencias, useEnviarNotificacao,
   useArquivarInconsistencia
 } from '@/hooks/useInconsistenciasChamados';
+import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailEnviadoIndicador';
+import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import type { InconsistenciasChamadosFiltros, InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
 import {
   TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS, TIPO_INCONSISTENCIA_ORDEM,
@@ -297,7 +299,6 @@ export default function InconsistenciaChamados() {
   const { inconsistencias, isLoading, refetch } = useInconsistenciasChamados(filtros);
   const { estatisticas, isLoading: isLoadingStats } = useInconsistenciasEstatisticas(filtros);
   const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtros);
-  const { historico, isLoading: isLoadingHistorico } = useHistoricoEmailsInconsistencias(anoAtual);
   const { enviarNotificacaoAsync } = useEnviarNotificacao();
   const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
 
@@ -658,7 +659,8 @@ Atenciosamente.`;
             await enviarNotificacaoAsync({
               inconsistencias: envelope.itens,
               ano_referencia: anoAtual,
-              email_analista: destinatarios[0],
+              email_analista: destinatarios.join(', '),
+              email_cc: cc?.join(', '),
             });
           } catch (erroHistorico) {
             console.error('Erro ao gravar histórico:', erroHistorico instanceof Error ? erroHistorico.message : 'erro desconhecido');
@@ -748,14 +750,19 @@ Atenciosamente.`;
   const endIndexResolvidas = startIndexResolvidas + itemsPerPage;
   const paginatedResolvidas = resolvidasFiltradas.slice(startIndexResolvidas, endIndexResolvidas);
 
+  // Emails enviados das linhas visíveis nas duas abas (bolinha verde ao lado do nº do chamado)
+  const { envios: enviosPorInconsistencia } = useEnviosEmailInconsistencias([
+    ...paginatedInconsistencias.map(inc => inc.id),
+    ...paginatedResolvidas.map(inc => inc.id),
+  ]);
+
+  // Analistas do filtro: somente os da aba ativa
+  const analistasDaAba = listarAnalistasDaAba(
+    activeTab === 'historico_resolvidas' ? resolvidas : inconsistencias,
+    filtros.analista
+  );
+
   // Listas únicas combinadas para filtros (compartilhados entre abas)
-  // Combina analistas das duas listas para oferecer mais opções no dropdown
-  const analistasUnicosCombinados = Array.from(
-    new Set([
-      ...inconsistencias.map(inc => inc.analista),
-      ...resolvidas.map(inc => inc.analista)
-    ].filter(a => a && a.trim() !== ''))
-  ).sort() as string[];
   const statusChamadoUnicosCombinados = Array.from(
     new Set([
       ...inconsistencias.map(inc => inc.status_chamado),
@@ -854,9 +861,6 @@ Atenciosamente.`;
             <TabsTrigger value="historico_resolvidas" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium">
               Histórico de Inconsistências ({resolvidasFiltradas.length})
             </TabsTrigger>
-            <TabsTrigger value="emails_enviados" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium">
-              Emails Enviados ({historico.length})
-            </TabsTrigger>
           </TabsList>
 
           {/* Filtros compartilhados - aplicados a todas as abas */}
@@ -874,7 +878,7 @@ Atenciosamente.`;
                   <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
                     <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setCurrentPage(1); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
                     <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem></SelectContent></Select></div>
-                    <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasUnicosCombinados.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
+                    <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasDaAba.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
                     <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, origem: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
                     <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
                     <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosCombinados.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
@@ -919,7 +923,7 @@ Atenciosamente.`;
                         {paginatedInconsistencias.map((inc) => (
                           <TableRow key={inc.id} className="hover:bg-gray-50">
                             <TableCell className="py-2"><Checkbox checked={selectedIds.includes(inc.id)} onCheckedChange={(checked) => handleSelectItem(inc.id, checked as boolean)} /></TableCell>
-                            <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span><EmailEnviadoIndicador envios={enviosPorInconsistencia[inc.id]} /></div></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs">{inc.nro_tarefa || '-'}</span></TableCell>
                             <TableCell className="text-center py-2">{inc.status_chamado && inc.status_chamado.trim() !== '' ? <Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado}</Badge> : <span className="text-xs text-gray-400">-</span>}</TableCell>
                             <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
@@ -994,7 +998,7 @@ Atenciosamente.`;
                       <TableBody>
                         {paginatedResolvidas.map((inc) => (
                           <TableRow key={inc.id} className="hover:bg-gray-50">
-                            <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-green-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span></div></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex items-center justify-center gap-1 whitespace-nowrap"><ClipboardList className="h-3.5 w-3.5 text-green-600 flex-shrink-0" /><span className="font-medium text-xs sm:text-sm">{inc.nro_chamado}</span><EmailEnviadoIndicador envios={enviosPorInconsistencia[inc.id]} /></div></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs">{inc.nro_tarefa || '-'}</span></TableCell>
                             <TableCell className="text-center py-2">{inc.status_chamado && inc.status_chamado.trim() !== '' ? <Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado}</Badge> : <span className="text-xs text-gray-400">-</span>}</TableCell>
                             <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
@@ -1028,45 +1032,6 @@ Atenciosamente.`;
                       <div className="text-sm text-gray-600 dark:text-gray-400">{startIndexResolvidas + 1}-{Math.min(endIndexResolvidas, resolvidasFiltradas.length)} de {resolvidasFiltradas.length} {t('inconsistencias.inconsistenciesCount')}</div>
                     </div>
                   </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab 3: Emails Enviados */}
-          <TabsContent value="emails_enviados" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><Mail className="h-5 w-5" />Emails Enviados</CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                {isLoadingHistorico ? (
-                  <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
-                ) : historico.length === 0 ? (
-                  <div className="flex items-center justify-center py-12"><div className="text-center"><Mail className="h-16 w-16 text-gray-400 mx-auto mb-4" /><p className="text-gray-500 mb-2 font-medium">Nenhum email enviado neste período</p><p className="text-sm text-gray-400">Quando inconsistências forem notificadas por email, aparecerão aqui</p></div></div>
-                ) : (
-                  <Table>
-                    <TableHeader><TableRow>
-                      <TableHead className="w-[120px] text-center">{t('inconsistencias.ticketNumber')}</TableHead>
-                      <TableHead className="w-[150px] text-center">{t('common.type')}</TableHead>
-                      <TableHead className="w-[150px] text-center">{t('inconsistencias.analyst')}</TableHead>
-                      <TableHead className="w-[180px] text-center">{t('historico.company')}</TableHead>
-                      <TableHead className="w-[150px] text-center">{t('inconsistencias.sendDate')}</TableHead>
-                      <TableHead className="w-[150px] text-center">{t('inconsistencias.sentBy')}</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {historico.map((item) => (
-                        <TableRow key={item.id} className="hover:bg-gray-50">
-                          <TableCell className="text-center"><div className="flex items-center justify-center gap-2 whitespace-nowrap"><ClipboardList className="h-4 w-4 text-blue-600 flex-shrink-0" /><span className="font-mono text-foreground text-xs sm:text-sm">{item.nro_chamado}</span></div></TableCell>
-                          <TableCell className="text-center"><Badge className={TIPO_INCONSISTENCIA_COLORS[item.tipo_inconsistencia]}>{TIPO_INCONSISTENCIA_LABELS[item.tipo_inconsistencia]}</Badge></TableCell>
-                          <TableCell className="text-xs sm:text-sm text-center"><span>{item.analista || '-'}</span></TableCell>
-                          <TableCell className="text-xs sm:text-sm max-w-[180px] text-center">{renderEmpresaCell(item.empresa, item.analista)}</TableCell>
-                          <TableCell className="text-center"><span className="text-xs sm:text-sm">{formatarData(item.data_envio)}</span></TableCell>
-                          <TableCell className="text-xs sm:text-sm text-center"><span>{item.enviado_por_nome || '-'}</span></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
                 )}
               </CardContent>
             </Card>

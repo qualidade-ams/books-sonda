@@ -13,7 +13,7 @@ import type {
   InconsistenciaChamado, 
   InconsistenciasChamadosFiltros,
   InconsistenciasChamadosEstatisticas,
-  HistoricoInconsistencia,
+  EnviosPorInconsistencia,
   EnviarNotificacaoRequest
 } from '@/types/inconsistenciasChamados';
 
@@ -359,31 +359,41 @@ export class InconsistenciasChamadosService {
   }
 
   /**
-   * Busca histórico de emails enviados (tabela historico_inconsistencias_chamados)
+   * Busca os emails enviados para cada inconsistência (tabela historico_inconsistencias_chamados),
+   * agrupados por id da inconsistência e ordenados do mais recente para o mais antigo.
    */
-  async buscarHistoricoEmails(
-    ano: number
-  ): Promise<HistoricoInconsistencia[]> {
-    try {
-      console.log('📧 Buscando histórico de emails enviados:', { ano });
+  async buscarEnviosPorInconsistencia(ids: string[]): Promise<EnviosPorInconsistencia> {
+    const envios: EnviosPorInconsistencia = {};
+    if (ids.length === 0) return envios;
 
+    const batchSize = 200;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
       const { data, error } = await supabase
         .from('historico_inconsistencias_chamados' as any)
-        .select('*')
-        .eq('ano_referencia', ano)
-        .order('data_envio', { ascending: false });
+        .select('inconsistencia_id, email_analista, email_cc, data_envio')
+        .in('inconsistencia_id', batch);
 
       if (error) {
-        console.error('❌ Erro ao buscar histórico de emails:', error);
+        console.error('❌ Erro ao buscar emails enviados:', error.message);
         throw error;
       }
 
-      console.log('✅ Histórico de emails encontrado:', data?.length || 0);
-      return (data as any[]) || [];
-    } catch (error) {
-      console.error('❌ Erro ao buscar histórico de emails:', error);
-      throw error;
+      for (const row of (data as any[]) || []) {
+        if (!envios[row.inconsistencia_id]) envios[row.inconsistencia_id] = [];
+        envios[row.inconsistencia_id].push({
+          email_para: row.email_analista ?? null,
+          email_cc: row.email_cc ?? null,
+          data_envio: row.data_envio,
+        });
+      }
     }
+
+    for (const lista of Object.values(envios)) {
+      lista.sort((a, b) => new Date(b.data_envio).getTime() - new Date(a.data_envio).getTime());
+    }
+
+    return envios;
   }
 
   /**
@@ -471,33 +481,38 @@ export class InconsistenciasChamadosService {
 
       const enviadoPorNome = profile?.full_name || user.email || 'Sistema';
 
-      // Salvar cada inconsistência no histórico de emails
-      for (const inc of request.inconsistencias) {
-        const { error: insertError } = await supabase
-          .from('historico_inconsistencias_chamados' as any)
-          .insert({
-            origem: inc.origem,
-            nro_chamado: inc.nro_chamado,
-            tipo_inconsistencia: inc.tipo_inconsistencia,
-            data_atividade: inc.data_atividade,
-            data_sistema: inc.data_sistema,
-            tempo_gasto_horas: inc.tempo_gasto_horas,
-            tempo_gasto_minutos: inc.tempo_gasto_minutos,
-            empresa: inc.empresa,
-            analista: inc.analista,
-            tipo_chamado: inc.tipo_chamado,
-            descricao_inconsistencia: inc.descricao_inconsistencia,
-            email_analista: request.email_analista ?? null,
-            enviado_por: user.id,
-            enviado_por_nome: enviadoPorNome,
-            mes_referencia: request.mes_referencia,
-            ano_referencia: request.ano_referencia
-          });
+      // mes_referencia é NOT NULL na tabela; sem ele o registro era recusado
+      const mesReferencia = request.mes_referencia ?? new Date().getMonth() + 1;
 
-        if (insertError) {
-          console.error('❌ Erro ao salvar no histórico:', insertError);
-          throw insertError;
-        }
+      // Salvar todas as inconsistências do envio no histórico de emails
+      const registros = request.inconsistencias.map(inc => ({
+        inconsistencia_id: inc.id,
+        origem: inc.origem,
+        nro_chamado: inc.nro_chamado,
+        tipo_inconsistencia: inc.tipo_inconsistencia,
+        data_atividade: inc.data_atividade,
+        data_sistema: inc.data_sistema,
+        tempo_gasto_horas: inc.tempo_gasto_horas,
+        tempo_gasto_minutos: inc.tempo_gasto_minutos,
+        empresa: inc.empresa,
+        analista: inc.analista,
+        tipo_chamado: inc.tipo_chamado,
+        descricao_inconsistencia: inc.descricao_inconsistencia,
+        email_analista: request.email_analista ?? null,
+        email_cc: request.email_cc ?? null,
+        enviado_por: user.id,
+        enviado_por_nome: enviadoPorNome,
+        mes_referencia: mesReferencia,
+        ano_referencia: request.ano_referencia
+      }));
+
+      const { error: insertError } = await supabase
+        .from('historico_inconsistencias_chamados' as any)
+        .insert(registros);
+
+      if (insertError) {
+        console.error('❌ Erro ao salvar no histórico:', insertError.message);
+        throw insertError;
       }
 
       console.log(`✅ ${request.inconsistencias.length} notificações registradas no histórico`);
