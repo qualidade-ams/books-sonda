@@ -1847,6 +1847,7 @@ const es = {
     excessiveTime: 'Tiempo Excesivo',
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sin Actualización 16+ días',
+    resolutionCodeChange: 'Cambio de código de resolución',
     // Pestañas
     tabDetected: 'Inconsistencias Detectadas',
     tabHistory: 'Historial de Inconsistencias',
@@ -1982,6 +1983,7 @@ const es = {
     amsApontamentoDesc: 'Registros de horas y actividades',
     amsTickets: 'AMSticketsabertos',
     amsTicketsDesc: 'Tickets y llamados abiertos',
+    amsCodigoResolucaoDesc: 'Cambios de código de resolución de los llamados',
     startDate: 'Fecha inicial para sincronización',
     syncFromDate: 'Sincronizar registros a partir de {{date}}',
     leaveEmptyForIncremental: 'Deje vacío para usar la sincronización incremental automática',

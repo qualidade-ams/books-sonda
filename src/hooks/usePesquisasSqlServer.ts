@@ -61,6 +61,7 @@ export function useSincronizarSqlServer() {
       especialistas?: boolean;
       apontamentos?: boolean;
       tickets?: boolean;
+      codigoResolucao?: boolean;
       dataInicial?: string;
     }) => sqlServerSyncService.sincronizarDados(tabelas),
     onSuccess: (resultado) => {

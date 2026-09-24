@@ -25,6 +25,7 @@ export interface TabelasSincronizacao {
   especialistas: boolean;
   apontamentos: boolean;
   tickets: boolean;
+  codigoResolucao?: boolean;
   dataInicial?: string;
 }
 
@@ -68,6 +69,13 @@ export interface SyncResultado {
     erros: number;
     mensagens: string[];
     selecionado?: boolean;
+  };
+  codigoResolucao?: {
+    sucesso: boolean;
+    total_processados?: number;
+    sincronizados?: number;
+    erros?: number;
+    mensagens: string[];
   };
   detalhes_erros?: string[];
 }
@@ -126,6 +134,10 @@ function gerarMensagensProgresso(tabelas: TabelasSincronizacao): string[] {
     mensagens.push('Sincronizando tickets (AMSticketsabertos)...');
     mensagens.push('Processando dados de tickets...');
   }
+
+  if (tabelas.codigoResolucao) {
+    mensagens.push('Sincronizando trocas de código de resolução (AMScodigoresolucao_Modificacao)...');
+  }
   
   mensagens.push('Finalizando sincronização...');
   return mensagens;
@@ -137,6 +149,7 @@ function gerarDescricaoSincronizacao(tabelas: TabelasSincronizacao): string {
   if (tabelas.especialistas) tabelasAtivas.push('especialistas');
   if (tabelas.apontamentos) tabelasAtivas.push('apontamentos');
   if (tabelas.tickets) tabelasAtivas.push('tickets');
+  if (tabelas.codigoResolucao) tabelasAtivas.push('trocas de código de resolução');
 
   if (tabelasAtivas.length === 0) return 'Nenhuma tabela selecionada';
   if (tabelasAtivas.length === 1) return `Sincronizando ${tabelasAtivas[0]}`;
@@ -202,6 +215,7 @@ export const SyncProcessingProvider: React.FC<{ children: React.ReactNode }> = (
     if (tabelas.especialistas) tabelasAtivas.push('Especialistas');
     if (tabelas.apontamentos) tabelasAtivas.push('Apontamentos');
     if (tabelas.tickets) tabelasAtivas.push('Tickets');
+    if (tabelas.codigoResolucao) tabelasAtivas.push('Trocas de Código de Resolução');
 
     setSyncProgress({
       isProcessing: true,
@@ -346,6 +360,9 @@ export const SyncProcessingProvider: React.FC<{ children: React.ReactNode }> = (
       }
       if (tabelas.tickets && resultado.tickets) {
         logsConclusao.push(`${timestampLog} 🎫 Tickets: ${resultado.tickets.novos} novos, ${resultado.tickets.atualizados} atualizados`);
+      }
+      if (tabelas.codigoResolucao && resultado.codigoResolucao) {
+        logsConclusao.push(`${timestampLog} 🔁 Trocas de código de resolução: ${resultado.codigoResolucao.sincronizados || 0} sincronizadas`);
       }
 
       // Adicionar mensagens detalhadas do resultado

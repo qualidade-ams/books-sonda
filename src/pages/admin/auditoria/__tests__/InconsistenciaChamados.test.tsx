@@ -71,6 +71,7 @@ describe('agruparPorTipoOrdenado', () => {
 
   it('retorna as chaves na ordem fixa TIPO_INCONSISTENCIA_ORDEM independente da ordem de entrada', () => {
     const itens = [
+      criarInconsistencia({ id: '5', tipo_inconsistencia: 'troca_codigo_resolucao' }),
       criarInconsistencia({ id: '1', tipo_inconsistencia: 'sem_atualizacao' }),
       criarInconsistencia({ id: '2', tipo_inconsistencia: 'ic_999999' }),
       criarInconsistencia({ id: '3', tipo_inconsistencia: 'tempo_excessivo' }),
@@ -80,7 +81,7 @@ describe('agruparPorTipoOrdenado', () => {
     const grupos = agruparPorTipoOrdenado(itens);
 
     expect(Array.from(grupos.keys())).toEqual([
-      'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao',
+      'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao', 'troca_codigo_resolucao',
     ]);
   });
 

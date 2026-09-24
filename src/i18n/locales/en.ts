@@ -1847,6 +1847,7 @@ const en = {
     excessiveTime: 'Excessive Time',
     ic999999: 'IC 999999',
     noUpdate16Days: 'No Update 16+ days',
+    resolutionCodeChange: 'Resolution code change',
     // Tabs
     tabDetected: 'Detected Inconsistencies',
     tabHistory: 'Inconsistency History',
@@ -1982,6 +1983,7 @@ const en = {
     amsApontamentoDesc: 'Hours and activities appointments',
     amsTickets: 'AMSticketsabertos',
     amsTicketsDesc: 'Open tickets and cases',
+    amsCodigoResolucaoDesc: 'Resolution code changes on tickets',
     startDate: 'Start date for sync',
     syncFromDate: 'Sync records from {{date}}',
     leaveEmptyForIncremental: 'Leave empty to use automatic incremental sync',

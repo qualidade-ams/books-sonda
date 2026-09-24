@@ -149,6 +149,36 @@ async function buscarTotaisReaisBanco(): Promise<{
 }
 
 /**
+ * Sincroniza as trocas de código de resolução (AMScodigoresolucao_Modificacao),
+ * usadas na inconsistência "Troca de código de resolução"
+ */
+export async function sincronizarTrocasCodigoResolucao(apiUrl: string): Promise<{
+  sucesso: boolean;
+  total_processados?: number;
+  sincronizados?: number;
+  ignorados?: number;
+  erros?: number;
+  mensagens: string[];
+}> {
+  const endpoint = '/api/sync-codigo-resolucao-incremental';
+  const response = await safeFetch(`${apiUrl}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (response.status === 404) {
+    return {
+      sucesso: false,
+      mensagens: [`Endpoint ${endpoint} não existe na API (sync-api desatualizada).`]
+    };
+  }
+  if (!response.ok) {
+    return { sucesso: false, mensagens: [`Erro HTTP: ${response.status}`] };
+  }
+  return response.json();
+}
+
+/**
  * Sincronizar dados do SQL Server para Supabase
  * Agora usa a API Node.js que faz todo o processamento
  * INCLUI sincronização de pesquisas, especialistas, apontamentos E tickets
@@ -161,6 +191,7 @@ export async function sincronizarDados(
     especialistas?: boolean;
     apontamentos?: boolean;
     tickets?: boolean;
+    codigoResolucao?: boolean;
     dataInicial?: string;
   },
   onLog?: (mensagem: string) => void
@@ -168,6 +199,7 @@ export async function sincronizarDados(
   especialistas?: any; 
   apontamentos?: any; 
   tickets?: any;
+  codigoResolucao?: any;
   totais_reais_banco?: {
     pesquisas: number;
     especialistas: number;
@@ -182,7 +214,8 @@ export async function sincronizarDados(
     pesquisas: true,
     especialistas: true,
     apontamentos: true,
-    tickets: true
+    tickets: true,
+    codigoResolucao: true
   };
   
   try {
@@ -193,6 +226,7 @@ export async function sincronizarDados(
     let resultadoEspecialistas = null;
     let resultadoApontamentos = null;
     let resultadoTickets = null;
+    let resultadoCodigoResolucao = null;
 
     // 1. Sincronizar pesquisas (se selecionado) - COM LOGS EM TEMPO REAL
     if (tabelasParaSincronizar.pesquisas) {
@@ -435,6 +469,20 @@ export async function sincronizarDados(
       };
     }
 
+    // 4.1 Sincronizar trocas de código de resolução (se selecionado)
+    if (tabelasParaSincronizar.codigoResolucao) {
+      onLog?.('Sincronizando trocas de código de resolução...');
+      try {
+        resultadoCodigoResolucao = await sincronizarTrocasCodigoResolucao(API_URL);
+      } catch (erroCodigoResolucao) {
+        console.warn('Erro na sincronização de trocas de código de resolução, continuando...');
+        resultadoCodigoResolucao = {
+          sucesso: false,
+          mensagens: [`Erro: ${erroCodigoResolucao instanceof Error ? erroCodigoResolucao.message : 'Erro desconhecido'}`]
+        };
+      }
+    }
+
     // 5. Buscar totais reais do banco APÓS a sincronização (para exibir valores atualizados)
     console.log('📊 Buscando totais reais do banco APÓS sincronização...');
     onLog?.('📊 Buscando totais reais do banco APÓS sincronização...');
@@ -466,6 +514,12 @@ export async function sincronizarDados(
     if (tabelasParaSincronizar.tickets) {
       mensagensCombinadas.push('--- Tickets ---');
       mensagensCombinadas.push(...(resultadoTickets?.mensagens || ['Erro na sincronização de tickets']));
+    }
+
+    // Adicionar mensagens de trocas de código de resolução (se selecionado)
+    if (tabelasParaSincronizar.codigoResolucao) {
+      mensagensCombinadas.push('--- Trocas de Código de Resolução ---');
+      mensagensCombinadas.push(...(resultadoCodigoResolucao?.mensagens || ['Erro na sincronização de trocas de código de resolução']));
     }
 
     // 7. Validação final: comparar SQL Server vs Supabase
@@ -538,6 +592,7 @@ export async function sincronizarDados(
       especialistas: resultadoEspecialistas,
       apontamentos: resultadoApontamentos,
       tickets: resultadoTickets,
+      codigoResolucao: resultadoCodigoResolucao,
       totais_reais_banco: totaisReaisBancoApos,
       validacao,
       mensagens: mensagensCombinadas

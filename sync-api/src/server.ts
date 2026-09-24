@@ -16,6 +16,7 @@ import { sincronizarApontamentosIncremental } from './services/incrementalSyncAp
 import { sincronizarTicketsIncremental } from './services/incrementalSyncTicketsService';
 import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from './services/incrementalSyncPesquisasService';
 import { executarDeteccaoInconsistencias } from './services/inconsistenciasDeteccaoService';
+import { sincronizarCodigoResolucaoIncremental } from './services/incrementalSyncCodigoResolucaoService';
 
 const app = express();
 app.use(cors());
@@ -3977,6 +3978,34 @@ app.post('/api/sync-pesquisas-por-caso/:nroCaso', async (req, res) => {
 // ============================================
 // ENDPOINT DE DETECÇÃO DE INCONSISTÊNCIAS
 // ============================================
+
+/**
+ * POST /api/sync-codigo-resolucao-incremental
+ * Sincroniza as trocas de código de resolução (AMScodigoresolucao_Modificacao)
+ * para codigo_resolucao_modificacoes_aranda. Usado pelo tipo de inconsistência
+ * troca_codigo_resolucao.
+ */
+app.post('/api/sync-codigo-resolucao-incremental', async (req, res) => {
+  let pool: sql.ConnectionPool | null = null;
+  try {
+    console.log('🚀 [API] Iniciando sincronização de trocas de código de resolução...');
+    pool = await sql.connect(sqlConfig);
+    const resultado = await sincronizarCodigoResolucaoIncremental(pool, supabase);
+    res.json(resultado);
+  } catch (error) {
+    console.error('❌ [API] Erro na sincronização de trocas de código de resolução:', error instanceof Error ? error.message : error);
+    res.status(500).json({
+      sucesso: false,
+      total_processados: 0,
+      sincronizados: 0,
+      ignorados: 0,
+      erros: 1,
+      mensagens: [`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`]
+    });
+  } finally {
+    if (pool) await pool.close();
+  }
+});
 
 /**
  * POST /api/detectar-inconsistencias

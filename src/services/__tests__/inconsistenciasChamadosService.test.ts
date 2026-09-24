@@ -155,3 +155,24 @@ describe('inconsistenciasChamadosService.enviarNotificacao', () => {
     ).rejects.toEqual({ message: 'violou constraint' });
   });
 });
+
+describe('inconsistenciasChamadosService.buscarEstatisticas', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('conta a troca de código de resolução por tipo e por origem', async () => {
+    vi.spyOn(inconsistenciasChamadosService, 'buscarInconsistencias').mockResolvedValue([
+      criarInconsistencia({ id: '1', tipo_inconsistencia: 'troca_codigo_resolucao' }),
+      criarInconsistencia({ id: '2', tipo_inconsistencia: 'troca_codigo_resolucao' }),
+      criarInconsistencia({ id: '3', tipo_inconsistencia: 'sem_atualizacao' }),
+    ]);
+
+    const estatisticas = await inconsistenciasChamadosService.buscarEstatisticas();
+
+    expect(estatisticas.total).toBe(3);
+    expect(estatisticas.por_tipo.troca_codigo_resolucao).toBe(2);
+    expect(estatisticas.por_tipo.sem_atualizacao).toBe(1);
+    expect(estatisticas.por_origem.tickets).toBe(3);
+  });
+});

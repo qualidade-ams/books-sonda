@@ -338,7 +338,8 @@ export class InconsistenciasChamadosService {
           mes_diferente: 0,
           tempo_excessivo: 0,
           ic_999999: 0,
-          sem_atualizacao: 0
+          sem_atualizacao: 0,
+          troca_codigo_resolucao: 0
         },
         por_origem: {
           apontamentos: 0,

@@ -24,6 +24,7 @@ export interface TabelasSincronizacao {
   especialistas: boolean;
   apontamentos: boolean;
   tickets: boolean;
+  codigoResolucao: boolean;
   detectarInconsistencias: boolean;
   dataInicial?: string; // formato YYYY-MM-DD
 }
@@ -46,6 +47,7 @@ export function SyncSelectionModal({
     especialistas: true,
     apontamentos: true,
     tickets: true,
+    codigoResolucao: true,
     detectarInconsistencias: true
   });
   const [dataInicial, setDataInicial] = useState<string>('');
@@ -73,13 +75,14 @@ export function SyncSelectionModal({
   };
 
   const handleSelecionarTodos = () => {
-    const todosSelecionados = tabelas.pesquisas && tabelas.especialistas && tabelas.apontamentos && tabelas.tickets;
+    const todosSelecionados = tabelas.pesquisas && tabelas.especialistas && tabelas.apontamentos && tabelas.tickets && tabelas.codigoResolucao;
     setTabelas(prev => ({
       ...prev,
       pesquisas: !todosSelecionados,
       especialistas: !todosSelecionados,
       apontamentos: !todosSelecionados,
-      tickets: !todosSelecionados
+      tickets: !todosSelecionados,
+      codigoResolucao: !todosSelecionados
     }));
   };
 
@@ -107,9 +110,9 @@ export function SyncSelectionModal({
     onConfirm(dadosSincronizacao);
   };
 
-  const todosSelecionados = tabelas.pesquisas && tabelas.especialistas && tabelas.apontamentos && tabelas.tickets;
-  const algumaSelecionada = tabelas.pesquisas || tabelas.especialistas || tabelas.apontamentos || tabelas.tickets || tabelas.detectarInconsistencias;
-  const quantidadeSelecionada = [tabelas.pesquisas, tabelas.especialistas, tabelas.apontamentos, tabelas.tickets].filter(v => v).length;
+  const todosSelecionados = tabelas.pesquisas && tabelas.especialistas && tabelas.apontamentos && tabelas.tickets && tabelas.codigoResolucao;
+  const algumaSelecionada = tabelas.pesquisas || tabelas.especialistas || tabelas.apontamentos || tabelas.tickets || tabelas.codigoResolucao || tabelas.detectarInconsistencias;
+  const quantidadeSelecionada = [tabelas.pesquisas, tabelas.especialistas, tabelas.apontamentos, tabelas.tickets, tabelas.codigoResolucao].filter(v => v).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -272,6 +275,27 @@ export function SyncSelectionModal({
                 </div>
               )}
             </div>
+
+            {/* AMScodigoresolucao_Modificacao */}
+            <div className="flex items-center space-x-3 p-3 bg-rose-50 dark:bg-rose-950 rounded-lg border border-rose-200 dark:border-rose-800">
+              <Checkbox
+                id="codigoResolucao"
+                checked={tabelas.codigoResolucao}
+                onCheckedChange={() => handleToggleTabela('codigoResolucao')}
+                className="h-5 w-5"
+              />
+              <div className="flex-1 cursor-pointer" onClick={() => handleToggleTabela('codigoResolucao')}>
+                <Label
+                  htmlFor="codigoResolucao"
+                  className="text-sm font-medium text-rose-900 dark:text-rose-100 cursor-pointer"
+                >
+                  🔁 AMScodigoresolucao_Modificacao
+                </Label>
+                <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
+                  {t('lancarPesquisas.amsCodigoResolucaoDesc')}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Divisor - Pós-processamento */}
@@ -302,7 +326,7 @@ export function SyncSelectionModal({
                 ⚠️ Detectar Inconsistências
               </Label>
               <p className="text-xs text-orange-700 dark:text-orange-300 mt-0.5">
-                Analisa chamados com IC 999999, sem atualização 16+ dias, mês diferente e tempo excessivo
+                Analisa chamados com IC 999999, sem atualização 16+ dias, mês diferente, tempo excessivo e troca de código de resolução
               </p>
             </div>
           </div>

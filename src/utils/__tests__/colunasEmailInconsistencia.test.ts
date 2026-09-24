@@ -43,6 +43,10 @@ describe('colunasEmailPorTipo', () => {
   it('Mês Diferente tem colunas Data Atividade e Data Sistema', () => {
     expect(titulos('mes_diferente')).toEqual(['Empresa', 'Chamado', 'Tarefa', 'Data Atividade', 'Data Sistema', 'Analista']);
   });
+
+  it('Troca de código de resolução tem código anterior, código atual e data da troca', () => {
+    expect(titulos('troca_codigo_resolucao')).toEqual(['Empresa', 'Chamado', 'Código Anterior', 'Código Atual', 'Data da Troca', 'Analista']);
+  });
 });
 
 describe('valorColunaEmail', () => {
@@ -74,5 +78,24 @@ describe('valorColunaEmail', () => {
     expect(valorColunaEmail('tempo', item, ctx)).toBe('-');
     expect(valorColunaEmail('data_atividade', item, ctx)).toBe('-');
     expect(valorColunaEmail('data_sistema', item, ctx)).toBe('-');
+  });
+
+  it('retorna códigos anterior/atual e a data da troca (data_atividade) da troca de código de resolução', () => {
+    const item = criarItem({
+      tipo_inconsistencia: 'troca_codigo_resolucao',
+      cod_resolucao_anterior: 'Manutenção de Específico (Banco=N |SLA=N)',
+      cod_resolucao: 'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+      data_atividade: '2026-09-22T20:49:28Z',
+    });
+    expect(valorColunaEmail('cod_anterior', item, ctx)).toBe('Manutenção de Específico (Banco=N |SLA=N)');
+    expect(valorColunaEmail('cod_atual', item, ctx)).toBe('Parametrização / Funcionalidade (Banco=S |SLA=N)');
+    expect(valorColunaEmail('data_troca', item, ctx)).toBe('22/09/2026');
+  });
+
+  it('usa "-" quando os códigos da troca estão vazios', () => {
+    const item = criarItem({ cod_resolucao_anterior: null, cod_resolucao: null, data_atividade: null });
+    expect(valorColunaEmail('cod_anterior', item, ctx)).toBe('-');
+    expect(valorColunaEmail('cod_atual', item, ctx)).toBe('-');
+    expect(valorColunaEmail('data_troca', item, ctx)).toBe('-');
   });
 });

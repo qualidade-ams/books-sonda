@@ -1845,6 +1845,7 @@ const ptBR = {
     excessiveTime: 'Tempo Excessivo',
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sem Atualização 16+ dias',
+    resolutionCodeChange: 'Troca de código de resolução',
     // Tabs
     tabDetected: 'Inconsistências Detectadas',
     tabHistory: 'Histórico de Inconsistências',
@@ -1980,6 +1981,7 @@ const ptBR = {
     amsApontamentoDesc: 'Apontamentos de horas e atividades',
     amsTickets: 'AMSticketsabertos',
     amsTicketsDesc: 'Tickets e chamados abertos',
+    amsCodigoResolucaoDesc: 'Trocas de código de resolução dos chamados',
     startDate: 'Data inicial para sincronização',
     syncFromDate: 'Sincronizar registros a partir de {{date}}',
     leaveEmptyForIncremental: 'Deixe vazio para usar a sincronização incremental automática',
