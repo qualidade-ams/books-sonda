@@ -21,6 +21,7 @@ import {
   Send,
   UsersRound,
   BarChart3,
+  DatabaseZap,
   Award,
   MessageSquare,
   Speech,
@@ -34,7 +35,8 @@ import {
   Eye,
   Palette,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -87,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
       return 'configuracoes';
     }
-    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias')) {
+    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias') || path.includes('/sincronizacao-sql-server')) {
       return 'administracao';
     }
     return null;
@@ -218,7 +220,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
       return 'configuracoes';
     }
-    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias')) {
+    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias') || path.includes('/sincronizacao-sql-server')) {
       return 'administracao';
     }
     return null;
@@ -353,6 +355,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: t('nav.inconsistencies'),
           path: '/admin/auditoria/inconsistencia-chamados',
           screenKey: 'inconsistencia_chamados'
+        },
+        {
+          icon: RefreshCw,
+          label: t('nav.ticketMonitoring'),
+          path: '/admin/auditoria/monitoramento-chamados',
+          screenKey: 'troca_codigo_resolucao'
         }
       ]
     },
@@ -431,6 +439,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: t('nav.monitoringTerms'),
           path: '/admin/monitoramento-vigencias',
           screenKey: 'monitoramento_vigencias'
+        },
+        {
+          icon: DatabaseZap,
+          label: t('nav.sqlServerSync'),
+          path: '/admin/sincronizacao-sql-server',
+          screenKey: 'sincronizacao_sql_server'
         },
         {
           icon: Palette,

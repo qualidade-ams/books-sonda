@@ -17,6 +17,7 @@ Caminhos relativos a `src/`. Um domínio sempre segue `types/ → services/ → 
 | **Email / Templates** | — | `emailService`, `clientBooksTemplateService` | `useEmailTemplates`, `useBookTemplates` | `EmailConfig` | `email/`, `templates/` |
 | **Auditoria / Monitoramento** | `audit.ts` | `auditService`, `auditLogger` | `useEmailLogs`, `useVigenciaMonitor` | `AuditLogs`, `MonitoramentoVigencias` | `auditoria/` |
 | **Clientes / Empresas / Taxas** | `clientBooks.ts` | — | — | `Clientes`, `EmpresasClientes`, `CadastroTaxasClientes` | `taxas/` |
+| **Sincronização SQL Server** (agendamentos, execução manual, histórico — roda no `sync-api/`) | `syncAgendamentos.ts` | `syncAgendamentosService`, `sqlServerSyncPesquisasService` (só consultas de última sincronização) | `useSyncAgendamentos`, `usePesquisasSqlServer` | `SincronizacaoSqlServer` | `sincronizacao/`, `pesquisas-satisfacao/SyncSelectionModal` |
 
 **Contexto cross-domain** (não pertencem a um domínio só): `contexts/PermissionsContext.tsx`, `hooks/useAuth.tsx`, `components/auth/ProtectedRoute.tsx`, `components/auth/ProtectedAction.tsx`, `services/clearAllAppCache.ts`, `components/admin/LayoutAdmin.tsx`, `components/admin/Sidebar.tsx`.
 
@@ -35,7 +36,7 @@ Confira aqui antes de criar tabela nova — o domínio provavelmente já tem ond
 | Plano de Ação | `planos_acao` |
 | Templates | `email_templates` |
 | Auditoria | `audit_logs`, `admin_notifications` |
-| Sincronização (via `sync-api/`) | `especialistas`, `apontamentos_aranda`, `apontamentos_tickets_aranda` |
+| Sincronização (via `sync-api/`) | `especialistas`, `apontamentos_aranda`, `apontamentos_tickets_aranda`, `sync_metadata`, `sync_agendamentos`, `sync_execucoes` |
 
 ## Dependências entre domínios
 

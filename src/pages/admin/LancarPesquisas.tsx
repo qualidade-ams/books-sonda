@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Database, ChevronLeft, ChevronRight, Filter, Search, X, FileText, Server, FileEdit } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Filter, Search, X, FileText, Server, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -23,21 +23,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { 
   PesquisaForm, 
   PesquisasTable, 
-  PesquisasExportButtons, 
-  SyncSelectionModal,
-  type TabelasSincronizacao
+  PesquisasExportButtons
 } from '@/components/admin/pesquisas-satisfacao';
 import { 
   usePesquisasSatisfacao, 
@@ -50,9 +42,6 @@ import {
   useCriarPesquisaComEspecialistas, 
   useAtualizarPesquisaComEspecialistas 
 } from '@/hooks/usePesquisasComEspecialistas';
-import { useUltimaSincronizacao } from '@/hooks/usePesquisasSqlServer';
-import { useSyncProcessing } from '@/contexts/SyncProcessingContext';
-import { useApiStatus } from '@/hooks/useApiStatus';
 import { useCacheManager } from '@/hooks/useCacheManager';
 
 import type { Pesquisa, PesquisaFormData, FiltrosPesquisas } from '@/types/pesquisasSatisfacao';
@@ -78,16 +67,10 @@ function LancarPesquisas() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
-  const [modalSelectionAberto, setModalSelectionAberto] = useState(false);
-
-  // Context global de sincronização
-  const { startSync, isSyncing } = useSyncProcessing();
 
   // Queries
   const { data: pesquisas = [], isLoading, refetch } = usePesquisasSatisfacao(filtros);
   const { data: estatisticas } = useEstatisticasPesquisas(filtros);
-  const { data: ultimaSincronizacao } = useUltimaSincronizacao();
-  const { data: apiOnline = false } = useApiStatus();
 
   // Mutations
   const criarPesquisa = useCriarPesquisaComEspecialistas();
@@ -204,20 +187,6 @@ function LancarPesquisas() {
     );
   };
 
-  const handleSincronizar = async () => {
-    // Abrir modal de seleção primeiro
-    setModalSelectionAberto(true);
-  };
-
-  const handleConfirmarSincronizacao = async (tabelas: TabelasSincronizacao) => {
-    // Fechar modal de seleção
-    setModalSelectionAberto(false);
-    
-    // Iniciar sincronização via contexto global (roda em background)
-    console.log('🔄 Iniciando sincronização global com tabelas selecionadas:', tabelas);
-    startSync(tabelas);
-  };
-
   const handleAtualizarFiltro = (campo: keyof FiltrosPesquisas, valor: any) => {
     setFiltros(prev => ({ ...prev, [campo]: valor }));
     setPaginaAtual(1); // Resetar para primeira página ao filtrar
@@ -297,41 +266,6 @@ function LancarPesquisas() {
               }}
               disabled={isLoading}
             />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    onClick={handleSincronizar}
-                    disabled={isSyncing || !apiOnline}
-                    className="relative"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Database className="h-4 w-4" />
-                        <div
-                          className={`absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-gray-800 ${
-                            apiOnline
-                              ? 'bg-blue-600 dark:bg-blue-500'
-                              : 'bg-red-600 dark:bg-red-500'
-                          }`}
-                        />
-                      </div>
-                      <span>
-                        {isSyncing ? t('lancarPesquisas.syncing') : t('lancarPesquisas.syncSqlServer')}
-                      </span>
-                    </div>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {apiOnline
-                      ? t('lancarPesquisas.apiOnline')
-                      : t('lancarPesquisas.apiOffline')}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <ProtectedAction screenKey="lancar_pesquisas" requiredLevel="edit">
               <Button onClick={handleNovoPesquisa}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -573,12 +507,6 @@ function LancarPesquisas() {
       </Dialog>
 
       {/* Modal de Seleção de Tabelas */}
-      <SyncSelectionModal
-        open={modalSelectionAberto}
-        onOpenChange={setModalSelectionAberto}
-        onConfirm={handleConfirmarSincronizacao}
-        isLoading={isSyncing}
-      />
 
       </div>
     </LayoutAdmin>

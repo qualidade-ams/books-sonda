@@ -14,8 +14,15 @@ import type {
   InconsistenciasChamadosFiltros,
   InconsistenciasChamadosEstatisticas,
   EnviosPorInconsistencia,
-  EnviarNotificacaoRequest
+  EnviarNotificacaoRequest,
+  TarefasAntesDaTroca
 } from '@/types/inconsistenciasChamados';
+
+/** Minutos em HH:MM, sem truncar acima de 99 horas */
+function formatarMinutosHHMM(minutos: number): string {
+  const horas = Math.floor(minutos / 60);
+  return `${String(horas).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
+}
 
 export class InconsistenciasChamadosService {
 
@@ -152,6 +159,11 @@ export class InconsistenciasChamadosService {
           );
         }
 
+        // Tipos exibidos pela tela (a troca de código de resolução tem tela própria)
+        if (filtros?.tipos?.length) {
+          query = query.in('tipo_inconsistencia', filtros.tipos);
+        }
+
         // Filtro por tipo de inconsistência
         if (filtros?.tipo_inconsistencia && filtros.tipo_inconsistencia !== 'all') {
           query = query.eq('tipo_inconsistencia', filtros.tipo_inconsistencia);
@@ -254,6 +266,11 @@ export class InconsistenciasChamadosService {
           query = query.or(
             `data_atividade.lte.${filtros.data_fim},data_sistema.lte.${filtros.data_fim}`
           );
+        }
+
+        // Tipos exibidos pela tela (a troca de código de resolução tem tela própria)
+        if (filtros?.tipos?.length) {
+          query = query.in('tipo_inconsistencia', filtros.tipos);
         }
 
         // Filtro por tipo de inconsistência
@@ -395,6 +412,45 @@ export class InconsistenciasChamadosService {
     }
 
     return envios;
+  }
+
+  /**
+   * Tarefas do chamado lançadas (data_sistema) antes da troca de código de resolução,
+   * usadas na soma da coluna Tempo. Mesmo critério do TIPO 5 de detectar_inconsistencias().
+   * Na troca, data_atividade guarda a data/hora da troca e nro_chamado vem com prefixo ("RF 123").
+   */
+  async buscarTarefasAntesDaTroca(inconsistencia: InconsistenciaChamado): Promise<TarefasAntesDaTroca> {
+    if (!inconsistencia.data_atividade) {
+      return { tarefas: [], total_minutos: 0, total_horas: formatarMinutosHHMM(0) };
+    }
+
+    const nroSolicitacao = inconsistencia.nro_chamado.replace(/^(RF|IM|PM) /, '');
+
+    const { data, error } = await supabase
+      .from('apontamentos_aranda')
+      .select('nro_tarefa, data_sistema, analista_tarefa, tempo_gasto_minutos')
+      .eq('nro_chamado', nroSolicitacao)
+      .lt('data_sistema', inconsistencia.data_atividade)
+      .order('data_sistema', { ascending: true });
+
+    if (error) {
+      console.error('❌ Erro ao buscar tarefas da troca de código de resolução:', error.message);
+      throw error;
+    }
+
+    const tarefas = ((data as any[]) || []).map(row => {
+      const minutos = Math.round(Number(row.tempo_gasto_minutos) || 0);
+      return {
+        nro_tarefa: row.nro_tarefa ?? null,
+        data_sistema: row.data_sistema,
+        analista: row.analista_tarefa ?? null,
+        tempo_gasto_minutos: minutos,
+        tempo_gasto_horas: formatarMinutosHHMM(minutos),
+      };
+    });
+    const totalMinutos = tarefas.reduce((soma, t) => soma + t.tempo_gasto_minutos, 0);
+
+    return { tarefas, total_minutos: totalMinutos, total_horas: formatarMinutosHHMM(totalMinutos) };
   }
 
   /**

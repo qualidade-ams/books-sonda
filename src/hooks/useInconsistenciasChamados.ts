@@ -5,7 +5,8 @@ import type {
   InconsistenciasChamadosFiltros,
   InconsistenciasChamadosEstatisticas,
   EnviosPorInconsistencia,
-  EnviarNotificacaoRequest
+  EnviarNotificacaoRequest,
+  TarefasAntesDaTroca
 } from '@/types/inconsistenciasChamados';
 
 /**
@@ -91,6 +92,22 @@ export function useEnviosEmailInconsistencias(ids: string[]) {
   });
 
   return { envios, isLoading };
+}
+
+/**
+ * Hook para buscar as tarefas lançadas antes da troca de código de resolução
+ * (usadas na soma da coluna Tempo). Só consulta para o tipo troca_codigo_resolucao.
+ */
+export function useTarefasAntesDaTroca(inconsistencia: InconsistenciaChamado | null) {
+  const habilitado = inconsistencia?.tipo_inconsistencia === 'troca_codigo_resolucao';
+  const { data: dados, isLoading } = useQuery<TarefasAntesDaTroca>({
+    queryKey: ['inconsistencias-chamados', 'tarefas-antes-da-troca', inconsistencia?.id],
+    queryFn: () => inconsistenciasChamadosService.buscarTarefasAntesDaTroca(inconsistencia),
+    enabled: habilitado,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+
+  return { dados, isLoading: habilitado && isLoading };
 }
 
 /**

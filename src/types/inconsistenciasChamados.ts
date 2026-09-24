@@ -53,6 +53,8 @@ export interface InconsistenciaChamado {
 }
 
 export interface InconsistenciasChamadosFiltros {
+  /** Tipos exibidos pela tela; vazio/ausente = todos */
+  tipos?: TipoInconsistencia[];
   busca?: string;
   tipo_inconsistencia?: TipoInconsistencia | 'all';
   origem?: OrigemInconsistencia | 'all';
@@ -98,6 +100,24 @@ export interface EnvioEmailInconsistencia {
 /** Envios agrupados por id da inconsistência, do mais recente para o mais antigo */
 export type EnviosPorInconsistencia = Record<string, EnvioEmailInconsistencia[]>;
 
+/**
+ * Tarefa (apontamentos_aranda) lançada antes de uma troca de código de resolução.
+ * A soma dessas tarefas é o tempo que passou a ser / deixou de ser cobrado do banco de horas.
+ */
+export interface TarefaAntesDaTroca {
+  nro_tarefa: string | null;
+  data_sistema: string;
+  analista: string | null;
+  tempo_gasto_minutos: number;
+  tempo_gasto_horas: string;
+}
+
+export interface TarefasAntesDaTroca {
+  tarefas: TarefaAntesDaTroca[];
+  total_minutos: number;
+  total_horas: string;
+}
+
 export interface EnviarNotificacaoRequest {
   inconsistencias: InconsistenciaChamado[];
   mes_referencia?: number;
@@ -135,6 +155,12 @@ export const TIPO_INCONSISTENCIA_COLORS: Record<TipoInconsistencia, string> = {
 export const TIPO_INCONSISTENCIA_ORDEM: TipoInconsistencia[] = [
   'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao', 'troca_codigo_resolucao'
 ];
+
+// Tipos exibidos em cada tela: a troca de código de resolução tem tela própria
+export const TIPOS_TELA_TROCA_CODIGO_RESOLUCAO: TipoInconsistencia[] = ['troca_codigo_resolucao'];
+export const TIPOS_TELA_INCONSISTENCIAS: TipoInconsistencia[] = TIPO_INCONSISTENCIA_ORDEM.filter(
+  tipo => !TIPOS_TELA_TROCA_CODIGO_RESOLUCAO.includes(tipo)
+);
 
 // Hex equivalentes às classes Tailwind de TIPO_INCONSISTENCIA_COLORS, para uso em HTML de email (não processa Tailwind)
 export const TIPO_INCONSISTENCIA_COR_EMAIL_HEX: Record<TipoInconsistencia, { bg: string; text: string }> = {

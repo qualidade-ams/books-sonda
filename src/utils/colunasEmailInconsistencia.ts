@@ -31,7 +31,7 @@ const COLUNAS_POR_TIPO: Record<TipoInconsistencia, ColunaEmail[]> = {
   ic_999999: [EMPRESA, CHAMADO, ANALISTA],
   tempo_excessivo: [EMPRESA, CHAMADO, TAREFA, TEMPO, ANALISTA],
   mes_diferente: [EMPRESA, CHAMADO, TAREFA, DATA_ATIVIDADE, DATA_SISTEMA, ANALISTA],
-  troca_codigo_resolucao: [EMPRESA, CHAMADO, COD_ANTERIOR, COD_ATUAL, DATA_TROCA, ANALISTA],
+  troca_codigo_resolucao: [EMPRESA, CHAMADO, COD_ANTERIOR, COD_ATUAL, DATA_TROCA, TEMPO, ANALISTA],
 };
 
 export function colunasEmailPorTipo(tipo: TipoInconsistencia): ColunaEmail[] {

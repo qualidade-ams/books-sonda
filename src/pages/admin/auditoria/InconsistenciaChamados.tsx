@@ -25,13 +25,15 @@ import {
 import {
   useInconsistenciasChamados, useInconsistenciasEstatisticas,
   useInconsistenciasResolvidas, useEnviosEmailInconsistencias, useEnviarNotificacao,
-  useArquivarInconsistencia
+  useArquivarInconsistencia, useTarefasAntesDaTroca
 } from '@/hooks/useInconsistenciasChamados';
+import { TarefasAntesDaTrocaTabela } from '@/components/admin/inconsistencias/TarefasAntesDaTrocaTabela';
 import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailEnviadoIndicador';
 import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import { passaFiltroEnvioEmail, type FiltroEnvioEmail } from '@/utils/filtroEnvioEmail';
 import { colunasEmailPorTipo, valorColunaEmail } from '@/utils/colunasEmailInconsistencia';
 import type { InconsistenciasChamadosFiltros, InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
+import { TIPOS_TELA_INCONSISTENCIAS } from '@/types/inconsistenciasChamados';
 import {
   TIPO_INCONSISTENCIA_LABELS, TIPO_INCONSISTENCIA_COLORS, TIPO_INCONSISTENCIA_ORDEM,
   TIPO_INCONSISTENCIA_COR_EMAIL_HEX, ACAO_CORRECAO_TEXTO,
@@ -246,7 +248,18 @@ export function montarTextoGestorIC999999(
   return segmentos.join('; ');
 }
 
-export default function InconsistenciaChamados() {
+interface InconsistenciaChamadosProps {
+  /** Tipos exibidos pela tela (a troca de código de resolução tem tela própria) */
+  tipos?: TipoInconsistencia[];
+  titulo?: string;
+  subtitulo?: string;
+}
+
+export default function InconsistenciaChamados({
+  tipos = TIPOS_TELA_INCONSISTENCIAS,
+  titulo,
+  subtitulo,
+}: InconsistenciaChamadosProps = {}) {
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -299,9 +312,10 @@ export default function InconsistenciaChamados() {
   const [enviandoEmail, setEnviandoEmail] = useState(false);
 
   // Hooks de dados
-  const { inconsistencias, isLoading, refetch } = useInconsistenciasChamados(filtros);
-  const { estatisticas, isLoading: isLoadingStats } = useInconsistenciasEstatisticas(filtros);
-  const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtros);
+  const filtrosDaTela = React.useMemo(() => ({ ...filtros, tipos }), [filtros, tipos]);
+  const { inconsistencias, isLoading, refetch } = useInconsistenciasChamados(filtrosDaTela);
+  const { estatisticas, isLoading: isLoadingStats } = useInconsistenciasEstatisticas(filtrosDaTela);
+  const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtrosDaTela);
   const { enviarNotificacaoAsync } = useEnviarNotificacao();
   const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
 
@@ -713,6 +727,10 @@ Atenciosamente.`;
     ...resolvidas.map(inc => inc.id),
   ]);
 
+  // Tarefas somadas na coluna Tempo da troca de código de resolução (modal de detalhes)
+  const { dados: tarefasTroca, isLoading: isLoadingTarefasTroca } =
+    useTarefasAntesDaTroca(showViewModal ? selectedInconsistencia : null);
+
   const inconsistenciasFiltradas = inconsistencias.filter(inc => {
     if (!passaFiltroEnvioEmail(inc.id, enviosPorInconsistencia, filtroEnvioEmail)) return false;
     // Filtro local de cód. resolução
@@ -825,7 +843,7 @@ Atenciosamente.`;
     <div className="space-y-4 pt-4 border-t">
       <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
         <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setCurrentPage(1); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
-        <div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem><SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem><SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem><SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem><SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem><SelectItem value="troca_codigo_resolucao">{t('inconsistencias.resolutionCodeChange')}</SelectItem></SelectContent></Select></div>
+        {tipos.length > 1 && (<div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem>{tipos.includes('mes_diferente') && <SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem>}{tipos.includes('tempo_excessivo') && <SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem>}{tipos.includes('ic_999999') && <SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem>}{tipos.includes('sem_atualizacao') && <SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem>}{tipos.includes('troca_codigo_resolucao') && <SelectItem value="troca_codigo_resolucao">{t('inconsistencias.resolutionCodeChange')}</SelectItem>}</SelectContent></Select></div>)}
         <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasDaAba.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
         <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, origem: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
         <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
@@ -843,9 +861,9 @@ Atenciosamente.`;
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {t('inconsistencias.title')}
+              {titulo ?? t('inconsistencias.title')}
             </h1>
-            <p className="text-muted-foreground mt-1">{t('inconsistencias.subtitle')}</p>
+            <p className="text-muted-foreground mt-1">{subtitulo ?? t('inconsistencias.subtitle')}</p>
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-2" />{t('common.export')}</Button>
@@ -863,13 +881,13 @@ Atenciosamente.`;
         </div>
 
         {/* Cards de Estatísticas */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400"><div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{t('inconsistencias.totalInconsistencies')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{estatisticas?.total || 0}</div>}</CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-yellow-600"><div className="flex items-center gap-2"><Calendar className="h-4 w-4" />{t('inconsistencias.differentMonth')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-yellow-600">{estatisticas?.por_tipo.mes_diferente || 0}</div>}</CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-orange-600"><div className="flex items-center gap-2"><Clock className="h-4 w-4" />{t('inconsistencias.excessiveTime')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-orange-600">{estatisticas?.por_tipo.tempo_excessivo || 0}</div>}</CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-purple-600"><div className="flex items-center gap-2"><Settings className="h-4 w-4" />{t('inconsistencias.ic999999')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-purple-600">{estatisticas?.por_tipo.ic_999999 || 0}</div>}</CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-sky-600"><div className="flex items-center gap-2"><Clock className="h-4 w-4" />{t('inconsistencias.noUpdate16Days')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-sky-600">{estatisticas?.por_tipo.sem_atualizacao || 0}</div>}</CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-rose-600"><div className="flex items-center gap-2"><RefreshCw className="h-4 w-4" />{t('inconsistencias.resolutionCodeChange')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-rose-600">{estatisticas?.por_tipo.troca_codigo_resolucao || 0}</div>}</CardContent></Card>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+          {tipos.length > 1 && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400"><div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{t('inconsistencias.totalInconsistencies')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{estatisticas?.total || 0}</div>}</CardContent></Card>)}
+          {tipos.includes('mes_diferente') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-yellow-600"><div className="flex items-center gap-2"><Calendar className="h-4 w-4" />{t('inconsistencias.differentMonth')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-yellow-600">{estatisticas?.por_tipo.mes_diferente || 0}</div>}</CardContent></Card>)}
+          {tipos.includes('tempo_excessivo') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-orange-600"><div className="flex items-center gap-2"><Clock className="h-4 w-4" />{t('inconsistencias.excessiveTime')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-orange-600">{estatisticas?.por_tipo.tempo_excessivo || 0}</div>}</CardContent></Card>)}
+          {tipos.includes('ic_999999') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-purple-600"><div className="flex items-center gap-2"><Settings className="h-4 w-4" />{t('inconsistencias.ic999999')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-purple-600">{estatisticas?.por_tipo.ic_999999 || 0}</div>}</CardContent></Card>)}
+          {tipos.includes('sem_atualizacao') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-sky-600"><div className="flex items-center gap-2"><Clock className="h-4 w-4" />{t('inconsistencias.noUpdate16Days')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-sky-600">{estatisticas?.por_tipo.sem_atualizacao || 0}</div>}</CardContent></Card>)}
+          {tipos.includes('troca_codigo_resolucao') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-rose-600"><div className="flex items-center gap-2"><RefreshCw className="h-4 w-4" />{t('inconsistencias.resolutionCodeChange')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-rose-600">{estatisticas?.por_tipo.troca_codigo_resolucao || 0}</div>}</CardContent></Card>)}
         </div>
 
         {/* Navegação por Ano */}
@@ -1075,6 +1093,12 @@ Atenciosamente.`;
                 </div>
               )}
               <div><Label className="text-sm font-medium text-gray-700">{t('inconsistencias.inconsistencyDescription')}</Label><div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"><p className="text-sm text-yellow-800">{selectedInconsistencia.descricao_inconsistencia}</p></div></div>
+              {selectedInconsistencia.tipo_inconsistencia === 'troca_codigo_resolucao' && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Tarefas apontadas antes da troca</Label>
+                  <div className="mt-2"><TarefasAntesDaTrocaTabela dados={tarefasTroca} isLoading={isLoadingTarefasTroca} /></div>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter><Button type="button" variant="outline" onClick={() => setShowViewModal(false)}>{t('common.close')}</Button></DialogFooter>

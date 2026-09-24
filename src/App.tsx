@@ -7,13 +7,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { BooksProcessingProvider } from "@/contexts/BooksProcessingContext";
-import { SyncProcessingProvider } from "@/contexts/SyncProcessingContext";
 import GlobalErrorBoundary from "@/components/errors/GlobalErrorBoundary";
 import PermissionErrorBoundary from "@/components/errors/PermissionErrorBoundary";
 import { AutoSchedulerInitializer } from "@/components/admin/AutoSchedulerInitializer";
 import { CacheInitializer } from "@/components/admin/CacheInitializer";
 import { BooksProcessingIndicator } from "@/components/admin/BooksProcessingIndicator";
-import { SyncProcessingIndicator } from "@/components/admin/SyncProcessingIndicator";
 import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import EmailConfig from "./pages/admin/EmailConfig";
@@ -35,6 +33,7 @@ import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesC
 import ConfigurarPermissoesVigencias from "./pages/admin/ConfigurarPermissoesVigencias";
 import AuditLogs from "./pages/admin/AuditLogs";
 import MonitoramentoVigencias from "./pages/admin/MonitoramentoVigencias";
+import SincronizacaoSqlServer from "./pages/admin/SincronizacaoSqlServer";
 import LancarRequerimentos from "./pages/admin/LancarRequerimentos";
 import FaturarRequerimentos from "./pages/admin/FaturarRequerimentos";
 import LancarPesquisas from "./pages/admin/LancarPesquisas";
@@ -48,6 +47,7 @@ import PlanoAcao from "./pages/admin/PlanoAcao";
 import CadastroTaxasClientes from "./pages/admin/CadastroTaxasClientes";
 import DesignSystem from "./pages/admin/DesignSystem";
 import InconsistenciaChamados from "./pages/admin/auditoria/InconsistenciaChamados";
+import MonitoramentoChamados from "./pages/admin/auditoria/MonitoramentoChamados";
 import BookPrintView from "./pages/pdf/BookPrintView";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
@@ -65,11 +65,9 @@ const App = () => (
           <PermissionErrorBoundary>
             <TooltipProvider>
               <BooksProcessingProvider>
-              <SyncProcessingProvider>
               <CacheInitializer />
               <AutoSchedulerInitializer />
               <BooksProcessingIndicator />
-              <SyncProcessingIndicator />
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -97,6 +95,7 @@ const App = () => (
                   <Route path="/admin/configurar-permissoes-vigencias" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesVigencias /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />
                   <Route path="/admin/monitoramento-vigencias" element={<ProtectedRoute screenKey="monitoramento_vigencias"><MonitoramentoVigencias /></ProtectedRoute>} />
+                  <Route path="/admin/sincronizacao-sql-server" element={<ProtectedRoute screenKey="sincronizacao_sql_server"><SincronizacaoSqlServer /></ProtectedRoute>} />
                   <Route path="/admin/lancar-requerimentos" element={<ProtectedRoute screenKey="lancar_requerimentos"><LancarRequerimentos /></ProtectedRoute>} />
                   <Route path="/admin/faturar-requerimentos" element={<ProtectedRoute screenKey="faturar_requerimentos"><FaturarRequerimentos /></ProtectedRoute>} />
                   <Route path="/admin/lancar-pesquisas" element={<ProtectedRoute screenKey="lancar_pesquisas"><LancarPesquisas /></ProtectedRoute>} />
@@ -110,6 +109,7 @@ const App = () => (
                   <Route path="/admin/cadastro-taxas-clientes" element={<ProtectedRoute screenKey="cadastro_taxas_clientes"><CadastroTaxasClientes /></ProtectedRoute>} />
                   <Route path="/admin/design-system" element={<ProtectedRoute screenKey="design_system"><DesignSystem /></ProtectedRoute>} />
                   <Route path="/admin/auditoria/inconsistencia-chamados" element={<ProtectedRoute screenKey="inconsistencia_chamados"><InconsistenciaChamados /></ProtectedRoute>} />
+                  <Route path="/admin/auditoria/monitoramento-chamados" element={<ProtectedRoute screenKey="troca_codigo_resolucao"><MonitoramentoChamados /></ProtectedRoute>} />
 
                   {/* Rota dedicada para impressão/PDF - SEM MODAL */}
                   <Route path="/pdf/book/:id" element={<BookPrintView />} />
@@ -127,7 +127,6 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
-              </SyncProcessingProvider>
               </BooksProcessingProvider>
             </TooltipProvider>
           </PermissionErrorBoundary>

@@ -17,6 +17,10 @@ import { sincronizarTicketsIncremental } from './services/incrementalSyncTickets
 import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from './services/incrementalSyncPesquisasService';
 import { executarDeteccaoInconsistencias } from './services/inconsistenciasDeteccaoService';
 import { sincronizarCodigoResolucaoIncremental } from './services/incrementalSyncCodigoResolucaoService';
+import { criarDeteccaoAjustesRetroativos } from './services/deteccaoAjustesRetroativosService';
+import { criarOrquestradorSync } from './scheduler/orquestradorSync';
+import { criarAgendador } from './scheduler/agendador';
+import { criarRotasSyncJobs } from './scheduler/rotas';
 
 const app = express();
 app.use(cors());
@@ -481,6 +485,40 @@ app.get('/health', (req, res) => {
  * Retorna diferenças e possíveis registros faltantes
  */
 app.get('/api/validate-sync', async (req, res) => {
+  let pool: sql.ConnectionPool | null = null;
+
+  try {
+    console.log('🔍 [VALIDATE] Iniciando validação de sincronização...');
+
+    // Conectar ao SQL Server
+    pool = await sql.connect(sqlConfig);
+    console.log('✅ [VALIDATE] Conectado ao SQL Server');
+
+    const resultado = await executarValidacaoSync(pool);
+
+    // Fechar conexão
+    await pool.close();
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('❌ [VALIDATE] Erro fatal na validação:', error);
+    if (pool) {
+      try { await pool.close(); } catch (e) { /* ignore */ }
+    }
+    res.status(500).json({
+      timestamp: new Date().toISOString(),
+      tabelas: {},
+      resumo: { total_tabelas: 0, tabelas_ok: 0, tabelas_com_diferenca: 0, tabelas_com_erro: 0 },
+      erro: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Compara a contagem de registros SQL Server x Supabase por tabela.
+ * Não abre nem fecha o pool — quem chama é responsável por ele.
+ */
+export async function executarValidacaoSync(pool: sql.ConnectionPool) {
   const resultado = {
     timestamp: new Date().toISOString(),
     tabelas: {} as Record<string, any>,
@@ -492,253 +530,231 @@ app.get('/api/validate-sync', async (req, res) => {
     }
   };
 
-  let pool: sql.ConnectionPool | null = null;
-
+  // ==========================================
+  // 1. VALIDAR PESQUISAS (AMSpesquisa)
+  // ==========================================
   try {
-    console.log('🔍 [VALIDATE] Iniciando validação de sincronização...');
+    console.log('📊 [VALIDATE] Validando pesquisas...');
     
-    // Conectar ao SQL Server
-    pool = await sql.connect(sqlConfig);
-    console.log('✅ [VALIDATE] Conectado ao SQL Server');
+    // Contar no SQL Server (com os mesmos filtros do sync)
+    const querySqlPesquisas = `
+      SELECT COUNT(*) as total
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+        AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+        AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
+    `;
+    const resultSqlPesquisas = await pool.request().query(querySqlPesquisas);
+    const totalSqlPesquisas = resultSqlPesquisas.recordset[0].total;
 
-    // ==========================================
-    // 1. VALIDAR PESQUISAS (AMSpesquisa)
-    // ==========================================
-    try {
-      console.log('📊 [VALIDATE] Validando pesquisas...');
-      
-      // Contar no SQL Server (com os mesmos filtros do sync)
-      const querySqlPesquisas = `
-        SELECT COUNT(*) as total
-        FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-        WHERE (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
-          AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
-          AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
-      `;
-      const resultSqlPesquisas = await pool.request().query(querySqlPesquisas);
-      const totalSqlPesquisas = resultSqlPesquisas.recordset[0].total;
+    // Contar registros sem Data_Ultima_Modificacao (possíveis perdidos)
+    const querySemModificacao = `
+      SELECT COUNT(*) as total
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE [Data_Ultima_Modificacao (Year)] IS NULL
+        AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+        AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+        AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
+    `;
+    const resultSemModificacao = await pool.request().query(querySemModificacao);
+    const totalSemModificacao = resultSemModificacao.recordset[0].total;
 
-      // Contar registros sem Data_Ultima_Modificacao (possíveis perdidos)
-      const querySemModificacao = `
-        SELECT COUNT(*) as total
-        FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-        WHERE [Data_Ultima_Modificacao (Year)] IS NULL
-          AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
-          AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
-          AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
-      `;
-      const resultSemModificacao = await pool.request().query(querySemModificacao);
-      const totalSemModificacao = resultSemModificacao.recordset[0].total;
+    // Contar no Supabase
+    const { count: totalSupabasePesquisas, error: errPesquisas } = await supabase
+      .from('pesquisas_satisfacao')
+      .select('*', { count: 'exact', head: true })
+      .eq('origem', 'sql_server');
+    
+    if (errPesquisas) throw errPesquisas;
 
-      // Contar no Supabase
-      const { count: totalSupabasePesquisas, error: errPesquisas } = await supabase
-        .from('pesquisas_satisfacao')
-        .select('*', { count: 'exact', head: true })
-        .eq('origem', 'sql_server');
-      
-      if (errPesquisas) throw errPesquisas;
+    const diferenca = totalSqlPesquisas - (totalSupabasePesquisas || 0);
+    
+    resultado.tabelas['pesquisas'] = {
+      sql_server: totalSqlPesquisas,
+      supabase: totalSupabasePesquisas || 0,
+      diferenca: diferenca,
+      sem_data_modificacao: totalSemModificacao,
+      status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`,
+      nota: totalSemModificacao > 0 
+        ? `⚠️ ${totalSemModificacao} registros no SQL Server sem Data_Ultima_Modificacao (não são capturados pelo sync incremental)` 
+        : null
+    };
 
-      const diferenca = totalSqlPesquisas - (totalSupabasePesquisas || 0);
-      
-      resultado.tabelas['pesquisas'] = {
-        sql_server: totalSqlPesquisas,
-        supabase: totalSupabasePesquisas || 0,
-        diferenca: diferenca,
-        sem_data_modificacao: totalSemModificacao,
-        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`,
-        nota: totalSemModificacao > 0 
-          ? `⚠️ ${totalSemModificacao} registros no SQL Server sem Data_Ultima_Modificacao (não são capturados pelo sync incremental)` 
-          : null
-      };
-
-      // Log detalhado da validação de pesquisas
-      const statusPesquisas = diferenca === 0 ? '✅' : '⚠️';
-      console.log(`   ${statusPesquisas} pesquisas: SQL Server=${totalSqlPesquisas} | Supabase=${totalSupabasePesquisas || 0} | Diferença=${diferenca}`);
-      if (totalSemModificacao > 0) {
-        console.log(`   ⚠️  └─ ${totalSemModificacao} registros sem Data_Ultima_Modificacao (não capturados pelo sync incremental)`);
-      }
-      
-      resultado.resumo.total_tabelas++;
-      if (diferenca === 0) resultado.resumo.tabelas_ok++;
-      else resultado.resumo.tabelas_com_diferenca++;
-      
-    } catch (error) {
-      console.error('❌ [VALIDATE] Erro ao validar pesquisas:', error);
-      resultado.tabelas['pesquisas'] = { 
-        status: '❌ ERRO', 
-        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
-      };
-      resultado.resumo.total_tabelas++;
-      resultado.resumo.tabelas_com_erro++;
+    // Log detalhado da validação de pesquisas
+    const statusPesquisas = diferenca === 0 ? '✅' : '⚠️';
+    console.log(`   ${statusPesquisas} pesquisas: SQL Server=${totalSqlPesquisas} | Supabase=${totalSupabasePesquisas || 0} | Diferença=${diferenca}`);
+    if (totalSemModificacao > 0) {
+      console.log(`   ⚠️  └─ ${totalSemModificacao} registros sem Data_Ultima_Modificacao (não capturados pelo sync incremental)`);
     }
-
-    // ==========================================
-    // 2. VALIDAR ESPECIALISTAS (AMSespecialistas)
-    // ==========================================
-    try {
-      console.log('📊 [VALIDATE] Validando especialistas...');
-      
-      const resultSqlEsp = await pool.request().query('SELECT COUNT(*) as total FROM AMSespecialistas');
-      const totalSqlEsp = resultSqlEsp.recordset[0].total;
-
-      // Contar ativos no SQL
-      const resultSqlEspAtivos = await pool.request().query("SELECT COUNT(*) as total FROM AMSespecialistas WHERE user_active = 1");
-      const totalSqlEspAtivos = resultSqlEspAtivos.recordset[0].total;
-
-      const { count: totalSupabaseEsp, error: errEsp } = await supabase
-        .from('especialistas')
-        .select('*', { count: 'exact', head: true })
-        .eq('origem', 'sql_server');
-      
-      if (errEsp) throw errEsp;
-
-      // Especialistas sincroniza TODOS (ativos + inativos) mas marca inativos
-      const diferenca = totalSqlEsp - (totalSupabaseEsp || 0);
-      
-      resultado.tabelas['especialistas'] = {
-        sql_server_total: totalSqlEsp,
-        sql_server_ativos: totalSqlEspAtivos,
-        supabase: totalSupabaseEsp || 0,
-        diferenca: diferenca,
-        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
-      };
-
-      // Log detalhado da validação de especialistas
-      const statusEsp = diferenca === 0 ? '✅' : '⚠️';
-      console.log(`   ${statusEsp} especialistas: SQL Server=${totalSqlEsp} (ativos: ${totalSqlEspAtivos}) | Supabase=${totalSupabaseEsp || 0} | Diferença=${diferenca}`);
-      
-      resultado.resumo.total_tabelas++;
-      if (diferenca === 0) resultado.resumo.tabelas_ok++;
-      else resultado.resumo.tabelas_com_diferenca++;
-      
-    } catch (error) {
-      console.error('❌ [VALIDATE] Erro ao validar especialistas:', error);
-      resultado.tabelas['especialistas'] = { 
-        status: '❌ ERRO', 
-        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
-      };
-      resultado.resumo.total_tabelas++;
-      resultado.resumo.tabelas_com_erro++;
-    }
-
-    // ==========================================
-    // 3. VALIDAR APONTAMENTOS (AMSapontamento)
-    // ==========================================
-    try {
-      console.log('📊 [VALIDATE] Validando apontamentos...');
-      
-      const querySqlAp = `
-        SELECT COUNT(*) as total
-        FROM AMSapontamento
-        WHERE Data_Ult_Modificacao_Geral IS NOT NULL
-          AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
-      `;
-      const resultSqlAp = await pool.request().query(querySqlAp);
-      const totalSqlAp = resultSqlAp.recordset[0].total;
-
-      const { count: totalSupabaseAp, error: errAp } = await supabase
-        .from('apontamentos_aranda')
-        .select('*', { count: 'exact', head: true })
-        .eq('origem', 'sql_server');
-      
-      if (errAp) throw errAp;
-
-      const diferenca = totalSqlAp - (totalSupabaseAp || 0);
-      
-      resultado.tabelas['apontamentos'] = {
-        sql_server: totalSqlAp,
-        supabase: totalSupabaseAp || 0,
-        diferenca: diferenca,
-        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
-      };
-
-      // Log detalhado da validação de apontamentos
-      const statusAp = diferenca === 0 ? '✅' : '⚠️';
-      console.log(`   ${statusAp} apontamentos: SQL Server=${totalSqlAp} | Supabase=${totalSupabaseAp || 0} | Diferença=${diferenca}`);
-      
-      resultado.resumo.total_tabelas++;
-      if (diferenca === 0) resultado.resumo.tabelas_ok++;
-      else resultado.resumo.tabelas_com_diferenca++;
-      
-    } catch (error) {
-      console.error('❌ [VALIDATE] Erro ao validar apontamentos:', error);
-      resultado.tabelas['apontamentos'] = { 
-        status: '❌ ERRO', 
-        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
-      };
-      resultado.resumo.total_tabelas++;
-      resultado.resumo.tabelas_com_erro++;
-    }
-
-    // ==========================================
-    // 4. VALIDAR TICKETS (AMSticketsabertos)
-    // ==========================================
-    try {
-      console.log('📊 [VALIDATE] Validando tickets...');
-      
-      const resultSqlTickets = await pool.request().query(`
-        SELECT COUNT(*) as total FROM AMSticketsabertos
-        WHERE Data_Ultima_Modificacao IS NOT NULL
-          AND (Nome_grupo NOT LIKE 'AMS SAP%' OR Nome_grupo IS NULL)
-      `);
-      const totalSqlTickets = resultSqlTickets.recordset[0].total;
-
-      const { count: totalSupabaseTickets, error: errTickets } = await supabase
-        .from('apontamentos_tickets_aranda')
-        .select('*', { count: 'exact', head: true });
-      
-      if (errTickets) throw errTickets;
-
-      const diferenca = totalSqlTickets - (totalSupabaseTickets || 0);
-      
-      resultado.tabelas['tickets'] = {
-        sql_server: totalSqlTickets,
-        supabase: totalSupabaseTickets || 0,
-        diferenca: diferenca,
-        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
-      };
-
-      // Log detalhado da validação de tickets
-      const statusTickets = diferenca === 0 ? '✅' : '⚠️';
-      console.log(`   ${statusTickets} tickets: SQL Server=${totalSqlTickets} | Supabase=${totalSupabaseTickets || 0} | Diferença=${diferenca}`);
-      
-      resultado.resumo.total_tabelas++;
-      if (diferenca === 0) resultado.resumo.tabelas_ok++;
-      else resultado.resumo.tabelas_com_diferenca++;
-      
-    } catch (error) {
-      console.error('❌ [VALIDATE] Erro ao validar tickets:', error);
-      resultado.tabelas['tickets'] = { 
-        status: '❌ ERRO', 
-        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
-      };
-      resultado.resumo.total_tabelas++;
-      resultado.resumo.tabelas_com_erro++;
-    }
-
-    // Fechar conexão
-    await pool.close();
-
-    console.log('');
-    console.log('✅ [VALIDATE] Validação concluída:');
-    console.log(`   📊 Total de tabelas: ${resultado.resumo.total_tabelas}`);
-    console.log(`   ✅ Tabelas OK: ${resultado.resumo.tabelas_ok}`);
-    console.log(`   ⚠️  Tabelas com diferença: ${resultado.resumo.tabelas_com_diferenca}`);
-    console.log(`   ❌ Tabelas com erro: ${resultado.resumo.tabelas_com_erro}`);
-    console.log('');
-    res.json(resultado);
-
+    
+    resultado.resumo.total_tabelas++;
+    if (diferenca === 0) resultado.resumo.tabelas_ok++;
+    else resultado.resumo.tabelas_com_diferenca++;
+    
   } catch (error) {
-    console.error('❌ [VALIDATE] Erro fatal na validação:', error);
-    if (pool) {
-      try { await pool.close(); } catch (e) { /* ignore */ }
-    }
-    res.status(500).json({
-      ...resultado,
-      erro: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    console.error('❌ [VALIDATE] Erro ao validar pesquisas:', error);
+    resultado.tabelas['pesquisas'] = { 
+      status: '❌ ERRO', 
+      erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+    resultado.resumo.total_tabelas++;
+    resultado.resumo.tabelas_com_erro++;
   }
-});
+
+  // ==========================================
+  // 2. VALIDAR ESPECIALISTAS (AMSespecialistas)
+  // ==========================================
+  try {
+    console.log('📊 [VALIDATE] Validando especialistas...');
+    
+    const resultSqlEsp = await pool.request().query('SELECT COUNT(*) as total FROM AMSespecialistas');
+    const totalSqlEsp = resultSqlEsp.recordset[0].total;
+
+    // Contar ativos no SQL
+    const resultSqlEspAtivos = await pool.request().query("SELECT COUNT(*) as total FROM AMSespecialistas WHERE user_active = 1");
+    const totalSqlEspAtivos = resultSqlEspAtivos.recordset[0].total;
+
+    const { count: totalSupabaseEsp, error: errEsp } = await supabase
+      .from('especialistas')
+      .select('*', { count: 'exact', head: true })
+      .eq('origem', 'sql_server');
+    
+    if (errEsp) throw errEsp;
+
+    // Especialistas sincroniza TODOS (ativos + inativos) mas marca inativos
+    const diferenca = totalSqlEsp - (totalSupabaseEsp || 0);
+    
+    resultado.tabelas['especialistas'] = {
+      sql_server_total: totalSqlEsp,
+      sql_server_ativos: totalSqlEspAtivos,
+      supabase: totalSupabaseEsp || 0,
+      diferenca: diferenca,
+      status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
+    };
+
+    // Log detalhado da validação de especialistas
+    const statusEsp = diferenca === 0 ? '✅' : '⚠️';
+    console.log(`   ${statusEsp} especialistas: SQL Server=${totalSqlEsp} (ativos: ${totalSqlEspAtivos}) | Supabase=${totalSupabaseEsp || 0} | Diferença=${diferenca}`);
+    
+    resultado.resumo.total_tabelas++;
+    if (diferenca === 0) resultado.resumo.tabelas_ok++;
+    else resultado.resumo.tabelas_com_diferenca++;
+    
+  } catch (error) {
+    console.error('❌ [VALIDATE] Erro ao validar especialistas:', error);
+    resultado.tabelas['especialistas'] = { 
+      status: '❌ ERRO', 
+      erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+    resultado.resumo.total_tabelas++;
+    resultado.resumo.tabelas_com_erro++;
+  }
+
+  // ==========================================
+  // 3. VALIDAR APONTAMENTOS (AMSapontamento)
+  // ==========================================
+  try {
+    console.log('📊 [VALIDATE] Validando apontamentos...');
+    
+    const querySqlAp = `
+      SELECT COUNT(*) as total
+      FROM AMSapontamento
+      WHERE Data_Ult_Modificacao_Geral IS NOT NULL
+        AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
+    `;
+    const resultSqlAp = await pool.request().query(querySqlAp);
+    const totalSqlAp = resultSqlAp.recordset[0].total;
+
+    const { count: totalSupabaseAp, error: errAp } = await supabase
+      .from('apontamentos_aranda')
+      .select('*', { count: 'exact', head: true })
+      .eq('origem', 'sql_server');
+    
+    if (errAp) throw errAp;
+
+    const diferenca = totalSqlAp - (totalSupabaseAp || 0);
+    
+    resultado.tabelas['apontamentos'] = {
+      sql_server: totalSqlAp,
+      supabase: totalSupabaseAp || 0,
+      diferenca: diferenca,
+      status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
+    };
+
+    // Log detalhado da validação de apontamentos
+    const statusAp = diferenca === 0 ? '✅' : '⚠️';
+    console.log(`   ${statusAp} apontamentos: SQL Server=${totalSqlAp} | Supabase=${totalSupabaseAp || 0} | Diferença=${diferenca}`);
+    
+    resultado.resumo.total_tabelas++;
+    if (diferenca === 0) resultado.resumo.tabelas_ok++;
+    else resultado.resumo.tabelas_com_diferenca++;
+    
+  } catch (error) {
+    console.error('❌ [VALIDATE] Erro ao validar apontamentos:', error);
+    resultado.tabelas['apontamentos'] = { 
+      status: '❌ ERRO', 
+      erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+    resultado.resumo.total_tabelas++;
+    resultado.resumo.tabelas_com_erro++;
+  }
+
+  // ==========================================
+  // 4. VALIDAR TICKETS (AMSticketsabertos)
+  // ==========================================
+  try {
+    console.log('📊 [VALIDATE] Validando tickets...');
+    
+    const resultSqlTickets = await pool.request().query(`
+      SELECT COUNT(*) as total FROM AMSticketsabertos
+      WHERE Data_Ultima_Modificacao IS NOT NULL
+        AND (Nome_grupo NOT LIKE 'AMS SAP%' OR Nome_grupo IS NULL)
+    `);
+    const totalSqlTickets = resultSqlTickets.recordset[0].total;
+
+    const { count: totalSupabaseTickets, error: errTickets } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*', { count: 'exact', head: true });
+    
+    if (errTickets) throw errTickets;
+
+    const diferenca = totalSqlTickets - (totalSupabaseTickets || 0);
+    
+    resultado.tabelas['tickets'] = {
+      sql_server: totalSqlTickets,
+      supabase: totalSupabaseTickets || 0,
+      diferenca: diferenca,
+      status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
+    };
+
+    // Log detalhado da validação de tickets
+    const statusTickets = diferenca === 0 ? '✅' : '⚠️';
+    console.log(`   ${statusTickets} tickets: SQL Server=${totalSqlTickets} | Supabase=${totalSupabaseTickets || 0} | Diferença=${diferenca}`);
+    
+    resultado.resumo.total_tabelas++;
+    if (diferenca === 0) resultado.resumo.tabelas_ok++;
+    else resultado.resumo.tabelas_com_diferenca++;
+    
+  } catch (error) {
+    console.error('❌ [VALIDATE] Erro ao validar tickets:', error);
+    resultado.tabelas['tickets'] = { 
+      status: '❌ ERRO', 
+      erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+    resultado.resumo.total_tabelas++;
+    resultado.resumo.tabelas_com_erro++;
+  }
+
+  console.log('');
+  console.log('✅ [VALIDATE] Validação concluída:');
+  console.log(`   📊 Total de tabelas: ${resultado.resumo.total_tabelas}`);
+  console.log(`   ✅ Tabelas OK: ${resultado.resumo.tabelas_ok}`);
+  console.log(`   ⚠️  Tabelas com diferença: ${resultado.resumo.tabelas_com_diferenca}`);
+  console.log(`   ❌ Tabelas com erro: ${resultado.resumo.tabelas_com_erro}`);
+  console.log('');
+
+  return resultado;
+}
 
 /**
  * Testar conexão SQL Server
@@ -1907,6 +1923,17 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
  * Função principal de sincronização de especialistas
  */
 async function sincronizarEspecialistas(req: any, res: any) {
+  const { resultado, status } = await executarSyncEspecialistas();
+  res.status(status).json(resultado);
+}
+
+/**
+ * Executa a sincronização de especialistas e retorna o resultado.
+ * Se `poolExterno` for informado, usa esse pool e não o fecha (uso pelo orquestrador).
+ */
+export async function executarSyncEspecialistas(
+  poolExterno?: sql.ConnectionPool
+): Promise<{ resultado: any; status: number }> {
   const resultado = {
     sucesso: false,
     total_processados: 0,
@@ -1924,7 +1951,7 @@ async function sincronizarEspecialistas(req: any, res: any) {
 
     // Conectar ao SQL Server
     console.log('🔌 [ESPECIALISTAS] Tentando conectar ao SQL Server...');
-    const pool = await sql.connect(sqlConfig);
+    const pool = poolExterno || await sql.connect(sqlConfig);
     console.log('✅ [ESPECIALISTAS] Conectado ao SQL Server');
     resultado.mensagens.push('Conectado ao SQL Server');
 
@@ -1947,14 +1974,16 @@ async function sincronizarEspecialistas(req: any, res: any) {
     console.log(`📊 [ESPECIALISTAS] ${registros.length} registros encontrados no SQL Server (antes da deduplicação)`);
     resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
 
-    await pool.close();
-    console.log('🔌 [ESPECIALISTAS] Conexão SQL Server fechada');
+    if (!poolExterno) {
+      await pool.close();
+      console.log('🔌 [ESPECIALISTAS] Conexão SQL Server fechada');
+    }
 
     if (registros.length === 0) {
       console.log('⚠️ [ESPECIALISTAS] Nenhum registro para sincronizar');
       resultado.sucesso = true;
       resultado.mensagens.push('Nenhum registro para sincronizar');
-      return res.json(resultado);
+      return { resultado, status: 200 };
     }
 
     // Buscar todos os especialistas existentes no Supabase (origem sql_server)
@@ -2319,7 +2348,7 @@ async function sincronizarEspecialistas(req: any, res: any) {
     );
 
     console.log('📊 [ESPECIALISTAS] Sincronização de especialistas concluída:', resultado);
-    res.json(resultado);
+    return { resultado, status: 200 };
 
   } catch (error) {
     console.error('💥 [ESPECIALISTAS] Erro crítico na sincronização de especialistas:', error);
@@ -2335,7 +2364,7 @@ async function sincronizarEspecialistas(req: any, res: any) {
       stack: error instanceof Error ? error.stack : 'N/A'
     });
     
-    res.status(500).json(resultado);
+    return { resultado, status: 500 };
   }
 }
 
@@ -4044,9 +4073,48 @@ app.post('/api/detectar-inconsistencias', async (req, res) => {
   }
 });
 
+// ============================================================
+// AGENDAMENTO DE SINCRONIZAÇÃO (tela "Sincronização SQL Server")
+// ============================================================
+const deteccaoRetroativos = criarDeteccaoAjustesRetroativos(supabase);
+
+const orquestradorSync = criarOrquestradorSync({
+  supabase,
+  // Pool próprio: os handlers antigos fecham o pool global do mssql
+  abrirPool: async () => {
+    const pool = await new sql.ConnectionPool(sqlConfig).connect();
+    return { pool, fechar: () => pool.close() };
+  },
+  etapas: {
+    pesquisas: (pool, dataInicial) => sincronizarPesquisasIncremental(pool, dataInicial),
+    especialistas: async (pool) => (await executarSyncEspecialistas(pool)).resultado,
+    apontamentos: (pool) => sincronizarApontamentosIncremental(pool),
+    tickets: (pool) => sincronizarTicketsIncremental(pool),
+    codigoResolucao: (pool) => sincronizarCodigoResolucaoIncremental(pool, supabase),
+    validacao: (pool) => executarValidacaoSync(pool),
+    inconsistencias: () => executarDeteccaoInconsistencias(supabase),
+    // Mesmo período usado pela sincronização manual do frontend
+    ajustesRetroativos: () => deteccaoRetroativos.executarDeteccaoRecente(2),
+  },
+});
+
+app.use('/api/sync-jobs', criarRotasSyncJobs(supabase, orquestradorSync));
+
+const agendadorSync = criarAgendador({ supabase, orquestrador: orquestradorSync });
+
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
+  // Só o serviço de produção dispara jobs: evita que um `npm run dev` local
+  // rode sincronizações agendadas contra o mesmo Supabase.
+  if (process.env.SCHEDULER_ENABLED === 'true') {
+    agendadorSync.iniciar().catch((e) =>
+      console.error('[AGENDADOR] Falha ao iniciar:', e instanceof Error ? e.message : e)
+    );
+  } else {
+    console.log('[AGENDADOR] Desligado (defina SCHEDULER_ENABLED=true para ativar)');
+  }
+
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║  API de Sincronização de Pesquisas                          ║

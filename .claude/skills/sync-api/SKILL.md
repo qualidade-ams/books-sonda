@@ -13,7 +13,7 @@ Trazer dados do SQL Server **Aranda** (rede privada da Sonda) para tabelas do Su
 
 Pesquisa/apontamento/ticket que não apareceu no sistema, endpoint de sync novo, ajuste em mapeamento de campo, deploy ou variável do serviço no Render.
 
-Isto é um projeto Node **separado** do frontend: `package.json`, `tsconfig` e deploy próprios. Não é build pelo Vite, não passa pelo ESLint da raiz (`eslint.config.js` ignora `sync-api/**`) e não tem suíte Vitest — o TDD obrigatório do frontend não tem infraestrutura equivalente aqui.
+Isto é um projeto Node **separado** do frontend: `package.json`, `tsconfig` e deploy próprios. Não é build pelo Vite e não passa pelo ESLint da raiz (`eslint.config.js` ignora `sync-api/**`). Os testes ficam em `sync-api/src/**/__tests__/` e rodam pelo **Vitest da raiz** (`npm run test:run` ou `npx vitest run sync-api`); o `tsconfig` do sync-api exclui `__tests__` do build. Código novo aqui também é test-first. Para mockar o Supabase use `src/__tests__/helpers/supabaseFake.ts`; para testar lógica que depende do `server.ts`, receba as dependências por parâmetro (o `server.ts` exige variáveis de ambiente e sobe o servidor ao ser importado).
 
 ## Regras essenciais
 
@@ -42,6 +42,22 @@ sync-api/
 ```
 
 `server.ts` tem ~4.000 linhas e concentra todas as rotas. Lógica nova vai para `src/services/`, não para o final do `server.ts`.
+
+## Agendamento (tela "Sincronização SQL Server")
+
+Execução manual e agendada passam pela **mesma** sequência, em `src/scheduler/`:
+
+| Arquivo | Papel |
+|---|---|
+| `orquestradorSync.ts` | Roda as etapas (pesquisas → especialistas → apontamentos → tickets → código de resolução → validação → inconsistências → ajustes retroativos), grava `sync_execucoes` (status + logs) e `sync_metadata`. Uma execução por vez: manual concorrente → 409; agendada concorrente → espera o próximo ciclo. |
+| `agendador.ts` | Ciclo de 60s: lê `sync_agendamentos` ativos, calcula `proxima_execucao` quando está nula (o trigger do banco zera ao mudar a regra) e dispara o vencido mais antigo. Execução perdida roda uma vez ao voltar. Na subida marca `executando` órfãs como `interrompida`. |
+| `recorrencia.ts` | Cálculo puro da próxima execução (diário/semanal/mensal × horários fixos ou "a cada X h"), fuso `America/Sao_Paulo`. |
+| `autenticacao.ts` | Middleware que valida o JWT do Supabase e o nível na tela `sincronizacao_sql_server`. |
+| `rotas.ts` | `POST /api/sync-jobs/executar` (edit), `POST /api/sync-jobs/proximas-execucoes` (view), `GET /api/sync-jobs/status` (view). |
+
+- O agendador **só liga com `SCHEDULER_ENABLED=true`** — deixe `false` em dev local para não disparar jobs contra o Supabase de produção.
+- A detecção de ajustes retroativos é um port de `src/services/bancoHorasQuarentenaService.ts` (frontend) em `src/services/deteccaoAjustesRetroativosService.ts`. Ao mudar a regra num lado, mude no outro.
+- Para uma etapa nova: função que recebe `pool` (sem abrir/fechar o pool global) e registro em `etapas` no `server.ts`.
 
 ## Tabelas sincronizadas
 
@@ -88,7 +104,7 @@ npm run dev            # ts-node src/server.ts
 npm run build && npm start
 ```
 
-Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `NODE_ENV`.
+Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `NODE_ENV`, `SCHEDULER_ENABLED`.
 
 Produção: Render, `https://sync-api-p3jr.onrender.com`. O frontend chega nele por `VITE_SYNC_API_URL`. `deployment/` guarda o caminho alternativo (serviço Windows + nginx) usado no ambiente Sondalyze.
 

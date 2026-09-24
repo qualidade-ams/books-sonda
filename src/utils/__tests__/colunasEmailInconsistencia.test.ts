@@ -44,8 +44,8 @@ describe('colunasEmailPorTipo', () => {
     expect(titulos('mes_diferente')).toEqual(['Empresa', 'Chamado', 'Tarefa', 'Data Atividade', 'Data Sistema', 'Analista']);
   });
 
-  it('Troca de código de resolução tem código anterior, código atual e data da troca', () => {
-    expect(titulos('troca_codigo_resolucao')).toEqual(['Empresa', 'Chamado', 'Código Anterior', 'Código Atual', 'Data da Troca', 'Analista']);
+  it('Troca de código de resolução tem código anterior, código atual, data da troca e tempo afetado', () => {
+    expect(titulos('troca_codigo_resolucao')).toEqual(['Empresa', 'Chamado', 'Código Anterior', 'Código Atual', 'Data da Troca', 'Tempo', 'Analista']);
   });
 });
 
