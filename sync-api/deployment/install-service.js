@@ -56,7 +56,7 @@ svc.on('start', function() {
   console.log('📊 Comandos úteis:');
   console.log('   - Parar:     net stop "Books SND Sync API"');
   console.log('   - Iniciar:   net start "Books SND Sync API"');
-  console.log('   - Status:    sc query "Books SND Sync API"');
+  console.log('   - Status:    sc query bookssndsyncapi.exe');
   console.log('   - Logs:      ' + path.join(__dirname, '..', 'dist', 'daemon') + '\\*.out.log e *.err.log');
 });
 

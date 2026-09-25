@@ -106,10 +106,12 @@ npm run build                # o serviço roda dist\server.js
 node deployment\install-service.js
 
 # Verificar
-sc query "Books SND Sync API"
+sc query bookssndsyncapi.exe
 ```
 
 O serviço fica configurado para iniciar automaticamente com o Windows.
+
+> O serviço tem dois nomes: **"Books SND Sync API"** (exibição — funciona com `net start`/`net stop` e aparece em `services.msc`) e **`bookssndsyncapi.exe`** (nome interno gerado pelo node-windows — é o que o `sc query` exige).
 
 ---
 
@@ -227,7 +229,7 @@ curl https://sync-api.sondalyze.com.br/api/validate-sync
 # Sync API
 net start "Books SND Sync API"
 net stop "Books SND Sync API"
-sc query "Books SND Sync API"
+sc query bookssndsyncapi.exe
 type C:\apps\books-sonda-sync-api\dist\daemon\*.out.log   # saída
 type C:\apps\books-sonda-sync-api\dist\daemon\*.err.log   # erros
 

@@ -11,7 +11,7 @@ echo ========================================
 echo.
 
 echo [1/6] Verificando servico sync-api...
-sc query "Books SND Sync API" | findstr "RUNNING" >nul 2>&1
+sc query bookssndsyncapi.exe | findstr "RUNNING" >nul 2>&1
 if %errorLevel% neq 0 (
     echo [ERRO] Servico sync-api nao esta rodando!
     echo Execute: net start "Books SND Sync API"
