@@ -36,7 +36,7 @@ echo [3/6] Testando API local...
 curl -s -f http://127.0.0.1:3001/health >nul 2>&1
 if %errorLevel% neq 0 (
     echo [ERRO] API local nao responde em http://127.0.0.1:3001
-    echo Verifique logs: type C:\apps\books-sonda-sync-api\logs\service.log
+    echo Verifique logs: type C:\apps\books-sonda-sync-api\dist\daemon\*.err.log
     pause
     exit /b 1
 )
@@ -82,7 +82,7 @@ echo   - Local:   http://127.0.0.1:3001/health
 echo   - Externo: https://sync-api.sondalyze.com.br/health
 echo.
 echo Logs:
-echo   - Sync API: C:\apps\books-sonda-sync-api\logs\service.log
+echo   - Sync API: C:\apps\books-sonda-sync-api\dist\daemon\*.err.log
 echo   - Tunel:    Visualizador de Eventos do Windows (origem "Cloudflared")
 echo.
 pause

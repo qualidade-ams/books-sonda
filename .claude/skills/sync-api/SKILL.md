@@ -92,7 +92,7 @@ Por domínio, o padrão se repete: `test-connection*`, `table-structure*`, `sync
 3. `GET /api/table-structure` — confirma que a coluna esperada ainda existe na origem.
 4. `GET /api/validate-sync` — quantifica a divergência antes de decidir por incremental ou `-full`.
 5. Só então leia o service do domínio em `src/services/`.
-6. Logs do serviço no servidor: `C:\apps\books-sonda-sync-api\logs\service.log`; túnel: Visualizador de Eventos (origem `Cloudflared`).
+6. Logs do serviço no servidor: `C:\apps\books-sonda-sync-api\dist\daemon\*.out.log` / `*.err.log`; túnel: Visualizador de Eventos (origem `Cloudflared`).
 
 ## Ambiente
 

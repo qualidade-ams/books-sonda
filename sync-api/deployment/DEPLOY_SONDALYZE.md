@@ -101,6 +101,8 @@ Se `/api/test-connection` retornar `success: true`, o acesso ao SQL Server está
 
 ```powershell
 npm install -g node-windows
+npm link node-windows        # sem isto o script não encontra o pacote
+npm run build                # o serviço roda dist\server.js
 node deployment\install-service.js
 
 # Verificar
@@ -226,7 +228,8 @@ curl https://sync-api.sondalyze.com.br/api/validate-sync
 net start "Books SND Sync API"
 net stop "Books SND Sync API"
 sc query "Books SND Sync API"
-type C:\apps\books-sonda-sync-api\logs\service.log
+type C:\apps\books-sonda-sync-api\dist\daemon\*.out.log   # saída
+type C:\apps\books-sonda-sync-api\dist\daemon\*.err.log   # erros
 
 # Cloudflare Tunnel
 sc query Cloudflared

@@ -1,9 +1,14 @@
 /**
  * Script para instalar sync-api como serviço Windows
- * 
- * Uso:
+ *
+ * Uso (terminal como Administrador, na pasta da sync-api):
  * 1. npm install -g node-windows
- * 2. node install-service.js
+ * 2. npm link node-windows        (sem isto o require abaixo não encontra o pacote)
+ * 3. npm run build                (o serviço roda dist/server.js, não o src)
+ * 4. node deployment\install-service.js
+ *
+ * Depois de qualquer atualização do código: npm run build + reiniciar o serviço.
+ * Logs: dist\daemon\*.out.log (saída) e *.err.log (erros).
  */
 
 const Service = require('node-windows').Service;
@@ -52,7 +57,7 @@ svc.on('start', function() {
   console.log('   - Parar:     net stop "Books SND Sync API"');
   console.log('   - Iniciar:   net start "Books SND Sync API"');
   console.log('   - Status:    sc query "Books SND Sync API"');
-  console.log('   - Logs:      type C:\\apps\\books-sonda-sync-api\\logs\\service.log');
+  console.log('   - Logs:      ' + path.join(__dirname, '..', 'dist', 'daemon') + '\\*.out.log e *.err.log');
 });
 
 svc.on('error', function(err) {
