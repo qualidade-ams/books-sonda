@@ -34,8 +34,10 @@ const svc = new Service({
       value: "production"
     }
   ],
-  workingDirectory: path.join(__dirname, '..'),
-  allowServiceLogon: true
+  // Roda com a conta do sistema (LocalSystem). Não usar allowServiceLogon: sem
+  // usuário definido, o WinSW tenta dar a permissão a uma conta vazia do domínio
+  // e a instalação falha com "LookupAccountName failed: 1788".
+  workingDirectory: path.join(__dirname, '..')
 });
 
 // Eventos do serviço
