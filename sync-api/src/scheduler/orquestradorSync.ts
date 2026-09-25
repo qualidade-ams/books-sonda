@@ -87,6 +87,14 @@ const MAX_MENSAGENS_POR_ETAPA = 50;
 
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e ?? 'Erro desconhecido'));
 
+/** Mensagem que explica por que a etapa terminou com erro (a última que fala em erro, ou a última) */
+function motivoDaFalha(bruto: any): string | null {
+  const mensagens: string[] = Array.isArray(bruto?.mensagens) ? bruto.mensagens.filter(Boolean) : [];
+  if (mensagens.length === 0) return null;
+  const comErro = mensagens.filter((m) => /erro|falh|timeout/i.test(m));
+  return (comErro.length ? comErro[comErro.length - 1] : mensagens[mensagens.length - 1]).slice(0, 500);
+}
+
 function resumirEtapaTabela(r: any) {
   return {
     sucesso: !!r?.sucesso,
@@ -189,9 +197,19 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
         log(`${ROTULOS[chave]}: iniciando`);
         const inicio = Date.now();
         try {
-          const r = resumir(await fn());
+          const bruto = await fn();
+          const r = resumir(bruto);
+          if (!r.sucesso && !r.erro) {
+            const motivo = motivoDaFalha(bruto);
+            if (motivo) r.erro = motivo;
+          }
           resultado[chave] = { ...r, duracao_ms: Date.now() - inicio };
-          log(`${ROTULOS[chave]}: ${r.sucesso ? 'concluído' : 'concluído com erros'}`, r.sucesso ? 'info' : 'erro');
+          log(
+            r.sucesso
+              ? `${ROTULOS[chave]}: concluído`
+              : `${ROTULOS[chave]}: concluído com erros${r.erro ? ` — ${r.erro}` : ''}`,
+            r.sucesso ? 'info' : 'erro'
+          );
         } catch (e) {
           resultado[chave] = { sucesso: false, erro: mensagemDeErro(e), duracao_ms: Date.now() - inicio };
           log(`${ROTULOS[chave]}: falhou — ${mensagemDeErro(e)}`, 'erro');

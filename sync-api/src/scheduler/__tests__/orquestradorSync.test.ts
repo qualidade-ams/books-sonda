@@ -134,6 +134,30 @@ describe('orquestradorSync', () => {
     expect(final.resultado.especialistas).toMatchObject({ sucesso: false, erro: 'timeout' });
   });
 
+  it('registra no log e no resultado o motivo de uma etapa que termina com erro', async () => {
+    const etapas = criarEtapas({
+      inconsistencias: vi.fn(async () => ({
+        sucesso: false,
+        total_detectadas: 0,
+        mensagens: ['Erro RPC: canceling statement due to statement timeout'],
+      })),
+    });
+    const { orq } = criar(etapas);
+    const inicio = await orq.iniciar({ tabelas: { pesquisas: true }, origem: 'manual' });
+    await inicio.conclusao;
+
+    const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+    const final = updates[updates.length - 1];
+    expect(final.status).toBe('parcial');
+    expect(final.resultado.inconsistencias).toMatchObject({
+      sucesso: false,
+      erro: 'Erro RPC: canceling statement due to statement timeout',
+    });
+    expect(final.logs.map((l: any) => l.mensagem)).toContain(
+      'Detecção de inconsistências: concluído com erros — Erro RPC: canceling statement due to statement timeout'
+    );
+  });
+
   it('marca erro quando todas as etapas de sincronização falham', async () => {
     const falha = vi.fn(async () => ({ sucesso: false, erros: 1, mensagens: [] }));
     const { orq } = criar(criarEtapas({ pesquisas: falha }));
