@@ -109,10 +109,16 @@ describe('rotas sync-jobs', () => {
     });
   });
 
-  it('status informa se há execução em andamento', () => {
+  it('status informa se há execução em andamento e se o agendador está ligado', () => {
     orquestrador.emExecucao.mockReturnValue(true);
     const res = criarRes();
+    criarHandlersSyncJobs({ orquestrador, agendadorAtivo: () => false }).status({} as any, res);
+    expect(res.json).toHaveBeenCalledWith({ emExecucao: true, agendadorAtivo: false });
+  });
+
+  it('status sem agendador informado considera desligado', () => {
+    const res = criarRes();
     criarHandlersSyncJobs({ orquestrador }).status({} as any, res);
-    expect(res.json).toHaveBeenCalledWith({ emExecucao: true });
+    expect(res.json).toHaveBeenCalledWith({ emExecucao: false, agendadorAtivo: false });
   });
 });

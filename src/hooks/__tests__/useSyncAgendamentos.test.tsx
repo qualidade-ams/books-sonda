@@ -14,6 +14,7 @@ vi.mock('@/services/syncAgendamentosService', () => ({
     listarExecucoes: vi.fn(),
     executarAgora: vi.fn(),
     preverExecucoes: vi.fn(),
+    statusSyncApi: vi.fn(),
   },
 }));
 
@@ -24,6 +25,7 @@ import {
   useSalvarAgendamento,
   useExecutarSyncAgora,
   usePreverExecucoes,
+  useStatusSyncJobs,
   intervaloPollingExecucoes,
 } from '../useSyncAgendamentos';
 
@@ -119,6 +121,23 @@ describe('useExecutarSyncAgora', () => {
 
     expect(servico.executarAgora).toHaveBeenCalledWith({ pesquisas: true });
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['sync-execucoes'] });
+  });
+});
+
+describe('useStatusSyncJobs', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('expõe se o agendador está ligado no sync-api', async () => {
+    servico.statusSyncApi.mockResolvedValue({ emExecucao: false, agendadorAtivo: false });
+    const { result } = renderHook(() => useStatusSyncJobs(), { wrapper: criarWrapper().wrapper });
+    await waitFor(() => expect(result.current.agendadorAtivo).toBe(false));
+  });
+
+  it('não conclui nada enquanto o status não chegou (API fora do ar)', async () => {
+    servico.statusSyncApi.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useStatusSyncJobs(), { wrapper: criarWrapper().wrapper });
+    await waitFor(() => expect(servico.statusSyncApi).toHaveBeenCalled());
+    expect(result.current.agendadorAtivo).toBeUndefined();
   });
 });
 

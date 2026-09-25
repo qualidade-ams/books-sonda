@@ -166,6 +166,19 @@ describe('syncAgendamentosService — sync-api', () => {
     expect(datas).toEqual(['2026-09-24T10:00:00.000Z']);
   });
 
+  it('statusSyncApi consulta o status com GET e o token da sessão', async () => {
+    fetchMock.mockResolvedValue(resposta(200, { emExecucao: false, agendadorAtivo: true }));
+
+    const status = await syncAgendamentosService.statusSyncApi();
+
+    const [url, opcoes] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/sync-jobs\/status$/);
+    expect(opcoes.method).toBe('GET');
+    expect(opcoes.body).toBeUndefined();
+    expect(opcoes.headers.Authorization).toBe('Bearer tok');
+    expect(status).toEqual({ emExecucao: false, agendadorAtivo: true });
+  });
+
   it('preverExecucoes repassa os erros de validação', async () => {
     fetchMock.mockResolvedValue(resposta(400, { erros: ['Informe ao menos um horário'] }));
     await expect(syncAgendamentosService.preverExecucoes(input)).rejects.toThrow('Informe ao menos um horário');

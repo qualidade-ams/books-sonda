@@ -29,6 +29,7 @@ vi.mock('@/components/admin/sincronizacao/AgendamentoFormModal', () => ({
 const estado = {
   agendamentos: [] as any[],
   execucoes: [] as any[],
+  agendadorAtivo: true as boolean | undefined,
 };
 const executarMock = vi.fn();
 const alternarMock = vi.fn();
@@ -40,6 +41,7 @@ vi.mock('@/hooks/useSyncAgendamentos', () => ({
   useAlternarAgendamento: () => ({ mutateAsync: alternarMock, isPending: false }),
   useExcluirAgendamento: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExecutarSyncAgora: () => ({ mutateAsync: executarMock, isPending: false }),
+  useStatusSyncJobs: () => ({ agendadorAtivo: estado.agendadorAtivo }),
 }));
 
 import SincronizacaoSqlServer from '../SincronizacaoSqlServer';
@@ -68,6 +70,7 @@ describe('SincronizacaoSqlServer', () => {
     vi.clearAllMocks();
     estado.agendamentos = [];
     estado.execucoes = [];
+    estado.agendadorAtivo = true;
     apiStatus.data = true;
   });
 
@@ -131,6 +134,23 @@ describe('SincronizacaoSqlServer', () => {
 
     fireEvent.click(screen.getByRole('switch'));
     await waitFor(() => expect(alternarMock).toHaveBeenCalledWith({ id: 'a1', ativo: false }));
+  });
+
+  it('avisa quando o agendador está desligado no sync-api', () => {
+    estado.agendamentos = [{ ...agendamento, proxima_execucao: null }];
+    estado.agendadorAtivo = false;
+    render(<SincronizacaoSqlServer />);
+    expect(screen.getByText('sincronizacaoSql.agendadorDesligado')).toBeInTheDocument();
+    expect(screen.getByText('sincronizacaoSql.agendamentos.aguardandoAgendador')).toBeInTheDocument();
+    expect(screen.queryByText('sincronizacaoSql.agendamentos.calculando')).not.toBeInTheDocument();
+  });
+
+  it('não avisa enquanto o status do agendador é desconhecido', () => {
+    estado.agendamentos = [{ ...agendamento, proxima_execucao: null }];
+    estado.agendadorAtivo = undefined;
+    render(<SincronizacaoSqlServer />);
+    expect(screen.queryByText('sincronizacaoSql.agendadorDesligado')).not.toBeInTheDocument();
+    expect(screen.getByText('sincronizacaoSql.agendamentos.calculando')).toBeInTheDocument();
   });
 
   it('abre o modal de novo agendamento', () => {

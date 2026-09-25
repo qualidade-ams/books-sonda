@@ -2116,6 +2116,7 @@ const ptBR = {
   },
   // Sincronização SQL Server (agendamentos)
   sincronizacaoSql: {
+    agendadorDesligado: 'O agendador está desligado no sync-api: os agendamentos não vão rodar. No servidor, defina SCHEDULER_ENABLED=true no .env e reinicie o serviço.',
     title: 'Sincronização SQL Server',
     subtitle: 'Agende e acompanhe a sincronização com o SQL Server (Aranda)',
     apiOffline: 'API de sincronização indisponível',
@@ -2138,6 +2139,7 @@ const ptBR = {
       ativo: 'Ativo',
       acoes: 'Ações',
       calculando: 'Calculando…',
+      aguardandoAgendador: 'Agendador desligado',
       nunca: 'Nunca',
       editar: 'Editar',
       excluir: 'Excluir',

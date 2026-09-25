@@ -34,7 +34,14 @@ function sanitizarTabelas(entrada: any): TabelasSync {
   return tabelas;
 }
 
-export function criarHandlersSyncJobs({ orquestrador }: { orquestrador: OrquestradorLike }) {
+export function criarHandlersSyncJobs({
+  orquestrador,
+  agendadorAtivo = () => false,
+}: {
+  orquestrador: OrquestradorLike;
+  /** false quando SCHEDULER_ENABLED não está ligado neste servidor */
+  agendadorAtivo?: () => boolean;
+}) {
   return {
     async executar(req: RequestAutenticado, res: Response) {
       const tabelas = sanitizarTabelas(req.body?.tabelas);
@@ -63,14 +70,18 @@ export function criarHandlersSyncJobs({ orquestrador }: { orquestrador: Orquestr
     },
 
     status(_req: RequestAutenticado, res: Response) {
-      return res.json({ emExecucao: orquestrador.emExecucao() });
+      return res.json({ emExecucao: orquestrador.emExecucao(), agendadorAtivo: agendadorAtivo() });
     },
   };
 }
 
-export function criarRotasSyncJobs(supabase: SupabaseClient, orquestrador: OrquestradorLike) {
+export function criarRotasSyncJobs(
+  supabase: SupabaseClient,
+  orquestrador: OrquestradorLike,
+  agendadorAtivo?: () => boolean
+) {
   const router = Router();
-  const handlers = criarHandlersSyncJobs({ orquestrador });
+  const handlers = criarHandlersSyncJobs({ orquestrador, agendadorAtivo });
   const podeVer = exigirPermissao(supabase, SCREEN_KEY_SINCRONIZACAO, 'view');
   const podeEditar = exigirPermissao(supabase, SCREEN_KEY_SINCRONIZACAO, 'edit');
 

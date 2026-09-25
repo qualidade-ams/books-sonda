@@ -74,6 +74,18 @@ export function useExecutarSyncAgora() {
   });
 }
 
+/** Status do sync-api; `agendadorAtivo` fica undefined enquanto não há resposta */
+export function useStatusSyncJobs() {
+  const { data } = useQuery({
+    queryKey: [...CHAVE_AGENDAMENTOS, 'status-sync-api'],
+    queryFn: () => syncAgendamentosService.statusSyncApi(),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+
+  return { agendadorAtivo: data?.agendadorAtivo };
+}
+
 /** Pré-visualização das próximas execuções de uma regra ainda não salva */
 export function usePreverExecucoes(regra: RegraRecorrencia, habilitado: boolean) {
   const chaveRegra: RegraRecorrencia = {

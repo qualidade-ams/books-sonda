@@ -2118,6 +2118,7 @@ const en = {
   },
   // Sincronização SQL Server (agendamentos)
   sincronizacaoSql: {
+    agendadorDesligado: 'The scheduler is off in sync-api: schedules will not run. On the server, set SCHEDULER_ENABLED=true in .env and restart the service.',
     title: 'SQL Server Sync',
     subtitle: 'Schedule and monitor the synchronization with SQL Server (Aranda)',
     apiOffline: 'Sync API unavailable',
@@ -2140,6 +2141,7 @@ const en = {
       ativo: 'Active',
       acoes: 'Actions',
       calculando: 'Calculating…',
+      aguardandoAgendador: 'Scheduler off',
       nunca: 'Never',
       editar: 'Edit',
       excluir: 'Delete',

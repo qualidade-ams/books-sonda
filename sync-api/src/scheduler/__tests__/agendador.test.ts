@@ -144,6 +144,15 @@ describe('agendador', () => {
     expect(updatesDe(fake).map((u) => u.id)).toEqual(['ag-1']);
   });
 
+  it('ativo() indica se o ciclo foi iniciado', async () => {
+    const { agendador } = criar([]);
+    expect(agendador.ativo()).toBe(false);
+    await agendador.iniciar(60_000);
+    expect(agendador.ativo()).toBe(true);
+    agendador.parar();
+    expect(agendador.ativo()).toBe(false);
+  });
+
   it('marca como interrompidas as execuções que ficaram executando', async () => {
     const { fake, agendador } = criar([]);
     await agendador.recuperarInterrompidas();

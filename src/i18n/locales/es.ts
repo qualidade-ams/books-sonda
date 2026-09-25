@@ -2118,6 +2118,7 @@ const es = {
   },
   // Sincronização SQL Server (agendamentos)
   sincronizacaoSql: {
+    agendadorDesligado: 'El programador está apagado en sync-api: las programaciones no se ejecutarán. En el servidor, defina SCHEDULER_ENABLED=true en .env y reinicie el servicio.',
     title: 'Sincronización SQL Server',
     subtitle: 'Programe y acompañe la sincronización con SQL Server (Aranda)',
     apiOffline: 'API de sincronización no disponible',
@@ -2140,6 +2141,7 @@ const es = {
       ativo: 'Activo',
       acoes: 'Acciones',
       calculando: 'Calculando…',
+      aguardandoAgendador: 'Programador apagado',
       nunca: 'Nunca',
       editar: 'Editar',
       excluir: 'Eliminar',

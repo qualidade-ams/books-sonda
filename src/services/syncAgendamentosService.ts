@@ -21,19 +21,20 @@ const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze
 // Tabelas novas ainda não estão no types.ts gerado
 const db = supabase as any;
 
-async function chamarSyncApi<T>(caminho: string, corpo: unknown): Promise<{ status: number; dados: T }> {
+/** Chama o sync-api com o token da sessão; sem `corpo` a chamada é GET */
+async function chamarSyncApi<T>(caminho: string, corpo?: unknown): Promise<{ status: number; dados: T }> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.');
 
   const response = await fetch(`${API_URL}${caminho}`, {
-    method: 'POST',
+    method: corpo === undefined ? 'GET' : 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify(corpo),
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
   });
 
   let dados: any = null;
@@ -109,6 +110,12 @@ class SyncAgendamentosService {
   async preverExecucoes(regra: RegraRecorrencia, n = 5): Promise<string[]> {
     const { dados } = await chamarSyncApi<{ execucoes: string[] }>('/api/sync-jobs/proximas-execucoes', { regra, n });
     return dados?.execucoes || [];
+  }
+
+  /** Há execução em andamento? O agendador está ligado (SCHEDULER_ENABLED) neste sync-api? */
+  async statusSyncApi(): Promise<{ emExecucao: boolean; agendadorAtivo: boolean }> {
+    const { dados } = await chamarSyncApi<{ emExecucao: boolean; agendadorAtivo: boolean }>('/api/sync-jobs/status');
+    return dados;
   }
 }
 

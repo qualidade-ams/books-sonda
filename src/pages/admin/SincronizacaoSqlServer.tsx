@@ -47,6 +47,7 @@ import {
   useSalvarAgendamento,
   useSyncAgendamentos,
   useSyncExecucoes,
+  useStatusSyncJobs,
 } from '@/hooks/useSyncAgendamentos';
 import { descreverRecorrencia } from '@/utils/descreverRecorrencia';
 import { TABELAS_SYNC } from '@/schemas/syncAgendamentoSchemas';
@@ -76,6 +77,9 @@ function SincronizacaoSqlServer() {
 
   const { agendamentos, isLoading: carregandoAgendamentos, error: erroAgendamentos } = useSyncAgendamentos();
   const { execucoes, isLoading: carregandoExecucoes, error: erroExecucoes } = useSyncExecucoes();
+  // undefined = ainda sem resposta do sync-api; só avisamos com false confirmado
+  const { agendadorAtivo } = useStatusSyncJobs();
+  const agendadorDesligado = agendadorAtivo === false;
   const salvar = useSalvarAgendamento();
   const alternar = useAlternarAgendamento();
   const excluir = useExcluirAgendamento();
@@ -331,6 +335,13 @@ function SincronizacaoSqlServer() {
             </div>
           </div>
 
+          {agendadorDesligado && (
+            <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{t('sincronizacaoSql.agendadorDesligado')}</span>
+            </div>
+          )}
+
           <Tabs defaultValue="agendamentos" className="w-full">
             <TabsList className="bg-gray-100 p-1 rounded-lg">
               <TabsTrigger value="agendamentos" className={TAB_TRIGGER}>
@@ -385,7 +396,11 @@ function SincronizacaoSqlServer() {
                                 <span className="text-gray-400">—</span>
                               ) : (
                                 formatarData(ag.proxima_execucao) || (
-                                  <span className="text-gray-400">{t('sincronizacaoSql.agendamentos.calculando')}</span>
+                                  <span className="text-gray-400">
+                                    {agendadorDesligado
+                                      ? t('sincronizacaoSql.agendamentos.aguardandoAgendador')
+                                      : t('sincronizacaoSql.agendamentos.calculando')}
+                                  </span>
                                 )
                               )}
                             </TableCell>

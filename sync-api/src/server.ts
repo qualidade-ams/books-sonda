@@ -4098,9 +4098,9 @@ const orquestradorSync = criarOrquestradorSync({
   },
 });
 
-app.use('/api/sync-jobs', criarRotasSyncJobs(supabase, orquestradorSync));
-
 const agendadorSync = criarAgendador({ supabase, orquestrador: orquestradorSync });
+
+app.use('/api/sync-jobs', criarRotasSyncJobs(supabase, orquestradorSync, () => agendadorSync.ativo()));
 
 const PORT = process.env.PORT || 3001;
 

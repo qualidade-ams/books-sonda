@@ -138,5 +138,5 @@ export function criarAgendador(deps: DependenciasAgendador) {
     timer = null;
   }
 
-  return { ciclo, recuperarInterrompidas, iniciar, parar };
+  return { ciclo, recuperarInterrompidas, iniciar, parar, ativo: () => timer !== null };
 }
