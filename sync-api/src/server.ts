@@ -17,6 +17,7 @@ import { sincronizarTicketsIncremental } from './services/incrementalSyncTickets
 import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from './services/incrementalSyncPesquisasService';
 import { executarDeteccaoInconsistencias } from './services/inconsistenciasDeteccaoService';
 import { sincronizarCodigoResolucaoIncremental } from './services/incrementalSyncCodigoResolucaoService';
+import { corrigirCamposNull } from './services/fixNullFieldsService';
 import { criarDeteccaoAjustesRetroativos } from './services/deteccaoAjustesRetroativosService';
 import { criarOrquestradorSync } from './scheduler/orquestradorSync';
 import { criarAgendador } from './scheduler/agendador';
@@ -2829,9 +2830,6 @@ app.post('/api/sync-apontamentos-incremental', async (req, res) => {
 app.post('/api/fix-null-fields-apontamentos', async (req, res) => {
   try {
     console.log('🔧 [API] Iniciando correção de campos NULL em apontamentos...');
-    
-    // Importar serviço
-    const { corrigirCamposNull } = await import('./services/fixNullFieldsService');
     
     // Conectar ao SQL Server
     const pool = await sql.connect(sqlConfig);
