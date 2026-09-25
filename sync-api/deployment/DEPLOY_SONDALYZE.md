@@ -3,9 +3,9 @@
 Guia consolidado para colocar a **sync-api** em produção no **servidor Windows interno** (mesmo servidor do SQL Server), exposta por HTTPS no subdomínio `sync-api.sondalyze.com.br` via **Cloudflare Tunnel**.
 
 > **Arquitetura:**
-> `Frontend (https://sondalyze.com.br)` → `Cloudflare Edge (HTTPS)` → `cloudflared (túnel outbound)` → `sync-api (localhost:3001)` → `SQL Server (localhost)` + `Supabase`
+> `Frontend (https://sondalyze.com.br)` → `Cloudflare Edge (HTTPS)` → `cloudflared (túnel outbound)` → `sync-api (127.0.0.1:3001)` → `SQL Server (localhost)` + `Supabase`
 
-> ℹ️ **Por que Cloudflare Tunnel em vez de Nginx + Let's Encrypt?** O túnel é uma conexão de **saída** iniciada pelo próprio servidor — não precisa de IP público estático, nem de portas 80/443 abertas na entrada, nem de certificado gerenciado manualmente. A Cloudflare já entrega HTTPS válido na borda. O fluxo antigo (Nginx + win-acme + registro DNS `A` manual) continua documentado em `ARCHITECTURE.md` como alternativa, caso o túnel não possa ser usado.
+> ℹ️ **Por que Cloudflare Tunnel?** O túnel é uma conexão de **saída** iniciada pelo próprio servidor — não precisa de IP público estático, nem de portas 80/443 abertas na entrada, nem de proxy reverso ou certificado gerenciado manualmente. A Cloudflare entrega HTTPS válido na borda.
 
 > ⚠️ **A homologação NÃO é afetada.** Ela continua usando `.env.local` com `VITE_SYNC_API_URL=http://localhost:3001`. Nada neste guia altera o ambiente de homologação/dev.
 
@@ -67,6 +67,8 @@ No `.env`, ajustar:
 - `SQL_PORT` → confirmar `10443` ou `1433` (conforme passo 1)
 - `SQL_PASSWORD` → **senha real** do `amsconsulta` (substituir o placeholder)
 - `SUPABASE_SERVICE_KEY` → **service key real** do Supabase (substituir o placeholder)
+- `HOST=127.0.0.1` → a API só aceita conexões da própria máquina (é o padrão se a variável faltar). O acesso de fora é exclusivamente pelo túnel.
+- `SCHEDULER_ENABLED=true` → liga os agendamentos da tela "Sincronização SQL Server". **Só neste servidor** — em qualquer outra máquina deixe `false`, senão ela também dispara as sincronizações agendadas.
 
 > A `SUPABASE_SERVICE_KEY` é secreta e dá acesso administrativo ao banco. Nunca a exponha no frontend nem a comite.
 
@@ -86,8 +88,8 @@ Teste rápido antes de virar serviço:
 ```powershell
 node dist\server.js
 # Em outro terminal:
-curl http://localhost:3001/health
-curl http://localhost:3001/api/test-connection
+curl http://127.0.0.1:3001/health
+curl http://127.0.0.1:3001/api/test-connection
 # Ctrl+C para parar o teste
 ```
 
@@ -114,14 +116,12 @@ O serviço fica configurado para iniciar automaticamente com o Windows.
 Não é necessário abrir nenhuma porta de entrada. O túnel é 100% outbound — o servidor só precisa conseguir *sair* para a internet na porta 443 (o que normalmente já está liberado).
 
 ```powershell
-# Se existirem regras antigas do fluxo Nginx (portas 80/443/3001 de ENTRADA), remova-as:
-netsh advfirewall firewall show rule name="Nginx HTTP"
-netsh advfirewall firewall show rule name="Nginx HTTPS"
+# Se ainda existirem regras de ENTRADA de uma instalação antiga com Nginx, remova-as:
 netsh advfirewall firewall delete rule name="Nginx HTTP"
 netsh advfirewall firewall delete rule name="Nginx HTTPS"
 ```
 
-> A porta **3001** nunca deve ficar acessível de fora do servidor — nem pelo Nginx, nem diretamente. Só o `cloudflared`, rodando no mesmo servidor, fala com ela via `localhost`.
+> A porta **3001** nunca fica acessível de fora do servidor: com `HOST=127.0.0.1` a API só escuta na própria máquina, e só o `cloudflared`, rodando no mesmo servidor, fala com ela.
 
 ---
 
@@ -140,7 +140,8 @@ No painel [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networ
 3. Em **Public Hostname**, adicionar:
    - **Subdomain**: `sync-api`
    - **Domain**: `sondalyze.com.br`
-   - **Service**: `HTTP` → `localhost:3001`
+   - **Service**: `HTTP` → `127.0.0.1:3001`
+   > ⚠️ Use `127.0.0.1`, **não** `localhost`. No Windows, `localhost` pode ser resolvido para o IPv6 `::1`, onde a API não escuta — o túnel responderia erro 502.
 4. Salvar. A Cloudflare cria automaticamente o registro DNS (`CNAME` apontando para o túnel) — não é preciso mexer em DNS manualmente.
 
 Instalar o conector como serviço Windows, para iniciar junto com o boot igual à sync-api:
@@ -157,9 +158,11 @@ sc query Cloudflared
 
 ## 8. Testes de aceitação (do servidor e de fora)
 
+O script `deployment\test-installation.bat` (executar no servidor) confere os dois serviços, a API local, o acesso pelo túnel e se a porta 3001 está restrita à máquina. Os mesmos testes, à mão:
+
 ```powershell
 # Local (no servidor)
-curl http://localhost:3001/health
+curl http://127.0.0.1:3001/health
 
 # Externo (de outra máquina, sem VPN)
 curl https://sync-api.sondalyze.com.br/health
@@ -192,10 +195,14 @@ Após publicar, valide na tela de diagnóstico da aplicação (componente `Diagn
 
 ## 10. Validar a sincronização ponta a ponta
 
-Pela interface do Books SND (módulo Pesquisas), rode uma sincronização e confirme que os dados chegam ao Supabase. Ou via curl:
+Na tela **Administração → Sincronização SQL Server** do Books SND:
+
+1. Clique em **Executar agora** e acompanhe a execução na aba **Histórico** — todas as etapas devem ficar verdes.
+2. Na aba **Agendamentos**, a coluna "Próxima execução" deve mostrar data/hora. Se aparecer o aviso "agendador desligado", falta `SCHEDULER_ENABLED=true` no `.env` (e reiniciar o serviço).
+
+Validação da contagem via curl:
 
 ```powershell
-curl -X POST https://sync-api.sondalyze.com.br/api/sync-pesquisas
 curl https://sync-api.sondalyze.com.br/api/validate-sync
 ```
 
@@ -205,7 +212,7 @@ curl https://sync-api.sondalyze.com.br/api/validate-sync
 
 1. **Rotacionar a senha do SQL `amsconsulta`.** O arquivo `sync-api/.env.temp` esteve versionado no histórico do git com a senha em texto plano. Remover do índice (já feito) não apaga o histórico — a forma segura é trocar a senha no SQL Server e atualizar o `.env` do servidor.
 2. **Rotacionar a `SUPABASE_SERVICE_KEY`** se houver qualquer suspeita de que tenha sido versionada ou compartilhada.
-3. Manter a porta **3001 fechada** para acesso externo (somente o `cloudflared`, no mesmo servidor, acessa via `localhost`).
+3. Manter a porta **3001 fechada** para acesso externo: `HOST=127.0.0.1` no `.env` (somente o `cloudflared`, no mesmo servidor, acessa a API).
 4. **Restringir o CORS**: hoje a sync-api usa `app.use(cors())` sem restrição de origem (`sync-api/src/server.ts`). Depois de estabilizar, considere restringir para `https://sondalyze.com.br` (e a origem da homologação, se aplicável).
 5. Proteger o `.env` do servidor: `icacls C:\apps\books-sonda-sync-api\.env` — apenas Administradores devem ter acesso.
 6. Restringir quem pode editar o túnel e o Public Hostname no painel Cloudflare Zero Trust (acesso equivalente a controlar para onde o tráfego de `sync-api.sondalyze.com.br` é roteado).
@@ -231,20 +238,13 @@ net stop Cloudflared
 
 ## ↩️ Rollback rápido
 
-Se algo der errado após apontar o frontend para a nova API, é possível voltar temporariamente para a URL anterior (Render) alterando a variável na Vercel:
-
-```env
-VITE_SYNC_API_URL=https://sync-api-p3jr.onrender.com
-```
-
-e refazendo o deploy. Isso não afeta a homologação.
-
-Se o problema for especificamente no túnel (não na sync-api), basta parar o serviço `Cloudflared` — o hostname `sync-api.sondalyze.com.br` volta a responder erro 502 pela Cloudflare, sem impacto no restante da rede do servidor.
+- **Versão nova da sync-api com problema:** restaure a pasta `C:\apps\books-sonda-sync-api` da versão anterior (mantenha o `.env`), rode `npm run build` e reinicie o serviço `Books SND Sync API`.
+- **Túnel com problema:** parar o serviço `Cloudflared` tira `sync-api.sondalyze.com.br` do ar (a Cloudflare passa a responder erro 502), sem impacto no restante da rede do servidor. Os agendamentos continuam rodando, porque o agendador fica dentro da própria sync-api.
 
 ---
 
 **Arquivos deste deploy:**
 - `deployment/.env.production.sondalyze` — modelo do `.env` de produção
-- `deployment/install-service.js` — instalação do serviço Windows da sync-api
+- `deployment/install-service.js` / `deployment/uninstall-service.js` — instalação/remoção do serviço Windows da sync-api
+- `deployment/test-installation.bat` — teste da instalação (serviços, API local, túnel, porta restrita)
 - `.env.production` (raiz do projeto) — `VITE_SYNC_API_URL` do frontend
-- `deployment/nginx.conf`, `deployment/generate-ssl-cert.bat` — fluxo alternativo (Nginx + Let's Encrypt/self-signed), mantidos como *fallback* caso o Cloudflare Tunnel não possa ser usado; ver `ARCHITECTURE.md`

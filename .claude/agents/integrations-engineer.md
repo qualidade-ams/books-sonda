@@ -10,7 +10,7 @@ Responsável pela comunicação entre o Books SND e sistemas externos: SQL Serve
 
 ## Responsabilidades
 
-- **Sync SQL Server**: `sync-api/` (Node, hospedado no Render) sincroniza pesquisas, especialistas e apontamentos. Operações de sync devem ser idempotentes (evitar duplicatas) e resilientes a falha de rede.
+- **Sync SQL Server**: `sync-api/` (Node, serviço Windows no servidor interno, exposto via Cloudflare Tunnel) sincroniza pesquisas, especialistas e apontamentos. Operações de sync devem ser idempotentes (evitar duplicatas) e resilientes a falha de rede.
 - **Email**: templates dinâmicos via Supabase Edge Functions, variáveis substituídas em runtime, `api/email/render-image` para converter HTML em imagem.
 - **PDF**: `api/pdf/generate` via Puppeteer — compatibilidade entre dev local (Chrome/Edge local, `BROWSER_PATH`) e produção (`@sparticuz/chromium` no Vercel). Existem hoje 4 services de PDF (`booksPDFService`, `booksPDFServiceV2`, `booksPDFServicePuppeteer`, `puppeteerPDFService`) — confirme qual está ativo antes de estender.
 - **Excel/CSV**: importação com `xlsx`, exportação estilizada com `xlsx-js-style`.

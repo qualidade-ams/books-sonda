@@ -58,7 +58,7 @@ Mexer em Permissões, Auth ou Empresas tem raio de impacto amplo — verifique o
 | Renderização de imagem de email | `api/email/render-image.ts` |
 | Criação de usuário | `api/users/create.ts` |
 | Edge Functions (Deno) | `supabase/functions/{admin-reset-password,create-user,sync-elogios-sql-server}` |
-| Sync SQL Server externo | `sync-api/` (Node, hospedado no Render) |
+| Sync SQL Server externo | `sync-api/` (Node, serviço Windows no servidor interno, exposto via Cloudflare Tunnel em `https://sync-api.sondalyze.com.br`) |
 
 ## Armadilhas conhecidas
 

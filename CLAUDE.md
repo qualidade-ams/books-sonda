@@ -6,7 +6,7 @@ Este arquivo tem só as regras gerais e permanentes. Detalhe por assunto vive na
 
 ## Stack
 
-React 18 + TypeScript + Vite · TanStack Query · React Hook Form + Zod · shadcn/ui (Radix) + Tailwind · React Router DOM · Supabase (Postgres + Auth PKCE + Storage + Realtime + RLS) · Vercel Functions com Puppeteer (`api/`) + Supabase Edge Functions em Deno (`supabase/functions/`) · `sync-api/` (Node no Render, sincroniza com SQL Server externo) · Vitest + Testing Library + jsdom.
+React 18 + TypeScript + Vite · TanStack Query · React Hook Form + Zod · shadcn/ui (Radix) + Tailwind · React Router DOM · Supabase (Postgres + Auth PKCE + Storage + Realtime + RLS) · Vercel Functions com Puppeteer (`api/`) + Supabase Edge Functions em Deno (`supabase/functions/`) · `sync-api/` (Node em serviço Windows no servidor interno, exposto via Cloudflare Tunnel; sincroniza com SQL Server externo) · Vitest + Testing Library + jsdom.
 
 TypeScript é **propositalmente relaxado** (`strict: false`, `noImplicitAny: false`, `strictNullChecks: false` em [tsconfig.app.json](tsconfig.app.json)). Não assuma inferência estrita e não "corrija" isso em massa sem alinhar antes.
 

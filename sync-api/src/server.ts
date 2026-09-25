@@ -22,6 +22,7 @@ import { criarDeteccaoAjustesRetroativos } from './services/deteccaoAjustesRetro
 import { criarOrquestradorSync } from './scheduler/orquestradorSync';
 import { criarAgendador } from './scheduler/agendador';
 import { criarRotasSyncJobs } from './scheduler/rotas';
+import { hostDeEscuta } from './utils/rede';
 
 const app = express();
 app.use(cors());
@@ -4100,9 +4101,10 @@ const agendadorSync = criarAgendador({ supabase, orquestrador: orquestradorSync 
 
 app.use('/api/sync-jobs', criarRotasSyncJobs(supabase, orquestradorSync, () => agendadorSync.ativo()));
 
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
+const HOST = hostDeEscuta(process.env);
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   // Só o serviço de produção dispara jobs: evita que um `npm run dev` local
   // rode sincronizações agendadas contra o mesmo Supabase.
   if (process.env.SCHEDULER_ENABLED === 'true') {
@@ -4116,7 +4118,7 @@ app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║  API de Sincronização de Pesquisas                          ║
-║  Porta: ${PORT}                                           ║
+║  Endereço: ${HOST}:${PORT}                                ║
 ║  SQL Server: ${sqlConfig.server}                          ║
 ║  Database: ${sqlConfig.database}                          ║
 ║  Tabela: ${process.env.SQL_TABLE || 'AMSpesquisa'}        ║

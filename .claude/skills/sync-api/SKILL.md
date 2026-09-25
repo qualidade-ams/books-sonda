@@ -1,6 +1,6 @@
 ---
 name: sync-api
-description: Serviço Node separado (sync-api/) que sincroniza o SQL Server Aranda com o Supabase — pesquisas, especialistas, apontamentos e tickets. Use ao mexer em sincronização, quando dados do Aranda não aparecem no sistema, ao adicionar ou depurar um endpoint de sync, ou ao mexer em deploy/variáveis do serviço no Render.
+description: Serviço Node separado (sync-api/) que sincroniza o SQL Server Aranda com o Supabase — pesquisas, especialistas, apontamentos e tickets. Use ao mexer em sincronização, quando dados do Aranda não aparecem no sistema, ao adicionar ou depurar um endpoint de sync, ou ao mexer em deploy/variáveis do serviço (servidor Windows + Cloudflare Tunnel).
 ---
 
 # sync-api — sincronização SQL Server → Supabase
@@ -11,7 +11,7 @@ Trazer dados do SQL Server **Aranda** (rede privada da Sonda) para tabelas do Su
 
 ## Quando utilizar
 
-Pesquisa/apontamento/ticket que não apareceu no sistema, endpoint de sync novo, ajuste em mapeamento de campo, deploy ou variável do serviço no Render.
+Pesquisa/apontamento/ticket que não apareceu no sistema, endpoint de sync novo, ajuste em mapeamento de campo, deploy ou variável do serviço no servidor Windows.
 
 Isto é um projeto Node **separado** do frontend: `package.json`, `tsconfig` e deploy próprios. Não é build pelo Vite e não passa pelo ESLint da raiz (`eslint.config.js` ignora `sync-api/**`). Os testes ficam em `sync-api/src/**/__tests__/` e rodam pelo **Vitest da raiz** (`npm run test:run` ou `npx vitest run sync-api`); o `tsconfig` do sync-api exclui `__tests__` do build. Código novo aqui também é test-first. Para mockar o Supabase use `src/__tests__/helpers/supabaseFake.ts`; para testar lógica que depende do `server.ts`, receba as dependências por parâmetro (o `server.ts` exige variáveis de ambiente e sobe o servidor ao ser importado).
 
@@ -38,7 +38,7 @@ sync-api/
 │       └── fixNullFieldsService.ts
 ├── scripts/               # validação e diagnóstico pontual
 ├── migrations/            # SQL aplicado ao Supabase por este serviço
-└── deployment/            # instalação como serviço Windows, nginx, guias
+└── deployment/            # serviço Windows, teste da instalação, guia de deploy (DEPLOY_SONDALYZE.md)
 ```
 
 `server.ts` tem ~4.000 linhas e concentra todas as rotas. Lógica nova vai para `src/services/`, não para o final do `server.ts`.
@@ -92,7 +92,7 @@ Por domínio, o padrão se repete: `test-connection*`, `table-structure*`, `sync
 3. `GET /api/table-structure` — confirma que a coluna esperada ainda existe na origem.
 4. `GET /api/validate-sync` — quantifica a divergência antes de decidir por incremental ou `-full`.
 5. Só então leia o service do domínio em `src/services/`.
-6. Logs no Render.
+6. Logs do serviço no servidor: `C:\apps\books-sonda-sync-api\logs\service.log`; túnel: Visualizador de Eventos (origem `Cloudflared`).
 
 ## Ambiente
 
@@ -104,9 +104,13 @@ npm run dev            # ts-node src/server.ts
 npm run build && npm start
 ```
 
-Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `NODE_ENV`, `SCHEDULER_ENABLED`.
+Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `HOST` (padrão `127.0.0.1`), `NODE_ENV`, `SCHEDULER_ENABLED`.
 
-Produção: Render, `https://sync-api-p3jr.onrender.com`. O frontend chega nele por `VITE_SYNC_API_URL`. `deployment/` guarda o caminho alternativo (serviço Windows + nginx) usado no ambiente Sondalyze.
+Produção: serviço Windows no servidor interno (mesmo do SQL Server), exposto só pelo **Cloudflare Tunnel** em `https://sync-api.sondalyze.com.br`. O frontend chega nele por `VITE_SYNC_API_URL`. Não há nginx nem certificado próprio: a Cloudflare entrega o HTTPS.
+
+- A API escuta só em `127.0.0.1` (`HOST`); o Public Hostname do túnel precisa apontar para `http://127.0.0.1:3001` — com `localhost` o Windows pode resolver para `::1` e o túnel devolve 502.
+- A Cloudflare corta requisições com mais de **100s** (erro 524). Endpoint novo que demora deve responder na hora e rodar em background, como `/api/sync-jobs/executar`.
+- Guia completo: `deployment/DEPLOY_SONDALYZE.md`; teste da instalação: `deployment/test-installation.bat`.
 
 ## Referências relacionadas
 

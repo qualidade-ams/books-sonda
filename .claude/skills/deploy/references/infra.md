@@ -12,7 +12,7 @@
 |---|---|
 | Vercel | frontend + serverless em `/api`; build `npm run build`, output `dist/` |
 | Supabase | banco, auth, storage, Edge Functions — projeto `qiahexepsdggkzgmklhq` |
-| Render | `sync-api` — `https://sync-api-p3jr.onrender.com` |
+| Servidor Windows interno + Cloudflare Tunnel | `sync-api` — `https://sync-api.sondalyze.com.br` (guia: `sync-api/deployment/DEPLOY_SONDALYZE.md`) |
 
 ## Variáveis de ambiente
 
@@ -21,7 +21,7 @@
 ```env
 VITE_SUPABASE_URL=https://[project-id].supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_[key]
-VITE_SYNC_API_URL=https://sync-api-p3jr.onrender.com
+VITE_SYNC_API_URL=https://sync-api.sondalyze.com.br
 ```
 
 A anon key é publicável por design — quem protege o dado é a RLS.
@@ -30,7 +30,7 @@ A anon key é publicável por design — quem protege o dado é a RLS.
 
 **Edge Functions**: `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são injetados automaticamente pelo Supabase. Segredos próprios entram via `supabase secrets set`.
 
-**sync-api (Render)**: credenciais de SQL Server e Supabase — ver skill `sync-api`.
+**sync-api (servidor Windows)**: credenciais de SQL Server e Supabase, `HOST`, `SCHEDULER_ENABLED` — ver skill `sync-api`.
 
 ## Serverless Functions (Vercel)
 

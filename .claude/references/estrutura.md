@@ -10,7 +10,7 @@ Consulte quando precisar localizar onde um tipo de arquivo mora, ou decidir onde
 | `api/` | Vercel Serverless Functions (`pdf/generate.ts`, `email/render-image.ts`, `users/create.ts`) |
 | `supabase/migrations/` | Migrations SQL versionadas |
 | `supabase/functions/` | Edge Functions Deno |
-| `sync-api/` | Serviço Node separado (Render) que sincroniza com SQL Server externo |
+| `sync-api/` | Serviço Node separado (serviço Windows + Cloudflare Tunnel) que sincroniza com SQL Server externo |
 | `scripts/` | Scripts utilitários de manutenção |
 | `.claude/` | **Fonte de verdade** do contexto: `skills/`, `agents/`, `references/` |
 | `.kiro/` | Legado da ferramenta Kiro: `steering/` (docs longas), `specs/` (specs de features já entregues), `workflows/` e `skills/` (duplicatas do `.claude/`) |
