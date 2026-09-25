@@ -1,8 +1,8 @@
 /**
  * Script para desinstalar serviço Windows da sync-api
  * 
- * Uso:
- * node uninstall-service.js
+ * Uso (terminal como Administrador, na pasta da sync-api):
+ * node deployment\uninstall-service.js
  */
 
 const Service = require('node-windows').Service;

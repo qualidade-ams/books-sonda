@@ -47,7 +47,7 @@ svc.on('install', function() {
 
 svc.on('alreadyinstalled', function() {
   console.log('⚠️  Serviço já está instalado!');
-  console.log('💡 Para reinstalar, execute: node uninstall-service.js');
+  console.log('💡 Para reinstalar, execute: node deployment\\uninstall-service.js');
 });
 
 svc.on('start', function() {
