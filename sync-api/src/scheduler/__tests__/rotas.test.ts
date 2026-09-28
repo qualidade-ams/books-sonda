@@ -92,10 +92,10 @@ describe('rotas sync-jobs', () => {
       expect(typeof execucoes[0]).toBe('string');
     });
 
-    it('limita N a 20', async () => {
+    it('limita N a 48 (cobre um dia inteiro de execuções de hora em hora)', async () => {
       const res = criarRes();
       await criarHandlersSyncJobs({ orquestrador }).proximasExecucoes({ body: { regra, n: 500 } } as any, res);
-      expect(res.json.mock.calls[0][0].execucoes).toHaveLength(20);
+      expect(res.json.mock.calls[0][0].execucoes).toHaveLength(48);
     });
 
     it('400 com os erros de uma regra inválida', async () => {

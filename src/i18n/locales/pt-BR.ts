@@ -2210,6 +2210,7 @@ const ptBR = {
       horaFim: 'Até (opcional)',
       ativo: 'Agendamento ativo',
       previsao: 'Próximas execuções',
+      previsao24h: 'Execuções nas próximas 24 horas',
       previsaoIndisponivel: 'Não foi possível calcular: {{erro}}',
       previsaoCalculando: 'Calculando…',
       cancelar: 'Cancelar',

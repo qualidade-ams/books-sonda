@@ -2212,6 +2212,7 @@ const es = {
       horaFim: 'Hasta (opcional)',
       ativo: 'Programación activa',
       previsao: 'Próximas ejecuciones',
+      previsao24h: 'Ejecuciones en las próximas 24 horas',
       previsaoIndisponivel: 'No fue posible calcular: {{erro}}',
       previsaoCalculando: 'Calculando…',
       cancelar: 'Cancelar',

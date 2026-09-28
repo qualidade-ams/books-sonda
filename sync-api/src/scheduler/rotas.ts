@@ -20,7 +20,8 @@ interface OrquestradorLike {
 
 const CHAVES_TABELA = ['pesquisas', 'especialistas', 'apontamentos', 'tickets', 'codigoResolucao'] as const;
 const CHAVES_POS = ['detectarInconsistencias', 'ajustesRetroativos'] as const;
-const MAX_PREVIEW = 20;
+// 48 cobre um dia inteiro de execuções de hora em hora (24), com folga para horários fixos
+const MAX_PREVIEW = 48;
 
 /** Aceita só as chaves conhecidas, com tipos corretos */
 function sanitizarTabelas(entrada: any): TabelasSync {

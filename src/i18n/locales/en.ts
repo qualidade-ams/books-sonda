@@ -2212,6 +2212,7 @@ const en = {
       horaFim: 'Until (optional)',
       ativo: 'Schedule active',
       previsao: 'Next runs',
+      previsao24h: 'Runs in the next 24 hours',
       previsaoIndisponivel: 'Could not calculate: {{erro}}',
       previsaoCalculando: 'Calculating…',
       cancelar: 'Cancel',

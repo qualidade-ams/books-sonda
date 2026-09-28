@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { usePreverExecucoes } from '@/hooks/useSyncAgendamentos';
+import { execucoesParaPrevisao } from '@/utils/previsaoExecucoes';
 import {
   agendamentoFormSchema,
   agendamentoParaForm,
@@ -86,6 +87,8 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
   }, [chaveRegra]);
 
   const { previsao, isFetching, error: erroPrevisao } = usePreverExecucoes(regraPrevisao, open && regraValida);
+  // Dia inteiro (próximas 24h); semanal/mensal sem nada nesse período mostra as próximas 5
+  const previsaoExibida = useMemo(() => execucoesParaPrevisao(previsao), [previsao]);
 
   const formatarData = (iso: string) =>
     new Date(iso).toLocaleString(i18n.language || 'pt-BR', {
@@ -361,11 +364,13 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
             )}
           </div>
 
-          {/* Previsão */}
+          {/* Previsão — columns-2 preenche coluna por coluna (de cima para baixo, depois a da direita) */}
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
               <CalendarClock className="h-4 w-4 text-sonda-blue" />
-              {t('sincronizacaoSql.form.previsao')}
+              {previsaoExibida.periodo === '24h'
+                ? t('sincronizacaoSql.form.previsao24h')
+                : t('sincronizacaoSql.form.previsao')}
               {isFetching && <Loader2 className="h-3 w-3 animate-spin text-gray-400" />}
             </div>
             {erroPrevisao ? (
@@ -373,9 +378,9 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
                 {t('sincronizacaoSql.form.previsaoIndisponivel', { erro: erroPrevisao.message })}
               </p>
             ) : regraValida ? (
-              <ul className="text-sm text-gray-600 space-y-1">
-                {previsao.map((iso) => (
-                  <li key={iso} data-testid="previsao-execucao" className="font-mono">
+              <ul className="sm:columns-2 gap-x-6 space-y-1 text-sm text-gray-600">
+                {previsaoExibida.execucoes.map((iso) => (
+                  <li key={iso} data-testid="previsao-execucao" className="font-mono break-inside-avoid">
                     {formatarData(iso)}
                   </li>
                 ))}

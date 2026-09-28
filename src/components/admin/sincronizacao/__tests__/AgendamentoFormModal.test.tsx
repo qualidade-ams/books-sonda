@@ -14,7 +14,10 @@ vi.mock('@/hooks/useSyncAgendamentos', () => ({
 import { AgendamentoFormModal } from '../AgendamentoFormModal';
 
 describe('AgendamentoFormModal', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    preverMock.mockReturnValue({ previsao: ['2026-09-24T10:00:00.000Z'], isFetching: false, error: null });
+  });
 
   function renderizar(agendamento: SyncAgendamento | null = null) {
     const onSalvar = vi.fn<(dados: any) => Promise<void>>(async () => {});
@@ -50,9 +53,32 @@ describe('AgendamentoFormModal', () => {
 
   it('mostra a previsão das próximas execuções', () => {
     renderizar();
-    expect(screen.getByText('sincronizacaoSql.form.previsao')).toBeInTheDocument();
+    expect(screen.getByText('sincronizacaoSql.form.previsao24h')).toBeInTheDocument();
     expect(preverMock).toHaveBeenCalled();
     expect(screen.getAllByTestId('previsao-execucao')).toHaveLength(1);
+  });
+
+  it('mostra todas as execuções das próximas 24 horas', () => {
+    const base = Date.now();
+    const execucoes = Array.from({ length: 20 }, (_, i) => new Date(base + (i + 1) * 2 * 3600_000).toISOString());
+    preverMock.mockReturnValue({ previsao: execucoes, isFetching: false, error: null });
+
+    renderizar();
+
+    // 2h, 4h ... 24h → 12 dentro das próximas 24 horas
+    expect(screen.getAllByTestId('previsao-execucao')).toHaveLength(12);
+    expect(screen.getByText('sincronizacaoSql.form.previsao24h')).toBeInTheDocument();
+  });
+
+  it('sem execuções nas próximas 24 horas mostra as próximas 5', () => {
+    const base = Date.now();
+    const semanais = Array.from({ length: 8 }, (_, i) => new Date(base + (i + 2) * 7 * 86400_000).toISOString());
+    preverMock.mockReturnValue({ previsao: semanais, isFetching: false, error: null });
+
+    renderizar();
+
+    expect(screen.getAllByTestId('previsao-execucao')).toHaveLength(5);
+    expect(screen.getByText('sincronizacaoSql.form.previsao')).toBeInTheDocument();
   });
 
   it('preenche o formulário ao editar', () => {

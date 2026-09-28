@@ -155,7 +155,7 @@ describe('usePreverExecucoes', () => {
     await waitFor(() => expect(result.current.previsao).toEqual(['2026-09-24T10:00:00.000Z']));
     expect(servico.preverExecucoes).toHaveBeenCalledWith(
       expect.objectContaining({ frequencia: 'diario', horarios: ['07:00'] }),
-      5
+      48
     );
   });
 });

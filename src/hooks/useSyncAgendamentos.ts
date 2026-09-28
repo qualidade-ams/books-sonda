@@ -102,7 +102,8 @@ export function usePreverExecucoes(regra: RegraRecorrencia, habilitado: boolean)
 
   const { data: previsao = [], isFetching, error } = useQuery<string[]>({
     queryKey: [...CHAVE_AGENDAMENTOS, 'previsao', chaveRegra],
-    queryFn: () => syncAgendamentosService.preverExecucoes(chaveRegra, 5),
+    // 48 = limite do sync-api; a tela filtra as próximas 24 horas (execucoesParaPrevisao)
+    queryFn: () => syncAgendamentosService.preverExecucoes(chaveRegra, 48),
     enabled: habilitado,
     retry: false,
     staleTime: 30_000,
