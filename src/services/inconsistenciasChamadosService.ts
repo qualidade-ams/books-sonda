@@ -122,6 +122,82 @@ export class InconsistenciasChamadosService {
     }
   }
 
+  /** Verificação em andamento, compartilhada pelas buscas simultâneas da tela */
+  private resolucaoSemAtualizacaoEmAndamento: Promise<number> | null = null;
+
+  /**
+   * Resolve as inconsistências "sem_atualizacao" ativas cujo chamado voltou a ser
+   * comentado (data_ultimo_comentario de apontamentos_tickets_aranda) há menos de
+   * 16 dias, movendo-as para o Histórico sem esperar a próxima detecção do sync-api.
+   * Mesmo corte de detectar_inconsistencias(): 16 dias ou mais continua ativa.
+   * Não marca arquivado_manualmente: se o chamado parar de novo, a detecção o reativa.
+   * Retorna quantas foram resolvidas; em erro, retorna 0 para não impedir a tela de carregar.
+   */
+  resolverSemAtualizacaoComComentarioRecente(): Promise<number> {
+    if (!this.resolucaoSemAtualizacaoEmAndamento) {
+      this.resolucaoSemAtualizacaoEmAndamento = this.executarResolucaoSemAtualizacao().finally(() => {
+        this.resolucaoSemAtualizacaoEmAndamento = null;
+      });
+    }
+    return this.resolucaoSemAtualizacaoEmAndamento;
+  }
+
+  private async executarResolucaoSemAtualizacao(): Promise<number> {
+    try {
+      const ativas = await this.buscarTodosPaginado(() =>
+        supabase
+          .from('inconsistencias_chamados' as any)
+          .select('id, nro_chamado')
+          .eq('status', 'ativa')
+          .eq('tipo_inconsistencia', 'sem_atualizacao')
+      );
+      if (ativas.length === 0) return 0;
+
+      const nroLimpo = (nro: string) => (nro || '').replace(/^(RF|IM|PM)\s*/, '').trim();
+      const nros = Array.from(new Set(ativas.map(inc => nroLimpo(inc.nro_chamado)).filter(Boolean)));
+
+      const ultimoComentario = new Map<string, string>();
+      const batchSize = 200;
+      for (let i = 0; i < nros.length; i += batchSize) {
+        const batch = nros.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('apontamentos_tickets_aranda' as any)
+          .select('nro_solicitacao, data_ultimo_comentario')
+          .in('nro_solicitacao', batch);
+        if (error) throw error;
+        for (const ticket of (data as any[]) || []) {
+          if (ticket.nro_solicitacao && ticket.data_ultimo_comentario) {
+            ultimoComentario.set(ticket.nro_solicitacao, ticket.data_ultimo_comentario);
+          }
+        }
+      }
+
+      const limite = Date.now() - 16 * 24 * 60 * 60 * 1000;
+      const ids = ativas
+        .filter(inc => {
+          const comentario = ultimoComentario.get(nroLimpo(inc.nro_chamado));
+          return comentario && new Date(comentario).getTime() > limite;
+        })
+        .map(inc => inc.id);
+      if (ids.length === 0) return 0;
+
+      const dataResolucao = new Date().toISOString();
+      for (let i = 0; i < ids.length; i += 100) {
+        const { error } = await supabase
+          .from('inconsistencias_chamados' as any)
+          .update({ status: 'resolvida', data_resolucao: dataResolucao })
+          .in('id', ids.slice(i, i + 100))
+          .eq('status', 'ativa');
+        if (error) throw error;
+      }
+
+      return ids.length;
+    } catch (error) {
+      console.error('❌ Erro ao resolver inconsistências sem atualização:', error instanceof Error ? error.message : (error as any)?.message);
+      return 0;
+    }
+  }
+
   /**
    * Busca inconsistências ativas (pendentes de correção)
    * Usa paginação para buscar TODOS os registros (Supabase limita a 1000 por request)
@@ -131,6 +207,9 @@ export class InconsistenciasChamadosService {
   ): Promise<InconsistenciaChamado[]> {
     try {
       console.log('🔍 Buscando inconsistências ativas:', filtros);
+
+      // Chamados comentados de novo saem da lista antes da consulta
+      await this.resolverSemAtualizacaoComComentarioRecente();
 
       const buildQuery = () => {
         let query = supabase
@@ -244,6 +323,9 @@ export class InconsistenciasChamadosService {
   ): Promise<InconsistenciaChamado[]> {
     try {
       console.log('📜 Buscando inconsistências resolvidas:', filtros);
+
+      // Garante que as resolvidas agora pela verificação já apareçam no Histórico
+      await this.resolverSemAtualizacaoComComentarioRecente();
 
       const buildQuery = () => {
         let query = supabase
