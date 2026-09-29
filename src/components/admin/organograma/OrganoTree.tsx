@@ -17,6 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useOrganograma } from '@/hooks/useOrganograma';
 import type { PessoaComSubordinados } from '@/types/organograma';
+import { calcularNivelEscalacao } from '@/utils/nivelEscalacao';
 
 interface OrganoTreeProps {
   pessoas: PessoaComSubordinados[];
@@ -168,7 +169,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     const mostrarNivel = !(isCustomerSuccessOuComercial && nivelAjustado === 0);
     const nivelExibicao = isCustomerSuccessOuComercial && nivelAjustado > 0 ? 3 : nivelAjustado;
     
-    const nivelTexto = t('books.escalationLevel', { level: nivelExibicao + 1 });
+    const nivelTexto = t('books.escalationLevel', { level: calcularNivelEscalacao(nivelExibicao) });
 
     const isCentralPriorizacao = pessoa?.cargo === 'Central Escalação' || nivelAjustado === 3;
     

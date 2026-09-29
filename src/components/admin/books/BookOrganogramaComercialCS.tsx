@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
 import { supabase } from '@/integrations/supabase/client';
 import type { PessoaComSubordinados, Cargo, Produto } from '@/types/organograma';
+import { calcularNivelEscalacao } from '@/utils/nivelEscalacao';
 import BookFooterBar from './BookFooterBar';
 
 interface BookOrganogramaComercialCSProps {
@@ -274,7 +275,7 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
           isFiltered={true}
           viewOnly={true}
         />
-        {/* Card T&M posicionado no canto direito, alinhado com o nível 4 */}
+        {/* Card T&M posicionado no canto direito, alinhado com a linha da base (1º nível) */}
         {pessoasTM.length > 0 && (
           <div className="absolute right-[120px]" style={{ top: '505px' }}>
             {pessoasTM.map(pessoa => (
@@ -321,7 +322,7 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
                   {/* Nível */}
                   <div className="text-center">
                     <span className="text-base font-bold tracking-wide text-blue-600">
-                      {t('books.escalationLevel', { level: 4 })}
+                      {t('books.escalationLevel', { level: calcularNivelEscalacao(3) })}
                     </span>
                   </div>
 
