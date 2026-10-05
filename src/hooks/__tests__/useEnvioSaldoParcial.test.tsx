@@ -49,6 +49,21 @@ describe('useEnvioSaldoParcial', () => {
     await waitFor(() => expect(result.current.clientes).toHaveLength(1));
   });
 
+  it('a contagem de contatos dos clientes é renovada quando um contato é alterado (cache de ["clientes"])', async () => {
+    (envioSaldoParcialService.listarClientesElegiveis as any)
+      .mockResolvedValueOnce([{ id: 'e1', nome: 'A', qtdContatosSaldoParcial: 1 }])
+      .mockResolvedValueOnce([{ id: 'e1', nome: 'A', qtdContatosSaldoParcial: 0 }]);
+    const { wrapper, client } = criarWrapper();
+
+    const { result } = renderHook(() => useClientesElegiveisSaldoParcial(), { wrapper });
+    await waitFor(() => expect(result.current.clientes[0]?.qtdContatosSaldoParcial).toBe(1));
+
+    // O que os hooks de Gerenciamento de Clientes fazem ao criar/editar/inativar um contato
+    await act(() => client.invalidateQueries({ queryKey: ['clientes'] }));
+
+    await waitFor(() => expect(result.current.clientes[0]?.qtdContatosSaldoParcial).toBe(0));
+  });
+
   it('salvar cria quando não há id e atualiza quando há, invalidando a lista', async () => {
     const { wrapper, client } = criarWrapper();
     const invalidar = vi.spyOn(client, 'invalidateQueries');

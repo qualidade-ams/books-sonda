@@ -10,7 +10,8 @@ import type { RegraRecorrencia } from '@/types/syncAgendamentos';
 
 const CHAVE_AGENDAMENTOS = ['envio-saldo-parcial', 'agendamentos'];
 const CHAVE_EXECUCOES = ['envio-saldo-parcial', 'execucoes'];
-const CHAVE_CLIENTES = ['envio-saldo-parcial', 'clientes-elegiveis'];
+// Sob ['clientes']: criar/editar/inativar um contato (useClientes) invalida e recarrega a contagem
+const CHAVE_CLIENTES = ['clientes', 'elegiveis-saldo-parcial'];
 
 /** Enquanto houver envio em andamento, o histórico é atualizado a cada 3s */
 export function intervaloPollingExecucoesSaldoParcial(execucoes: ExecucaoSaldoParcial[] | undefined): number | false {
