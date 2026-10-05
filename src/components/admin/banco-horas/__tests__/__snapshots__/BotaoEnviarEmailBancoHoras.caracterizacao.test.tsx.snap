@@ -1,0 +1,484 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`BotaoEnviarEmailBancoHoras - caracterização do Saldo Parcial > com as tabelas renderizadas como imagem > envia o mesmo HTML para renderizar e o mesmo e-mail com a imagem (português) 1`] = `
+"
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            * { box-sizing: border-box; }
+            html, body { margin: 0; padding: 0; background: #ffffff; }
+          </style>
+        </head>
+        <body>
+          <div style="font-family:Calibri,sans-serif;max-width:1200px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
+            
+    <table style="width:100%;border-collapse:collapse;font-family:Calibri,sans-serif;overflow:hidden;">
+      <thead>
+        <tr>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Período</th>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;" colspan="3">4º Trimestre</th>
+        </tr>
+        <tr>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Mês</th>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Outubro/26</th><th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Novembro/26</th><th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Dezembro/26</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Banco Contratado</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td></tr><tr style="background:#e5e7eb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Repasse mês anterior</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">14:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">15:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">19:37</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Saldo a utilizar</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">38:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">39:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">43:37</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Consumo Chamados</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">05:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Requerimentos <span style="color:#2563eb;">*</span></td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">02:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Reajuste</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Consumo Total</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">07:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Saldo</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">30:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">39:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">43:37</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Repasse - 50%</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">15:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">19:37</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr>
+        
+    <tr>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Taxa/hora Excedente</td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;"></td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;" colspan="1">Valor Total</td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">R$ 0,00</td>
+    </tr>
+  
+      </tbody>
+    </table>
+  
+    <div style="margin-top:16px;">
+      <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
+        <span style="font-size:11px;">📋</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Requerimentos do Período</span>
+        <span style="color:#2563eb;font-size:11px;margin-left:3px;">*</span>
+        <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:600;font-family:Inter,sans-serif;;margin-left:6px;">02:00</span>
+      </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Chamado</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Cliente</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Módulo</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">H.Func</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">H.Téc</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Total</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Data Envio</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Data Aprovação</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Valor Total</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Período</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr style="background:#ffffff;">
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;white-space:nowrap;">
+          <div style="font-weight:500;font-size:10px;color:#111827;white-space:nowrap;">🏛️ RF-0001</div>
+          <div style="margin-top:2px;"><span style="background:#3b82f6;color:#fff;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;display:inline-block;white-space:nowrap;">Banco de Horas</span></div>
+        </td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;font-weight:600;white-space:nowrap;">-</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;white-space:nowrap;"><span style="border:1px solid #93c5fd;color:#2563eb;padding:2px 5px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;white-space:nowrap;">Comply</span></td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">02:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">00:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:700;border-bottom:1px solid #e5e7eb;">02:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">01/10/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">01/10/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">-</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">10/2026</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  
+    <div style="margin-top:16px;">
+      <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
+        <span style="font-size:11px;">💬</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Observações</span>
+      </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:3px;">
+        <thead>
+          <tr>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Tipo</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Período</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Observação</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Usuário</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Data</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;"><span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">Manual</span></td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;font-weight:500;">Outubro/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">Observação de teste do período</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Usuário Teste</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">01/10/2026 às 09:00</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  
+          </div>
+        </body>
+        </html>
+      "
+`;
+
+exports[`BotaoEnviarEmailBancoHoras - caracterização do Saldo Parcial > com as tabelas renderizadas como imagem > envia o mesmo HTML para renderizar e o mesmo e-mail com a imagem (português) 2`] = `
+"<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!--[if gte mso 9]>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<style>
+table { border-collapse: collapse; }
+img { -ms-interpolation-mode: bicubic; }
+</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;text-align:left;padding:20px;">
+  <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;font-weight:700;">Bom dia!</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Segue abaixo a previsão parcial das horas contabilizadas até o momento.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Ressaltamos que o fechamento oficial será realizado no início do próximo mês, ocasião em que serão disponibilizados o Book mensal e o quadro oficial de consumo do período.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Informamos que este demonstrativo contempla:</p>
+<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style-type:disc;">
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Apontamentos automáticos;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Requerimentos do período já contabilizados no quadro de consumo;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Requerimentos em desenvolvimento, ainda não contabilizados no quadro de consumo;</li>
+</ul><p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Dessa forma, os valores e quantidades apresentados poderão sofrer alterações até o fechamento oficial do mês.</p>
+  
+          <!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1200"><tr><td><![endif]-->
+          <table cellpadding="0" cellspacing="0" border="0" width="1200" style="width:1200px;min-width:1200px;max-width:1200px;margin-top:16px;">
+          <tr>
+          <td style="padding:0;margin:0;line-height:0;font-size:0;">
+          <img src="https://exemplo.test/tabelas.png" alt="Banco de Horas" width="1200" style="display:block;width:1200px;min-width:1200px;max-width:1200px;height:auto;border:0;outline:none;text-decoration:none;" />
+          </td>
+          </tr>
+          </table>
+          <!--[if gte mso 9]></td></tr></table><![endif]-->
+        
+  
+            <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">Ficamos à disposição em caso de dúvidas.</p>
+            <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+            
+<div style="margin-top:24px;">
+  <img src="https://www.sondalyze.com.br/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+</div>
+
+          
+</div>
+</body>
+</html>"
+`;
+
+exports[`BotaoEnviarEmailBancoHoras - caracterização do Saldo Parcial > com as tabelas renderizadas como imagem > gera o mesmo e-mail com a imagem (inglês) 1`] = `
+"<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!--[if gte mso 9]>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<style>
+table { border-collapse: collapse; }
+img { -ms-interpolation-mode: bicubic; }
+</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;text-align:left;padding:20px;">
+  <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;font-weight:700;">Good morning!</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Below is the partial forecast of hours accounted for so far.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Please note that the official closing will be done at the beginning of next month, when the monthly Book and the official consumption table for the period will be made available.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">We inform that this statement includes:</p>
+<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style-type:disc;">
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Automatic entries;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Period requirements already accounted for in the consumption table;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Requirements in development, not yet accounted for in the consumption table;</li>
+</ul><p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Therefore, the values and quantities presented may change until the official month-end closing.</p>
+  
+          <!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1200"><tr><td><![endif]-->
+          <table cellpadding="0" cellspacing="0" border="0" width="1200" style="width:1200px;min-width:1200px;max-width:1200px;margin-top:16px;">
+          <tr>
+          <td style="padding:0;margin:0;line-height:0;font-size:0;">
+          <img src="https://exemplo.test/tabelas.png" alt="Banco de Horas" width="1200" style="display:block;width:1200px;min-width:1200px;max-width:1200px;height:auto;border:0;outline:none;text-decoration:none;" />
+          </td>
+          </tr>
+          </table>
+          <!--[if gte mso 9]></td></tr></table><![endif]-->
+        
+  
+            <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">We remain at your disposal should you have any questions.</p>
+            <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Best regards</p>
+            
+<div style="margin-top:24px;">
+  <img src="https://www.sondalyze.com.br/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+</div>
+
+          
+</div>
+</body>
+</html>"
+`;
+
+exports[`BotaoEnviarEmailBancoHoras - caracterização do Saldo Parcial > gera o mesmo HTML em inglês 1`] = `
+"
+      <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;text-align:left;">
+        <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;font-weight:700;">Good morning!</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Below is the partial forecast of hours accounted for so far.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Please note that the official closing will be done at the beginning of next month, when the monthly Book and the official consumption table for the period will be made available.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">We inform that this statement includes:</p>
+<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style-type:disc;">
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Automatic entries;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Period requirements already accounted for in the consumption table;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Requirements in development, not yet accounted for in the consumption table;</li>
+</ul><p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Therefore, the values and quantities presented may change until the official month-end closing.</p>
+
+        
+    <table style="width:100%;border-collapse:collapse;font-family:Calibri,sans-serif;overflow:hidden;">
+      <thead>
+        <tr>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Period</th>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;" colspan="3">4º Trimestre</th>
+        </tr>
+        <tr>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Month</th>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">October/26</th><th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">November/26</th><th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">December/26</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Contracted Hours</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td></tr><tr style="background:#e5e7eb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Previous month carryover</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">14:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">15:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">19:37</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Balance to use</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">38:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">39:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">43:37</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Tickets Consumption</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">05:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Requirements <span style="color:#2563eb;">*</span></td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">02:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Adjustment</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Total Consumption</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">07:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Balance</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">30:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">39:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">43:37</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Carryover - 50%</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">15:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">19:37</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr>
+        
+    <tr>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Surplus Rate/hour</td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;"></td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;" colspan="1">Total Amount</td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">R$ 0,00</td>
+    </tr>
+  
+      </tbody>
+    </table>
+  
+        
+    <div style="margin-top:16px;">
+      <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
+        <span style="font-size:11px;">📋</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Period Requirements</span>
+        <span style="color:#2563eb;font-size:11px;margin-left:3px;">*</span>
+        <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:600;font-family:Inter,sans-serif;;margin-left:6px;">02:00</span>
+      </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Ticket</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Client</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Module</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Func.H</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Tech.H</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Total</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Sent Date</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Approval Date</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Total Amount</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Period</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr style="background:#ffffff;">
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;white-space:nowrap;">
+          <div style="font-weight:500;font-size:10px;color:#111827;white-space:nowrap;">🏛️ RF-0001</div>
+          <div style="margin-top:2px;"><span style="background:#3b82f6;color:#fff;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;display:inline-block;white-space:nowrap;">Banco de Horas</span></div>
+        </td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;font-weight:600;white-space:nowrap;">-</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;white-space:nowrap;"><span style="border:1px solid #93c5fd;color:#2563eb;padding:2px 5px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;white-space:nowrap;">Comply</span></td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">02:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">00:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:700;border-bottom:1px solid #e5e7eb;">02:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">10/1/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">10/1/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">-</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">10/2026</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  
+        
+        
+    <div style="margin-top:16px;">
+      <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
+        <span style="font-size:11px;">💬</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Notes</span>
+      </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:3px;">
+        <thead>
+          <tr>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Type</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Period</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Note</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">User</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;"><span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">Manual</span></td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;font-weight:500;">October/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">Observação de teste do período</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Usuário Teste</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">10/01/2026 at 09:00 AM</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  
+
+        
+        <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">We remain at your disposal should you have any questions.</p>
+        <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Best regards</p>
+        
+<div style="margin-top:24px;">
+  <img src="https://www.sondalyze.com.br/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+</div>
+
+      
+      </div>
+    "
+`;
+
+exports[`BotaoEnviarEmailBancoHoras - caracterização do Saldo Parcial > gera o mesmo assunto e HTML em português 1`] = `
+"
+      <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;text-align:left;">
+        <p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;font-weight:700;">Bom dia!</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Segue abaixo a previsão parcial das horas contabilizadas até o momento.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Ressaltamos que o fechamento oficial será realizado no início do próximo mês, ocasião em que serão disponibilizados o Book mensal e o quadro oficial de consumo do período.</p>
+<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Informamos que este demonstrativo contempla:</p>
+<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style-type:disc;">
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Apontamentos automáticos;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Requerimentos do período já contabilizados no quadro de consumo;</li>
+<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">Requerimentos em desenvolvimento, ainda não contabilizados no quadro de consumo;</li>
+</ul><p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;">Dessa forma, os valores e quantidades apresentados poderão sofrer alterações até o fechamento oficial do mês.</p>
+
+        
+    <table style="width:100%;border-collapse:collapse;font-family:Calibri,sans-serif;overflow:hidden;">
+      <thead>
+        <tr>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Período</th>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;" colspan="3">4º Trimestre</th>
+        </tr>
+        <tr>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Mês</th>
+          <th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Outubro/26</th><th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Novembro/26</th><th style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#2563eb;">Dezembro/26</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Banco Contratado</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">24:00</td></tr><tr style="background:#e5e7eb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Repasse mês anterior</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">14:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">15:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">19:37</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Saldo a utilizar</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">38:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">39:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">43:37</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Consumo Chamados</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">05:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Requerimentos <span style="color:#2563eb;">*</span></td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">02:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#ffffff;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Reajuste</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Consumo Total</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">07:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Saldo</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">30:30</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">39:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">43:37</td></tr><tr style="background:#f9fafb;"><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">Repasse - 50%</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">15:15</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#16a34a;border-bottom:1px solid #e5e7eb;">19:37</td><td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;">00:00</td></tr>
+        
+    <tr>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">Taxa/hora Excedente</td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;"></td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;" colspan="1">Valor Total</td>
+      <td style="padding:4px 6px;text-align:center;font-size:7pt;font-family:Inter,sans-serif;border:none;font-weight:600;color:#fff;background:#374151;">R$ 0,00</td>
+    </tr>
+  
+      </tbody>
+    </table>
+  
+        
+    <div style="margin-top:16px;">
+      <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
+        <span style="font-size:11px;">📋</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Requerimentos do Período</span>
+        <span style="color:#2563eb;font-size:11px;margin-left:3px;">*</span>
+        <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:600;font-family:Inter,sans-serif;;margin-left:6px;">02:00</span>
+      </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Chamado</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Cliente</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Módulo</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">H.Func</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">H.Téc</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Total</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Data Envio</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Data Aprovação</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Valor Total</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Período</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr style="background:#ffffff;">
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;white-space:nowrap;">
+          <div style="font-weight:500;font-size:10px;color:#111827;white-space:nowrap;">🏛️ RF-0001</div>
+          <div style="margin-top:2px;"><span style="background:#3b82f6;color:#fff;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;display:inline-block;white-space:nowrap;">Banco de Horas</span></div>
+        </td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;font-weight:600;white-space:nowrap;">-</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;white-space:nowrap;"><span style="border:1px solid #93c5fd;color:#2563eb;padding:2px 5px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;white-space:nowrap;">Comply</span></td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">02:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">00:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:700;border-bottom:1px solid #e5e7eb;">02:00</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">01/10/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">01/10/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">-</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">10/2026</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  
+        
+        
+    <div style="margin-top:16px;">
+      <table style="width:100%;margin-bottom:0;"><tr><td style="padding:0;border:none;font-family:Inter,sans-serif;">
+        <span style="font-size:11px;">💬</span>
+        <span style="font-size:11px;font-weight:600;color:#111827;font-family:Inter,sans-serif;margin-left:4px;">Observações</span>
+      </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;margin-top:3px;">
+        <thead>
+          <tr>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Tipo</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Período</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Observação</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Usuário</th>
+            <th style="padding:5px 6px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Data</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;"><span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:6px;font-size:8px;font-family:Inter,sans-serif;">Manual</span></td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;;font-weight:500;">Outubro/2026</td>
+        <td style="padding:6px 5px;text-align:center;font-size:10px;font-family:Inter,sans-serif;color:#111827;font-weight:400;border-bottom:1px solid #e5e7eb;">Observação de teste do período</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">Usuário Teste</td>
+        <td style="padding:6px 5px;text-align:center;font-size:9px;font-family:Inter,sans-serif;color:#6b7280;font-weight:400;border-bottom:1px solid #e5e7eb;">01/10/2026 às 09:00</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  
+
+        
+        <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">Ficamos à disposição em caso de dúvidas.</p>
+        <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+        
+<div style="margin-top:24px;">
+  <img src="https://www.sondalyze.com.br/images/qualidade/assinatura_nova.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+</div>
+
+      
+      </div>
+    "
+`;

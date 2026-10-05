@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { EmpresaClienteCompleta, ClienteCompleto } from '@/types/clientBooksTypes';
 import jsPDF from 'jspdf';
+import { getFinalidadeEnvioLabel } from '@/utils/finalidadeEnvioUtils';
 
 // Função para exportar empresas para Excel
 export const exportEmpresasToExcel = (empresas: EmpresaClienteCompleta[]) => {
@@ -69,6 +70,7 @@ export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
     'Status': cliente.status,
     'Descrição Status': cliente.descricao_status || '',
     'Principal Contato': cliente.principal_contato ? 'Sim' : 'Não',
+    'Finalidade de Envio': getFinalidadeEnvioLabel(cliente.finalidade_envio),
     'Data de Criação': new Date(cliente.created_at).toLocaleDateString('pt-BR'),
     'Última Atualização': new Date(cliente.updated_at).toLocaleDateString('pt-BR')
   }));
@@ -89,6 +91,7 @@ export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
     { wch: 12 }, // Status
     { wch: 25 }, // Descrição Status
     { wch: 15 }, // Principal Contato
+    { wch: 18 }, // Finalidade de Envio
     { wch: 15 }, // Data de Criação
     { wch: 18 }  // Última Atualização
   ];
@@ -296,6 +299,12 @@ export const exportClientesToPDF = async (
       doc.text(funcao, rightColumnX + 20, contentY + 5);
     }
 
+    // Finalidade de envio
+    doc.setFont('helvetica', 'bold');
+    doc.text('Finalidade:', rightColumnX, contentY + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(getFinalidadeEnvioLabel(cliente.finalidade_envio), rightColumnX + 22, contentY + 10);
+
     // Principal contato (se aplicável)
     if (cliente.principal_contato) {
       doc.setTextColor(...colors.primary);
@@ -379,6 +388,7 @@ export interface ClienteImportData {
   status: string;
   descricaoStatus?: string;
   principalContato: string; // 'Sim' ou 'Não'
+  finalidadeEnvio?: string; // 'Book', 'Saldo Parcial' ou 'Ambos' (vazio = Book)
 }
 
 // Função para processar arquivo Excel de importação de empresas
@@ -674,6 +684,9 @@ export const processImportClientesExcel = (file: File): Promise<ClienteImportDat
         const principalContatoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('principal') && h.toLowerCase().includes('contato')
         );
+        const finalidadeEnvioIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('finalidade')
+        );
 
         if (nomeCompletoIndex === -1) {
           throw new Error('Coluna "Nome" não encontrada no arquivo');
@@ -703,7 +716,10 @@ export const processImportClientesExcel = (file: File): Promise<ClienteImportDat
               : undefined,
             principalContato: principalContatoIndex !== -1 && row[principalContatoIndex]
               ? String(row[principalContatoIndex]).trim().toLowerCase()
-              : 'não'
+              : 'não',
+            finalidadeEnvio: finalidadeEnvioIndex !== -1 && row[finalidadeEnvioIndex]
+              ? String(row[finalidadeEnvioIndex]).trim()
+              : undefined
           }));
 
         resolve(clientes);
@@ -799,7 +815,8 @@ export const downloadImportClientesTemplate = () => {
       'Empresa Abreviada': 'EXEMPLO',
       'Status': 'ativo',
       'Descrição Status': 'Cliente ativo (opcional)',
-      'Principal Contato': 'Sim'
+      'Principal Contato': 'Sim',
+      'Finalidade de Envio': 'Ambos'
     },
     {
       'Nome Completo': 'Maria Santos',
@@ -808,7 +825,8 @@ export const downloadImportClientesTemplate = () => {
       'Empresa Abreviada': 'OUTRA',
       'Status': 'ativo',
       'Descrição Status': '',
-      'Principal Contato': 'Não'
+      'Principal Contato': 'Não',
+      'Finalidade de Envio': 'Book'
     }
   ];
 
@@ -823,7 +841,8 @@ export const downloadImportClientesTemplate = () => {
     { wch: 20 }, // Empresa Abreviada
     { wch: 12 }, // Status
     { wch: 25 }, // Descrição Status
-    { wch: 15 }  // Principal Contato
+    { wch: 15 }, // Principal Contato
+    { wch: 20 }  // Finalidade de Envio (Book, Saldo Parcial ou Ambos)
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Template');

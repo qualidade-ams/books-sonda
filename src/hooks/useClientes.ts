@@ -6,6 +6,7 @@ import type {
   ClienteCompleto,
   ClienteFormData,
   ClienteFiltros,
+  FinalidadeEnvio,
 } from '@/types/clientBooksTypes';
 
 /**
@@ -157,6 +158,24 @@ export const useClientesPorEmpresa = (empresaId: string) => {
     error,
     refetch,
   };
+};
+
+/**
+ * Hook para obter os e-mails dos contatos ativos de uma empresa por finalidade de envio.
+ * A chave fica sob ['clientes'], então é atualizada quando um contato é criado/editado.
+ */
+export const useEmailsClientesPorFinalidade = (
+  empresaId: string | undefined,
+  finalidades: FinalidadeEnvio[]
+) => {
+  const { data: emails = [], isLoading } = useQuery({
+    queryKey: ['clientes', 'emails-finalidade', empresaId, finalidades],
+    queryFn: () => clientesService.listarEmailsPorFinalidade(empresaId as string, finalidades),
+    enabled: !!empresaId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return { emails, isLoading };
 };
 
 /**

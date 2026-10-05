@@ -959,6 +959,7 @@ export type Database = {
           descricao_status: string | null
           email: string
           empresa_id: string | null
+          finalidade_envio: string
           funcao: string | null
           id: string
           nome_completo: string
@@ -972,6 +973,7 @@ export type Database = {
           descricao_status?: string | null
           email: string
           empresa_id?: string | null
+          finalidade_envio?: string
           funcao?: string | null
           id?: string
           nome_completo: string
@@ -985,6 +987,7 @@ export type Database = {
           descricao_status?: string | null
           email?: string
           empresa_id?: string | null
+          finalidade_envio?: string
           funcao?: string | null
           id?: string
           nome_completo?: string

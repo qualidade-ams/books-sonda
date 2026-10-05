@@ -48,6 +48,19 @@ export const Cliente_STATUS = {
   INATIVO: 'inativo'
 } as const;
 
+/** Para quais e-mails o contato é destinatário */
+export const FINALIDADE_ENVIO = {
+  BOOK: 'book',
+  SALDO_PARCIAL: 'saldo_parcial',
+  AMBOS: 'ambos'
+} as const;
+
+/** Finalidades que recebem o Book mensal */
+export const FINALIDADES_BOOK: FinalidadeEnvio[] = [FINALIDADE_ENVIO.BOOK, FINALIDADE_ENVIO.AMBOS];
+
+/** Finalidades que recebem o Saldo Parcial do banco de horas */
+export const FINALIDADES_SALDO_PARCIAL: FinalidadeEnvio[] = [FINALIDADE_ENVIO.SALDO_PARCIAL, FINALIDADE_ENVIO.AMBOS];
+
 export const TEMPLATE_PADRAO = {
   PORTUGUES: 'portugues',
   INGLES: 'ingles'
@@ -179,6 +192,7 @@ export interface ClienteFormData {
   status: ClienteStatus;
   descricaoStatus?: string;
   principalContato: boolean;
+  finalidadeEnvio?: FinalidadeEnvio; // padrão 'book'
 }
 
 export interface GrupoFormData {
@@ -201,6 +215,7 @@ export interface EmpresaFiltros {
 export interface ClienteFiltros {
   empresaId?: string;
   status?: ClienteStatus[];
+  finalidadeEnvio?: FinalidadeEnvio[];
   busca?: string;
 }
 
@@ -273,6 +288,12 @@ export const STATUS_Cliente_OPTIONS: SelectOption[] = [
   { value: Cliente_STATUS.INATIVO, label: 'Inativo' }
 ];
 
+export const FINALIDADE_ENVIO_OPTIONS: SelectOption[] = [
+  { value: FINALIDADE_ENVIO.BOOK, label: 'Book' },
+  { value: FINALIDADE_ENVIO.SALDO_PARCIAL, label: 'Saldo Parcial' },
+  { value: FINALIDADE_ENVIO.AMBOS, label: 'Ambos' }
+];
+
 export const TEMPLATE_PADRAO_OPTIONS: SelectOption[] = [
   { value: TEMPLATE_PADRAO.PORTUGUES, label: 'Português' },
   { value: TEMPLATE_PADRAO.INGLES, label: 'Inglês' }
@@ -287,6 +308,7 @@ export const PRODUTOS_OPTIONS: SelectOption[] = [
 // Tipos para validação
 export type EmpresaStatus = typeof EMPRESA_STATUS[keyof typeof EMPRESA_STATUS];
 export type ClienteStatus = typeof Cliente_STATUS[keyof typeof Cliente_STATUS];
+export type FinalidadeEnvio = typeof FINALIDADE_ENVIO[keyof typeof FINALIDADE_ENVIO];
 export type TemplatePadrao = typeof TEMPLATE_PADRAO[keyof typeof TEMPLATE_PADRAO];
 export type Produto = typeof PRODUTOS[keyof typeof PRODUTOS];
 export type DisparoStatus = typeof DISPARO_STATUS[keyof typeof DISPARO_STATUS];

@@ -41,6 +41,7 @@ import {
 } from '@/utils/clientExportUtils';
 import { exportEmpresasToExcel } from '@/utils/empresasExportUtils';
 import { toast } from 'sonner';
+import { normalizarFinalidadeEnvio } from '@/utils/finalidadeEnvioUtils';
 
 interface ClientImportExportButtonsProps {
   empresas: EmpresaClienteCompleta[];
@@ -273,7 +274,8 @@ export function ClientImportExportButtons({
           empresaId: empresa.id,
           status: item.status as any,
           descricaoStatus: item.descricaoStatus?.trim(),
-          principalContato: ['sim', 'yes', 'true', '1'].includes(item.principalContato.toLowerCase())
+          principalContato: ['sim', 'yes', 'true', '1'].includes(item.principalContato.toLowerCase()),
+          finalidadeEnvio: normalizarFinalidadeEnvio(item.finalidadeEnvio)
         });
       } catch (error) {
         erros.push(`Linha ${i + 2}: Erro ao processar cliente "${item.nomeCompleto}": ${error}`);

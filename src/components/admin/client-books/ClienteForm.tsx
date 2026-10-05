@@ -28,7 +28,7 @@ import type {
   ClienteFormData,
   EmpresaCliente,
 } from '@/types/clientBooksTypes';
-import { STATUS_Cliente_OPTIONS } from '@/types/clientBooksTypes';
+import { STATUS_Cliente_OPTIONS, FINALIDADE_ENVIO_OPTIONS } from '@/types/clientBooksTypes';
 
 // Schema de validação com Zod
 const clienteSchema = z.object({
@@ -53,6 +53,7 @@ const clienteSchema = z.object({
     .max(500, 'Descrição deve ter no máximo 500 caracteres')
     .optional(),
   principalContato: z.boolean(),
+  finalidadeEnvio: z.enum(['book', 'saldo_parcial', 'ambos']),
 }).superRefine((data, ctx) => {
   // Se o status for inativo, a descrição é obrigatória
   if (data.status === 'inativo') {
@@ -101,6 +102,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
     status: initialData?.status || 'ativo',
     descricaoStatus: initialData?.descricaoStatus || '',
     principalContato: initialData?.principalContato || false,
+    finalidadeEnvio: initialData?.finalidadeEnvio || 'book',
   });
 
   const form = useForm<ClienteFormData>({
@@ -130,6 +132,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
         status: initialData.status || 'ativo' as const,
         descricaoStatus: initialData.descricaoStatus || '',
         principalContato: initialData.principalContato || false,
+        finalidadeEnvio: initialData.finalidadeEnvio || 'book' as const,
       };
       console.log('🔍 Dados para inicialização:', formData);
 
@@ -146,6 +149,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
         status: 'ativo' as const,
         descricaoStatus: '',
         principalContato: false,
+        finalidadeEnvio: 'book' as const,
       };
       form.reset(defaultData);
       setFormInitialized(true);
@@ -341,6 +345,39 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
             )}
           />
         )}
+
+        {/* Finalidade de Envio */}
+        <FormField
+          control={form.control}
+          name="finalidadeEnvio"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Finalidade de Envio *</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={isFieldDisabled}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a finalidade" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {FINALIDADE_ENVIO_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Define quais e-mails o contato recebe: Book mensal, Saldo Parcial do banco de horas ou ambos
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Principal Contato */}
         <FormField

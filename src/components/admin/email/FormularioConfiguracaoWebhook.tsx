@@ -8,6 +8,7 @@ import { Loader2, Save, TestTube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { emailService } from '@/services/emailService';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import PermissionFeedback from '@/components/auth/PermissionFeedback';
 
@@ -19,7 +20,7 @@ interface WebhookConfig {
 
 const WebhookConfigForm = () => {
   const [config, setConfig] = useState<WebhookConfig>({
-    webhook_url: 'https://prod-15.westus.logic.azure.com:443/workflows/6dcbd557c39b4d74afe41a7f223caf2e/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=cyD7xWu4TpxXXsSWcH9h8BU5NptbrLkqPVCh0WrXasU',
+    webhook_url: '',
     ativo: true
   });
   const [loading, setLoading] = useState(true);
@@ -105,16 +106,10 @@ const WebhookConfigForm = () => {
     const userEmail = user?.email || 'teste@empresa.com';
 
     try {
-      const response = await fetch(config.webhook_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nome: 'Teste do Webhook',
-          email: [userEmail], // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
-          email_cc: [], // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
-          mensagem: `
+      // O envio passa pelo proxy /api/email/send, que usa o webhook ativo SALVO
+      const resultado = await emailService.sendTestEmail(userEmail, {
+        assunto: 'Teste do Webhook',
+        corpo: `
           <!DOCTYPE html>
 	<html lang="pt-BR">
 
@@ -157,23 +152,16 @@ const WebhookConfigForm = () => {
               </table>
             </body>
           </html>
-                  `,
-          // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
-          anexos: {
-            totalArquivos: 0,
-            tamanhoTotal: 0,
-            arquivos: []
-          }
-        }),
+                  `
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+      if (!resultado.success) {
+        throw new Error(resultado.error || 'Falha no envio de teste');
       }
 
       toast({
         title: "Teste enviado",
-        description: `O teste foi enviado para ${userEmail}. Verifique se o e-mail foi recebido.`,
+        description: `O teste foi enviado para ${userEmail} usando a configuração salva. Verifique se o e-mail foi recebido.`,
       });
     } catch (error) {
       console.error('Erro ao testar webhook:', error);

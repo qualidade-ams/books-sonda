@@ -40,7 +40,9 @@ import type {
   ClienteStatus,
   EmpresaCliente 
 } from '@/types/clientBooksTypes';
-import { STATUS_Cliente_OPTIONS } from '@/types/clientBooksTypes';
+import { STATUS_Cliente_OPTIONS, FINALIDADE_ENVIO_OPTIONS } from '@/types/clientBooksTypes';
+import type { FinalidadeEnvio } from '@/types/clientBooksTypes';
+import { getFinalidadeEnvioLabel } from '@/utils/finalidadeEnvioUtils';
 
 interface ClientesTableProps {
   clientes: ClienteCompleto[];
@@ -97,6 +99,14 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     }
   };
 
+  const handleFinalidadeChange = (finalidade: string) => {
+    if (finalidade === 'todas') {
+      onFiltrosChange({ ...filtros, finalidadeEnvio: undefined });
+    } else {
+      onFiltrosChange({ ...filtros, finalidadeEnvio: [finalidade as FinalidadeEnvio] });
+    }
+  };
+
   const handleEmpresaChange = (empresaId: string) => {
     if (empresaId === 'todas') {
       onFiltrosChange({ ...filtros, empresaId: undefined });
@@ -130,6 +140,19 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
       default:
         return <Badge variant="outline" className="text-xs px-2 py-1">{status}</Badge>;
     }
+  };
+
+  const getFinalidadeBadge = (finalidade: string | null | undefined) => {
+    const cores: Record<string, string> = {
+      book: 'bg-blue-50 text-blue-700 border-blue-200',
+      saldo_parcial: 'bg-orange-50 text-orange-700 border-orange-200',
+      ambos: 'bg-green-50 text-green-700 border-green-200'
+    };
+    return (
+      <Badge variant="outline" className={`${cores[finalidade || 'book'] || cores.book} text-xs px-2 py-1`}>
+        {getFinalidadeEnvioLabel(finalidade)}
+      </Badge>
+    );
   };
 
   const formatarData = (data: string) => {
@@ -189,7 +212,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
         {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
         {mostrarFiltros && (
           <div className="space-y-4 pt-4 border-t">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Campo de busca com ícone */}
               <div>
                 <div className="text-sm font-medium mb-2">Buscar</div>
@@ -217,6 +240,27 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                   <SelectContent>
                     <SelectItem value="todos">Todos os status</SelectItem>
                     {STATUS_Cliente_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro Finalidade de Envio */}
+              <div>
+                <div className="text-sm font-medium mb-2">Finalidade</div>
+                <Select
+                  value={filtros.finalidadeEnvio?.[0] || 'todas'}
+                  onValueChange={handleFinalidadeChange}
+                >
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                    <SelectValue placeholder="Todas as finalidades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as finalidades</SelectItem>
+                    {FINALIDADE_ENVIO_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -267,7 +311,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
               Nenhum cliente encontrado
             </h3>
             <p className="text-gray-600 mb-4">
-              {filtros.busca || filtros.status || filtros.empresaId
+              {filtros.busca || filtros.status || filtros.empresaId || filtros.finalidadeEnvio
                 ? 'Tente ajustar os filtros para encontrar clientes'
                 : 'Cadastre o primeiro cliente para começar'}
             </p>
@@ -277,11 +321,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
             <Table className="w-full" style={{ tableLayout: 'fixed' }}>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[30%]">Cliente</TableHead>
-                {showEmpresaColumn && <TableHead className="w-[18%]">Empresa</TableHead>}
-                <TableHead className="w-[12%] hidden xl:table-cell">Função</TableHead>
-                <TableHead className="w-[15%]">Status</TableHead>
-                <TableHead className="w-[13%]">Atualizado</TableHead>
+                <TableHead className="w-[26%]">Cliente</TableHead>
+                {showEmpresaColumn && <TableHead className="w-[16%]">Empresa</TableHead>}
+                <TableHead className="w-[11%] hidden xl:table-cell">Função</TableHead>
+                <TableHead className="w-[12%]">Finalidade</TableHead>
+                <TableHead className="w-[12%]">Status</TableHead>
+                <TableHead className="w-[11%]">Atualizado</TableHead>
                 <TableHead className="w-[12%]">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -328,6 +373,10 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     <span className="truncate block">
                       {cliente.funcao || '-'}
                     </span>
+                  </TableCell>
+
+                  <TableCell>
+                    {getFinalidadeBadge(cliente.finalidade_envio)}
                   </TableCell>
 
                   <TableCell>

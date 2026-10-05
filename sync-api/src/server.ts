@@ -22,6 +22,11 @@ import { criarDeteccaoAjustesRetroativos } from './services/deteccaoAjustesRetro
 import { criarOrquestradorSync } from './scheduler/orquestradorSync';
 import { criarAgendador } from './scheduler/agendador';
 import { criarRotasSyncJobs } from './scheduler/rotas';
+import { criarAgendadorSaldoParcial } from './scheduler/agendadorSaldoParcial';
+import { criarRotasSaldoParcial } from './scheduler/rotasSaldoParcial';
+import { criarExecutorSaldoParcial } from './services/envioSaldoParcialService';
+import { criarRenderizadorImagem } from './services/renderImagemService';
+import { criarEnviadorWebhook } from './services/webhookEmailService';
 import { hostDeEscuta } from './utils/rede';
 
 const app = express();
@@ -4101,6 +4106,20 @@ const agendadorSync = criarAgendador({ supabase, orquestrador: orquestradorSync 
 
 app.use('/api/sync-jobs', criarRotasSyncJobs(supabase, orquestradorSync, () => agendadorSync.ativo()));
 
+// ============================================================
+// ENVIO AUTOMÁTICO DE SALDO PARCIAL (tela "Envio Automático de Saldo Parcial")
+// ============================================================
+const agendadorSaldoParcial = criarAgendadorSaldoParcial({
+  supabase,
+  executarEnvio: criarExecutorSaldoParcial({
+    supabase,
+    renderizador: criarRenderizadorImagem({ url: process.env.RENDER_IMAGE_URL || '', fetch }),
+    enviador: criarEnviadorWebhook({ supabase, fetch }),
+  }),
+});
+
+app.use('/api/saldo-parcial', criarRotasSaldoParcial(supabase, agendadorSaldoParcial, !!process.env.RENDER_IMAGE_URL));
+
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = hostDeEscuta(process.env);
 
@@ -4113,6 +4132,20 @@ app.listen(PORT, HOST, () => {
     );
   } else {
     console.log('[AGENDADOR] Desligado (defina SCHEDULER_ENABLED=true para ativar)');
+  }
+
+  if (!process.env.RENDER_IMAGE_URL) {
+    console.error('[SALDO PARCIAL] RENDER_IMAGE_URL não configurada: nenhum Saldo Parcial será enviado (a imagem das tabelas é obrigatória)');
+  }
+
+  // Envio automático de Saldo Parcial: chave própria para ligar só depois de validar
+  // o "Executar agora" da tela (e nunca em máquina de desenvolvimento).
+  if (process.env.SALDO_PARCIAL_SCHEDULER_ENABLED === 'true') {
+    agendadorSaldoParcial.iniciar().catch((e) =>
+      console.error('[SALDO PARCIAL] Falha ao iniciar o agendador:', e instanceof Error ? e.message : e)
+    );
+  } else {
+    console.log('[SALDO PARCIAL] Agendador desligado (defina SALDO_PARCIAL_SCHEDULER_ENABLED=true para ativar)');
   }
 
   console.log(`

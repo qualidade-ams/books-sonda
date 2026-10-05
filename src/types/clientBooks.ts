@@ -122,6 +122,7 @@ export interface ClienteFormData {
   status: StatusCliente;
   descricaoStatus?: string;
   principalContato: boolean;
+  finalidadeEnvio?: 'book' | 'saldo_parcial' | 'ambos'; // padrão 'book'
 }
 
 export interface GrupoFormData {

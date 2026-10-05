@@ -51,9 +51,10 @@ import { supabase } from '@/integrations/supabase/client';
 import type { EmailTemplate } from '@/types/approval';
 import type { FormularioType, ModalidadeType } from '@/types/formTypes';
 import { emailTemplateMappingService, EmailTemplateError } from './emailTemplateMappingService';
+import { uploadAnexosTemporarios } from './anexosTemporariosStorage';
 
-// URL padrão do Power Automate para envio de e-mails (fallback)
-const POWER_AUTOMATE_URL = 'https://defaultf149d0bc0eb54f9a9e8224a76eacf8.de.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/6dcbd557c39b4d74afe41a7f223caf2e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=YocumRps2l3lHcxPtOCb8B1GBU9Hip4mDPzmPl2tLMg';
+// Proxy serverless que guarda a URL assinada do webhook (Power Automate) no servidor
+const EMAIL_PROXY_URL = '/api/email/send';
 
 // Utilitário para mapear número do mês (1..12, ou string '01'..'12') para nome em PT-BR
 const getMesPorExtenso = (mes: number | string | null | undefined): string | undefined => {
@@ -71,21 +72,22 @@ const getMesPorExtenso = (mes: number | string | null | undefined): string | und
 // Escapar caracteres especiais para uso em RegExp (inclusive ponto em chaves como 'disparo.mes')
 const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Função para buscar URL do webhook configurado
-const getWebhookUrl = async (): Promise<string> => {
-  try {
-    const { data: webhookConfig } = await supabase
-      .from('webhook_config')
-      .select('webhook_url')
-      .eq('ativo', true)
-      .limit(1)
-      .single();
-
-    return webhookConfig?.webhook_url || POWER_AUTOMATE_URL;
-  } catch (error) {
-    console.warn('Usando URL padrão do webhook:', error);
-    return POWER_AUTOMATE_URL;
+// Envia o payload ao proxy autenticado com o token da sessão do usuário
+const postarEmail = async (payload: unknown): Promise<Response> => {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) {
+    throw new Error('Sessão expirada: faça login novamente para enviar e-mails');
   }
+
+  return fetch(EMAIL_PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
 };
 
 // Função para registrar log de envio
@@ -160,51 +162,98 @@ const sendEmailComRetry = async (
 /**
  * Serviço interno com a lógica de envio sem retry (usado pelo wrapper com retry)
  */
+/** Payload aceito pelo webhook do Power Automate */
+const montarPayload = (emailData: EmailData): any => {
+  const payload: any = {
+    nome: emailData.subject,
+    email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
+    email_cc: emailData.cc ? (Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc]) : [],
+    email_bcc: emailData.bcc ? (Array.isArray(emailData.bcc) ? emailData.bcc : [emailData.bcc]) : [],
+    mensagem: emailData.html
+  };
+
+  if (emailData.attachments && emailData.attachments.length > 0) {
+    payload.attachments = emailData.attachments;
+  }
+
+  if (emailData.anexos && emailData.anexos.totalArquivos > 0) {
+    payload.anexos = {
+      totalArquivos: emailData.anexos.totalArquivos,
+      tamanhoTotal: emailData.anexos.tamanhoTotal,
+      arquivos: emailData.anexos.arquivos.map(arquivo => ({
+        url: arquivo.url,
+        nome: arquivo.nome,
+        tipo: arquivo.tipo,
+        tamanho: arquivo.tamanho,
+        token: arquivo.token
+      }))
+    };
+  } else {
+    payload.anexos = {
+      totalArquivos: 0,
+      tamanhoTotal: 0,
+      arquivos: []
+    };
+  }
+
+  return payload;
+};
+
+const MB = 1024 * 1024;
+/** A Vercel recusa requisições acima de 4,5 MB; a margem cobre o restante do envelope HTTP */
+const LIMITE_CORPO_PROXY_BYTES = 4 * MB;
+/** Limite total de anexos de um e-mail (mesmo limite dos anexos manuais) */
+const LIMITE_ANEXOS_BYTES = 25 * MB;
+
+const tamanhoPayload = (payload: unknown) => new TextEncoder().encode(JSON.stringify(payload)).length;
+
+const base64ParaFile = (anexo: { filename: string; content: string; contentType: string }): File => {
+  const binario = atob(anexo.content);
+  const bytes = new Uint8Array(binario.length);
+  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+  return new File([bytes], anexo.filename, { type: anexo.contentType });
+};
+
+/**
+ * E-mails acima do limite do proxy: os anexos em base64 sobem para o Storage
+ * (anexos-temporarios/emails) e vão por link, como os anexos dos Books.
+ * E-mails menores seguem exatamente como antes.
+ */
+const adequarAoLimiteDoProxy = async (emailData: EmailData): Promise<EmailData> => {
+  if (tamanhoPayload(montarPayload(emailData)) <= LIMITE_CORPO_PROXY_BYTES) return emailData;
+
+  const anexosBase64 = emailData.attachments || [];
+  if (anexosBase64.length === 0) {
+    throw new Error('O conteúdo do e-mail passa do limite de envio de 4 MB (verifique imagens embutidas no corpo)');
+  }
+
+  const arquivos = anexosBase64.map(base64ParaFile);
+  const anexosAtuais = emailData.anexos?.totalArquivos ? emailData.anexos : null;
+  const tamanhoTotal = (anexosAtuais?.tamanhoTotal || 0) + arquivos.reduce((soma, f) => soma + f.size, 0);
+  if (tamanhoTotal > LIMITE_ANEXOS_BYTES) {
+    throw new Error(`Os anexos somam ${(tamanhoTotal / MB).toFixed(1)} MB e passam do limite de 25 MB por e-mail`);
+  }
+
+  const enviados = await uploadAnexosTemporarios(arquivos, 'emails');
+  const ajustado: EmailData = {
+    ...emailData,
+    attachments: undefined,
+    anexos: {
+      totalArquivos: (anexosAtuais?.totalArquivos || 0) + enviados.totalArquivos,
+      tamanhoTotal: (anexosAtuais?.tamanhoTotal || 0) + enviados.tamanhoTotal,
+      arquivos: [...(anexosAtuais?.arquivos || []), ...enviados.arquivos]
+    }
+  };
+
+  if (tamanhoPayload(montarPayload(ajustado)) > LIMITE_CORPO_PROXY_BYTES) {
+    throw new Error('O conteúdo do e-mail passa do limite de envio de 4 MB mesmo sem os anexos (verifique imagens embutidas no corpo)');
+  }
+  return ajustado;
+};
+
 const emailServiceInternal = {
   async sendEmailSingle(emailData: EmailData): Promise<EmailResponse> {
-    // Buscar URL do webhook configurado
-    const webhookUrl = await getWebhookUrl();
-
-    // Construir payload
-    const payload: any = {
-      nome: emailData.subject,
-      email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
-      email_cc: emailData.cc ? (Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc]) : [],
-      email_bcc: emailData.bcc ? (Array.isArray(emailData.bcc) ? emailData.bcc : [emailData.bcc]) : [],
-      mensagem: emailData.html
-    };
-
-    if (emailData.attachments && emailData.attachments.length > 0) {
-      payload.attachments = emailData.attachments;
-    }
-
-    if (emailData.anexos && emailData.anexos.totalArquivos > 0) {
-      payload.anexos = {
-        totalArquivos: emailData.anexos.totalArquivos,
-        tamanhoTotal: emailData.anexos.tamanhoTotal,
-        arquivos: emailData.anexos.arquivos.map(arquivo => ({
-          url: arquivo.url,
-          nome: arquivo.nome,
-          tipo: arquivo.tipo,
-          tamanho: arquivo.tamanho,
-          token: arquivo.token
-        }))
-      };
-    } else {
-      payload.anexos = {
-        totalArquivos: 0,
-        tamanhoTotal: 0,
-        arquivos: []
-      };
-    }
-
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    const response = await postarEmail(montarPayload(emailData));
 
     if (!response.ok) {
       let errorDetails = `${response.status} - ${response.statusText}`;
@@ -339,8 +388,11 @@ export const emailService = {
         anexos: emailData.anexos ? `${emailData.anexos.totalArquivos} arquivo(s)` : 'nenhum'
       });
 
+      // Anexos grandes vão pelo Storage (uma vez só, antes das tentativas)
+      const dadosEnvio = await adequarAoLimiteDoProxy(emailData);
+
       // ✅ Usar envio com retry automático para erros 429
-      const result = await sendEmailComRetry(emailData);
+      const result = await sendEmailComRetry(dadosEnvio);
 
       // Registrar log de sucesso
       await logEmail(
@@ -428,12 +480,10 @@ export const emailService = {
       console.log('📧 Destinatário:', emailData.to);
       console.log('📎 Anexos:', emailData.anexos ? `${emailData.anexos.totalArquivos} arquivo(s)` : 'nenhum');
 
-      const webhookUrl = await getWebhookUrl();
-
       // Payload de teste simplificado
       const testPayload = {
         nome: '[TESTE ANEXOS] ' + emailData.subject,
-        email: emailData.to,
+        email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
         email_cc: emailData.cc || '',
         email_bcc: emailData.bcc || [],
         mensagem: emailData.html,
@@ -455,13 +505,7 @@ export const emailService = {
 
       console.log('📋 Payload de teste:', JSON.stringify(testPayload, null, 2));
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(testPayload)
-      });
+      const response = await postarEmail(testPayload);
 
       if (!response.ok) {
         const errorBody = await response.text();
@@ -625,27 +669,18 @@ export const emailService = {
     });
 
     try {
-      // Buscar URL do webhook configurado
-      const webhookUrl = await getWebhookUrl();
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          nome: assuntoFinal, // Usar o assunto processado
-          email: Array.isArray(to) ? to : [to], // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
-          email_cc: [], // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
-          email_bcc: [], // ✅ CORREÇÃO: Garantir que email_bcc seja sempre array para Power Automate
-          mensagem: corpoFinal, // Enviar HTML do template
-          // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
-          anexos: {
-            totalArquivos: 0,
-            tamanhoTotal: 0,
-            arquivos: []
-          }
-        })
+      const response = await postarEmail({
+        nome: assuntoFinal, // Usar o assunto processado
+        email: Array.isArray(to) ? to : [to], // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
+        email_cc: [], // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
+        email_bcc: [], // ✅ CORREÇÃO: Garantir que email_bcc seja sempre array para Power Automate
+        mensagem: corpoFinal, // Enviar HTML do template
+        // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
+        anexos: {
+          totalArquivos: 0,
+          tamanhoTotal: 0,
+          arquivos: []
+        }
       });
 
       // Verificar se a resposta foi bem-sucedida

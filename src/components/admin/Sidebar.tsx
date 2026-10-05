@@ -80,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/ajustes-retroativos')) {
+    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/envio-saldo-parcial') || path.includes('/ajustes-retroativos')) {
       return 'comunicacao';
     }
     if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
@@ -208,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/ajustes-retroativos')) {
+    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/envio-saldo-parcial') || path.includes('/ajustes-retroativos')) {
       return 'comunicacao';
     }
     if (path.includes('/auditoria')) {
@@ -337,6 +337,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: t('nav.bankHours'),
           path: '/admin/controle-banco-horas',
           screenKey: 'controle_banco_horas'
+        },
+        {
+          icon: Send,
+          label: t('nav.partialBalanceSchedule'),
+          path: '/admin/envio-saldo-parcial',
+          screenKey: 'envio_saldo_parcial'
         },
         {
           icon: AlertTriangle,

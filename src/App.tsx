@@ -27,6 +27,7 @@ import ControleDisparosPersonalizados from "./pages/admin/ControleDisparosPerson
 import HistoricoBooks from "./pages/admin/HistoricoBooks";
 import GeracaoBooks from "./pages/admin/GeracaoBooks";
 import ControleBancoHoras from "./pages/admin/ControleBancoHoras";
+import EnvioSaldoParcial from "./pages/admin/EnvioSaldoParcial";
 import AuditoriaBancoHoras from "./pages/admin/AuditoriaBancoHoras";
 import AjustesRetroativos from "./pages/admin/AjustesRetroativos";
 import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesClientBooks";
@@ -89,6 +90,7 @@ const App = () => (
                   <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
                   <Route path="/admin/geracao-books" element={<ProtectedRoute screenKey="geracao_books"><GeracaoBooks /></ProtectedRoute>} />
                   <Route path="/admin/controle-banco-horas" element={<ProtectedRoute screenKey="controle_banco_horas"><ControleBancoHoras /></ProtectedRoute>} />
+                  <Route path="/admin/envio-saldo-parcial" element={<ProtectedRoute screenKey="envio_saldo_parcial"><EnvioSaldoParcial /></ProtectedRoute>} />
                   <Route path="/admin/auditoria-banco-horas" element={<ProtectedRoute screenKey="auditoria_banco_horas"><AuditoriaBancoHoras /></ProtectedRoute>} />
                   <Route path="/admin/ajustes-retroativos" element={<ProtectedRoute screenKey="banco_horas_ajustes_retroativos"><AjustesRetroativos /></ProtectedRoute>} />
                   <Route path="/admin/configurar-permissoes-client-books" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesClientBooks /></ProtectedRoute>} />

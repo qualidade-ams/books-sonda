@@ -22,7 +22,7 @@ const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze
 const db = supabase as any;
 
 /** Chama o sync-api com o token da sessão; sem `corpo` a chamada é GET */
-async function chamarSyncApi<T>(caminho: string, corpo?: unknown): Promise<{ status: number; dados: T }> {
+export async function chamarSyncApi<T>(caminho: string, corpo?: unknown): Promise<{ status: number; dados: T }> {
   const {
     data: { session },
   } = await supabase.auth.getSession();

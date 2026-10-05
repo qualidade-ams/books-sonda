@@ -143,7 +143,8 @@ export const clienteFormSchema = z.object({
     .max(500, 'Descrição deve ter no máximo 500 caracteres')
     .optional()
     .or(z.literal('')),
-  principalContato: z.boolean().default(false)
+  principalContato: z.boolean().default(false),
+  finalidadeEnvio: z.enum(['book', 'saldo_parcial', 'ambos']).default('book')
 }).refine((data) => {
   // Se status for inativo, descrição é obrigatória
   if (data.status === 'inativo' && !data.descricaoStatus?.trim()) {

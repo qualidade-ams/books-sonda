@@ -56,6 +56,19 @@ Execução manual e agendada passam pela **mesma** sequência, em `src/scheduler
 | `rotas.ts` | `POST /api/sync-jobs/executar` (edit), `POST /api/sync-jobs/proximas-execucoes` (view), `GET /api/sync-jobs/status` (view). |
 
 - O agendador **só liga com `SCHEDULER_ENABLED=true`** — deixe `false` em dev local para não disparar jobs contra o Supabase de produção.
+
+### Envio automático de Saldo Parcial (tela "Envio Automático de Saldo Parcial")
+
+| Arquivo | Papel |
+|---|---|
+| `scheduler/agendadorSaldoParcial.ts` | Ciclo de 60s em `banco_horas_envio_agendamentos`; por cliente vinculado reserva a execução em `banco_horas_envio_execucoes` (chave única empresa + instante agendado → sem envio em dobro), busca os contatos `finalidade_envio` `saldo_parcial`/`ambos` e envia. Grava só a contagem de destinatários (LGPD). |
+| `scheduler/rotasSaldoParcial.ts` | `POST /api/saldo-parcial/executar` (edit, responde 202 e roda em background), `POST /api/saldo-parcial/proximas-execucoes` (view), `GET /api/saldo-parcial/status` (view) — tela `envio_saldo_parcial`. |
+| `services/envioSaldoParcialService.ts` | Carrega `vendor/saldoParcial.cjs` e injeta o client service role, o render-image e o webhook. |
+| `services/webhookEmailService.ts` | Envia pelo Power Automate lendo a URL em `webhook_config` (retry em 429). |
+| `services/renderImagemService.ts` | Tabelas como imagem via `RENDER_IMAGE_URL` (3 tentativas). **Imagem obrigatória**: sem ela o e-mail não sai e o cliente fica com status "erro" e o motivo no histórico (HTML de tabela distorce no Outlook). Use a URL de **produção** — preview da Vercel com proteção responde 401. |
+
+- **`vendor/saldoParcial.cjs` é gerado e versionado**: é o código do front (`src/services/saldoParcial` + services de banco de horas) empacotado com esbuild, porque o servidor só tem a pasta `sync-api`. Gere na máquina de desenvolvimento com `npm run build:saldo-parcial` sempre que esse código mudar; o teste `src/__tests__/pacoteSaldoParcial.test.ts` acusa pacote desatualizado.
+- Liga só com **`SALDO_PARCIAL_SCHEDULER_ENABLED=true`** (independente do `SCHEDULER_ENABLED`). Valide antes pelo "Enviar agora" da tela.
 - A detecção de ajustes retroativos é um port de `src/services/bancoHorasQuarentenaService.ts` (frontend) em `src/services/deteccaoAjustesRetroativosService.ts`. Ao mudar a regra num lado, mude no outro.
 - Para uma etapa nova: função que recebe `pool` (sem abrir/fechar o pool global) e registro em `etapas` no `server.ts`.
 
@@ -104,7 +117,7 @@ npm run dev            # ts-node src/server.ts
 npm run build && npm start
 ```
 
-Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `HOST` (padrão `127.0.0.1`), `NODE_ENV`, `SCHEDULER_ENABLED`.
+Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `HOST` (padrão `127.0.0.1`), `NODE_ENV`, `SCHEDULER_ENABLED`, `SALDO_PARCIAL_SCHEDULER_ENABLED`, `RENDER_IMAGE_URL`.
 
 Produção: serviço Windows no servidor interno (mesmo do SQL Server), exposto só pelo **Cloudflare Tunnel** em `https://sync-api.sondalyze.com.br`. O frontend chega nele por `VITE_SYNC_API_URL`. Não há nginx nem certificado próprio: a Cloudflare entrega o HTTPS.
 

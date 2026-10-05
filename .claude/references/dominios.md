@@ -17,6 +17,7 @@ Caminhos relativos a `src/`. Um domínio sempre segue `types/ → services/ → 
 | **Email / Templates** | — | `emailService`, `clientBooksTemplateService` | `useEmailTemplates`, `useBookTemplates` | `EmailConfig` | `email/`, `templates/` |
 | **Auditoria / Monitoramento** | `audit.ts` | `auditService`, `auditLogger` | `useEmailLogs`, `useVigenciaMonitor` | `AuditLogs`, `MonitoramentoVigencias` | `auditoria/` |
 | **Clientes / Empresas / Taxas** | `clientBooks.ts` | — | — | `Clientes`, `EmpresasClientes`, `CadastroTaxasClientes` | `taxas/` |
+| **Envio Automático de Saldo Parcial** (agendamentos por cliente, envio imediato, histórico — roda no `sync-api/`; e-mail montado em `services/saldoParcial/`, compartilhado com o botão manual) | `envioSaldoParcial.ts` | `envioSaldoParcialService`, `saldoParcial/{emailSaldoParcial,periodoSaldoParcial,coletorSaldoParcial,executarSaldoParcial,storageSaldoParcial}`, `bancoHorasObservacoesService` | `useEnvioSaldoParcial`, `useEmailsClientesPorFinalidade` | `EnvioSaldoParcial` | `banco-horas/AgendamentoSaldoParcialFormModal`, `agendamentos/CamposRegraRecorrencia` |
 | **Sincronização SQL Server** (agendamentos, execução manual, histórico — roda no `sync-api/`) | `syncAgendamentos.ts` | `syncAgendamentosService`, `sqlServerSyncPesquisasService` (só consultas de última sincronização) | `useSyncAgendamentos`, `usePesquisasSqlServer` | `SincronizacaoSqlServer` | `sincronizacao/`, `pesquisas-satisfacao/SyncSelectionModal` |
 
 **Contexto cross-domain** (não pertencem a um domínio só): `contexts/PermissionsContext.tsx`, `hooks/useAuth.tsx`, `components/auth/ProtectedRoute.tsx`, `components/auth/ProtectedAction.tsx`, `services/clearAllAppCache.ts`, `components/admin/LayoutAdmin.tsx`, `components/admin/Sidebar.tsx`.
@@ -36,6 +37,7 @@ Confira aqui antes de criar tabela nova — o domínio provavelmente já tem ond
 | Plano de Ação | `planos_acao` |
 | Templates | `email_templates` |
 | Auditoria | `audit_logs`, `admin_notifications` |
+| Envio de Saldo Parcial (via `sync-api/`) | `banco_horas_envio_agendamentos`, `banco_horas_envio_agendamento_empresas`, `banco_horas_envio_execucoes`; destinatários em `clientes.finalidade_envio` (`book` / `saldo_parcial` / `ambos`) |
 | Sincronização (via `sync-api/`) | `especialistas`, `apontamentos_aranda`, `apontamentos_tickets_aranda`, `sync_metadata`, `sync_agendamentos`, `sync_execucoes` |
 
 ## Dependências entre domínios
@@ -56,6 +58,7 @@ Mexer em Permissões, Auth ou Empresas tem raio de impacto amplo — verifique o
 |---|---|
 | PDF (Puppeteer) | `api/pdf/generate.ts` |
 | Renderização de imagem de email | `api/email/render-image.ts` |
+| Envio de e-mail (proxy autenticado do webhook Power Automate; a URL assinada fica em `webhook_config`, lida no servidor) | `api/email/send.ts` |
 | Criação de usuário | `api/users/create.ts` |
 | Edge Functions (Deno) | `supabase/functions/{admin-reset-password,create-user,sync-elogios-sql-server}` |
 | Sync SQL Server externo | `sync-api/` (Node, serviço Windows no servidor interno, exposto via Cloudflare Tunnel em `https://sync-api.sondalyze.com.br`) |
@@ -63,4 +66,7 @@ Mexer em Permissões, Auth ou Empresas tem raio de impacto amplo — verifique o
 ## Armadilhas conhecidas
 
 - **4 services de PDF** coexistem (`booksPDFService`, `booksPDFServiceV2`, `booksPDFServicePuppeteer`, `puppeteerPDFService`). Confirme qual está em uso antes de estender.
+- **E-mail sai sempre pelo proxy** `/api/email/send` (via `emailService`); nunca chame o webhook do Power Automate direto do navegador nem coloque a URL no código. Em dev local, enviar e-mail exige `npm run dev:vercel`. A Vercel recusa corpo acima de 4,5 MB: acima de ~4 MB o `emailService` sobe os anexos base64 para `anexos-temporarios/emails` e envia por link (limite de 25 MB por e-mail); HTML muito grande (imagem base64 embutida) não tem essa saída.
+- **Destinatários por finalidade**: Book usa contatos `book`/`ambos` (`FINALIDADES_BOOK`), Saldo Parcial usa `saldo_parcial`/`ambos` (`FINALIDADES_SALDO_PARCIAL`), em `types/clientBooksTypes.ts`.
+- **`sync-api/vendor/saldoParcial.cjs` é gerado** (`cd sync-api && npm run build:saldo-parcial`) a partir de `src/services/saldoParcial` e dos services de banco de horas. Mudou algum deles? Regere e versione o pacote — o teste `pacoteSaldoParcial.test.ts` falha se ficar desatualizado.
 - Arquivos muito grandes (2.000–6.600 linhas): `Dashboard.tsx`, `booksDataCollectorService.ts`, `booksDisparoService.ts`. Extraia lógica nova em vez de engordá-los.
