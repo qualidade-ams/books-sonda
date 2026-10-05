@@ -11,7 +11,8 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { encaminharEmail } from './_lib/encaminharEmail';
+// Extensão .js obrigatória: o projeto é ESM ("type": "module") e a Vercel roda a função como ESM no Node
+import { encaminharEmail } from './_lib/encaminharEmail.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
