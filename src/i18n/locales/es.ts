@@ -1184,7 +1184,7 @@ const es = {
   requirements: {
     title: 'Registrar Requerimientos',
     subtitle: 'Administre especificaciones funcionales de tickets técnicos',
-    ticket: 'Chamado',
+    ticket: 'Ticket',
     externalTicket: 'Ticket Externo',
     client: 'Cliente',
     module: 'Módulo',
@@ -1210,8 +1210,6 @@ const es = {
     confirmSendDesc: '¿Está seguro que desea enviar el requerimiento "{{chamado}}" a facturación? Esta acción no se puede deshacer.',
     confirmSendBtn: 'Confirmar Envío',
     billingDate: 'Fecha Facturación',
-    ticket: 'Ticket',
-    client: 'Cliente',
     description: 'Descripción',
     billingMonth: 'Mes de Cobro',
     observation: 'Observación',

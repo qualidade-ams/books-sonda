@@ -1210,8 +1210,6 @@ const en = {
     confirmSendDesc: 'Are you sure you want to send requirement "{{chamado}}" to billing? This action cannot be undone.',
     confirmSendBtn: 'Confirm Send',
     billingDate: 'Billing Date',
-    ticket: 'Ticket',
-    client: 'Client',
     description: 'Description',
     billingMonth: 'Billing Month',
     observation: 'Observation',
