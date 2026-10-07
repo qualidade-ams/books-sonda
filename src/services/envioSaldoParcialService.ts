@@ -122,7 +122,7 @@ class EnvioSaldoParcialService {
   async listarClientesElegiveis(): Promise<ClienteElegivelSaldoParcial[]> {
     const { data: empresas, error } = await supabase
       .from('empresas_clientes')
-      .select('id, nome_abreviado')
+      .select('id, nome_abreviado, email_gestor')
       .eq('status', 'ativo')
       .eq('tem_ams', true)
       .order('nome_abreviado');
@@ -144,6 +144,7 @@ class EnvioSaldoParcialService {
       id: e.id,
       nome: e.nome_abreviado,
       qtdContatosSaldoParcial: porEmpresa.get(e.id) || 0,
+      emailGestor: e.email_gestor?.trim() || null,
     }));
   }
 

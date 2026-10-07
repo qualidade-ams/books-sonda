@@ -128,19 +128,26 @@ describe('envioSaldoParcialService', () => {
     expect(de(consultas, 'banco_horas_envio_execucoes', 'limit')[0]).toEqual([20]);
   });
 
-  it('lista os clientes elegíveis (ativos com AMS) com a quantidade de contatos de Saldo Parcial', async () => {
-    configurarSupabase((tabela) => {
+  it('lista os clientes elegíveis (ativos com AMS) com a quantidade de contatos de Saldo Parcial e o e-mail do gestor', async () => {
+    const consultas = configurarSupabase((tabela) => {
       if (tabela === 'empresas_clientes') {
-        return { data: [{ id: 'e1', nome_abreviado: 'A' }, { id: 'e2', nome_abreviado: 'B' }], error: null };
+        return {
+          data: [
+            { id: 'e1', nome_abreviado: 'A', email_gestor: 'gestor.a@sonda.com' },
+            { id: 'e2', nome_abreviado: 'B', email_gestor: null }
+          ],
+          error: null
+        };
       }
       return { data: [{ empresa_id: 'e1' }, { empresa_id: 'e1' }], error: null };
     });
 
     const clientes = await envioSaldoParcialService.listarClientesElegiveis();
 
+    expect(String(de(consultas, 'empresas_clientes', 'select')[0][0])).toContain('email_gestor');
     expect(clientes).toEqual([
-      { id: 'e1', nome: 'A', qtdContatosSaldoParcial: 2 },
-      { id: 'e2', nome: 'B', qtdContatosSaldoParcial: 0 }
+      { id: 'e1', nome: 'A', qtdContatosSaldoParcial: 2, emailGestor: 'gestor.a@sonda.com' },
+      { id: 'e2', nome: 'B', qtdContatosSaldoParcial: 0, emailGestor: null }
     ]);
   });
 

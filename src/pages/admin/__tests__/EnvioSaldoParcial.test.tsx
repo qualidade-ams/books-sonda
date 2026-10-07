@@ -73,9 +73,9 @@ describe('EnvioSaldoParcial', () => {
     });
     (hooks.useClientesElegiveisSaldoParcial as any).mockReturnValue({
       clientes: [
-        { id: 'e1', nome: 'CLIENTE A', qtdContatosSaldoParcial: 2 },
-        { id: 'e2', nome: 'CLIENTE B', qtdContatosSaldoParcial: 0 },
-        { id: 'e3', nome: 'CLIENTE C', qtdContatosSaldoParcial: 1 }
+        { id: 'e1', nome: 'CLIENTE A', qtdContatosSaldoParcial: 2, emailGestor: 'gestor.ab@sonda.com' },
+        { id: 'e2', nome: 'CLIENTE B', qtdContatosSaldoParcial: 0, emailGestor: 'gestor.ab@sonda.com' },
+        { id: 'e3', nome: 'CLIENTE C', qtdContatosSaldoParcial: 1, emailGestor: 'gestor.c@sonda.com' }
       ],
       isLoading: false
     });
@@ -119,13 +119,57 @@ describe('EnvioSaldoParcial', () => {
     await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
     await user.type(screen.getByLabelText('envioSaldoParcial.form.nome'), 'Parcial semanal');
     await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
-    await user.type(screen.getByLabelText('envioSaldoParcial.form.emailsCc'), 'cc@sonda.com');
+    await user.type(screen.getByLabelText('envioSaldoParcial.form.emailsCc'), '; cc@sonda.com');
     await user.click(screen.getByRole('button', { name: 'envioSaldoParcial.form.salvar' }));
 
     await waitFor(() => expect(salvar.mutateAsync).toHaveBeenCalled());
     const { id, dados } = salvar.mutateAsync.mock.calls[0][0];
     expect(id).toBeUndefined();
-    expect(dados).toMatchObject({ nome: 'Parcial semanal', empresaIds: ['e3'], emails_cc: ['cc@sonda.com'] });
+    expect(dados).toMatchObject({ nome: 'Parcial semanal', empresaIds: ['e3'], emails_cc: ['gestor.c@sonda.com', 'cc@sonda.com'] });
+  });
+
+  it('ao marcar um cliente pré-preenche o CC com o e-mail do gestor dele, sem repetir', async () => {
+    const user = userEvent.setup();
+    render(<EnvioSaldoParcial />);
+
+    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
+    const cc = screen.getByLabelText('envioSaldoParcial.form.emailsCc');
+    await user.type(cc, 'qualidade@sonda.com');
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE A/ }));
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE B/ }));
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
+
+    expect(cc).toHaveValue('qualidade@sonda.com; gestor.ab@sonda.com; gestor.c@sonda.com');
+  });
+
+  it('ao desmarcar um cliente tira o gestor do CC só se nenhum outro cliente marcado tiver o mesmo gestor', async () => {
+    const user = userEvent.setup();
+    render(<EnvioSaldoParcial />);
+
+    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
+    const cc = screen.getByLabelText('envioSaldoParcial.form.emailsCc');
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE A/ }));
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE B/ }));
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
+
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE A/ }));
+    expect(cc).toHaveValue('gestor.ab@sonda.com');
+
+    await user.click(screen.getByRole('checkbox', { name: /CLIENTE B/ }));
+    expect(cc).toHaveValue('');
+  });
+
+  it('ao colar e-mails no CC remove o nome e os <> e mantém só os endereços', async () => {
+    const user = userEvent.setup();
+    render(<EnvioSaldoParcial />);
+
+    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
+    const cc = screen.getByLabelText('envioSaldoParcial.form.emailsCc');
+    await user.type(cc, 'qualidade@sonda.com');
+    await user.paste('Rafael Viegas <rafael.viegas@sonda.com>; Giselle Lobo <giselle.lobo@sonda.com>; qualidade@sonda.com');
+
+    expect(cc).toHaveValue('qualidade@sonda.com; rafael.viegas@sonda.com; giselle.lobo@sonda.com');
   });
 
   it('no formulário mostra quais clientes não têm contatos de Saldo Parcial', async () => {

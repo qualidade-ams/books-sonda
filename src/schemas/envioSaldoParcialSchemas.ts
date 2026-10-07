@@ -22,6 +22,27 @@ export function extrairEmailsCc(texto: string): string[] {
   return [...new Set(texto.split(/[;,]/).map((e) => e.trim()).filter(Boolean))];
 }
 
+/** Acrescenta e-mails ao texto do CC, sem repetir os que já estão (ignorando maiúsculas) */
+export function adicionarEmailsCc(texto: string, emails: string[]): string {
+  const atuais = extrairEmailsCc(texto);
+  const presentes = new Set(atuais.map((e) => e.toLowerCase()));
+  const novos = emails.filter((e) => {
+    const chave = e.toLowerCase();
+    if (presentes.has(chave)) return false;
+    presentes.add(chave);
+    return true;
+  });
+  return [...atuais, ...novos].join('; ');
+}
+
+/** Tira e-mails do texto do CC (ignorando maiúsculas), mantendo os demais */
+export function removerEmailsCc(texto: string, emails: string[]): string {
+  const remover = new Set(emails.map((e) => e.toLowerCase()));
+  return extrairEmailsCc(texto)
+    .filter((e) => !remover.has(e.toLowerCase()))
+    .join('; ');
+}
+
 export const agendamentoSaldoParcialFormSchema = z
   .object({
     nome: z.string().trim().min(1, `${V}.nomeObrigatorio`).max(120),

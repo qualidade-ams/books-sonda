@@ -56,4 +56,6 @@ export interface ClienteElegivelSaldoParcial {
   nome: string;
   /** Contatos ativos com finalidade "Saldo Parcial" ou "Ambos" */
   qtdContatosSaldoParcial: number;
+  /** empresas_clientes.email_gestor — sugerido no CC ao marcar o cliente */
+  emailGestor: string | null;
 }

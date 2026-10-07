@@ -3,7 +3,9 @@ import {
   agendamentoSaldoParcialFormSchema,
   valoresIniciaisAgendamentoSaldoParcial,
   formParaAgendamentoSaldoParcialInput,
-  agendamentoSaldoParcialParaForm
+  agendamentoSaldoParcialParaForm,
+  adicionarEmailsCc,
+  removerEmailsCc
 } from '../envioSaldoParcialSchemas';
 
 const valido = () => ({
@@ -33,6 +35,18 @@ describe('envioSaldoParcialSchemas', () => {
     expect(agendamentoSaldoParcialFormSchema.safeParse({ ...valido(), emailsCcTexto: 'a@sonda.com; b@sonda.com' }).success).toBe(true);
     const resultado = agendamentoSaldoParcialFormSchema.safeParse({ ...valido(), emailsCcTexto: 'a@sonda.com, invalido' });
     expect(mensagens(resultado)).toContain('envioSaldoParcial.validacao.emailCcInvalido');
+  });
+
+  it('adiciona e-mails ao CC sem repetir os que já estão (ignorando maiúsculas)', () => {
+    expect(adicionarEmailsCc('', ['gestor@sonda.com'])).toBe('gestor@sonda.com');
+    expect(adicionarEmailsCc('a@sonda.com, b@sonda.com', ['GESTOR@sonda.com', 'A@sonda.com'])).toBe(
+      'a@sonda.com; b@sonda.com; GESTOR@sonda.com'
+    );
+  });
+
+  it('remove e-mails do CC (ignorando maiúsculas) e mantém os demais', () => {
+    expect(removerEmailsCc('a@sonda.com; Gestor@sonda.com; b@sonda.com', ['gestor@sonda.com'])).toBe('a@sonda.com; b@sonda.com');
+    expect(removerEmailsCc('gestor@sonda.com', ['gestor@sonda.com'])).toBe('');
   });
 
   it('reaproveita a validação da recorrência', () => {

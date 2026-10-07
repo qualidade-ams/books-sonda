@@ -3,7 +3,7 @@
  * nome, clientes, e-mails em cópia e regra de recorrência (com previsão do sync-api).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ClipboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,15 +26,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { CamposRegraRecorrencia } from '@/components/admin/agendamentos/CamposRegraRecorrencia';
 import { useClientesElegiveisSaldoParcial, usePreverExecucoesSaldoParcial } from '@/hooks/useEnvioSaldoParcial';
 import {
+  adicionarEmailsCc,
   agendamentoSaldoParcialFormSchema,
   agendamentoSaldoParcialParaForm,
   formParaAgendamentoSaldoParcialInput,
+  removerEmailsCc,
   valoresIniciaisAgendamentoSaldoParcial,
   type AgendamentoSaldoParcialFormValues,
 } from '@/schemas/envioSaldoParcialSchemas';
 import { regraFormParaRegra, validarRegraRecorrenciaForm, camposRegraRecorrenciaSchema } from '@/schemas/syncAgendamentoSchemas';
-import type { AgendamentoSaldoParcial, AgendamentoSaldoParcialInput } from '@/types/envioSaldoParcial';
+import type {
+  AgendamentoSaldoParcial,
+  AgendamentoSaldoParcialInput,
+  ClienteElegivelSaldoParcial,
+} from '@/types/envioSaldoParcial';
 import { execucoesParaPrevisao } from '@/utils/previsaoExecucoes';
+import { extrairEmailsDeTexto } from '@/utils/emailValidation';
 
 interface AgendamentoSaldoParcialFormModalProps {
   open: boolean;
@@ -63,7 +70,7 @@ export function AgendamentoSaldoParcialFormModal({
     defaultValues: agendamento ? agendamentoSaldoParcialParaForm(agendamento) : valoresIniciaisAgendamentoSaldoParcial(),
   });
 
-  const { register, watch, setValue, handleSubmit, reset, formState } = form;
+  const { register, watch, setValue, getValues, handleSubmit, reset, formState } = form;
   const { errors } = formState;
 
   useEffect(() => {
@@ -94,11 +101,33 @@ export function AgendamentoSaldoParcialFormModal({
     return termo ? clientes.filter((c) => c.nome.toLowerCase().includes(termo)) : clientes;
   }, [clientes, busca]);
 
-  const alternarCliente = (id: string, marcado: boolean) => {
-    const atual = valores.empresaIds;
-    setValue('empresaIds', marcado ? [...atual, id] : atual.filter((e) => e !== id), {
-      shouldValidate: formState.isSubmitted,
-    });
+  const atualizarCc = (texto: string) =>
+    setValue('emailsCcTexto', texto, { shouldValidate: formState.isSubmitted });
+
+  const alternarCliente = (cliente: ClienteElegivelSaldoParcial, marcado: boolean) => {
+    const atual = getValues('empresaIds');
+    const empresaIds = marcado ? [...atual, cliente.id] : atual.filter((e) => e !== cliente.id);
+    setValue('empresaIds', empresaIds, { shouldValidate: formState.isSubmitted });
+
+    // O gestor do cliente entra no CC ao marcar; ao desmarcar sai, a menos que outro cliente marcado tenha o mesmo gestor
+    const gestor = cliente.emailGestor;
+    if (!gestor) return;
+    if (marcado) {
+      atualizarCc(adicionarEmailsCc(getValues('emailsCcTexto'), [gestor]));
+      return;
+    }
+    const gestorEmUso = clientes.some(
+      (c) => empresaIds.includes(c.id) && c.emailGestor?.toLowerCase() === gestor.toLowerCase()
+    );
+    if (!gestorEmUso) atualizarCc(removerEmailsCc(getValues('emailsCcTexto'), [gestor]));
+  };
+
+  // Colado do Outlook ("Nome <email>; ..."): mantém só os endereços
+  const colarEmailsCc = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const emails = extrairEmailsDeTexto(e.clipboardData.getData('text'));
+    if (emails.length === 0) return;
+    e.preventDefault();
+    atualizarCc(adicionarEmailsCc(getValues('emailsCcTexto'), emails));
   };
 
   const erro = (mensagem?: string) =>
@@ -173,7 +202,7 @@ export function AgendamentoSaldoParcialFormModal({
                   <label key={cliente.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
                     <Checkbox
                       checked={valores.empresaIds.includes(cliente.id)}
-                      onCheckedChange={(v) => alternarCliente(cliente.id, !!v)}
+                      onCheckedChange={(v) => alternarCliente(cliente, !!v)}
                       aria-label={cliente.nome}
                     />
                     <span className="flex-1">{cliente.nome}</span>
@@ -203,6 +232,7 @@ export function AgendamentoSaldoParcialFormModal({
               placeholder={t('envioSaldoParcial.form.emailsCcPlaceholder')}
               className="font-mono text-sm focus:ring-sonda-blue focus:border-sonda-blue"
               {...register('emailsCcTexto')}
+              onPaste={colarEmailsCc}
             />
             <p className="text-xs text-gray-500">{t('envioSaldoParcial.form.emailsCcAjuda')}</p>
             {erro(errors.emailsCcTexto?.message)}
