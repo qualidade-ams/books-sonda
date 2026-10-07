@@ -1,4 +1,5 @@
 
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,6 +57,9 @@ import SystemError from "./pages/SystemError";
 import FixPermissions from "./pages/FixPermissions";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
+// Protótipos visuais (skill `prototipo`): só existem em dev, ficam fora do bundle de produção.
+const Prototipos = import.meta.env.DEV ? lazy(() => import("./pages/Prototipos")) : null;
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -110,6 +114,9 @@ const App = () => (
                   <Route path="/admin/plano-acao" element={<ProtectedRoute screenKey="plano_acao"><PlanoAcao /></ProtectedRoute>} />
                   <Route path="/admin/cadastro-taxas-clientes" element={<ProtectedRoute screenKey="cadastro_taxas_clientes"><CadastroTaxasClientes /></ProtectedRoute>} />
                   <Route path="/admin/design-system" element={<ProtectedRoute screenKey="design_system"><DesignSystem /></ProtectedRoute>} />
+                  {Prototipos && (
+                    <Route path="/prototipos/:slug?" element={<ProtectedRoute screenKey="design_system"><Suspense fallback={null}><Prototipos /></Suspense></ProtectedRoute>} />
+                  )}
                   <Route path="/admin/auditoria/inconsistencia-chamados" element={<ProtectedRoute screenKey="inconsistencia_chamados"><InconsistenciaChamados /></ProtectedRoute>} />
                   <Route path="/admin/auditoria/monitoramento-chamados" element={<ProtectedRoute screenKey="troca_codigo_resolucao"><MonitoramentoChamados /></ProtectedRoute>} />
 
