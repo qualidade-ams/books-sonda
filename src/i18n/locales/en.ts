@@ -1401,6 +1401,7 @@ const en = {
     // Navigation
     previousMonth: 'Previous',
     nextMonth: 'Next',
+    pendingPreviousMonths: 'There are requirements pending submission in previous months',
     // Loading & Error
     loadingRequirements: 'Loading requirements...',
     loadingBilledRequirements: 'Loading billed requirements...',

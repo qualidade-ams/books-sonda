@@ -731,6 +731,74 @@ describe('RequerimentosService', () => {
     });
   });
 
+  describe('listarMesesPendentesAnteriores', () => {
+    const mockSelectStatus = (data: any, error: any = null) => {
+      const eq = vi.fn().mockResolvedValue({ data, error });
+      const select = vi.fn(() => ({ eq }));
+      mockSupabaseFrom.mockReturnValueOnce({ select });
+      return { select, eq };
+    };
+
+    it('deve buscar só a coluna mes_cobranca dos requerimentos pendentes de envio', async () => {
+      const { select, eq } = mockSelectStatus([]);
+
+      await service.listarMesesPendentesAnteriores(10, 2026);
+
+      expect(mockSupabaseFrom).toHaveBeenCalledWith('requerimentos');
+      expect(select).toHaveBeenCalledWith('mes_cobranca');
+      expect(eq).toHaveBeenCalledWith('status', 'enviado_faturamento');
+    });
+
+    it('deve retornar apenas meses anteriores ao selecionado com a quantidade de pendentes, em ordem cronológica', async () => {
+      mockSelectStatus([
+        { mes_cobranca: '09/2026' },
+        { mes_cobranca: '12/2025' },
+        { mes_cobranca: '09/2026' },
+        { mes_cobranca: '10/2026' },
+        { mes_cobranca: '11/2026' },
+        { mes_cobranca: '02/2026' },
+        { mes_cobranca: '09/2026' }
+      ]);
+
+      const result = await service.listarMesesPendentesAnteriores(10, 2026);
+
+      expect(result).toEqual([
+        { mes_cobranca: '12/2025', quantidade: 1 },
+        { mes_cobranca: '02/2026', quantidade: 1 },
+        { mes_cobranca: '09/2026', quantidade: 3 }
+      ]);
+    });
+
+    it('deve ignorar mes_cobranca nulo ou em formato inválido', async () => {
+      mockSelectStatus([
+        { mes_cobranca: null },
+        { mes_cobranca: '' },
+        { mes_cobranca: 'abc' },
+        { mes_cobranca: '08/2026' }
+      ]);
+
+      const result = await service.listarMesesPendentesAnteriores(10, 2026);
+
+      expect(result).toEqual([{ mes_cobranca: '08/2026', quantidade: 1 }]);
+    });
+
+    it('deve retornar lista vazia quando não há pendentes anteriores', async () => {
+      mockSelectStatus(null);
+
+      const result = await service.listarMesesPendentesAnteriores(10, 2026);
+
+      expect(result).toEqual([]);
+    });
+
+    it('deve lançar erro quando a consulta falha', async () => {
+      mockSelectStatus(null, { message: 'falha' });
+
+      await expect(service.listarMesesPendentesAnteriores(10, 2026)).rejects.toThrow(
+        'Erro ao buscar pendentes de meses anteriores: falha'
+      );
+    });
+  });
+
   describe('obterEstatisticas', () => {
     it('deve calcular estatísticas corretamente', async () => {
       // Arrange

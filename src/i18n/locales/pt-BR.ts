@@ -1401,6 +1401,7 @@ const ptBR = {
     // Navigation
     previousMonth: 'Anterior',
     nextMonth: 'Próximo',
+    pendingPreviousMonths: 'Existem requerimentos pendentes de envio nos meses anteriores',
     // Loading & Error
     loadingRequirements: 'Carregando requerimentos...',
     loadingBilledRequirements: 'Carregando requerimentos faturados...',

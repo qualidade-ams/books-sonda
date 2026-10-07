@@ -1401,6 +1401,7 @@ const es = {
     // Navigation
     previousMonth: 'Anterior',
     nextMonth: 'Siguiente',
+    pendingPreviousMonths: 'Existen requerimientos pendientes de envío en los meses anteriores',
     // Loading & Error
     loadingRequirements: 'Cargando requerimientos...',
     loadingBilledRequirements: 'Cargando requerimientos facturados...',
