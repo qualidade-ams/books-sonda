@@ -64,6 +64,12 @@ const COR_STATUS: Record<StatusExecucaoSaldoParcial | StatusAgendamentoSaldoParc
   interrompida: 'bg-orange-100 text-orange-800',
 };
 
+// Logo após salvar, o servidor ainda não recalculou: usa a previsão (mesma regra do agendador)
+function proximoEnvio(ag: AgendamentoSaldoParcial, agendadorDesligado: boolean): string | null {
+  if (!ag.ativo) return null;
+  return ag.proxima_execucao || (agendadorDesligado ? null : preverProximaExecucao(ag));
+}
+
 function EnvioSaldoParcial() {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -91,6 +97,20 @@ function EnvioSaldoParcial() {
     () => new Set(clientes.filter((c) => c.qtdContatosSaldoParcial === 0).map((c) => c.id)),
     [clientes]
   );
+
+  // Próximo envio mais próximo primeiro; sem data (inativo/aguardando agendador) por último
+  const agendamentosOrdenados = useMemo(() => {
+    const comData = agendamentos.map((ag) => ({ ag, data: proximoEnvio(ag, agendadorDesligado) }));
+    comData.sort((a, b) => {
+      if (a.data !== b.data) {
+        if (!a.data) return 1;
+        if (!b.data) return -1;
+        return new Date(a.data).getTime() - new Date(b.data).getTime();
+      }
+      return a.ag.nome.localeCompare(b.ag.nome, 'pt-BR');
+    });
+    return comData;
+  }, [agendamentos, agendadorDesligado]);
 
   const formatarData = (iso: string | null) =>
     iso
@@ -273,7 +293,7 @@ function EnvioSaldoParcial() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {agendamentos.map((ag) => {
+                        {agendamentosOrdenados.map(({ ag, data: dataProximoEnvio }) => {
                           const semContato = (ag.empresas || []).filter((e) => clientesSemContato.has(e.empresa_id)).length;
                           return (
                             <TableRow key={ag.id} className="hover:bg-gray-50">
@@ -301,8 +321,7 @@ function EnvioSaldoParcial() {
                                 {!ag.ativo ? (
                                   <span className="text-gray-400">—</span>
                                 ) : (
-                                  // Logo após salvar, o servidor ainda não recalculou: mostra a previsão (mesma regra do agendador)
-                                  formatarData(ag.proxima_execucao || (agendadorDesligado ? null : preverProximaExecucao(ag))) || (
+                                  formatarData(dataProximoEnvio) || (
                                     <span className="text-gray-400">
                                       {agendadorDesligado
                                         ? t('envioSaldoParcial.agendamentos.aguardandoAgendador')

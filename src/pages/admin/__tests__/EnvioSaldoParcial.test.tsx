@@ -95,6 +95,29 @@ describe('EnvioSaldoParcial', () => {
     expect(within(linha).getByText('qualidade@sonda.com')).toBeInTheDocument();
   });
 
+  it('ordena os agendamentos pelo próximo envio mais próximo, deixando os sem data por último', () => {
+    (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
+      agendamentos: [
+        { ...agendamento, id: 'ag-inativo', nome: 'Inativo', ativo: false, proxima_execucao: null },
+        { ...agendamento, id: 'ag-25', nome: 'Dia 25', proxima_execucao: '2026-10-25T13:00:00.000Z' },
+        { ...agendamento, id: 'ag-12b', nome: 'Dia 12 B', proxima_execucao: '2026-10-12T13:00:00.000Z' },
+        { ...agendamento, id: 'ag-12a', nome: 'Dia 12 A', proxima_execucao: '2026-10-12T13:00:00.000Z' },
+        { ...agendamento, id: 'ag-7', nome: 'Dia 7', proxima_execucao: '2026-10-07T13:00:00.000Z' }
+      ],
+      isLoading: false,
+      error: null
+    });
+
+    render(<EnvioSaldoParcial />);
+
+    const nomes = ['Inativo', 'Dia 25', 'Dia 12 B', 'Dia 12 A', 'Dia 7'];
+    const ordem = screen
+      .getAllByRole('row')
+      .map((linha) => nomes.find((n) => within(linha).queryByText(n)))
+      .filter(Boolean);
+    expect(ordem).toEqual(['Dia 7', 'Dia 12 A', 'Dia 12 B', 'Dia 25', 'Inativo']);
+  });
+
   it('avisa quando um cliente do agendamento não tem contatos de Saldo Parcial', () => {
     render(<EnvioSaldoParcial />);
 
