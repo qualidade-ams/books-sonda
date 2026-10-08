@@ -1858,6 +1858,7 @@ const es = {
     taskNumber: 'N Tarea',
     openDate: 'Fecha Apertura',
     activityDate: 'Fecha Actividad',
+    publicNoteDate: 'Fecha Nota Pública',
     systemDate: 'Fecha Sistema',
     time: 'Tiempo',
     analyst: 'Analista',

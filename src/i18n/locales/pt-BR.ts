@@ -1858,6 +1858,7 @@ const ptBR = {
     taskNumber: 'N Tarefa',
     openDate: 'Data Abertura',
     activityDate: 'Data Atividade',
+    publicNoteDate: 'Data Anotação Pública',
     systemDate: 'Data Sistema',
     time: 'Tempo',
     analyst: 'Analista',
