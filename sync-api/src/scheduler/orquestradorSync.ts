@@ -23,7 +23,7 @@ export interface TabelasSync {
   detectarInconsistencias?: boolean;
   /** padrão: true (só roda quando apontamentos é sincronizado) */
   ajustesRetroativos?: boolean;
-  /** YYYY-MM-DD; só para pesquisas. Vazio = incremental */
+  /** YYYY-MM-DD; para pesquisas e tickets. Vazio = incremental */
   dataInicial?: string | null;
 }
 
@@ -31,7 +31,7 @@ export interface EtapasSync {
   pesquisas(pool: sql.ConnectionPool, dataInicial?: string | null): Promise<any>;
   especialistas(pool: sql.ConnectionPool): Promise<any>;
   apontamentos(pool: sql.ConnectionPool): Promise<any>;
-  tickets(pool: sql.ConnectionPool): Promise<any>;
+  tickets(pool: sql.ConnectionPool, dataInicial?: string | null): Promise<any>;
   codigoResolucao(pool: sql.ConnectionPool): Promise<any>;
   validacao(pool: sql.ConnectionPool): Promise<any>;
   inconsistencias(): Promise<any>;
@@ -219,8 +219,8 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       for (const chave of ETAPAS_TABELA) {
         if (!tabelas[chave]) continue;
         const fn =
-          chave === 'pesquisas'
-            ? () => etapas.pesquisas(pool, tabelas.dataInicial || undefined)
+          chave === 'pesquisas' || chave === 'tickets'
+            ? () => etapas[chave](pool, tabelas.dataInicial || undefined)
             : () => etapas[chave](pool);
         await rodar(chave, fn, resumirEtapaTabela);
         await atualizarMetadata(chave, resultado[chave]);

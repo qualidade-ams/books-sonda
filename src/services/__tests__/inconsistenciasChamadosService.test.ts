@@ -305,11 +305,12 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
       const filtros: any[][] = [];
       let resultado: any = { data: [], error: null };
       const builder: any = {
-        select: vi.fn(() => {
+        select: vi.fn((colunas?: string) => {
           if (tabela === 'inconsistencias_chamados') {
             buscasAtivas.push(filtros);
             resultado = { data: erroAtivas ? null : ativas, error: erroAtivas };
           } else {
+            filtros.push(['select', colunas]);
             buscasTickets.push(filtros);
             resultado = { data: tickets, error: null };
           }
@@ -384,6 +385,30 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
 
     expect(resolvidas).toBe(0);
     expect(updates).toHaveLength(0);
+  });
+
+  it('resolve quando o chamado recebeu nota pública há menos de 16 dias, mesmo com comentário antigo', async () => {
+    const { updates, buscasTickets } = mockBanco({
+      ativas: [
+        { id: 'inc-1', nro_chamado: 'IM 9366968' },
+        { id: 'inc-2', nro_chamado: 'IM 9365559' },
+        { id: 'inc-3', nro_chamado: 'RF 111' },
+      ],
+      tickets: [
+        // comentário de 27 dias, nota pública de 3 dias
+        { nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-01T09:00:00+00:00', data_ultima_nota_publica: '2026-09-25T09:00:00+00:00' },
+        // comentário e nota pública antigos
+        { nro_solicitacao: '9365559', data_ultimo_comentario: '2026-09-01T09:00:00+00:00', data_ultima_nota_publica: '2026-09-05T09:00:00+00:00' },
+        // sem comentário, só nota pública recente
+        { nro_solicitacao: '111', data_ultimo_comentario: null, data_ultima_nota_publica: '2026-09-27T09:00:00+00:00' },
+      ],
+    });
+
+    const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
+
+    expect(resolvidas).toBe(2);
+    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('data_ultima_nota_publica')]);
+    expect(updates[0].filtros).toContainEqual(['in', 'id', ['inc-1', 'inc-3']]);
   });
 
   it('não consulta tickets nem atualiza quando não há sem_atualizacao ativa', async () => {

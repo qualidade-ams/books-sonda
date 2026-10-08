@@ -18,6 +18,7 @@ import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from '
 import { executarDeteccaoInconsistencias } from './services/inconsistenciasDeteccaoService';
 import { sincronizarCodigoResolucaoIncremental } from './services/incrementalSyncCodigoResolucaoService';
 import { corrigirCamposNull } from './services/fixNullFieldsService';
+import { COLUNA_DATA_ULTIMA_NOTA_PUBLICA, dataUltimaAtualizacaoTicket } from './utils/atualizacaoTicket';
 import { criarDeteccaoAjustesRetroativos } from './services/deteccaoAjustesRetroativosService';
 import { criarOrquestradorSync } from './scheduler/orquestradorSync';
 import { criarAgendador } from './scheduler/agendador';
@@ -3372,6 +3373,7 @@ app.post('/api/sync-tickets-by-ids', async (req, res) => {
         [Data da aprovação (somente se aprovado)] as Data_Aprovacao,
         [Data Real da Entrega] as Data_Real_Entrega,
         [data_ultima_nota (Date-Hour-Minute-Second)] as Data_Ultima_Nota,
+        ${COLUNA_DATA_ULTIMA_NOTA_PUBLICA} as Data_Ultima_Nota_Publica,
         [data_ultimo_comentario (Date-Hour-Minute-Second)] as Data_Ultimo_Comentario,
         Status,
         Prioridade,
@@ -3457,6 +3459,7 @@ app.post('/api/sync-tickets-by-ids', async (req, res) => {
           data_aprovacao: formatarDataSemTimezone(registro.Data_Aprovacao),
           data_real_entrega: formatarDataSemTimezone(registro.Data_Real_Entrega),
           data_ultima_nota: formatarDataSemTimezone(registro.Data_Ultima_Nota),
+          data_ultima_nota_publica: formatarDataSemTimezone(registro.Data_Ultima_Nota_Publica),
           data_ultimo_comentario: formatarDataSemTimezone(registro.Data_Ultimo_Comentario),
           status: registro.Status || null,
           prioridade: registro.Prioridade || null,
@@ -3484,7 +3487,9 @@ app.post('/api/sync-tickets-by-ids', async (req, res) => {
           tempo_restante_tds_em_minutos: registro.Tempo_Restante_TDS_em_Minutos || null,
           tempo_real_tda: registro.Tempo_Real_TDA || null,
           total_orcamento: registro.Total_Orcamento || null,
-          source_updated_at: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+          source_updated_at: formatarDataSemTimezone(
+            dataUltimaAtualizacaoTicket(registro.Data_Ultima_Modificacao, registro.Data_Ultima_Nota_Publica)
+          ),
           synced_at: new Date().toISOString()
         };
 
@@ -4093,7 +4098,7 @@ const orquestradorSync = criarOrquestradorSync({
     pesquisas: (pool, dataInicial) => sincronizarPesquisasIncremental(pool, dataInicial),
     especialistas: async (pool) => (await executarSyncEspecialistas(pool)).resultado,
     apontamentos: (pool) => sincronizarApontamentosIncremental(pool),
-    tickets: (pool) => sincronizarTicketsIncremental(pool),
+    tickets: (pool, dataInicial) => sincronizarTicketsIncremental(pool, dataInicial),
     codigoResolucao: (pool) => sincronizarCodigoResolucaoIncremental(pool, supabase),
     validacao: (pool) => executarValidacaoSync(pool),
     inconsistencias: () => executarDeteccaoInconsistencias(supabase),

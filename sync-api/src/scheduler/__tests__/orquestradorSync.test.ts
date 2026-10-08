@@ -121,6 +121,20 @@ describe('orquestradorSync', () => {
     expect(etapas.pesquisas).toHaveBeenCalledWith(expect.anything(), '2026-09-01');
   });
 
+  it('passa dataInicial para a etapa de tickets', async () => {
+    const { orq, etapas } = criar();
+    const inicio = await orq.iniciar({ tabelas: { tickets: true, dataInicial: '2026-09-18' }, origem: 'manual' });
+    await inicio.conclusao;
+    expect(etapas.tickets).toHaveBeenCalledWith(expect.anything(), '2026-09-18');
+  });
+
+  it('sem dataInicial, tickets roda no incremental automático', async () => {
+    const { orq, etapas } = criar();
+    const inicio = await orq.iniciar({ tabelas: { tickets: true }, origem: 'manual' });
+    await inicio.conclusao;
+    expect(etapas.tickets).toHaveBeenCalledWith(expect.anything(), undefined);
+  });
+
   it('continua após falha de uma etapa e marca como parcial', async () => {
     const etapas = criarEtapas({ especialistas: vi.fn(async () => { throw new Error('timeout'); }) });
     const { orq } = criar(etapas);

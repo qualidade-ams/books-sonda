@@ -127,8 +127,9 @@ export class InconsistenciasChamadosService {
 
   /**
    * Resolve as inconsistências "sem_atualizacao" ativas cujo chamado voltou a ser
-   * comentado (data_ultimo_comentario de apontamentos_tickets_aranda) há menos de
-   * 16 dias, movendo-as para o Histórico sem esperar a próxima detecção do sync-api.
+   * comentado ou recebeu nota pública (a mais recente entre data_ultimo_comentario e
+   * data_ultima_nota_publica de apontamentos_tickets_aranda) há menos de 16 dias,
+   * movendo-as para o Histórico sem esperar a próxima detecção do sync-api.
    * Mesmo corte de detectar_inconsistencias(): 16 dias ou mais continua ativa.
    * Não marca arquivado_manualmente: se o chamado parar de novo, a detecção o reativa.
    * Retorna quantas foram resolvidas; em erro, retorna 0 para não impedir a tela de carregar.
@@ -156,18 +157,22 @@ export class InconsistenciasChamadosService {
       const nroLimpo = (nro: string) => (nro || '').replace(/^(RF|IM|PM)\s*/, '').trim();
       const nros = Array.from(new Set(ativas.map(inc => nroLimpo(inc.nro_chamado)).filter(Boolean)));
 
-      const ultimoComentario = new Map<string, string>();
+      // Última interação do chamado: comentário ou nota pública, a mais recente (em ms)
+      const ultimaInteracao = new Map<string, number>();
       const batchSize = 200;
       for (let i = 0; i < nros.length; i += batchSize) {
         const batch = nros.slice(i, i + batchSize);
         const { data, error } = await supabase
           .from('apontamentos_tickets_aranda' as any)
-          .select('nro_solicitacao, data_ultimo_comentario')
+          .select('nro_solicitacao, data_ultimo_comentario, data_ultima_nota_publica')
           .in('nro_solicitacao', batch);
         if (error) throw error;
         for (const ticket of (data as any[]) || []) {
-          if (ticket.nro_solicitacao && ticket.data_ultimo_comentario) {
-            ultimoComentario.set(ticket.nro_solicitacao, ticket.data_ultimo_comentario);
+          const datas = [ticket.data_ultimo_comentario, ticket.data_ultima_nota_publica]
+            .filter(Boolean)
+            .map(data => new Date(data).getTime());
+          if (ticket.nro_solicitacao && datas.length > 0) {
+            ultimaInteracao.set(ticket.nro_solicitacao, Math.max(...datas));
           }
         }
       }
@@ -175,8 +180,8 @@ export class InconsistenciasChamadosService {
       const limite = Date.now() - 16 * 24 * 60 * 60 * 1000;
       const ids = ativas
         .filter(inc => {
-          const comentario = ultimoComentario.get(nroLimpo(inc.nro_chamado));
-          return comentario && new Date(comentario).getTime() > limite;
+          const interacao = ultimaInteracao.get(nroLimpo(inc.nro_chamado));
+          return interacao !== undefined && interacao > limite;
         })
         .map(inc => inc.id);
       if (ids.length === 0) return 0;

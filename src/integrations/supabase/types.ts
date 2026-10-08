@@ -267,6 +267,7 @@ export type Database = {
           data_solucao: string | null
           data_ultima_modificacao: string | null
           data_ultima_nota: string | null
+          data_ultima_nota_publica: string | null
           data_ultimo_comentario: string | null
           desc_ultima_nota: string | null
           desc_ultimo_comentario: string | null
@@ -328,6 +329,7 @@ export type Database = {
           data_solucao?: string | null
           data_ultima_modificacao?: string | null
           data_ultima_nota?: string | null
+          data_ultima_nota_publica?: string | null
           data_ultimo_comentario?: string | null
           desc_ultima_nota?: string | null
           desc_ultimo_comentario?: string | null
@@ -389,6 +391,7 @@ export type Database = {
           data_solucao?: string | null
           data_ultima_modificacao?: string | null
           data_ultima_nota?: string | null
+          data_ultima_nota_publica?: string | null
           data_ultimo_comentario?: string | null
           desc_ultima_nota?: string | null
           desc_ultimo_comentario?: string | null
