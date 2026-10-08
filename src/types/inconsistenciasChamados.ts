@@ -9,7 +9,7 @@ export type TipoInconsistencia =
   | 'mes_diferente'      // data_atividade e data_sistema em meses diferentes
   | 'tempo_excessivo'    // tempo_gasto_horas > 10:00
   | 'ic_999999'          // item_configuracao começa com 999999
-  | 'sem_atualizacao'    // chamado sem atualização há 16+ dias (status Open/Hold/In Progress/Acknowledged)
+  | 'sem_atualizacao'    // chamado sem nota pública há 16+ dias (sem nota: aberto há 16+ dias) (status Open/Hold/In Progress/Acknowledged)
   | 'troca_codigo_resolucao'; // última troca de código de resolução mudou o desconto do banco de horas (Banco=S ↔ Banco=N)
 
 export interface InconsistenciaChamado {
@@ -44,6 +44,8 @@ export interface InconsistenciaChamado {
   // Status e resolução (nova abordagem persistida)
   status?: 'ativa' | 'resolvida';
   status_chamado?: string | null;
+  /** Última nota pública do chamado (vem de apontamentos_tickets_aranda, não é persistida aqui) */
+  data_ultima_nota_publica?: string | null;
   data_deteccao?: string;
   data_resolucao?: string | null;
   

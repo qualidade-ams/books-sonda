@@ -32,6 +32,7 @@ import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailE
 import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import { passaFiltroEnvioEmail, type FiltroEnvioEmail } from '@/utils/filtroEnvioEmail';
 import { colunasEmailPorTipo, valorColunaEmail } from '@/utils/colunasEmailInconsistencia';
+import { colunaDataInconsistencia } from '@/utils/colunaDataInconsistencia';
 import type { InconsistenciasChamadosFiltros, InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
 import { TIPOS_TELA_INCONSISTENCIAS } from '@/types/inconsistenciasChamados';
 import {
@@ -777,6 +778,9 @@ Atenciosamente.`;
   const endIndexResolvidas = startIndexResolvidas + itemsPerPage;
   const paginatedResolvidas = resolvidasFiltradas.slice(startIndexResolvidas, endIndexResolvidas);
 
+  // Data Atividade, ou Data Anotação Pública quando o filtro é só "Sem Atualização 16+ dias"
+  const colunaData = colunaDataInconsistencia(filtros.tipo_inconsistencia);
+
   // Analistas do filtro: somente os da aba ativa
   const analistasDaAba = listarAnalistasDaAba(
     activeTab === 'historico_resolvidas' ? resolvidas : inconsistencias,
@@ -934,7 +938,7 @@ Atenciosamente.`;
                         <TableHead className="min-w-[90px] text-center text-xs sm:text-sm py-2">Status</TableHead>
                         <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('common.type')}</TableHead>
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.openDate')}</TableHead>
-                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.activityDate')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t(colunaData.tituloKey)}</TableHead>
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.systemDate')}</TableHead>
                         <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.time')}</TableHead>
                         <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Cód. Resolução</TableHead>
@@ -951,7 +955,7 @@ Atenciosamente.`;
                             <TableCell className="text-center py-2">{inc.status_chamado && inc.status_chamado.trim() !== '' ? <Badge variant="outline" className="border-sonda-blue text-sonda-blue text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap">{inc.status_chamado}</Badge> : <span className="text-xs text-gray-400">-</span>}</TableCell>
                             <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_abertura)}>{formatarData(inc.data_abertura)}</span></TableCell>
-                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_atividade)}>{formatarData(inc.data_atividade)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(colunaData.valor(inc))}>{formatarData(colunaData.valor(inc))}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_sistema)}>{formatarData(inc.data_sistema)}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm font-medium">{inc.tempo_gasto_horas || '-'}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs" title={inc.cod_resolucao || ''}>{formatarCodResolucao(inc.cod_resolucao)}</span></TableCell>
@@ -1010,7 +1014,7 @@ Atenciosamente.`;
                         <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('common.type')}</TableHead>
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Detecção</TableHead>
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Resolução</TableHead>
-                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.activityDate')}</TableHead>
+                        <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t(colunaData.tituloKey)}</TableHead>
                         <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.systemDate')}</TableHead>
                         <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('inconsistencias.time')}</TableHead>
                         <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Cód. Resolução</TableHead>
@@ -1027,7 +1031,7 @@ Atenciosamente.`;
                             <TableCell className="text-center py-2"><Badge className={`${TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]} text-[8px] sm:text-[9px] px-1.5 py-0.5 whitespace-nowrap`}>{TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}</Badge></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_deteccao || null)}>{formatarData(inc.data_deteccao || null)}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs text-green-600 font-medium cursor-default" title={formatarDataCompleta(inc.data_resolucao || null)}>{formatarData(inc.data_resolucao || null)}</span></TableCell>
-                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_atividade)}>{formatarData(inc.data_atividade)}</span></TableCell>
+                            <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(colunaData.valor(inc))}>{formatarData(colunaData.valor(inc))}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs cursor-default" title={formatarDataCompleta(inc.data_sistema)}>{formatarData(inc.data_sistema)}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm font-medium">{inc.tempo_gasto_horas || '-'}</span></TableCell>
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs" title={inc.cod_resolucao || ''}>{formatarCodResolucao(inc.cod_resolucao)}</span></TableCell>

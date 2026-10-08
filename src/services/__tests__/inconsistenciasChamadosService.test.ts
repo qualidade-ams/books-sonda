@@ -347,7 +347,7 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     vi.useRealTimers();
   });
 
-  it('resolve só as sem_atualizacao ativas cujo chamado foi comentado há menos de 16 dias', async () => {
+  it('resolve só as sem_atualizacao ativas cujo chamado recebeu nota pública há menos de 16 dias', async () => {
     const { updates, buscasAtivas, buscasTickets } = mockBanco({
       ativas: [
         { id: 'inc-1', nro_chamado: 'IM 9366968' },
@@ -355,9 +355,9 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
         { id: 'inc-3', nro_chamado: 'RF 111' },
       ],
       tickets: [
-        { nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-20T09:00:00+00:00' }, // 8 dias
-        { nro_solicitacao: '9365559', data_ultimo_comentario: '2026-09-01T09:00:00+00:00' }, // 27 dias
-        { nro_solicitacao: '111', data_ultimo_comentario: null },
+        { nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' }, // 8 dias
+        { nro_solicitacao: '9365559', data_ultima_nota_publica: '2026-09-01T09:00:00+00:00' }, // 27 dias
+        { nro_solicitacao: '111', data_ultima_nota_publica: null },
       ],
     });
 
@@ -367,6 +367,7 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     expect(buscasAtivas[0]).toEqual(
       expect.arrayContaining([['eq', 'status', 'ativa'], ['eq', 'tipo_inconsistencia', 'sem_atualizacao']])
     );
+    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('data_ultima_nota_publica')]);
     expect(buscasTickets[0]).toContainEqual(['in', 'nro_solicitacao', ['9366968', '9365559', '111']]);
     expect(updates).toHaveLength(1);
     expect(updates[0].payload).toEqual({ status: 'resolvida', data_resolucao: AGORA.toISOString() });
@@ -375,10 +376,10 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     );
   });
 
-  it('mantém ativa quando o último comentário tem exatamente 16 dias', async () => {
+  it('mantém ativa quando a última nota pública tem exatamente 16 dias', async () => {
     const { updates } = mockBanco({
       ativas: [{ id: 'inc-1', nro_chamado: 'IM 9366968' }],
-      tickets: [{ nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-12T12:00:00+00:00' }],
+      tickets: [{ nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-12T12:00:00+00:00' }],
     });
 
     const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
@@ -387,28 +388,24 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     expect(updates).toHaveLength(0);
   });
 
-  it('resolve quando o chamado recebeu nota pública há menos de 16 dias, mesmo com comentário antigo', async () => {
-    const { updates, buscasTickets } = mockBanco({
+  it('comentário recente não resolve: só a nota pública conta como atualização', async () => {
+    const { updates } = mockBanco({
       ativas: [
         { id: 'inc-1', nro_chamado: 'IM 9366968' },
-        { id: 'inc-2', nro_chamado: 'IM 9365559' },
-        { id: 'inc-3', nro_chamado: 'RF 111' },
+        { id: 'inc-2', nro_chamado: 'RF 111' },
       ],
       tickets: [
-        // comentário de 27 dias, nota pública de 3 dias
-        { nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-01T09:00:00+00:00', data_ultima_nota_publica: '2026-09-25T09:00:00+00:00' },
-        // comentário e nota pública antigos
-        { nro_solicitacao: '9365559', data_ultimo_comentario: '2026-09-01T09:00:00+00:00', data_ultima_nota_publica: '2026-09-05T09:00:00+00:00' },
-        // sem comentário, só nota pública recente
-        { nro_solicitacao: '111', data_ultimo_comentario: null, data_ultima_nota_publica: '2026-09-27T09:00:00+00:00' },
+        // comentário de 2 dias, nota pública de 27 dias
+        { nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-26T09:00:00+00:00', data_ultima_nota_publica: '2026-09-01T09:00:00+00:00' },
+        // comentário de 1 dia, sem nota pública
+        { nro_solicitacao: '111', data_ultimo_comentario: '2026-09-27T09:00:00+00:00', data_ultima_nota_publica: null },
       ],
     });
 
     const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
 
-    expect(resolvidas).toBe(2);
-    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('data_ultima_nota_publica')]);
-    expect(updates[0].filtros).toContainEqual(['in', 'id', ['inc-1', 'inc-3']]);
+    expect(resolvidas).toBe(0);
+    expect(updates).toHaveLength(0);
   });
 
   it('não consulta tickets nem atualiza quando não há sem_atualizacao ativa', async () => {
@@ -425,7 +422,7 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     vi.spyOn(console, 'error').mockImplementation(() => {});
     mockBanco({
       ativas: [{ id: 'inc-1', nro_chamado: 'IM 9366968' }],
-      tickets: [{ nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-20T09:00:00+00:00' }],
+      tickets: [{ nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' }],
       erroUpdate: { message: 'sem permissão' },
     });
 
@@ -435,7 +432,7 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
   it('chamadas simultâneas compartilham a mesma verificação', async () => {
     const { buscasAtivas } = mockBanco({
       ativas: [{ id: 'inc-1', nro_chamado: 'IM 9366968' }],
-      tickets: [{ nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-20T09:00:00+00:00' }],
+      tickets: [{ nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' }],
     });
 
     await Promise.all([
@@ -458,5 +455,27 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     expect(resolverSpy).toHaveBeenCalledTimes(2);
     const ordemFrom = (supabase.from as any).mock.invocationCallOrder;
     expect(resolverSpy.mock.invocationCallOrder[0]).toBeLessThan(ordemFrom[0]);
+  });
+
+  it('buscarInconsistencias traz a data da última nota pública do chamado junto com o status', async () => {
+    const { buscasTickets } = mockBanco({
+      ativas: [
+        criarInconsistencia({ id: 'inc-1', nro_chamado: 'IM 9366968' }),
+        criarInconsistencia({ id: 'inc-2', nro_chamado: 'RF 111' }),
+      ],
+      tickets: [
+        { nro_solicitacao: '9366968', status: 'Hold', data_ultima_nota_publica: '2026-09-01T09:00:00+00:00' },
+        { nro_solicitacao: '111', status: 'Open', data_ultima_nota_publica: null },
+      ],
+    });
+    vi.spyOn(inconsistenciasChamadosService, 'resolverSemAtualizacaoComComentarioRecente').mockResolvedValue(0);
+
+    const resultado = await inconsistenciasChamadosService.buscarInconsistencias({});
+
+    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('data_ultima_nota_publica')]);
+    expect(resultado.map(inc => [inc.id, inc.status_chamado, inc.data_ultima_nota_publica])).toEqual([
+      ['inc-1', 'Hold', '2026-09-01T09:00:00+00:00'],
+      ['inc-2', 'Open', null],
+    ]);
   });
 });

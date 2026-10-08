@@ -1862,6 +1862,7 @@ const en = {
     taskNumber: 'Task #',
     openDate: 'Open Date',
     activityDate: 'Activity Date',
+    publicNoteDate: 'Public Note Date',
     systemDate: 'System Date',
     time: 'Time',
     analyst: 'Analyst',
