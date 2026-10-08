@@ -2,10 +2,11 @@
  * Serviço de Sincronização Incremental de Tickets
  * 
  * Implementa sincronização inteligente baseada em Data_Ultima_Modificacao
- * com suporte a UPSERT seguro e comparação de timestamps.
- * 
+ * e data_ultima_nota_publica, com suporte a UPSERT seguro e comparação de timestamps.
+ * Data de atualização do chamado = a mais recente das duas (gravada em source_updated_at).
+ *
  * Regras:
- * 1. Busca maior Data_Ultima_Modificacao do Supabase
+ * 1. Busca maior source_updated_at do Supabase
  * 2. Busca TODOS os registros do SQL Server >= (maior_data - 1 dia de folga)
  * 3. Para cada registro:
  *    - Se não existe → INSERT
@@ -22,6 +23,14 @@
 import sql from 'mssql';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import {
+  COLUNA_DATA_ULTIMA_NOTA_PUBLICA,
+  CONDICAO_TICKET_ALTERADO_DESDE,
+  dataInicioCustomizada,
+  dataUltimaAtualizacaoTicket,
+  deveAtualizarTicket,
+  faltaNotaPublicaNoSupabase,
+} from '../utils/atualizacaoTicket';
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -69,6 +78,7 @@ interface DadosTicketSqlServer {
   Data_Aprovacao: Date | null;
   Data_Real_Entrega: Date | null;
   Data_Ultima_Nota: Date | null;
+  Data_Ultima_Nota_Publica: Date | null;
   Data_Ultimo_Comentario: Date | null;
   Status: string;
   Prioridade: string;
@@ -216,8 +226,7 @@ async function buscarRegistrosModificados(
   const queryCount = `
     SELECT COUNT(*) as total
     FROM AMSticketsabertos
-    WHERE CAST(Data_Ultima_Modificacao AS DATETIME) >= @dataInicio
-      AND Data_Ultima_Modificacao IS NOT NULL
+    WHERE ${CONDICAO_TICKET_ALTERADO_DESDE}
       AND (Nome_Grupo NOT LIKE 'AMS SAP%' OR Nome_Grupo IS NULL)
   `;
   
@@ -226,7 +235,7 @@ async function buscarRegistrosModificados(
     .query(queryCount);
   
   const totalRegistros = countResult.recordset[0].total;
-  console.log(`🔍 [DEBUG] Total de registros com Data_Ultima_Modificacao >= ${dataInicio.toISOString()}: ${totalRegistros}`);
+  console.log(`🔍 [DEBUG] Total de registros com Data_Ultima_Modificacao ou nota pública >= ${dataInicio.toISOString()}: ${totalRegistros}`);
   
   // ✅ TESTE: Buscar o menor e maior valor de Data_Ultima_Modificacao
   const queryMinMax = `
@@ -274,6 +283,7 @@ async function buscarRegistrosModificados(
       [Data da aprovação (somente se aprovado)] as Data_Aprovacao,
       [Data Real da Entrega] as Data_Real_Entrega,
       [data_ultima_nota (Date-Hour-Minute-Second)] as Data_Ultima_Nota,
+      ${COLUNA_DATA_ULTIMA_NOTA_PUBLICA} as Data_Ultima_Nota_Publica,
       [data_ultimo_comentario (Date-Hour-Minute-Second)] as Data_Ultimo_Comentario,
       Status,
       Prioridade,
@@ -302,8 +312,7 @@ async function buscarRegistrosModificados(
       tempo_real_tda as Tempo_Real_TDA,
       [Total Orçamento (em decimais)] as Total_Orcamento
     FROM AMSticketsabertos
-    WHERE CAST(Data_Ultima_Modificacao AS DATETIME) >= @dataInicio
-      AND Data_Ultima_Modificacao IS NOT NULL
+    WHERE ${CONDICAO_TICKET_ALTERADO_DESDE}
       AND (Nome_Grupo NOT LIKE 'AMS SAP%' OR Nome_Grupo IS NULL)
     ORDER BY CAST(Data_Ultima_Modificacao AS DATETIME) ASC
   `;
@@ -315,7 +324,7 @@ async function buscarRegistrosModificados(
     .query(query);
 
   console.log(`✅ [SYNC-TICKETS] ${result.recordset.length} registros encontrados no SQL Server (de ${totalRegistros} total)`);
-  console.log(`📅 [SYNC-TICKETS] Filtro aplicado: CAST(Data_Ultima_Modificacao AS DATETIME) >= ${dataInicio.toISOString()}`);
+  console.log(`📅 [SYNC-TICKETS] Filtro aplicado: ${CONDICAO_TICKET_ALTERADO_DESDE} (@dataInicio = ${dataInicio.toISOString()})`);
   
   // Log dos primeiros 3 e últimos 3 registros para debug
   if (result.recordset.length > 0) {
@@ -341,12 +350,13 @@ async function buscarRegistrosModificados(
 async function buscarRegistroExistente(nroSolicitacao: string, dataAbertura: Date | null): Promise<{
   existe: boolean;
   dataModificacao: Date | null;
+  notaPublica: string | null;
 }> {
   // Buscar APENAS por nro_solicitacao (constraint unique corrigida)
   // CORREÇÃO: Não usar data_abertura na busca pois timezone pode variar entre importações
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('source_updated_at')
+    .select('source_updated_at, data_ultima_nota_publica')
     .eq('nro_solicitacao', nroSolicitacao)
     .maybeSingle();
 
@@ -356,36 +366,14 @@ async function buscarRegistroExistente(nroSolicitacao: string, dataAbertura: Dat
   }
 
   if (!data) {
-    return { existe: false, dataModificacao: null };
+    return { existe: false, dataModificacao: null, notaPublica: null };
   }
 
-  const dataModificacao = data.source_updated_at 
+  const dataModificacao = data.source_updated_at
     ? new Date(data.source_updated_at)
     : null;
 
-  return { existe: true, dataModificacao };
-}
-
-/**
- * Compara datas considerando timezone UTC
- * Retorna true se dataSqlServer > dataSupabase
- */
-function deveAtualizar(dataSqlServer: Date | null, dataSupabase: Date | null): boolean {
-  // Se não houver data no SQL Server, não atualizar
-  if (!dataSqlServer) {
-    return false;
-  }
-
-  // Se não houver data no Supabase, atualizar
-  if (!dataSupabase) {
-    return true;
-  }
-
-  // Comparar timestamps em UTC
-  const timestampSqlServer = dataSqlServer.getTime();
-  const timestampSupabase = dataSupabase.getTime();
-
-  return timestampSqlServer > timestampSupabase;
+  return { existe: true, dataModificacao, notaPublica: data.data_ultima_nota_publica || null };
 }
 
 /**
@@ -419,6 +407,7 @@ function prepararDadosTicket(registro: DadosTicketSqlServer) {
     data_aprovacao: formatarDataSemTimezone(registro.Data_Aprovacao),
     data_real_entrega: formatarDataSemTimezone(registro.Data_Real_Entrega),
     data_ultima_nota: formatarDataSemTimezone(registro.Data_Ultima_Nota),
+    data_ultima_nota_publica: formatarDataSemTimezone(registro.Data_Ultima_Nota_Publica),
     data_ultimo_comentario: formatarDataSemTimezone(registro.Data_Ultimo_Comentario),
     status: registro.Status || null,
     prioridade: registro.Prioridade || null,
@@ -447,7 +436,9 @@ function prepararDadosTicket(registro: DadosTicketSqlServer) {
     tempo_real_tda: registro.Tempo_Real_TDA || null,
     total_orcamento: registro.Total_Orcamento || null,
     // Campos de controle de sincronização
-    source_updated_at: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+    source_updated_at: formatarDataSemTimezone(
+      dataUltimaAtualizacaoTicket(registro.Data_Ultima_Modificacao, registro.Data_Ultima_Nota_Publica)
+    ),
     synced_at: new Date().toISOString()
   };
 }
@@ -498,7 +489,7 @@ async function processarRegistro(
     }
 
     // Verificar se registro existe (usando nro_solicitacao + data_abertura)
-    const { existe, dataModificacao } = await buscarRegistroExistente(
+    const { existe, dataModificacao, notaPublica } = await buscarRegistroExistente(
       registro.Nro_Solicitacao,
       registro.Data_Abertura
     );
@@ -513,18 +504,26 @@ async function processarRegistro(
       return 'inserido';
     }
 
-    // Verificar se deve atualizar
-    if (deveAtualizar(registro.Data_Ultima_Modificacao, dataModificacao)) {
+    // Verificar se deve atualizar (última modificação ou nota pública, a mais recente)
+    const dataAtualizacao = dataUltimaAtualizacaoTicket(
+      registro.Data_Ultima_Modificacao,
+      registro.Data_Ultima_Nota_Publica
+    );
+    // Também atualiza chamado sincronizado antes de a coluna de nota pública existir
+    if (
+      deveAtualizarTicket(dataAtualizacao, dataModificacao) ||
+      faltaNotaPublicaNoSupabase(registro.Data_Ultima_Nota_Publica, notaPublica)
+    ) {
       // ✅ UPDATE: Data SQL Server > Data Supabase
       await atualizarRegistro(registro.Nro_Solicitacao, registro.Data_Abertura, dados);
       console.log(`🔄 [SYNC-TICKETS] Registro ${index + 1}/${total}: ATUALIZADO (${registro.Nro_Solicitacao})`);
-      console.log(`   SQL: ${registro.Data_Ultima_Modificacao?.toISOString()} > Supabase: ${dataModificacao?.toISOString()}`);
+      console.log(`   SQL: ${dataAtualizacao?.toISOString()} / Supabase: ${dataModificacao?.toISOString()}`);
       return 'atualizado';
     }
 
     // ⏭️ SKIP: Data SQL Server <= Data Supabase (não sobrescrever)
     console.log(`⏭️ [SYNC-TICKETS] Registro ${index + 1}/${total}: IGNORADO (${registro.Nro_Solicitacao})`);
-    console.log(`   SQL: ${registro.Data_Ultima_Modificacao?.toISOString()} <= Supabase: ${dataModificacao?.toISOString()}`);
+    console.log(`   SQL: ${dataAtualizacao?.toISOString()} <= Supabase: ${dataModificacao?.toISOString()}`);
     return 'ignorado';
 
   } catch (erro) {
@@ -538,7 +537,8 @@ async function processarRegistro(
  * Busca TODOS os registros modificados (sem limite)
  */
 export async function sincronizarTicketsIncremental(
-  pool: sql.ConnectionPool
+  pool: sql.ConnectionPool,
+  dataInicialCustomizada?: string | null
 ): Promise<{
   sucesso: boolean;
   total_processados: number;
@@ -560,19 +560,25 @@ export async function sincronizarTicketsIncremental(
 
   try {
     console.log('🚀 [SYNC-TICKETS] Iniciando sincronização incremental de tickets...');
-    resultado.mensagens.push('Iniciando sincronização incremental baseada em Data_Ultima_Modificacao');
+    resultado.mensagens.push('Iniciando sincronização incremental baseada em Data_Ultima_Modificacao e nota pública');
 
-    // 1. Buscar última data sincronizada
-    const ultimaData = await buscarUltimaDataSincronizada();
-    console.log(`📅 [SYNC-TICKETS] Última sincronização: ${ultimaData.toISOString()}`);
-    resultado.mensagens.push(`✅ Última sincronização: ${ultimaData.toISOString()}`);
+    // 1-2. Data de início: a escolhida no modal ou a última sincronizada com folga de 1 dia
+    let dataInicio = dataInicioCustomizada(dataInicialCustomizada);
 
-    // 2. Calcular data de início com folga de 1 dia
-    const dataInicio = calcularDataInicioComFolga(ultimaData);
-    console.log(`📅 [SYNC-TICKETS] Data de início (com folga de 1 dia): ${dataInicio.toISOString()}`);
-    console.log(`⚠️ [SYNC-TICKETS] Folga de 1 dia garante que nenhum registro seja perdido`);
-    resultado.mensagens.push(`🔍 Buscando desde: ${dataInicio.toISOString()} (folga de 1 dia para segurança)`);
-    console.log(`📅 [SYNC-TICKETS] Buscando registros com Data_Ultima_Modificacao >= ${dataInicio.toISOString()}`);
+    if (dataInicio) {
+      console.log(`📅 [SYNC-TICKETS] Usando data inicial CUSTOMIZADA: ${dataInicio.toISOString()}`);
+      resultado.mensagens.push(`📅 Data inicial customizada: ${dataInicio.toISOString()}`);
+    } else {
+      const ultimaData = await buscarUltimaDataSincronizada();
+      console.log(`📅 [SYNC-TICKETS] Última sincronização: ${ultimaData.toISOString()}`);
+      resultado.mensagens.push(`✅ Última sincronização: ${ultimaData.toISOString()}`);
+
+      dataInicio = calcularDataInicioComFolga(ultimaData);
+      console.log(`📅 [SYNC-TICKETS] Data de início (com folga de 1 dia): ${dataInicio.toISOString()}`);
+      console.log(`⚠️ [SYNC-TICKETS] Folga de 1 dia garante que nenhum registro seja perdido`);
+      resultado.mensagens.push(`🔍 Buscando desde: ${dataInicio.toISOString()} (folga de 1 dia para segurança)`);
+    }
+    console.log(`📅 [SYNC-TICKETS] Buscando registros com Data_Ultima_Modificacao ou nota pública >= ${dataInicio.toISOString()}`);
 
     // 3. Buscar TODOS os registros modificados do SQL Server (sem limite)
     const registros = await buscarRegistrosModificados(pool, dataInicio, 0); // 0 = sem limite
