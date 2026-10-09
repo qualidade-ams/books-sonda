@@ -29,43 +29,14 @@ import { criarExecutorSaldoParcial } from './services/envioSaldoParcialService';
 import { criarRenderizadorImagem } from './services/renderImagemService';
 import { criarEnviadorWebhook } from './services/webhookEmailService';
 import { hostDeEscuta } from './utils/rede';
+import { criarSqlConfig } from './config/sqlConfig';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // Credenciais vêm exclusivamente do ambiente — nunca hardcode valor real aqui.
-const requireEnv = (name: string): string => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(
-      `Variável de ambiente obrigatória ausente: ${name}. Configure-a antes de iniciar o serviço.`
-    );
-  }
-  return value;
-};
-
-// Configuração SQL Server
-const sqlConfig: sql.config = {
-  server: requireEnv('SQL_SERVER'),
-  port: parseInt(process.env.SQL_PORT || '10443'),
-  database: requireEnv('SQL_DATABASE'),
-  user: requireEnv('SQL_USER'),
-  password: requireEnv('SQL_PASSWORD'),
-  options: {
-    encrypt: false, // Para SQL Server local
-    trustServerCertificate: true,
-    enableArithAbort: true,
-    connectTimeout: 30000, // 30 segundos
-    requestTimeout: 30000,
-    useUTC: false // IMPORTANTE: Não converter datas para UTC
-  },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000
-  }
-};
+const sqlConfig = criarSqlConfig();
 
 // Cliente Supabase
 const supabase = createClient(

@@ -202,55 +202,6 @@ async function buscarRegistrosModificados(
 ): Promise<DadosTicketSqlServer[]> {
   console.log(`📊 [SYNC-TICKETS] Buscando TODOS os registros modificados após ${dataInicio.toISOString()}...`);
   
-  // ✅ DEBUG: Verificar tipo e valor do parâmetro
-  console.log('🔍 [DEBUG] Tipo de dataInicio:', typeof dataInicio);
-  console.log('🔍 [DEBUG] Valor de dataInicio:', dataInicio);
-  console.log('🔍 [DEBUG] dataInicio.toISOString():', dataInicio.toISOString());
-  
-  // ✅ TESTE: Verificar tipo de dado do campo Data_Ultima_Modificacao
-  const queryTipoDado = `
-    SELECT TOP 1
-      Data_Ultima_Modificacao,
-      SQL_VARIANT_PROPERTY(Data_Ultima_Modificacao, 'BaseType') as tipo_dado
-    FROM AMSticketsabertos
-    WHERE Data_Ultima_Modificacao IS NOT NULL
-  `;
-  
-  const tipoDadoResult = await pool.request().query(queryTipoDado);
-  if (tipoDadoResult.recordset.length > 0) {
-    console.log(`🔍 [DEBUG] Tipo de dado do campo Data_Ultima_Modificacao: ${tipoDadoResult.recordset[0].tipo_dado}`);
-    console.log(`🔍 [DEBUG] Exemplo de valor: ${tipoDadoResult.recordset[0].Data_Ultima_Modificacao}`);
-  }
-  
-  // ✅ TESTE: Primeiro vamos contar quantos registros existem com data >= dataInicio
-  const queryCount = `
-    SELECT COUNT(*) as total
-    FROM AMSticketsabertos
-    WHERE ${CONDICAO_TICKET_ALTERADO_DESDE}
-      AND (Nome_Grupo NOT LIKE 'AMS SAP%' OR Nome_Grupo IS NULL)
-  `;
-  
-  const countResult = await pool.request()
-    .input('dataInicio', sql.DateTime, dataInicio)
-    .query(queryCount);
-  
-  const totalRegistros = countResult.recordset[0].total;
-  console.log(`🔍 [DEBUG] Total de registros com Data_Ultima_Modificacao ou nota pública >= ${dataInicio.toISOString()}: ${totalRegistros}`);
-  
-  // ✅ TESTE: Buscar o menor e maior valor de Data_Ultima_Modificacao
-  const queryMinMax = `
-    SELECT 
-      MIN(CAST(Data_Ultima_Modificacao AS DATETIME)) as menor_data,
-      MAX(CAST(Data_Ultima_Modificacao AS DATETIME)) as maior_data
-    FROM AMSticketsabertos
-    WHERE Data_Ultima_Modificacao IS NOT NULL
-  `;
-  
-  const minMaxResult = await pool.request().query(queryMinMax);
-  console.log(`🔍 [DEBUG] Menor data no SQL Server: ${minMaxResult.recordset[0].menor_data}`);
-  console.log(`🔍 [DEBUG] Maior data no SQL Server: ${minMaxResult.recordset[0].maior_data}`);
-  console.log(`🔍 [DEBUG] Data de filtro (dataInicio): ${dataInicio.toISOString()}`);
-  
   // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os registros (sem TOP/limite)
   // Se limite = 0, busca todos; caso contrário, usa o limite especificado
   const topClause = limite > 0 ? `TOP ${limite}` : '';
@@ -323,7 +274,7 @@ async function buscarRegistrosModificados(
     .input('dataInicio', sql.DateTime, dataInicio)
     .query(query);
 
-  console.log(`✅ [SYNC-TICKETS] ${result.recordset.length} registros encontrados no SQL Server (de ${totalRegistros} total)`);
+  console.log(`✅ [SYNC-TICKETS] ${result.recordset.length} registros encontrados no SQL Server`);
   console.log(`📅 [SYNC-TICKETS] Filtro aplicado: ${CONDICAO_TICKET_ALTERADO_DESDE} (@dataInicio = ${dataInicio.toISOString()})`);
   
   // Log dos primeiros 3 e últimos 3 registros para debug
