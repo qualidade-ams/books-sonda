@@ -2,7 +2,7 @@ import type { InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsis
 
 export interface ColunaDataInconsistencia {
   /** Chave i18n do título da coluna */
-  tituloKey: 'inconsistencias.activityDate' | 'inconsistencias.publicNoteDate';
+  tituloKey: 'inconsistencias.activityDate' | 'inconsistencias.publicNoteDate' | 'inconsistencias.solutionDate';
   valor: (item: InconsistenciaChamado) => string | null;
 }
 
@@ -16,6 +16,13 @@ export function colunaDataInconsistencia(tipoFiltro?: TipoInconsistencia | 'all'
     return {
       tituloKey: 'inconsistencias.publicNoteDate',
       valor: item => item.data_ultima_nota_publica ?? null,
+    };
+  }
+  // Na validação do campo Solução, data_atividade guarda a data da solução
+  if (tipoFiltro === 'validacao_solucao') {
+    return {
+      tituloKey: 'inconsistencias.solutionDate',
+      valor: item => item.data_atividade,
     };
   }
   return {

@@ -40,6 +40,13 @@ describe('colunaDataInconsistencia', () => {
     expect(coluna.valor(criarItem({ data_ultima_nota_publica: undefined }))).toBeNull();
   });
 
+  it('filtrando só Validação campo Solução, a coluna vira Data Solução (gravada em data_atividade)', () => {
+    const coluna = colunaDataInconsistencia('validacao_solucao');
+
+    expect(coluna.tituloKey).toBe('inconsistencias.solutionDate');
+    expect(coluna.valor(criarItem({ tipo_inconsistencia: 'validacao_solucao' }))).toBe('2026-09-21T10:00:00Z');
+  });
+
   it.each(['all', 'mes_diferente', 'tempo_excessivo', 'ic_999999', undefined] as const)(
     'com o filtro de tipo "%s" mantém Data Atividade',
     (tipo) => {
