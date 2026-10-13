@@ -19,7 +19,7 @@ export interface TabelasSync {
   apontamentos?: boolean;
   tickets?: boolean;
   codigoResolucao?: boolean;
-  /** padrão: true */
+  /** padrão: true. Ignorado (sempre roda) quando apontamentos, tickets ou codigoResolucao é sincronizado */
   detectarInconsistencias?: boolean;
   /** padrão: true (só roda quando apontamentos é sincronizado) */
   ajustesRetroativos?: boolean;
@@ -68,6 +68,9 @@ interface EntradaLog {
 
 const ETAPAS_TABELA = ['pesquisas', 'especialistas', 'apontamentos', 'tickets', 'codigoResolucao'] as const;
 type EtapaTabela = (typeof ETAPAS_TABELA)[number];
+
+/** Tabelas de onde detectar_inconsistencias() lê os dados gravados em inconsistencias_chamados */
+const ETAPAS_ORIGEM_INCONSISTENCIAS: EtapaTabela[] = ['apontamentos', 'tickets', 'codigoResolucao'];
 
 const ROTULOS: Record<string, string> = {
   pesquisas: 'Pesquisas (AMSpesquisa)',
@@ -232,13 +235,17 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
         tabelas: r?.tabelas ?? null,
       }));
 
-      if (tabelas.detectarInconsistencias !== false) {
+      // As inconsistências guardam dados dessas tabelas: se uma delas foi sincronizada,
+      // a detecção roda mesmo desmarcada, para a auditoria não ficar desatualizada.
+      const sincronizouOrigemInconsistencias = ETAPAS_ORIGEM_INCONSISTENCIAS.some((t) => tabelas[t]);
+      if (tabelas.detectarInconsistencias !== false || sincronizouOrigemInconsistencias) {
         await rodar('inconsistencias', () => etapas.inconsistencias(), (r) => ({
           sucesso: !!r?.sucesso,
           total_detectadas: r?.total_detectadas ?? 0,
           novas: r?.novas ?? 0,
           resolvidas: r?.resolvidas ?? 0,
           mantidas: r?.mantidas ?? 0,
+          atualizadas: r?.atualizadas ?? 0,
         }));
       }
 

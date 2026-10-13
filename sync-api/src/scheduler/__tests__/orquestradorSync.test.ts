@@ -20,7 +20,7 @@ function criarEtapas(sobrescrever: Partial<EtapasSync> = {}): EtapasSync {
     tickets: vi.fn(async () => ok()),
     codigoResolucao: vi.fn(async () => ({ sucesso: true, total_processados: 4, sincronizados: 4, erros: 0, mensagens: [] })),
     validacao: vi.fn(async () => ({ resumo: { tabelas_ok: 4, tabelas_com_diferenca: 0, tabelas_com_erro: 0 }, tabelas: {} })),
-    inconsistencias: vi.fn(async () => ({ sucesso: true, total_detectadas: 1, novas: 1, resolvidas: 0, mantidas: 0, mensagens: [] })),
+    inconsistencias: vi.fn(async () => ({ sucesso: true, total_detectadas: 1, novas: 1, resolvidas: 0, mantidas: 0, atualizadas: 2, mensagens: [] })),
     ajustesRetroativos: vi.fn(async () => [{ id: 'aj' }]),
     ...sobrescrever,
   };
@@ -83,6 +83,7 @@ describe('orquestradorSync', () => {
     expect(final.finalizado_em).toBeTruthy();
     expect(final.resultado.pesquisas).toMatchObject({ sucesso: true, processados: 10, novos: 2, atualizados: 3, erros: 0 });
     expect(final.resultado.especialistas).toMatchObject({ novos: 1 });
+    expect(final.resultado.inconsistencias).toMatchObject({ novas: 1, mantidas: 0, atualizadas: 2 });
     expect(final.resultado.ajustesRetroativos).toMatchObject({ sucesso: true, total: 1 });
     expect(fechar).toHaveBeenCalled();
   });
@@ -102,16 +103,55 @@ describe('orquestradorSync', () => {
     expect(etapas.inconsistencias).toHaveBeenCalled();
   });
 
-  it('respeita detectarInconsistencias=false e ajustesRetroativos=false', async () => {
+  it('respeita detectarInconsistencias=false quando nenhuma tabela de origem das inconsistências é sincronizada', async () => {
     const { orq, etapas } = criar();
     const inicio = await orq.iniciar({
-      tabelas: { apontamentos: true, detectarInconsistencias: false, ajustesRetroativos: false },
+      tabelas: { pesquisas: true, especialistas: true, detectarInconsistencias: false },
       origem: 'manual',
     });
     await inicio.conclusao;
 
     expect(etapas.inconsistencias).not.toHaveBeenCalled();
+  });
+
+  it('respeita ajustesRetroativos=false', async () => {
+    const { orq, etapas } = criar();
+    const inicio = await orq.iniciar({
+      tabelas: { apontamentos: true, ajustesRetroativos: false },
+      origem: 'manual',
+    });
+    await inicio.conclusao;
+
     expect(etapas.ajustesRetroativos).not.toHaveBeenCalled();
+  });
+
+  // As inconsistências guardam dados de apontamentos, tickets e código de resolução:
+  // sincronizar qualquer uma dessas tabelas sem detectar deixaria a auditoria desatualizada.
+  it.each(['apontamentos', 'tickets', 'codigoResolucao'] as const)(
+    'detecta inconsistências sempre que %s é sincronizado, mesmo com detectarInconsistencias=false',
+    async (tabela) => {
+      const { orq, etapas } = criar();
+      const inicio = await orq.iniciar({
+        tabelas: { [tabela]: true, detectarInconsistencias: false },
+        origem: 'manual',
+      });
+      await inicio.conclusao;
+
+      expect(etapas.inconsistencias).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('detecta inconsistências depois de sincronizar as tabelas de origem', async () => {
+    const ordem: string[] = [];
+    const etapas = criarEtapas({
+      tickets: vi.fn(async () => { ordem.push('tickets'); return ok(); }),
+      inconsistencias: vi.fn(async () => { ordem.push('inconsistencias'); return ok(); }),
+    });
+    const { orq } = criar(etapas);
+    const inicio = await orq.iniciar({ tabelas: { tickets: true, detectarInconsistencias: false }, origem: 'manual' });
+    await inicio.conclusao;
+
+    expect(ordem).toEqual(['tickets', 'inconsistencias']);
   });
 
   it('passa dataInicial para a etapa de pesquisas', async () => {

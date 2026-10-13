@@ -15,6 +15,7 @@ interface ResultadoDeteccao {
   novas: number;
   resolvidas: number;
   mantidas: number;
+  atualizadas: number;
   total_detectadas: number;
   por_tipo: Record<string, number>;
   mensagens: string[];
@@ -43,10 +44,51 @@ interface InconsistenciaDetectada {
 }
 
 /**
+ * Campos que pertencem à linha e ao ciclo de vida da inconsistência, não ao dado de
+ * origem: nunca são sobrescritos pela detecção. Todo o resto que a detecção devolve
+ * (analista, status do chamado, tempo, datas, empresa...) acompanha as tabelas de
+ * origem e é atualizado nas inconsistências ativas quando muda.
+ */
+const CAMPOS_FORA_DA_ATUALIZACAO = new Set([
+  'id',
+  'chave_unica',
+  'status',
+  'data_deteccao',
+  'data_resolucao',
+  'arquivado_manualmente',
+  'created_at',
+  'updated_at',
+]);
+
+const TIMESTAMP_ISO = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+
+/** Compara valores ignorando diferença de formato/fuso em timestamps e de tipo em números */
+function mesmoValor(atual: any, detectado: any): boolean {
+  if (atual == null || detectado == null) return atual == null && detectado == null;
+  if (typeof atual === 'number' || typeof detectado === 'number') return Number(atual) === Number(detectado);
+  if (TIMESTAMP_ISO.test(String(atual)) && TIMESTAMP_ISO.test(String(detectado))) {
+    return new Date(atual).getTime() === new Date(detectado).getTime();
+  }
+  return String(atual) === String(detectado);
+}
+
+/** Campos que mudaram entre a linha gravada e a detecção atual (só os que a detecção informa) */
+function camposAlterados(gravada: Record<string, any>, detectada: InconsistenciaDetectada): Record<string, any> {
+  const alterados: Record<string, any> = {};
+  for (const campo of Object.keys(detectada)) {
+    if (CAMPOS_FORA_DA_ATUALIZACAO.has(campo)) continue;
+    const novo = (detectada as any)[campo];
+    if (novo === undefined) continue;
+    if (!mesmoValor(gravada[campo], novo)) alterados[campo] = novo;
+  }
+  return alterados;
+}
+
+/**
  * Executa detecção completa de inconsistências.
  * 1. Chama RPC no banco (detectar_inconsistencias) para obter todas as inconsistências
  * 2. Compara com ativas existentes
- * 3. Insere novas e marca resolvidas
+ * 3. Insere novas, atualiza as mantidas cujo dado de origem mudou e marca resolvidas
  */
 export async function executarDeteccaoInconsistencias(supabase: SupabaseClient): Promise<ResultadoDeteccao> {
   const resultado: ResultadoDeteccao = {
@@ -54,6 +96,7 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
     novas: 0,
     resolvidas: 0,
     mantidas: 0,
+    atualizadas: 0,
     total_detectadas: 0,
     por_tipo: {},
     mensagens: []
@@ -116,7 +159,7 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
     while (true) {
       const { data, error } = await supabase
         .from('inconsistencias_chamados')
-        .select('id, chave_unica')
+        .select('*')
         .eq('status', 'ativa')
         .range(offset, offset + PAGE_SIZE - 1);
 
@@ -133,8 +176,10 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
     console.log(`   📋 Ativas existentes: ${ativasExistentes.length}`);
 
     const ativasMap = new Map<string, string>();
+    const ativasPorChave = new Map<string, any>();
     for (const ativa of ativasExistentes) {
       ativasMap.set(ativa.chave_unica, ativa.id);
+      ativasPorChave.set(ativa.chave_unica, ativa);
     }
 
     // 4. Buscar arquivadas manualmente (não reinserir)
@@ -229,11 +274,40 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
       console.log(`✅ [DETECCAO] ${idsResolvidas.length} resolvidas`);
     }
 
+    // 8.1 Atualizar mantidas cujo dado de origem mudou desde a detecção
+    // (ex.: analista da tarefa trocado no Aranda, status do chamado, tempo apontado)
+    const atualizacoes: { id: string; campos: Record<string, any> }[] = [];
+    const chavesVistas = new Set<string>();
+    for (const inc of todasDetectadas) {
+      const gravada = ativasPorChave.get(inc.chave_unica);
+      if (!gravada || chavesVistas.has(inc.chave_unica)) continue;
+      chavesVistas.add(inc.chave_unica);
+      const campos = camposAlterados(gravada, inc);
+      if (Object.keys(campos).length > 0) atualizacoes.push({ id: gravada.id, campos });
+    }
+
+    if (atualizacoes.length > 0) {
+      console.log(`📊 [DETECCAO] Atualizando ${atualizacoes.length} mantidas com dados novos...`);
+      for (const { id, campos } of atualizacoes) {
+        const { error } = await supabase
+          .from('inconsistencias_chamados')
+          .update(campos)
+          .eq('id', id);
+
+        if (error) {
+          console.error('❌ [DETECCAO] Erro atualizar mantida:', error.message);
+          continue;
+        }
+        resultado.atualizadas++;
+      }
+      console.log(`✅ [DETECCAO] ${resultado.atualizadas} mantidas atualizadas`);
+    }
+
     // 9. Resultado final
     resultado.mantidas = ativasMap.size - idsResolvidas.length;
     resultado.sucesso = true;
     resultado.mensagens.push(
-      `Novas: ${resultado.novas}, Resolvidas: ${resultado.resolvidas}, Mantidas: ${resultado.mantidas}`
+      `Novas: ${resultado.novas}, Resolvidas: ${resultado.resolvidas}, Mantidas: ${resultado.mantidas}, Atualizadas: ${resultado.atualizadas}`
     );
 
     console.log('');
@@ -241,6 +315,7 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
     console.log(`   🆕 Novas: ${resultado.novas}`);
     console.log(`   ✅ Resolvidas: ${resultado.resolvidas}`);
     console.log(`   🔄 Mantidas: ${resultado.mantidas}`);
+    console.log(`   ✏️ Atualizadas: ${resultado.atualizadas}`);
     console.log('✅ [DETECCAO] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     return resultado;
