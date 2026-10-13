@@ -107,11 +107,12 @@ class SyncAgendamentosService {
   }
 
   /**
-   * Gera e envia para a Qualidade os books liberados e ainda não enviados, no sync-api.
+   * Gera e envia para a Qualidade os books liberados e ainda não enviados, no sync-api
+   * (só das empresas informadas; vazio = todas).
    * Divide a trava com a sincronização: recusa (409) se uma delas estiver em andamento.
    */
-  async gerarBooksAgora(): Promise<{ execucaoId: string }> {
-    const { dados } = await chamarSyncApi<{ execucaoId: string }>('/api/sync-jobs/executar-books', {});
+  async gerarBooksAgora(empresaIds: string[] = []): Promise<{ execucaoId: string }> {
+    const { dados } = await chamarSyncApi<{ execucaoId: string }>('/api/sync-jobs/executar-books', { empresaIds });
     return dados;
   }
 

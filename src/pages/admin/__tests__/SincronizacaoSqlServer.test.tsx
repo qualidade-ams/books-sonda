@@ -45,6 +45,14 @@ vi.mock('@/hooks/useSyncAgendamentos', () => ({
   useExecutarSyncAgora: () => ({ mutateAsync: executarMock, isPending: false }),
   useGerarBooksAgora: () => ({ mutateAsync: gerarBooksMock, isPending: false }),
   useStatusSyncJobs: () => ({ agendadorAtivo: estado.agendadorAtivo }),
+  useEmpresasBook: () => ({
+    empresas: [
+      { id: 'e1', nome: 'VOTORANTIM' },
+      { id: 'e2', nome: 'HYPERA PHARMA' },
+    ],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 import SincronizacaoSqlServer from '../SincronizacaoSqlServer';
@@ -206,6 +214,32 @@ describe('SincronizacaoSqlServer', () => {
       expect(screen.getByText('sincronizacaoSql.books.descricao')).toBeInTheDocument();
     });
 
+    it('gerar books agora só para as empresas escolhidas', async () => {
+      gerarBooksMock.mockResolvedValue({ execucaoId: 'e2' });
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ }));
+      fireEvent.click(screen.getByLabelText('sincronizacaoSql.empresas.selecionadas'));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'VOTORANTIM' }));
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' }));
+
+      await waitFor(() => expect(gerarBooksMock).toHaveBeenCalledWith(['e1']));
+    });
+
+    it('tabela de books mostra as empresas do agendamento', () => {
+      estado.agendamentos = [
+        { ...agendamentoBooks, id: 'b1', nome: 'Todas', empresa_ids: [] },
+        { ...agendamentoBooks, id: 'b2', nome: 'Só Votorantim', empresa_ids: ['e1'] },
+      ];
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+
+      expect(screen.getByText('sincronizacaoSql.agendamentos.empresas')).toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.empresas.todasCurto')).toBeInTheDocument();
+      expect(screen.getByText('VOTORANTIM')).toBeInTheDocument();
+    });
+
     it('estado vazio da aba de books', () => {
       estado.agendamentos = [agendamento];
       render(<SincronizacaoSqlServer />);
@@ -222,7 +256,7 @@ describe('SincronizacaoSqlServer', () => {
       expect(gerarBooksMock).not.toHaveBeenCalled();
       fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' }));
 
-      await waitFor(() => expect(gerarBooksMock).toHaveBeenCalled());
+      await waitFor(() => expect(gerarBooksMock).toHaveBeenCalledWith([]));
       expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'sincronizacaoSql.toasts.booksIniciado' }));
     });
 
@@ -281,6 +315,7 @@ describe('SincronizacaoSqlServer', () => {
               gerados: 1,
               erros: 1,
               pulados: 128,
+              selecionadas: 2,
               empresas: [
                 { empresa: 'ABBOTT', sucesso: true },
                 { empresa: 'AGFA', sucesso: false, erro: 'Falha ao gerar book: sem dados' },
@@ -295,6 +330,7 @@ describe('SincronizacaoSqlServer', () => {
       expect(screen.getByText('sincronizacaoSql.tabelas.gerarBooks')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Books mensais'));
       expect(screen.getByText('sincronizacaoSql.historico.booksResumo')).toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.historico.booksSelecionadas')).toBeInTheDocument();
       expect(screen.getByText('AGFA')).toBeInTheDocument();
       expect(screen.getByText('Falha ao gerar book: sem dados')).toBeInTheDocument();
     });

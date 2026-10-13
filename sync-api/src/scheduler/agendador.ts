@@ -90,7 +90,7 @@ export function criarAgendador(deps: DependenciasAgendador) {
         origem: 'agendado',
         agendamentoId: ag.id,
         // Books agendados ficam como "enviado por" quem criou o agendamento
-        ...(tipo === 'books' ? { responsavelId: ag.created_by ?? null } : {}),
+        ...(tipo === 'books' ? { responsavelId: ag.created_by ?? null, empresaIds: ag.empresa_ids ?? [] } : {}),
       });
 
       if (inicio.status === 'iniciada') {

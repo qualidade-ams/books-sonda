@@ -1,7 +1,7 @@
 /**
  * Endpoints da tela "Sincronização SQL Server":
  *   POST /api/sync-jobs/executar            (edit) — execução manual em background
- *   POST /api/sync-jobs/executar-books      (edit) — geração manual de books em background
+ *   POST /api/sync-jobs/executar-books      (edit) — geração manual de books em background ({ empresaIds? })
  *   POST /api/sync-jobs/proximas-execucoes  (view) — pré-visualização da recorrência
  *   GET  /api/sync-jobs/status              (view) — há execução em andamento?
  */
@@ -23,6 +23,15 @@ const CHAVES_TABELA = ['pesquisas', 'especialistas', 'apontamentos', 'tickets', 
 const CHAVES_POS = ['detectarInconsistencias', 'ajustesRetroativos'] as const;
 // 48 cobre um dia inteiro de execuções de hora em hora (24), com folga para horários fixos
 const MAX_PREVIEW = 48;
+
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_EMPRESAS = 1000;
+
+/** Ids de empresa válidos (uuid), sem repetição */
+function sanitizarEmpresaIds(entrada: any): string[] {
+  if (!Array.isArray(entrada)) return [];
+  return [...new Set(entrada.filter((id) => typeof id === 'string' && REGEX_UUID.test(id)))].slice(0, MAX_EMPRESAS);
+}
 
 /** Aceita só as chaves conhecidas, com tipos corretos */
 function sanitizarTabelas(entrada: any): TabelasSync {
@@ -63,7 +72,13 @@ export function criarHandlersSyncJobs({
 
     async executarBooks(req: RequestAutenticado, res: Response) {
       try {
-        const inicio = await orquestrador.iniciar({ tipo: 'books', tabelas: {}, origem: 'manual', usuarioId: req.usuarioId });
+        const inicio = await orquestrador.iniciar({
+          tipo: 'books',
+          tabelas: {},
+          origem: 'manual',
+          usuarioId: req.usuarioId,
+          empresaIds: sanitizarEmpresaIds(req.body?.empresaIds),
+        });
         if (inicio.status === 'iniciada') return res.status(202).json({ execucaoId: inicio.execucaoId });
         return res.status(409).json({ erro: 'Já existe uma sincronização ou geração de books em andamento' });
       } catch (e) {

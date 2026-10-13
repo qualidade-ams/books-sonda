@@ -21158,6 +21158,15 @@ var BooksService = class {
    * - tipo_book: 'qualidade'
    */
   /**
+   * Empresas que recebem book (mesmo critério de listarBooks: ativas, com AMS e book de qualidade).
+   * Usada para escolher empresas na geração automática de books.
+   */
+  async listarEmpresasBook() {
+    const { data, error } = await supabase.from("empresas_clientes").select("id, nome_abreviado, nome_completo").eq("status", "ativo").eq("tem_ams", true).eq("tipo_book", "qualidade").order("nome_abreviado");
+    if (error) throw error;
+    return (data || []).map((e) => ({ id: e.id, nome: e.nome_abreviado || e.nome_completo }));
+  }
+  /**
    * @param opcoes.propagarErro lança o erro em vez de devolver a lista de exemplo
    *   (a geração automática de books não pode processar empresas fictícias)
    */
@@ -22856,6 +22865,18 @@ function empresaLiberadaParaGeracao(diaInicioApuracao, diaHoje) {
   const diaInicio = diaInicioApuracao ?? 1;
   return diaInicio === 1 || diaHoje >= diaInicio;
 }
+function logSelecionadasPuladas(books, selecao, diaHoje, log) {
+  for (const b of books) {
+    if (!selecao.has(b.empresa_id)) continue;
+    const nome = b.empresa_nome_abreviado || b.empresa_nome;
+    if (b.status === "enviado") log(`${nome}: book j\xE1 enviado neste per\xEDodo`);
+    else if (!empresaLiberadaParaGeracao(b.dia_inicio_apuracao, diaHoje)) {
+      log(`${nome}: liberada a partir do dia ${b.dia_inicio_apuracao}`);
+    }
+  }
+  const foraDaLista = [...selecao].filter((id) => !books.some((b) => b.empresa_id === id)).length;
+  if (foraDaLista > 0) log(`${foraDaLista} empresa(s) selecionada(s) n\xE3o est\xE1(\xE3o) na lista de books do per\xEDodo`);
+}
 var mensagemDeErro2 = (e) => e instanceof Error ? e.message : String(e ?? "Erro desconhecido");
 async function executarGeracaoAutomaticaBooks(deps) {
   const { gerarPdf, enviarEmail, responsavelId } = deps;
@@ -22865,8 +22886,9 @@ async function executarGeracaoAutomaticaBooks(deps) {
   const intervalo = deps.intervaloEntreEnviosMs ?? INTERVALO_ENTRE_ENVIOS_MS;
   const { mes, ano, diaHoje } = periodoReferenciaBooks(deps.agora ?? /* @__PURE__ */ new Date());
   const books = await booksService.listarBooks({ mes, ano }, { propagarErro: true });
+  const selecao = deps.empresaIds?.length ? new Set(deps.empresaIds) : null;
   const candidatos = books.filter(
-    (b) => b.status !== "enviado" && empresaLiberadaParaGeracao(b.dia_inicio_apuracao, diaHoje)
+    (b) => (!selecao || selecao.has(b.empresa_id)) && b.status !== "enviado" && empresaLiberadaParaGeracao(b.dia_inicio_apuracao, diaHoje)
   );
   const resumo = {
     mes,
@@ -22875,11 +22897,13 @@ async function executarGeracaoAutomaticaBooks(deps) {
     gerados: 0,
     erros: 0,
     pulados: books.length - candidatos.length,
+    selecionadas: selecao ? selecao.size : null,
     empresas: []
   };
   log(
-    `Per\xEDodo de refer\xEAncia ${MESES_LABELS[mes]}/${ano}: ${resumo.total} book(s) a gerar, ${resumo.pulados} pulado(s) (j\xE1 enviados ou ainda n\xE3o liberados)`
+    `Per\xEDodo de refer\xEAncia ${MESES_LABELS[mes]}/${ano}: ${resumo.total} book(s) a gerar, ${resumo.pulados} pulado(s) (${selecao ? "fora da sele\xE7\xE3o, " : ""}j\xE1 enviados ou ainda n\xE3o liberados)`
   );
+  if (selecao) logSelecionadasPuladas(books, selecao, diaHoje, log);
   for (const [i, book] of candidatos.entries()) {
     if (i > 0) await esperar(intervalo);
     const nome = book.empresa_nome_abreviado || book.empresa_nome;

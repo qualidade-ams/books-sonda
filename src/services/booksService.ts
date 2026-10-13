@@ -27,6 +27,23 @@ class BooksService {
    * - tipo_book: 'qualidade'
    */
   /**
+   * Empresas que recebem book (mesmo critério de listarBooks: ativas, com AMS e book de qualidade).
+   * Usada para escolher empresas na geração automática de books.
+   */
+  async listarEmpresasBook(): Promise<{ id: string; nome: string }[]> {
+    const { data, error } = await supabase
+      .from('empresas_clientes')
+      .select('id, nome_abreviado, nome_completo')
+      .eq('status', 'ativo')
+      .eq('tem_ams', true)
+      .eq('tipo_book', 'qualidade')
+      .order('nome_abreviado');
+
+    if (error) throw error;
+    return (data || []).map((e) => ({ id: e.id, nome: e.nome_abreviado || e.nome_completo }));
+  }
+
+  /**
    * @param opcoes.propagarErro lança o erro em vez de devolver a lista de exemplo
    *   (a geração automática de books não pode processar empresas fictícias)
    */

@@ -25,8 +25,10 @@ export interface ResumoGeracaoBooks {
   total: number;
   gerados: number;
   erros: number;
-  /** já enviadas ou ainda não liberadas no dia */
+  /** já enviadas, ainda não liberadas no dia ou fora da seleção */
   pulados: number;
+  /** quantidade de empresas escolhidas no agendamento/execução; null = todas */
+  selecionadas: number | null;
   empresas: { empresa: string; sucesso: boolean; erro?: string }[];
 }
 
@@ -35,6 +37,8 @@ export interface DependenciasGeracaoAutomaticaBooks extends DependenciasGerarEnv
   log?: (mensagem: string, nivel?: 'info' | 'erro') => void;
   intervaloEntreEnviosMs?: number;
   esperar?: (ms: number) => Promise<void>;
+  /** Restringe a geração a estas empresas; vazio/ausente = todas */
+  empresaIds?: string[];
 }
 
 const esperarPadrao = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -56,6 +60,25 @@ export function empresaLiberadaParaGeracao(diaInicioApuracao: number | undefined
   return diaInicio === 1 || diaHoje >= diaInicio;
 }
 
+/** Para quem escolheu empresas específicas: por que alguma delas não vai ser gerada */
+function logSelecionadasPuladas(
+  books: Awaited<ReturnType<typeof booksService.listarBooks>>,
+  selecao: Set<string>,
+  diaHoje: number,
+  log: (mensagem: string, nivel?: 'info' | 'erro') => void
+) {
+  for (const b of books) {
+    if (!selecao.has(b.empresa_id)) continue;
+    const nome = b.empresa_nome_abreviado || b.empresa_nome;
+    if (b.status === 'enviado') log(`${nome}: book já enviado neste período`);
+    else if (!empresaLiberadaParaGeracao(b.dia_inicio_apuracao, diaHoje)) {
+      log(`${nome}: liberada a partir do dia ${b.dia_inicio_apuracao}`);
+    }
+  }
+  const foraDaLista = [...selecao].filter((id) => !books.some((b) => b.empresa_id === id)).length;
+  if (foraDaLista > 0) log(`${foraDaLista} empresa(s) selecionada(s) não está(ão) na lista de books do período`);
+}
+
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e ?? 'Erro desconhecido'));
 
 export async function executarGeracaoAutomaticaBooks(deps: DependenciasGeracaoAutomaticaBooks): Promise<ResumoGeracaoBooks> {
@@ -66,8 +89,12 @@ export async function executarGeracaoAutomaticaBooks(deps: DependenciasGeracaoAu
 
   const { mes, ano, diaHoje } = periodoReferenciaBooks(deps.agora ?? new Date());
   const books = await booksService.listarBooks({ mes, ano }, { propagarErro: true });
+  const selecao = deps.empresaIds?.length ? new Set(deps.empresaIds) : null;
   const candidatos = books.filter(
-    (b) => b.status !== 'enviado' && empresaLiberadaParaGeracao(b.dia_inicio_apuracao, diaHoje)
+    (b) =>
+      (!selecao || selecao.has(b.empresa_id)) &&
+      b.status !== 'enviado' &&
+      empresaLiberadaParaGeracao(b.dia_inicio_apuracao, diaHoje)
   );
 
   const resumo: ResumoGeracaoBooks = {
@@ -77,13 +104,15 @@ export async function executarGeracaoAutomaticaBooks(deps: DependenciasGeracaoAu
     gerados: 0,
     erros: 0,
     pulados: books.length - candidatos.length,
+    selecionadas: selecao ? selecao.size : null,
     empresas: []
   };
 
   log(
     `Período de referência ${MESES_LABELS[mes]}/${ano}: ${resumo.total} book(s) a gerar, ` +
-      `${resumo.pulados} pulado(s) (já enviados ou ainda não liberados)`
+      `${resumo.pulados} pulado(s) (${selecao ? 'fora da seleção, ' : ''}já enviados ou ainda não liberados)`
   );
+  if (selecao) logSelecionadasPuladas(books, selecao, diaHoje, log);
 
   for (const [i, book] of candidatos.entries()) {
     if (i > 0) await esperar(intervalo);

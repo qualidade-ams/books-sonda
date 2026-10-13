@@ -2230,6 +2230,7 @@ const es = {
       nome: 'Nombre',
       recorrencia: 'Recurrencia',
       tabelas: 'Tablas',
+      empresas: 'Empresas',
       proxima: 'Próxima ejecución',
       ultima: 'Última ejecución',
       status: 'Estado',
@@ -2261,6 +2262,7 @@ const es = {
       etapaResumo: '{{processados}} procesados · {{novos}} nuevos · {{atualizados}} actualizados · {{erros}} errores',
       falhou: 'Falló: {{erro}}',
       booksResumo: 'Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados · {{erros}} con error · {{pulados}} omitidos',
+      booksSelecionadas: 'Solo {{count}} empresa(s) seleccionada(s)',
     },
     status: {
       executando: 'Ejecutando',
@@ -2279,6 +2281,16 @@ const es = {
       confirmarTitulo: '¿Generar books ahora?',
       confirmarDescricao: 'Los books liberados y aún no enviados del período de referencia se generarán y enviarán a Calidad. El progreso aparece en el historial de ejecuciones.',
       confirmarGerar: 'Generar y enviar',
+    },
+    empresas: {
+      titulo: 'Empresas',
+      todas: 'Todas las empresas liberadas y aún no enviadas',
+      selecionadas: 'Solo las empresas seleccionadas',
+      ajuda: 'Las reglas siguen vigentes: los books ya enviados o aún no liberados se omiten.',
+      contagem: '{{count}} seleccionada(s)',
+      buscar: 'Buscar empresa...',
+      nenhuma: 'Ninguna empresa encontrada',
+      todasCurto: 'Todas',
     },
     tabelas: {
       pesquisas: 'Encuestas',
@@ -2330,6 +2342,7 @@ const es = {
       salvando: 'Guardando…',
     },
     validacao: {
+      empresaObrigatoria: 'Seleccione al menos una empresa',
       nomeObrigatorio: 'Ingrese el nombre',
       tabelaObrigatoria: 'Seleccione al menos una tabla',
       diaSemanaObrigatorio: 'Seleccione al menos un día de la semana',

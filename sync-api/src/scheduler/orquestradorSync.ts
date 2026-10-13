@@ -53,14 +53,18 @@ export interface ResumoGeracaoBooks {
   total: number;
   gerados: number;
   erros: number;
-  /** já enviadas ou ainda não liberadas no dia */
+  /** já enviadas, ainda não liberadas no dia ou fora da seleção */
   pulados: number;
+  /** quantidade de empresas escolhidas; null = todas */
+  selecionadas?: number | null;
   empresas: { empresa: string; sucesso: boolean; erro?: string }[];
 }
 
 export interface ContextoGeracaoBooks {
   /** Gravado como "enviado por" no book (usuário do clique ou criador do agendamento) */
   responsavelId: string | null;
+  /** Empresas escolhidas no agendamento ou no "Gerar books agora"; vazio = todas */
+  empresaIds: string[];
   log(mensagem: string, nivel?: 'info' | 'erro'): void;
 }
 
@@ -83,6 +87,8 @@ export interface ParametrosExecucao {
   usuarioId?: string | null;
   /** Só para books: quem fica como "enviado por" quando não há usuário (agendado) */
   responsavelId?: string | null;
+  /** Só para books: restringe a estas empresas (vazio = todas) */
+  empresaIds?: string[];
 }
 
 export type InicioExecucao =
@@ -196,7 +202,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       const execucaoId: string = data.id;
       const execucao =
         tipo === 'books'
-          ? executarBooks(execucaoId, params.usuarioId ?? params.responsavelId ?? null)
+          ? executarBooks(execucaoId, params.usuarioId ?? params.responsavelId ?? null, params.empresaIds ?? [])
           : executar(execucaoId, params.tabelas);
       const conclusao = execucao.finally(() => {
         ocupado = false;
@@ -235,7 +241,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       .eq('id', execucaoId);
   }
 
-  async function executarBooks(execucaoId: string, responsavelId: string | null): Promise<StatusExecucao> {
+  async function executarBooks(execucaoId: string, responsavelId: string | null, empresaIds: string[]): Promise<StatusExecucao> {
     const { logs, log, gravarLogs } = criarRegistroLogs(execucaoId);
     const resultado: Record<string, any> = {};
     const timerLogs = intervaloLogs > 0 ? setInterval(gravarLogs, intervaloLogs) : null;
@@ -246,7 +252,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       log(`${ROTULOS.gerarBooks}: iniciando`);
       if (!deps.gerarBooks) throw new Error('Geração automática de books não configurada neste servidor');
 
-      const r = await deps.gerarBooks({ responsavelId, log });
+      const r = await deps.gerarBooks({ responsavelId, empresaIds, log });
       status = r.erros === 0 ? 'sucesso' : r.gerados === 0 ? 'erro' : 'parcial';
       resultado.gerarBooks = { ...r, sucesso: r.erros === 0, duracao_ms: Date.now() - inicio };
       log(

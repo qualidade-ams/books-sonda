@@ -74,12 +74,18 @@ export const agendamentoFormSchema = z
     nome: z.string().trim().min(1, `${V}.nomeObrigatorio`).max(120),
     ativo: z.boolean(),
     tabelas: tabelasSchema,
+    // Só para books: todas as empresas liberadas ou somente as selecionadas
+    empresas_modo: z.enum(['todas', 'selecionadas']),
+    empresa_ids: z.array(z.string()),
     ...camposRegraRecorrenciaSchema,
   })
   .superRefine((v, ctx) => {
     // Geração de books não sincroniza tabelas
     if (v.tipo === 'sincronizacao' && !TABELAS_SYNC.some((t) => v.tabelas[t])) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tabelas'], message: `${V}.tabelaObrigatoria` });
+    }
+    if (v.tipo === 'books' && v.empresas_modo === 'selecionadas' && v.empresa_ids.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['empresa_ids'], message: `${V}.empresaObrigatoria` });
     }
     validarRegraRecorrenciaForm(v, ctx);
   });
@@ -104,6 +110,8 @@ export function valoresIniciaisRegraRecorrencia(): RegraRecorrenciaFormValues {
 export function valoresIniciaisAgendamento(tipo: TipoAgendamentoSync = 'sincronizacao'): AgendamentoFormValues {
   return {
     tipo,
+    empresas_modo: 'todas',
+    empresa_ids: [],
     nome: '',
     ativo: true,
     tabelas: {
@@ -160,6 +168,7 @@ export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendame
     nome: v.nome.trim(),
     ativo: v.ativo,
     tabelas: v.tipo === 'books' ? {} : { ...v.tabelas },
+    empresa_ids: v.tipo === 'books' && v.empresas_modo === 'selecionadas' ? [...new Set(v.empresa_ids)] : [],
     ...regraFormParaRegra(v),
   };
 }
@@ -169,6 +178,8 @@ export function agendamentoParaForm(ag: SyncAgendamento): AgendamentoFormValues 
   const t = ag.tabelas || {};
   return {
     tipo: ag.tipo === 'books' ? 'books' : 'sincronizacao',
+    empresas_modo: ag.empresa_ids?.length ? 'selecionadas' : 'todas',
+    empresa_ids: ag.empresa_ids ?? [],
     nome: ag.nome,
     ativo: ag.ativo,
     tabelas: {

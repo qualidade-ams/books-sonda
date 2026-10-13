@@ -13,6 +13,14 @@ const preverMock = vi.fn<(...args: any[]) => any>(() => ({
 }));
 vi.mock('@/hooks/useSyncAgendamentos', () => ({
   usePreverExecucoes: (...args: any[]) => preverMock(...args),
+  useEmpresasBook: () => ({
+    empresas: [
+      { id: 'e1', nome: 'VOTORANTIM' },
+      { id: 'e2', nome: 'HYPERA PHARMA' },
+    ],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 import { AgendamentoFormModal } from '../AgendamentoFormModal';
@@ -173,6 +181,34 @@ describe('AgendamentoFormModal', () => {
         nome: 'Books mensais',
         tabelas: {},
       });
+    });
+
+    it('restringe a empresas selecionadas', async () => {
+      const { onSalvar } = renderizarBooks();
+
+      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), { target: { value: 'Só Votorantim' } });
+      fireEvent.click(screen.getByLabelText('sincronizacaoSql.empresas.selecionadas'));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'VOTORANTIM' }));
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
+
+      await waitFor(() => expect(onSalvar).toHaveBeenCalled());
+      expect(onSalvar.mock.calls[0][0]).toMatchObject({ tipo: 'books', empresa_ids: ['e1'] });
+    });
+
+    it('não salva "somente selecionadas" sem nenhuma empresa', async () => {
+      const { onSalvar } = renderizarBooks();
+
+      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), { target: { value: 'X' } });
+      fireEvent.click(screen.getByLabelText('sincronizacaoSql.empresas.selecionadas'));
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
+
+      expect(await screen.findByText('sincronizacaoSql.validacao.empresaObrigatoria')).toBeInTheDocument();
+      expect(onSalvar).not.toHaveBeenCalled();
+    });
+
+    it('sincronização não mostra a escolha de empresas', () => {
+      renderizar();
+      expect(screen.queryByText('sincronizacaoSql.empresas.titulo')).not.toBeInTheDocument();
     });
 
     it('edição de agendamento de books mantém o tipo', async () => {

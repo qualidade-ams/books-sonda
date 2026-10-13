@@ -350,6 +350,19 @@ describe('orquestradorSync', () => {
       expect(gerarBooks).toHaveBeenCalledWith(expect.objectContaining({ responsavelId: 'criador' }));
     });
 
+    it('repassa as empresas escolhidas (vazio = todas)', async () => {
+      const gerarBooks = vi.fn(async () => resumo());
+      const { orq } = criarComBooks(gerarBooks);
+
+      const com = await orq.iniciar({ tipo: 'books', tabelas: {}, origem: 'manual', empresaIds: ['e1', 'e2'] });
+      if (com.status === 'iniciada') await com.conclusao;
+      expect(gerarBooks).toHaveBeenLastCalledWith(expect.objectContaining({ empresaIds: ['e1', 'e2'] }));
+
+      const sem = await orq.iniciar({ tipo: 'books', tabelas: {}, origem: 'manual' });
+      if (sem.status === 'iniciada') await sem.conclusao;
+      expect(gerarBooks).toHaveBeenLastCalledWith(expect.objectContaining({ empresaIds: [] }));
+    });
+
     it('parcial quando algumas empresas falham; erro quando todas falham', async () => {
       const parcial = criarComBooks(vi.fn(async () => resumo({ gerados: 2, erros: 1 })));
       const p = await parcial.orq.iniciar({ tipo: 'books', tabelas: {}, origem: 'manual' });

@@ -13,6 +13,7 @@ interface DependenciasPacote {
   gerarPdf(bookId: string): Promise<Blob>;
   enviarEmail(payload: PayloadEmail): Promise<void>;
   responsavelId: string | null;
+  empresaIds: string[];
   log: ContextoGeracaoBooks['log'];
 }
 
@@ -92,6 +93,7 @@ export function criarExecutorGeracaoBooks({
       gerarPdf: (bookId) => geradorPdf(bookId),
       enviarEmail: (payload) => enviador.enviarEmail(payload),
       responsavelId: contexto.responsavelId,
+      empresaIds: contexto.empresaIds,
       log: contexto.log,
     });
 }

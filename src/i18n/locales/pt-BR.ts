@@ -2230,6 +2230,7 @@ const ptBR = {
       nome: 'Nome',
       recorrencia: 'Recorrência',
       tabelas: 'Tabelas',
+      empresas: 'Empresas',
       proxima: 'Próxima execução',
       ultima: 'Última execução',
       status: 'Status',
@@ -2261,6 +2262,7 @@ const ptBR = {
       etapaResumo: '{{processados}} processados · {{novos}} novos · {{atualizados}} atualizados · {{erros}} erros',
       falhou: 'Falhou: {{erro}}',
       booksResumo: 'Referência {{mes}}/{{ano}}: {{gerados}} gerados e enviados · {{erros}} com erro · {{pulados}} pulados',
+      booksSelecionadas: 'Somente {{count}} empresa(s) selecionada(s)',
     },
     status: {
       executando: 'Executando',
@@ -2279,6 +2281,16 @@ const ptBR = {
       confirmarTitulo: 'Gerar books agora?',
       confirmarDescricao: 'Os books liberados e ainda não enviados do período de referência serão gerados e enviados para a Qualidade. O andamento aparece no histórico de execuções.',
       confirmarGerar: 'Gerar e enviar',
+    },
+    empresas: {
+      titulo: 'Empresas',
+      todas: 'Todas as empresas liberadas e ainda não enviadas',
+      selecionadas: 'Somente as empresas selecionadas',
+      ajuda: 'As regras continuam valendo: book já enviado ou ainda não liberado é pulado.',
+      contagem: '{{count}} selecionada(s)',
+      buscar: 'Buscar empresa...',
+      nenhuma: 'Nenhuma empresa encontrada',
+      todasCurto: 'Todas',
     },
     tabelas: {
       pesquisas: 'Pesquisas',
@@ -2330,6 +2342,7 @@ const ptBR = {
       salvando: 'Salvando…',
     },
     validacao: {
+      empresaObrigatoria: 'Selecione ao menos uma empresa',
       nomeObrigatorio: 'Informe o nome',
       tabelaObrigatoria: 'Selecione ao menos uma tabela',
       diaSemanaObrigatorio: 'Selecione ao menos um dia da semana',

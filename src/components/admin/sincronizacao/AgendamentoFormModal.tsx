@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { CamposRegraRecorrencia } from '@/components/admin/agendamentos/CamposRegraRecorrencia';
+import { SeletorEmpresasBooks } from './SeletorEmpresasBooks';
 import { usePreverExecucoes } from '@/hooks/useSyncAgendamentos';
 import { execucoesParaPrevisao } from '@/utils/previsaoExecucoes';
 import {
@@ -92,6 +93,7 @@ export function AgendamentoFormModal({
         ...valores,
         nome: '-',
         tabelas: { ...valores.tabelas, pesquisas: true },
+        empresas_modo: 'todas',
       }).success,
     [valores]
   );
@@ -211,6 +213,17 @@ export function AgendamentoFormModal({
                 </label>
               </div>
             </div>
+          )}
+
+          {/* Empresas (só geração de books) */}
+          {ehBooks && (
+            <SeletorEmpresasBooks
+              modo={valores.empresas_modo}
+              empresaIds={valores.empresa_ids}
+              onChangeModo={(modo) => setValue('empresas_modo', modo, { shouldValidate: formState.isSubmitted })}
+              onChangeEmpresaIds={(ids) => setValue('empresa_ids', ids, { shouldValidate: formState.isSubmitted })}
+              erro={errors.empresa_ids?.message}
+            />
           )}
 
           <CamposRegraRecorrencia

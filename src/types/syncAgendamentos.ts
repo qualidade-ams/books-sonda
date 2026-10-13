@@ -51,6 +51,8 @@ export interface SyncAgendamento extends RegraRecorrencia {
   nome: string;
   ativo: boolean;
   tabelas: TabelasSync;
+  /** Só para books: empresas a gerar (vazio = todas as liberadas e ainda não enviadas) */
+  empresa_ids: string[];
   proxima_execucao: string | null;
   ultima_execucao: string | null;
   ultimo_status: StatusExecucaoSync | null;
@@ -64,6 +66,7 @@ export type SyncAgendamentoInput = RegraRecorrencia & {
   nome: string;
   ativo: boolean;
   tabelas: TabelasSync;
+  empresa_ids: string[];
 };
 
 export interface LogExecucaoSync {

@@ -100,6 +100,7 @@ describe('executarGeracaoAutomaticaBooks', () => {
       gerados: 2,
       erros: 0,
       pulados: 2,
+      selecionadas: null,
       empresas: [
         { empresa: 'PEND', sucesso: true },
         { empresa: 'Empresa comerro', sucesso: true }
@@ -138,6 +139,32 @@ describe('executarGeracaoAutomaticaBooks', () => {
     const mensagens = log.mock.calls.map((c: any[]) => c[0]);
     expect(mensagens[0]).toBe('Período de referência Setembro/2026: 2 book(s) a gerar, 2 pulado(s) (já enviados ou ainda não liberados)');
     expect(mensagens).toContain('[1/2] PEND: gerado e enviado');
+  });
+
+  describe('restrito a empresas selecionadas', () => {
+    it('gera só as selecionadas que estão liberadas e não enviadas', async () => {
+      const resumo = await executar({ empresaIds: ['pendente'] });
+
+      expect((gerarEEnviarBook as any).mock.calls.map((c: any[]) => c[0].empresa_id)).toEqual(['pendente']);
+      expect(resumo).toMatchObject({ total: 1, gerados: 1, erros: 0, pulados: 3, selecionadas: 1 });
+    });
+
+    it('explica no log por que uma selecionada foi pulada', async () => {
+      const resumo = await executar({ empresaIds: ['enviada', 'dia15', 'inexistente'] });
+
+      expect(gerarEEnviarBook).not.toHaveBeenCalled();
+      expect(resumo).toMatchObject({ total: 0, selecionadas: 3 });
+      const mensagens = log.mock.calls.map((c: any[]) => c[0]);
+      expect(mensagens).toContain('Empresa enviada: book já enviado neste período');
+      expect(mensagens).toContain('Empresa dia15: liberada a partir do dia 15');
+      expect(mensagens).toContain('1 empresa(s) selecionada(s) não está(ão) na lista de books do período');
+    });
+
+    it('lista vazia de selecionadas = todas', async () => {
+      const resumo = await executar({ empresaIds: [] });
+      expect(gerarEEnviarBook).toHaveBeenCalledTimes(2);
+      expect(resumo.selecionadas).toBeNull();
+    });
   });
 
   it('propaga falha ao listar os books (a execução inteira fica com erro)', async () => {

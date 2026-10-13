@@ -190,3 +190,47 @@ describe('agendamento de geração de books (tipo books)', () => {
     expect(agendamentoParaForm(base as unknown as SyncAgendamento).tipo).toBe('sincronizacao');
   });
 });
+
+describe('empresas da geração de books', () => {
+  const books = (extra: Partial<AgendamentoFormValues> = {}): AgendamentoFormValues => ({
+    ...valoresIniciaisAgendamento('books'),
+    nome: 'Books',
+    ...extra,
+  });
+
+  it('padrão é todas as empresas', () => {
+    expect(valoresIniciaisAgendamento('books')).toMatchObject({ empresas_modo: 'todas', empresa_ids: [] });
+    expect(formParaAgendamentoInput(books()).empresa_ids).toEqual([]);
+  });
+
+  it('modo selecionadas exige ao menos uma empresa', () => {
+    expect(mensagens(books({ empresas_modo: 'selecionadas', empresa_ids: [] }))).toContain(
+      'sincronizacaoSql.validacao.empresaObrigatoria'
+    );
+    expect(mensagens(books({ empresas_modo: 'selecionadas', empresa_ids: ['e1'] }))).toEqual([]);
+  });
+
+  it('grava só as selecionadas, sem repetição; em "todas" grava vazio', () => {
+    expect(formParaAgendamentoInput(books({ empresas_modo: 'selecionadas', empresa_ids: ['e1', 'e2', 'e1'] })).empresa_ids).toEqual([
+      'e1',
+      'e2',
+    ]);
+    expect(formParaAgendamentoInput(books({ empresas_modo: 'todas', empresa_ids: ['e1'] })).empresa_ids).toEqual([]);
+  });
+
+  it('sincronização nunca grava empresas nem exige seleção', () => {
+    const v = { ...validos(), empresas_modo: 'selecionadas' as const, empresa_ids: [] };
+    expect(mensagens(v)).toEqual([]);
+    expect(formParaAgendamentoInput(v).empresa_ids).toEqual([]);
+  });
+
+  it('edição: com empresas salvas abre em "selecionadas"', () => {
+    const ag = {
+      id: 'a1', tipo: 'books', nome: 'X', ativo: true, tabelas: {}, empresa_ids: ['e1'],
+      frequencia: 'diario', dias_semana: [], dias_mes: [], ultimo_dia_mes: false,
+      modo_horario: 'horarios', horarios: ['06:00'], intervalo_horas: null, hora_inicio: null, hora_fim: null,
+    } as unknown as SyncAgendamento;
+    expect(agendamentoParaForm(ag)).toMatchObject({ empresas_modo: 'selecionadas', empresa_ids: ['e1'] });
+    expect(agendamentoParaForm({ ...ag, empresa_ids: undefined } as any)).toMatchObject({ empresas_modo: 'todas', empresa_ids: [] });
+  });
+});

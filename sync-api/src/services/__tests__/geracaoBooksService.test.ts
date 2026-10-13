@@ -54,11 +54,11 @@ describe('criarExecutorGeracaoBooks', () => {
     const log = vi.fn();
 
     const executar = criarExecutorGeracaoBooks({ supabase, geradorPdf, enviador, pacote });
-    const resumo = await executar({ responsavelId: 'criador', log });
+    const resumo = await executar({ responsavelId: 'criador', log, empresaIds: ['e1'] });
 
     expect(pacote.definirClienteSupabase).toHaveBeenCalledWith(supabase);
     expect(pacote.executarGeracaoAutomaticaBooks).toHaveBeenCalledWith(
-      expect.objectContaining({ responsavelId: 'criador', log })
+      expect.objectContaining({ responsavelId: 'criador', log, empresaIds: ['e1'] })
     );
     expect(geradorPdf).toHaveBeenCalledWith('book-1');
     expect(enviador.enviarEmail).toHaveBeenCalledWith({ nome: 'x' });

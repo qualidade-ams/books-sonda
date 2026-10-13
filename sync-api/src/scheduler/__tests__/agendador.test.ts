@@ -130,7 +130,17 @@ describe('agendador', () => {
       origem: 'agendado',
       agendamentoId: 'ag-1',
       responsavelId: 'criador',
+      empresaIds: [],
     });
+  });
+
+  it('agendamento de books restrito repassa as empresas escolhidas', async () => {
+    const { agendador } = criar([
+      agendamento({ tipo: 'books', tabelas: {}, empresa_ids: ['e1'], proxima_execucao: '2026-09-24T10:00:00Z' }),
+    ]);
+    await agendador.ciclo();
+
+    expect(orquestrador.iniciar.mock.calls[0][0].empresaIds).toEqual(['e1']);
   });
 
   it('agendamento de books vencido espera a sincronização em andamento terminar', async () => {

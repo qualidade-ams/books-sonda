@@ -33,6 +33,7 @@ function mockBuilder(resultado: { data: any; error: any }) {
 
 const input: SyncAgendamentoInput = {
   tipo: 'sincronizacao',
+  empresa_ids: [],
   nome: 'Diário',
   ativo: true,
   tabelas: { pesquisas: true },
@@ -160,6 +161,16 @@ describe('syncAgendamentosService — sync-api', () => {
     expect(opcoes.method).toBe('POST');
     expect(opcoes.headers.Authorization).toBe('Bearer tok');
     expect(r).toEqual({ execucaoId: 'e2' });
+  });
+
+  it('gerarBooksAgora envia as empresas escolhidas (vazio = todas)', async () => {
+    fetchMock.mockResolvedValue(resposta(202, { execucaoId: 'e3' }));
+
+    await syncAgendamentosService.gerarBooksAgora(['emp-1']);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ empresaIds: ['emp-1'] });
+
+    await syncAgendamentosService.gerarBooksAgora();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ empresaIds: [] });
   });
 
   it('gerarBooksAgora explica quando há execução em andamento', async () => {

@@ -2230,6 +2230,7 @@ const en = {
       nome: 'Name',
       recorrencia: 'Recurrence',
       tabelas: 'Tables',
+      empresas: 'Companies',
       proxima: 'Next run',
       ultima: 'Last run',
       status: 'Status',
@@ -2261,6 +2262,7 @@ const en = {
       etapaResumo: '{{processados}} processed · {{novos}} new · {{atualizados}} updated · {{erros}} errors',
       falhou: 'Failed: {{erro}}',
       booksResumo: 'Reference {{mes}}/{{ano}}: {{gerados}} generated and sent · {{erros}} with errors · {{pulados}} skipped',
+      booksSelecionadas: 'Only {{count}} selected company(ies)',
     },
     status: {
       executando: 'Running',
@@ -2279,6 +2281,16 @@ const en = {
       confirmarTitulo: 'Generate books now?',
       confirmarDescricao: 'The released books not yet sent for the reference period will be generated and sent to Quality. Progress is shown in the run history.',
       confirmarGerar: 'Generate and send',
+    },
+    empresas: {
+      titulo: 'Companies',
+      todas: 'All released companies not yet sent',
+      selecionadas: 'Only the selected companies',
+      ajuda: 'Rules still apply: books already sent or not yet released are skipped.',
+      contagem: '{{count}} selected',
+      buscar: 'Search company...',
+      nenhuma: 'No company found',
+      todasCurto: 'All',
     },
     tabelas: {
       pesquisas: 'Surveys',
@@ -2330,6 +2342,7 @@ const en = {
       salvando: 'Saving…',
     },
     validacao: {
+      empresaObrigatoria: 'Select at least one company',
       nomeObrigatorio: 'Enter the name',
       tabelaObrigatoria: 'Select at least one table',
       diaSemanaObrigatorio: 'Select at least one day of the week',
