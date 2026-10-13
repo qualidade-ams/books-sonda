@@ -42,7 +42,8 @@ export interface InconsistenciaChamado {
   descricao_inconsistencia: string;
   
   // Status e resolução (nova abordagem persistida)
-  status?: 'ativa' | 'resolvida';
+  /** descartada: removida pelo usuário sem ir para o Histórico */
+  status?: 'ativa' | 'resolvida' | 'descartada';
   status_chamado?: string | null;
   /** Última nota pública do chamado (vem de apontamentos_tickets_aranda, não é persistida aqui) */
   data_ultima_nota_publica?: string | null;
