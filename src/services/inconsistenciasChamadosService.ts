@@ -602,6 +602,31 @@ export class InconsistenciasChamadosService {
   }
 
   /**
+   * Descarta inconsistências ativas (falso positivo, sem ação a registrar).
+   * Diferente de arquivar, não vai para o Histórico: status 'descartada' some das duas abas.
+   * A linha não é apagada de propósito: com arquivado_manualmente = true a detecção do
+   * sync-api ignora a chave_unica; apagada, a mesma inconsistência voltaria na próxima sync.
+   */
+  async descartarInconsistencias(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+
+    const { error } = await supabase
+      .from('inconsistencias_chamados' as any)
+      .update({
+        status: 'descartada',
+        data_resolucao: new Date().toISOString(),
+        arquivado_manualmente: true
+      })
+      .in('id', ids)
+      .eq('status', 'ativa');
+
+    if (error) {
+      console.error('❌ Erro ao descartar inconsistências:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Envia notificação por email e registra no histórico
    */
   async enviarNotificacao(request: EnviarNotificacaoRequest): Promise<void> {

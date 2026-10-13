@@ -479,3 +479,57 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     ]);
   });
 });
+
+describe('inconsistenciasChamadosService.descartarInconsistencias', () => {
+  function mockUpdate(resultado: { error: any } = { error: null }) {
+    const builder: any = {
+      update: vi.fn(() => builder),
+      in: vi.fn(() => builder),
+      eq: vi.fn(() => builder),
+      then: (ok: any, falha: any) => Promise.resolve(resultado).then(ok, falha),
+    };
+    vi.mocked(supabase.from).mockReturnValue(builder);
+    return builder;
+  }
+
+  beforeEach(() => {
+    vi.mocked(supabase.from).mockReset();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('marca as ativas como descartadas e arquivadas manualmente, sem ir para o histórico', async () => {
+    const builder = mockUpdate();
+
+    await inconsistenciasChamadosService.descartarInconsistencias(['inc-1', 'inc-2']);
+
+    expect(supabase.from).toHaveBeenCalledWith('inconsistencias_chamados');
+    expect(builder.update).toHaveBeenCalledWith({
+      status: 'descartada',
+      data_resolucao: expect.any(String),
+      // impede a detecção do sync-api de recriar a inconsistência
+      arquivado_manualmente: true,
+    });
+    expect(builder.in).toHaveBeenCalledWith('id', ['inc-1', 'inc-2']);
+    expect(builder.eq).toHaveBeenCalledWith('status', 'ativa');
+  });
+
+  it('não chama o banco quando a lista está vazia', async () => {
+    mockUpdate();
+
+    await inconsistenciasChamadosService.descartarInconsistencias([]);
+
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('propaga o erro do banco', async () => {
+    mockUpdate({ error: { message: 'violates check constraint', code: '23514' } });
+
+    await expect(inconsistenciasChamadosService.descartarInconsistencias(['inc-1'])).rejects.toMatchObject({
+      code: '23514',
+    });
+  });
+});

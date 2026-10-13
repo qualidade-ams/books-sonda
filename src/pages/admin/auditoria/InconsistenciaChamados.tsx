@@ -20,13 +20,14 @@ import {
 } from '@/components/ui/table';
 import {
   AlertTriangle, Calendar, Clock, Filter, X, Search, Download, Eye, Send,
-  ChevronLeft, ChevronRight, History, Mail, Paperclip, ClipboardList, Settings, CheckCircle, Archive, RefreshCw
+  ChevronLeft, ChevronRight, History, Mail, Paperclip, ClipboardList, Settings, CheckCircle, RefreshCw
 } from 'lucide-react';
 import {
   useInconsistenciasChamados, useInconsistenciasEstatisticas,
   useInconsistenciasResolvidas, useEnviosEmailInconsistencias, useEnviarNotificacao,
-  useArquivarInconsistencia, useTarefasAntesDaTroca
+  useArquivarInconsistencia, useDescartarInconsistencias, useTarefasAntesDaTroca
 } from '@/hooks/useInconsistenciasChamados';
+import { ArquivarInconsistenciaMenu } from '@/components/admin/inconsistencias/ArquivarInconsistenciaMenu';
 import { TarefasAntesDaTrocaTabela } from '@/components/admin/inconsistencias/TarefasAntesDaTrocaTabela';
 import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailEnviadoIndicador';
 import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
@@ -319,6 +320,7 @@ export default function InconsistenciaChamados({
   const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtrosDaTela);
   const { enviarNotificacaoAsync } = useEnviarNotificacao();
   const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
+  const { descartar, isDescartando } = useDescartarInconsistencias();
 
   // Query para empresas cadastradas (validação visual, de-para nome abreviado e email do gestor)
   const { data: empresasCadastradas } = useQuery({
@@ -460,6 +462,22 @@ export default function InconsistenciaChamados({
       },
       onError: (error) => {
         toast({ title: 'Erro ao arquivar', description: error instanceof Error ? error.message : 'Erro desconhecido', variant: 'destructive' });
+      }
+    });
+  };
+
+  // Descartar (individual ou selecionados): some da lista sem ir para o Histórico
+  const handleDescartar = (ids: string[]) => {
+    descartar(ids, {
+      onSuccess: () => {
+        toast({
+          title: ids.length > 1 ? 'Inconsistências descartadas' : 'Inconsistência descartada',
+          description: `${ids.length} chamado(s) removido(s) da lista, sem ir para o Histórico.`,
+        });
+        setSelectedIds(prev => prev.filter(sid => !ids.includes(sid)));
+      },
+      onError: (error) => {
+        toast({ title: 'Erro ao descartar', description: error instanceof Error ? error.message : 'Erro desconhecido', variant: 'destructive' });
       }
     });
   };
@@ -873,9 +891,12 @@ Atenciosamente.`;
             <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-2" />{t('common.export')}</Button>
             {selectedIds.length > 0 && (
               <>
-                <Button size="sm" variant="outline" onClick={handleArquivarSelecionados} disabled={isArquivandoMultiplas}>
-                  <Archive className="h-4 w-4 mr-2" />Arquivar ({selectedIds.length})
-                </Button>
+                <ArquivarInconsistenciaMenu
+                  quantidade={selectedIds.length}
+                  onArquivar={handleArquivarSelecionados}
+                  onDescartar={() => handleDescartar(selectedIds)}
+                  disabled={isArquivandoMultiplas || isDescartando}
+                />
                 <Button size="sm" onClick={handleAbrirModalEmail} disabled={enviandoEmail} className="bg-sonda-blue hover:bg-sonda-dark-blue">
                   <Send className="h-4 w-4 mr-2" />{t('inconsistencias.sendEmail')} ({selectedIds.length})
                 </Button>
@@ -961,7 +982,7 @@ Atenciosamente.`;
                             <TableCell className="text-center py-2"><span className="text-[10px] sm:text-xs" title={inc.cod_resolucao || ''}>{formatarCodResolucao(inc.cod_resolucao)}</span></TableCell>
                             <TableCell className="text-center py-2 max-w-[120px]">{renderEmpresaCell(inc.empresa, inc.analista)}</TableCell>
                             <TableCell className="text-center py-2"><span className="text-xs sm:text-sm">{inc.analista || '-'}</span></TableCell>
-                            <TableCell className="text-center py-2"><div className="flex justify-center gap-1"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => handleArquivar(inc.id)} disabled={isArquivando} title="Arquivar"><Archive className="h-3.5 w-3.5 text-orange-600" /></Button></div></TableCell>
+                            <TableCell className="text-center py-2"><div className="flex justify-center gap-1"><Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => { setSelectedInconsistencia(inc); setShowViewModal(true); }} title={t('inconsistencias.viewDetails')}><Eye className="h-3.5 w-3.5 text-blue-600" /></Button><ArquivarInconsistenciaMenu onArquivar={() => handleArquivar(inc.id)} onDescartar={() => handleDescartar([inc.id])} disabled={isArquivando || isDescartando} /></div></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
