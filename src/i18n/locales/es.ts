@@ -2221,6 +2221,7 @@ const es = {
     novoAgendamento: 'Nueva programación',
     tabs: {
       agendamentos: 'Programaciones',
+      books: 'Generación de Books',
       historico: 'Historial de ejecuciones',
     },
     agendamentos: {
@@ -2255,10 +2256,11 @@ const es = {
       agendado: 'Programado',
       logs: 'Logs',
       semLogs: 'Sin logs registrados',
-      motivoIgnorada: 'Otra sincronización ya estaba en curso',
+      motivoIgnorada: 'Otra ejecución (sincronización o generación de books) ya estaba en curso',
       erroGeral: 'Error: {{erro}}',
       etapaResumo: '{{processados}} procesados · {{novos}} nuevos · {{atualizados}} actualizados · {{erros}} errores',
       falhou: 'Falló: {{erro}}',
+      booksResumo: 'Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados · {{erros}} con error · {{pulados}} omitidos',
     },
     status: {
       executando: 'Ejecutando',
@@ -2267,6 +2269,16 @@ const es = {
       erro: 'Error',
       ignorada: 'Omitida',
       interrompida: 'Interrumpida',
+    },
+    books: {
+      titulo: 'Programaciones de generación de books ({{count}})',
+      descricao: 'Genera y envía a Calidad los books liberados y aún no enviados del período de referencia (mes anterior), como en la pantalla Generación de Books. Los ya enviados se omiten. Nunca se ejecuta junto con la sincronización: una espera a que la otra termine.',
+      vazio: 'Ninguna programación de generación de books',
+      gerarAgora: 'Generar books ahora',
+      novoAgendamento: 'Nueva programación de books',
+      confirmarTitulo: '¿Generar books ahora?',
+      confirmarDescricao: 'Los books liberados y aún no enviados del período de referencia se generarán y enviarán a Calidad. El progreso aparece en el historial de ejecuciones.',
+      confirmarGerar: 'Generar y enviar',
     },
     tabelas: {
       pesquisas: 'Encuestas',
@@ -2278,10 +2290,14 @@ const es = {
       detectarInconsistencias: 'Detectar inconsistencias',
       inconsistencias: 'Inconsistencias',
       ajustesRetroativos: 'Ajustes retroactivos',
+      gerarBooks: 'Generación de books',
     },
     form: {
       tituloNovo: 'Nueva programación',
       tituloEditar: 'Editar programación',
+      tituloNovoBooks: 'Nueva programación de generación de books',
+      tituloEditarBooks: 'Editar programación de generación de books',
+      descricaoBooks: 'Genera y envía a Calidad los books liberados y aún no enviados. Los horarios siguen la zona horaria de São Paulo.',
       descricao: 'Los horarios siguen la zona horaria de São Paulo.',
       nome: 'Nombre',
       nomePlaceholder: 'Ej.: Encuestas cada 2 horas',
@@ -2325,6 +2341,8 @@ const es = {
       horaFimAntes: 'La hora de fin debe ser posterior a la hora de inicio',
     },
     toasts: {
+      booksIniciado: 'Generación de books iniciada',
+      booksErro: 'No fue posible iniciar la generación de books',
       execucaoIniciada: 'Sincronización iniciada. Acompáñela en el historial.',
       execucaoErro: 'No fue posible iniciar la sincronización',
       salvo: 'Programación guardada',

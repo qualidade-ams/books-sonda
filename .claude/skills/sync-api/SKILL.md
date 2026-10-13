@@ -49,7 +49,7 @@ Execução manual e agendada passam pela **mesma** sequência, em `src/scheduler
 
 | Arquivo | Papel |
 |---|---|
-| `orquestradorSync.ts` | Roda as etapas (pesquisas → especialistas → apontamentos → tickets → código de resolução → validação → inconsistências → ajustes retroativos), grava `sync_execucoes` (status + logs) e `sync_metadata`. Uma execução por vez: manual concorrente → 409; agendada concorrente → espera o próximo ciclo. |
+| `orquestradorSync.ts` | Roda as etapas (pesquisas → especialistas → apontamentos → tickets → código de resolução → validação → inconsistências → ajustes retroativos), grava `sync_execucoes` (status + logs) e `sync_metadata`. Uma execução por vez: manual concorrente → 409; agendada concorrente → espera o próximo ciclo. Também roda a **geração automática de books** (`tipo = books` em `sync_agendamentos`/`sync_execucoes`), que divide a mesma trava: sync e books nunca rodam juntos, um espera o outro. |
 | `agendador.ts` | Ciclo de 60s: lê `sync_agendamentos` ativos, calcula `proxima_execucao` quando está nula (o trigger do banco zera ao mudar a regra) e dispara o vencido mais antigo. Execução perdida roda uma vez ao voltar. Na subida marca `executando` órfãs como `interrompida`. |
 | `recorrencia.ts` | Cálculo puro da próxima execução (diário/semanal/mensal × horários fixos ou "a cada X h"), fuso `America/Sao_Paulo`. |
 | `autenticacao.ts` | Middleware que valida o JWT do Supabase e o nível na tela `sincronizacao_sql_server`. |
@@ -64,10 +64,12 @@ Execução manual e agendada passam pela **mesma** sequência, em `src/scheduler
 | `scheduler/agendadorSaldoParcial.ts` | Ciclo de 60s em `banco_horas_envio_agendamentos`; por cliente vinculado reserva a execução em `banco_horas_envio_execucoes` (chave única empresa + instante agendado → sem envio em dobro), busca os contatos `finalidade_envio` `saldo_parcial`/`ambos` e envia. Grava só a contagem de destinatários (LGPD). |
 | `scheduler/rotasSaldoParcial.ts` | `POST /api/saldo-parcial/executar` (edit, responde 202 e roda em background), `POST /api/saldo-parcial/proximas-execucoes` (view), `GET /api/saldo-parcial/status` (view) — tela `envio_saldo_parcial`. |
 | `services/envioSaldoParcialService.ts` | Carrega `vendor/saldoParcial.cjs` e injeta o client service role, o render-image e o webhook. |
+| `services/geracaoBooksService.ts` | Carrega `vendor/geracaoBooks.cjs` (código de `src/services/geracaoBooks`) e injeta o client service role, o webhook e o PDF via `APP_URL` + `/api/pdf/generate` (rota `/pdf/book/:id`). Gera e envia para a Qualidade os books liberados e ainda não enviados do mês de referência; erro em uma empresa não para as demais. Rota manual: `POST /api/sync-jobs/executar-books`. |
 | `services/webhookEmailService.ts` | Envia pelo Power Automate lendo a URL em `webhook_config` (retry em 429). |
 | `services/renderImagemService.ts` | Tabelas como imagem via `RENDER_IMAGE_URL` (3 tentativas). **Imagem obrigatória**: sem ela o e-mail não sai e o cliente fica com status "erro" e o motivo no histórico (HTML de tabela distorce no Outlook). Use a URL de **produção** — preview da Vercel com proteção responde 401. |
 
 - **`vendor/saldoParcial.cjs` é gerado e versionado**: é o código do front (`src/services/saldoParcial` + services de banco de horas) empacotado com esbuild, porque o servidor só tem a pasta `sync-api`. Gere na máquina de desenvolvimento com `npm run build:saldo-parcial` sempre que esse código mudar; o teste `src/__tests__/pacoteSaldoParcial.test.ts` acusa pacote desatualizado.
+- **`vendor/geracaoBooks.cjs`** segue o mesmo esquema: `npm run build:geracao-books` sempre que mudar `src/services/geracaoBooks`, `booksService`, `booksDataCollectorService` ou `gerarExcelDetalhadoBook`; o teste `src/__tests__/pacoteGeracaoBooks.test.ts` acusa pacote desatualizado.
 - Liga só com **`SALDO_PARCIAL_SCHEDULER_ENABLED=true`** (independente do `SCHEDULER_ENABLED`). Valide antes pelo "Enviar agora" da tela.
 - A detecção de ajustes retroativos é um port de `src/services/bancoHorasQuarentenaService.ts` (frontend) em `src/services/deteccaoAjustesRetroativosService.ts`. Ao mudar a regra num lado, mude no outro.
 - Para uma etapa nova: função que recebe `pool` (sem abrir/fechar o pool global) e registro em `etapas` no `server.ts`.
@@ -117,7 +119,7 @@ npm run dev            # ts-node src/server.ts
 npm run build && npm start
 ```
 
-Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `HOST` (padrão `127.0.0.1`), `NODE_ENV`, `SCHEDULER_ENABLED`, `SALDO_PARCIAL_SCHEDULER_ENABLED`, `RENDER_IMAGE_URL`.
+Variáveis: `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORT`, `HOST` (padrão `127.0.0.1`), `NODE_ENV`, `SCHEDULER_ENABLED`, `SALDO_PARCIAL_SCHEDULER_ENABLED`, `RENDER_IMAGE_URL`, `APP_URL` (URL de produção do front, usada no PDF da geração automática de books).
 
 Produção: serviço Windows no servidor interno (mesmo do SQL Server), exposto só pelo **Cloudflare Tunnel** em `https://sync-api.sondalyze.com.br`. O frontend chega nele por `VITE_SYNC_API_URL`. Não há nginx nem certificado próprio: a Cloudflare entrega o HTTPS.
 

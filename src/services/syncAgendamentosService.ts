@@ -106,6 +106,15 @@ class SyncAgendamentosService {
     return dados;
   }
 
+  /**
+   * Gera e envia para a Qualidade os books liberados e ainda não enviados, no sync-api.
+   * Divide a trava com a sincronização: recusa (409) se uma delas estiver em andamento.
+   */
+  async gerarBooksAgora(): Promise<{ execucaoId: string }> {
+    const { dados } = await chamarSyncApi<{ execucaoId: string }>('/api/sync-jobs/executar-books', {});
+    return dados;
+  }
+
   /** Próximas execuções da regra, calculadas pelo sync-api (mesma lógica do agendador) */
   async preverExecucoes(regra: RegraRecorrencia, n = 5): Promise<string[]> {
     const { dados } = await chamarSyncApi<{ execucoes: string[] }>('/api/sync-jobs/proximas-execucoes', { regra, n });

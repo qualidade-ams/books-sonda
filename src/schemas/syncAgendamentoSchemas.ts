@@ -8,7 +8,12 @@
  */
 
 import { z } from 'zod';
-import type { RegraRecorrencia, SyncAgendamento, SyncAgendamentoInput } from '@/types/syncAgendamentos';
+import type {
+  RegraRecorrencia,
+  SyncAgendamento,
+  SyncAgendamentoInput,
+  TipoAgendamentoSync,
+} from '@/types/syncAgendamentos';
 
 const V = 'sincronizacaoSql.validacao';
 const REGEX_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -65,13 +70,15 @@ export function validarRegraRecorrenciaForm(v: RegraRecorrenciaFormValues, ctx: 
 
 export const agendamentoFormSchema = z
   .object({
+    tipo: z.enum(['sincronizacao', 'books']),
     nome: z.string().trim().min(1, `${V}.nomeObrigatorio`).max(120),
     ativo: z.boolean(),
     tabelas: tabelasSchema,
     ...camposRegraRecorrenciaSchema,
   })
   .superRefine((v, ctx) => {
-    if (!TABELAS_SYNC.some((t) => v.tabelas[t])) {
+    // Geração de books não sincroniza tabelas
+    if (v.tipo === 'sincronizacao' && !TABELAS_SYNC.some((t) => v.tabelas[t])) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tabelas'], message: `${V}.tabelaObrigatoria` });
     }
     validarRegraRecorrenciaForm(v, ctx);
@@ -94,8 +101,9 @@ export function valoresIniciaisRegraRecorrencia(): RegraRecorrenciaFormValues {
   };
 }
 
-export function valoresIniciaisAgendamento(): AgendamentoFormValues {
+export function valoresIniciaisAgendamento(tipo: TipoAgendamentoSync = 'sincronizacao'): AgendamentoFormValues {
   return {
+    tipo,
     nome: '',
     ativo: true,
     tabelas: {
@@ -148,9 +156,10 @@ export function regraParaRegraForm(regra: RegraRecorrencia): RegraRecorrenciaFor
 /** Converte o formulário no registro gravado, limpando o que não se aplica à regra */
 export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendamentoInput {
   return {
+    tipo: v.tipo,
     nome: v.nome.trim(),
     ativo: v.ativo,
-    tabelas: { ...v.tabelas },
+    tabelas: v.tipo === 'books' ? {} : { ...v.tabelas },
     ...regraFormParaRegra(v),
   };
 }
@@ -159,6 +168,7 @@ export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendame
 export function agendamentoParaForm(ag: SyncAgendamento): AgendamentoFormValues {
   const t = ag.tabelas || {};
   return {
+    tipo: ag.tipo === 'books' ? 'books' : 'sincronizacao',
     nome: ag.nome,
     ativo: ag.ativo,
     tabelas: {

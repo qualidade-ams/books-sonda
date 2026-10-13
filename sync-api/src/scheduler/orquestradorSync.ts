@@ -5,9 +5,13 @@
  * registra tudo em `sync_execucoes`. É a única porta de entrada para
  * execuções manuais (tela "Sincronização SQL Server") e agendadas.
  *
+ * Também executa a geração automática de books (tipo "books"), que divide a
+ * mesma trava: sincronização e geração de books nunca rodam juntas.
+ *
  * Só uma execução por vez (o sync-api roda em instância única): uma nova
  * chamada manual durante uma execução volta como "ocupado"; uma agendada é
- * registrada como "ignorada".
+ * registrada como "ignorada" (o agendador já espera a execução terminar antes
+ * de disparar, então isso só acontece numa corrida).
  */
 
 import type sql from 'mssql';
@@ -38,19 +42,47 @@ export interface EtapasSync {
   ajustesRetroativos(): Promise<any[]>;
 }
 
+/** sincronizacao = sync SQL Server; books = geração e envio automático de books para a Qualidade */
+export type TipoExecucao = 'sincronizacao' | 'books';
+
+/** Resultado da geração automática de books (devolvido pelo pacote vendor/geracaoBooks.cjs) */
+export interface ResumoGeracaoBooks {
+  mes: number;
+  ano: number;
+  /** empresas processadas (liberadas e ainda não enviadas) */
+  total: number;
+  gerados: number;
+  erros: number;
+  /** já enviadas ou ainda não liberadas no dia */
+  pulados: number;
+  empresas: { empresa: string; sucesso: boolean; erro?: string }[];
+}
+
+export interface ContextoGeracaoBooks {
+  /** Gravado como "enviado por" no book (usuário do clique ou criador do agendamento) */
+  responsavelId: string | null;
+  log(mensagem: string, nivel?: 'info' | 'erro'): void;
+}
+
 export interface DependenciasOrquestrador {
   supabase: SupabaseClient;
   abrirPool(): Promise<{ pool: sql.ConnectionPool; fechar(): Promise<void> }>;
   etapas: EtapasSync;
+  /** Geração automática de books; ausente quando o servidor não tem o pacote configurado */
+  gerarBooks?: (contexto: ContextoGeracaoBooks) => Promise<ResumoGeracaoBooks>;
   /** Intervalo de gravação parcial dos logs; 0 desliga (só grava no fim) */
   intervaloGravacaoLogsMs?: number;
 }
 
 export interface ParametrosExecucao {
+  /** padrão: sincronizacao */
+  tipo?: TipoExecucao;
   tabelas: TabelasSync;
   origem: 'manual' | 'agendado';
   agendamentoId?: string | null;
   usuarioId?: string | null;
+  /** Só para books: quem fica como "enviado por" quando não há usuário (agendado) */
+  responsavelId?: string | null;
 }
 
 export type InicioExecucao =
@@ -81,6 +113,7 @@ const ROTULOS: Record<string, string> = {
   validacao: 'Validação SQL Server x Supabase',
   inconsistencias: 'Detecção de inconsistências',
   ajustesRetroativos: 'Ajustes retroativos do banco de horas',
+  gerarBooks: 'Geração de books',
 };
 
 // Tabelas com linha em sync_metadata (usada em "última sincronização")
@@ -119,6 +152,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
     const { data } = await (supabase as any)
       .from('sync_execucoes')
       .insert({
+        tipo: params.tipo ?? 'sincronizacao',
         agendamento_id: params.agendamentoId || null,
         origem: params.origem,
         disparado_por: params.usuarioId || null,
@@ -126,7 +160,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
         status: 'ignorada',
         iniciado_em: agora,
         finalizado_em: agora,
-        resultado: { motivo: 'Outra sincronização já estava em andamento' },
+        resultado: { motivo: 'Outra execução já estava em andamento' },
       })
       .select('id')
       .single();
@@ -143,9 +177,11 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
     ocupado = true;
 
     try {
+      const tipo = params.tipo ?? 'sincronizacao';
       const { data, error } = await (supabase as any)
         .from('sync_execucoes')
         .insert({
+          tipo,
           agendamento_id: params.agendamentoId || null,
           origem: params.origem,
           disparado_por: params.usuarioId || null,
@@ -158,7 +194,11 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       if (error || !data?.id) throw new Error(error?.message || 'Falha ao registrar execução');
 
       const execucaoId: string = data.id;
-      const conclusao = executar(execucaoId, params.tabelas).finally(() => {
+      const execucao =
+        tipo === 'books'
+          ? executarBooks(execucaoId, params.usuarioId ?? params.responsavelId ?? null)
+          : executar(execucaoId, params.tabelas);
+      const conclusao = execucao.finally(() => {
         ocupado = false;
       });
       return { status: 'iniciada', execucaoId, conclusao };
@@ -168,9 +208,9 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
     }
   }
 
-  async function executar(execucaoId: string, tabelas: TabelasSync): Promise<StatusExecucao> {
+  /** Logs da execução, gravados periodicamente em sync_execucoes enquanto ela roda */
+  function criarRegistroLogs(execucaoId: string) {
     const logs: EntradaLog[] = [];
-    const resultado: Record<string, any> = {};
 
     const log = (mensagem: string, nivel: EntradaLog['nivel'] = 'info') => {
       logs.push({ em: new Date().toISOString(), nivel, mensagem });
@@ -184,6 +224,50 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
         /* gravação parcial de log não pode derrubar a execução */
       }
     };
+
+    return { logs, log, gravarLogs };
+  }
+
+  async function finalizar(execucaoId: string, status: StatusExecucao, resultado: Record<string, any>, logs: EntradaLog[]) {
+    await (supabase as any)
+      .from('sync_execucoes')
+      .update({ status, resultado, logs, finalizado_em: new Date().toISOString() })
+      .eq('id', execucaoId);
+  }
+
+  async function executarBooks(execucaoId: string, responsavelId: string | null): Promise<StatusExecucao> {
+    const { logs, log, gravarLogs } = criarRegistroLogs(execucaoId);
+    const resultado: Record<string, any> = {};
+    const timerLogs = intervaloLogs > 0 ? setInterval(gravarLogs, intervaloLogs) : null;
+    const inicio = Date.now();
+    let status: StatusExecucao = 'erro';
+
+    try {
+      log(`${ROTULOS.gerarBooks}: iniciando`);
+      if (!deps.gerarBooks) throw new Error('Geração automática de books não configurada neste servidor');
+
+      const r = await deps.gerarBooks({ responsavelId, log });
+      status = r.erros === 0 ? 'sucesso' : r.gerados === 0 ? 'erro' : 'parcial';
+      resultado.gerarBooks = { ...r, sucesso: r.erros === 0, duracao_ms: Date.now() - inicio };
+      log(
+        `${ROTULOS.gerarBooks}: ${r.gerados} gerado(s) e enviado(s), ${r.erros} com erro, ${r.pulados} pulado(s)`,
+        r.erros === 0 ? 'info' : 'erro'
+      );
+    } catch (e) {
+      status = 'erro';
+      resultado.gerarBooks = { sucesso: false, erro: mensagemDeErro(e), duracao_ms: Date.now() - inicio };
+      log(`${ROTULOS.gerarBooks}: falhou — ${mensagemDeErro(e)}`, 'erro');
+    } finally {
+      if (timerLogs) clearInterval(timerLogs);
+      await finalizar(execucaoId, status, resultado, logs);
+    }
+
+    return status;
+  }
+
+  async function executar(execucaoId: string, tabelas: TabelasSync): Promise<StatusExecucao> {
+    const { logs, log, gravarLogs } = criarRegistroLogs(execucaoId);
+    const resultado: Record<string, any> = {};
 
     const timerLogs = intervaloLogs > 0 ? setInterval(gravarLogs, intervaloLogs) : null;
 
@@ -271,10 +355,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
           /* ignore */
         }
       }
-      await (supabase as any)
-        .from('sync_execucoes')
-        .update({ status, resultado, logs, finalizado_em: new Date().toISOString() })
-        .eq('id', execucaoId);
+      await finalizar(execucaoId, status, resultado, logs);
     }
 
     return status;

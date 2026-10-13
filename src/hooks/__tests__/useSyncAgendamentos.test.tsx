@@ -13,6 +13,7 @@ vi.mock('@/services/syncAgendamentosService', () => ({
     excluirAgendamento: vi.fn(),
     listarExecucoes: vi.fn(),
     executarAgora: vi.fn(),
+    gerarBooksAgora: vi.fn(),
     preverExecucoes: vi.fn(),
     statusSyncApi: vi.fn(),
   },
@@ -24,6 +25,7 @@ import {
   useSyncExecucoes,
   useSalvarAgendamento,
   useExecutarSyncAgora,
+  useGerarBooksAgora,
   usePreverExecucoes,
   useStatusSyncJobs,
   intervaloPollingExecucoes,
@@ -157,5 +159,20 @@ describe('usePreverExecucoes', () => {
       expect.objectContaining({ frequencia: 'diario', horarios: ['07:00'] }),
       48
     );
+  });
+});
+
+describe('useGerarBooksAgora', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('dispara a geração de books no sync-api e atualiza o histórico', async () => {
+    servico.gerarBooksAgora.mockResolvedValue({ execucaoId: 'e2' });
+    const { wrapper, invalidar } = criarWrapper();
+    const { result } = renderHook(() => useGerarBooksAgora(), { wrapper });
+
+    await act(() => result.current.mutateAsync());
+
+    expect(servico.gerarBooksAgora).toHaveBeenCalled();
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['sync-execucoes'] });
   });
 });

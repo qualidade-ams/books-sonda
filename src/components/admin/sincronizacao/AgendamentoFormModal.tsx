@@ -32,7 +32,11 @@ import {
   TABELAS_SYNC,
   type AgendamentoFormValues,
 } from '@/schemas/syncAgendamentoSchemas';
-import type { SyncAgendamento, SyncAgendamentoInput } from '@/types/syncAgendamentos';
+import type {
+  SyncAgendamento,
+  SyncAgendamentoInput,
+  TipoAgendamentoSync,
+} from '@/types/syncAgendamentos';
 
 interface AgendamentoFormModalProps {
   open: boolean;
@@ -40,27 +44,48 @@ interface AgendamentoFormModalProps {
   agendamento: SyncAgendamento | null;
   onSalvar: (dados: SyncAgendamentoInput) => Promise<void>;
   salvando: boolean;
+  /** Tipo do agendamento novo; na edição vale o tipo do agendamento */
+  tipo?: TipoAgendamentoSync;
 }
 
-export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar, salvando }: AgendamentoFormModalProps) {
+export function AgendamentoFormModal({
+  open,
+  onOpenChange,
+  agendamento,
+  onSalvar,
+  salvando,
+  tipo: tipoNovo = 'sincronizacao',
+}: AgendamentoFormModalProps) {
   const { t } = useTranslation();
+  const tipo: TipoAgendamentoSync = agendamento
+    ? agendamento.tipo === 'books'
+      ? 'books'
+      : 'sincronizacao'
+    : tipoNovo;
+  const ehBooks = tipo === 'books';
 
   const form = useForm<AgendamentoFormValues>({
     resolver: zodResolver(agendamentoFormSchema),
-    defaultValues: agendamento ? agendamentoParaForm(agendamento) : valoresIniciaisAgendamento(),
+    defaultValues: agendamento
+      ? agendamentoParaForm(agendamento)
+      : valoresIniciaisAgendamento(tipo),
   });
 
   const { register, watch, setValue, handleSubmit, reset, formState } = form;
   const { errors } = formState;
 
   useEffect(() => {
-    if (open) reset(agendamento ? agendamentoParaForm(agendamento) : valoresIniciaisAgendamento());
-  }, [open, agendamento, reset]);
+    if (open)
+      reset(agendamento ? agendamentoParaForm(agendamento) : valoresIniciaisAgendamento(tipo));
+  }, [open, agendamento, tipo, reset]);
 
   const valores = watch();
 
   // Regra normalizada (com nome/tabela fictícios) para validar só a recorrência
-  const regra = useMemo(() => formParaAgendamentoInput({ ...valores, nome: valores.nome || '-' }), [valores]);
+  const regra = useMemo(
+    () => formParaAgendamentoInput({ ...valores, nome: valores.nome || '-' }),
+    [valores]
+  );
   const regraValida = useMemo(
     () =>
       agendamentoFormSchema.safeParse({
@@ -79,7 +104,11 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
     return () => clearTimeout(id);
   }, [chaveRegra]);
 
-  const { previsao, isFetching, error: erroPrevisao } = usePreverExecucoes(regraPrevisao, open && regraValida);
+  const {
+    previsao,
+    isFetching,
+    error: erroPrevisao,
+  } = usePreverExecucoes(regraPrevisao, open && regraValida);
   // Dia inteiro (próximas 24h); semanal/mensal sem nada nesse período mostra as próximas 5
   const previsaoExibida = useMemo(() => execucoesParaPrevisao(previsao), [previsao]);
 
@@ -95,9 +124,19 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue">
-            {agendamento ? t('sincronizacaoSql.form.tituloEditar') : t('sincronizacaoSql.form.tituloNovo')}
+            {ehBooks
+              ? agendamento
+                ? t('sincronizacaoSql.form.tituloEditarBooks')
+                : t('sincronizacaoSql.form.tituloNovoBooks')
+              : agendamento
+                ? t('sincronizacaoSql.form.tituloEditar')
+                : t('sincronizacaoSql.form.tituloNovo')}
           </DialogTitle>
-          <DialogDescription className="text-sm text-gray-500">{t('sincronizacaoSql.form.descricao')}</DialogDescription>
+          <DialogDescription className="text-sm text-gray-500">
+            {ehBooks
+              ? t('sincronizacaoSql.form.descricaoBooks')
+              : t('sincronizacaoSql.form.descricao')}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -127,44 +166,52 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
             </div>
           </div>
 
-          {/* Tabelas */}
-          <div className="space-y-3">
-            <Label>{t('sincronizacaoSql.form.tabelas')}</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {TABELAS_SYNC.map((tabela) => (
-                <label key={tabela} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={valores.tabelas[tabela]}
-                    onCheckedChange={(v) => setValue(`tabelas.${tabela}`, !!v, { shouldValidate: formState.isSubmitted })}
-                  />
-                  {t(`sincronizacaoSql.tabelas.${tabela}`)}
-                </label>
-              ))}
-            </div>
-            {erro(errors.tabelas?.message)}
+          {/* Tabelas (só sincronização) */}
+          {!ehBooks && (
+            <div className="space-y-3">
+              <Label>{t('sincronizacaoSql.form.tabelas')}</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {TABELAS_SYNC.map((tabela) => (
+                  <label key={tabela} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={valores.tabelas[tabela]}
+                      onCheckedChange={(v) =>
+                        setValue(`tabelas.${tabela}`, !!v, {
+                          shouldValidate: formState.isSubmitted,
+                        })
+                      }
+                    />
+                    {t(`sincronizacaoSql.tabelas.${tabela}`)}
+                  </label>
+                ))}
+              </div>
+              {erro(errors.tabelas?.message)}
 
-            <Label className="block pt-2">{t('sincronizacaoSql.form.posProcessamento')}</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={valores.tabelas.detectarInconsistencias}
-                  onCheckedChange={(v) => setValue('tabelas.detectarInconsistencias', !!v)}
-                />
-                {t('sincronizacaoSql.tabelas.detectarInconsistencias')}
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={valores.tabelas.ajustesRetroativos}
-                  disabled={!valores.tabelas.apontamentos}
-                  onCheckedChange={(v) => setValue('tabelas.ajustesRetroativos', !!v)}
-                />
-                <span>
-                  {t('sincronizacaoSql.tabelas.ajustesRetroativos')}
-                  <span className="block text-xs text-gray-500">{t('sincronizacaoSql.form.ajustesRetroativosAjuda')}</span>
-                </span>
-              </label>
+              <Label className="block pt-2">{t('sincronizacaoSql.form.posProcessamento')}</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={valores.tabelas.detectarInconsistencias}
+                    onCheckedChange={(v) => setValue('tabelas.detectarInconsistencias', !!v)}
+                  />
+                  {t('sincronizacaoSql.tabelas.detectarInconsistencias')}
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={valores.tabelas.ajustesRetroativos}
+                    disabled={!valores.tabelas.apontamentos}
+                    onCheckedChange={(v) => setValue('tabelas.ajustesRetroativos', !!v)}
+                  />
+                  <span>
+                    {t('sincronizacaoSql.tabelas.ajustesRetroativos')}
+                    <span className="block text-xs text-gray-500">
+                      {t('sincronizacaoSql.form.ajustesRetroativosAjuda')}
+                    </span>
+                  </span>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           <CamposRegraRecorrencia
             form={form}
@@ -178,7 +225,11 @@ export function AgendamentoFormModal({ open, onOpenChange, agendamento, onSalvar
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('sincronizacaoSql.form.cancelar')}
             </Button>
-            <Button type="submit" disabled={salvando} className="bg-sonda-blue hover:bg-sonda-dark-blue">
+            <Button
+              type="submit"
+              disabled={salvando}
+              className="bg-sonda-blue hover:bg-sonda-dark-blue"
+            >
               {salvando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {salvando ? t('sincronizacaoSql.form.salvando') : t('sincronizacaoSql.form.salvar')}
             </Button>

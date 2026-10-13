@@ -134,3 +134,59 @@ describe('agendamentoParaForm', () => {
     });
   });
 });
+
+describe('agendamento de geração de books (tipo books)', () => {
+  const nenhumaTabela = {
+    pesquisas: false,
+    especialistas: false,
+    apontamentos: false,
+    tickets: false,
+    codigoResolucao: false,
+    detectarInconsistencias: false,
+    ajustesRetroativos: false,
+  };
+
+  it('valores iniciais são de sincronização', () => {
+    expect(valoresIniciaisAgendamento().tipo).toBe('sincronizacao');
+  });
+
+  it('não exige tabela', () => {
+    const v = { ...valoresIniciaisAgendamento('books'), nome: 'Books mensais', tabelas: nenhumaTabela };
+    expect(mensagens(v)).toEqual([]);
+  });
+
+  it('continua validando a recorrência', () => {
+    const v = { ...valoresIniciaisAgendamento('books'), nome: 'Books', frequencia: 'semanal' as const, dias_semana: [] };
+    expect(mensagens(v)).toContain('sincronizacaoSql.validacao.diaSemanaObrigatorio');
+  });
+
+  it('grava o tipo e não grava tabelas', () => {
+    const input = formParaAgendamentoInput({ ...valoresIniciaisAgendamento('books'), nome: 'Books' });
+    expect(input.tipo).toBe('books');
+    expect(input.tabelas).toEqual({});
+  });
+
+  it('sincronização grava o tipo sincronizacao', () => {
+    expect(formParaAgendamentoInput(validos()).tipo).toBe('sincronizacao');
+  });
+
+  it('edição preserva o tipo (registros antigos sem tipo são sincronização)', () => {
+    const base = {
+      id: 'a1',
+      nome: 'X',
+      ativo: true,
+      tabelas: {},
+      frequencia: 'mensal',
+      dias_semana: [],
+      dias_mes: [1],
+      ultimo_dia_mes: false,
+      modo_horario: 'horarios',
+      horarios: ['06:00'],
+      intervalo_horas: null,
+      hora_inicio: null,
+      hora_fim: null,
+    };
+    expect(agendamentoParaForm({ ...base, tipo: 'books' } as unknown as SyncAgendamento).tipo).toBe('books');
+    expect(agendamentoParaForm(base as unknown as SyncAgendamento).tipo).toBe('sincronizacao');
+  });
+});

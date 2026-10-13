@@ -1,6 +1,7 @@
 /**
  * Endpoints da tela "Sincronização SQL Server":
  *   POST /api/sync-jobs/executar            (edit) — execução manual em background
+ *   POST /api/sync-jobs/executar-books      (edit) — geração manual de books em background
  *   POST /api/sync-jobs/proximas-execucoes  (view) — pré-visualização da recorrência
  *   GET  /api/sync-jobs/status              (view) — há execução em andamento?
  */
@@ -60,6 +61,17 @@ export function criarHandlersSyncJobs({
       }
     },
 
+    async executarBooks(req: RequestAutenticado, res: Response) {
+      try {
+        const inicio = await orquestrador.iniciar({ tipo: 'books', tabelas: {}, origem: 'manual', usuarioId: req.usuarioId });
+        if (inicio.status === 'iniciada') return res.status(202).json({ execucaoId: inicio.execucaoId });
+        return res.status(409).json({ erro: 'Já existe uma sincronização ou geração de books em andamento' });
+      } catch (e) {
+        console.error('[SYNC-JOBS] Erro ao iniciar geração de books:', e instanceof Error ? e.message : e);
+        return res.status(500).json({ erro: 'Não foi possível iniciar a geração de books' });
+      }
+    },
+
     async proximasExecucoes(req: RequestAutenticado, res: Response) {
       const regra = req.body?.regra as RegraRecorrencia;
       const erros = regra ? validarRegra(regra) : ['Regra não informada'];
@@ -87,6 +99,7 @@ export function criarRotasSyncJobs(
   const podeEditar = exigirPermissao(supabase, SCREEN_KEY_SINCRONIZACAO, 'edit');
 
   router.post('/executar', podeEditar, handlers.executar);
+  router.post('/executar-books', podeEditar, handlers.executarBooks);
   router.post('/proximas-execucoes', podeVer, handlers.proximasExecucoes);
   router.get('/status', podeVer, handlers.status);
 

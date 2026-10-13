@@ -2221,6 +2221,7 @@ const en = {
     novoAgendamento: 'New schedule',
     tabs: {
       agendamentos: 'Schedules',
+      books: 'Book generation',
       historico: 'Run history',
     },
     agendamentos: {
@@ -2255,10 +2256,11 @@ const en = {
       agendado: 'Scheduled',
       logs: 'Logs',
       semLogs: 'No logs recorded',
-      motivoIgnorada: 'Another synchronization was already running',
+      motivoIgnorada: 'Another run (synchronization or book generation) was already in progress',
       erroGeral: 'Error: {{erro}}',
       etapaResumo: '{{processados}} processed · {{novos}} new · {{atualizados}} updated · {{erros}} errors',
       falhou: 'Failed: {{erro}}',
+      booksResumo: 'Reference {{mes}}/{{ano}}: {{gerados}} generated and sent · {{erros}} with errors · {{pulados}} skipped',
     },
     status: {
       executando: 'Running',
@@ -2267,6 +2269,16 @@ const en = {
       erro: 'Error',
       ignorada: 'Skipped',
       interrompida: 'Interrupted',
+    },
+    books: {
+      titulo: 'Book generation schedules ({{count}})',
+      descricao: 'Generates and sends to Quality the released books not yet sent for the reference period (previous month), as in the Book Generation screen. Books already sent are skipped. Never runs together with the synchronization: one waits for the other to finish.',
+      vazio: 'No book generation schedule',
+      gerarAgora: 'Generate books now',
+      novoAgendamento: 'New book schedule',
+      confirmarTitulo: 'Generate books now?',
+      confirmarDescricao: 'The released books not yet sent for the reference period will be generated and sent to Quality. Progress is shown in the run history.',
+      confirmarGerar: 'Generate and send',
     },
     tabelas: {
       pesquisas: 'Surveys',
@@ -2278,10 +2290,14 @@ const en = {
       detectarInconsistencias: 'Detect inconsistencies',
       inconsistencias: 'Inconsistencies',
       ajustesRetroativos: 'Retroactive adjustments',
+      gerarBooks: 'Book generation',
     },
     form: {
       tituloNovo: 'New schedule',
       tituloEditar: 'Edit schedule',
+      tituloNovoBooks: 'New book generation schedule',
+      tituloEditarBooks: 'Edit book generation schedule',
+      descricaoBooks: 'Generates and sends to Quality the released books not yet sent. Times follow the São Paulo time zone.',
       descricao: 'Times use the São Paulo time zone.',
       nome: 'Name',
       nomePlaceholder: 'E.g.: Surveys every 2 hours',
@@ -2325,6 +2341,8 @@ const en = {
       horaFimAntes: 'End time must be after the start time',
     },
     toasts: {
+      booksIniciado: 'Book generation started',
+      booksErro: 'Could not start book generation',
       execucaoIniciada: 'Synchronization started. Follow it in the history.',
       execucaoErro: 'Could not start the synchronization',
       salvo: 'Schedule saved',

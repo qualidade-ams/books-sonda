@@ -26,6 +26,7 @@ import { criarRotasSyncJobs } from './scheduler/rotas';
 import { criarAgendadorSaldoParcial } from './scheduler/agendadorSaldoParcial';
 import { criarRotasSaldoParcial } from './scheduler/rotasSaldoParcial';
 import { criarExecutorSaldoParcial } from './services/envioSaldoParcialService';
+import { criarExecutorGeracaoBooks, criarGeradorPdfBook } from './services/geracaoBooksService';
 import { criarRenderizadorImagem } from './services/renderImagemService';
 import { criarEnviadorWebhook } from './services/webhookEmailService';
 import { hostDeEscuta } from './utils/rede';
@@ -4058,8 +4059,22 @@ app.post('/api/detectar-inconsistencias', async (req, res) => {
 // ============================================================
 const deteccaoRetroativos = criarDeteccaoAjustesRetroativos(supabase);
 
+// Geração automática de books (agendamentos do tipo "books" na tela "Sincronização SQL Server").
+// Divide a trava do orquestrador com a sincronização: uma espera a outra terminar.
+let gerarBooks: ReturnType<typeof criarExecutorGeracaoBooks> | undefined;
+try {
+  gerarBooks = criarExecutorGeracaoBooks({
+    supabase,
+    geradorPdf: criarGeradorPdfBook({ appUrl: process.env.APP_URL || '', fetch }),
+    enviador: criarEnviadorWebhook({ supabase, fetch }),
+  });
+} catch (e) {
+  console.error('[BOOKS] Pacote vendor/geracaoBooks.cjs não carregou:', e instanceof Error ? e.message : e);
+}
+
 const orquestradorSync = criarOrquestradorSync({
   supabase,
+  gerarBooks,
   // Pool próprio: os handlers antigos fecham o pool global do mssql
   abrirPool: async () => {
     const pool = await new sql.ConnectionPool(sqlConfig).connect();
@@ -4108,6 +4123,10 @@ app.listen(PORT, HOST, () => {
     );
   } else {
     console.log('[AGENDADOR] Desligado (defina SCHEDULER_ENABLED=true para ativar)');
+  }
+
+  if (!process.env.APP_URL) {
+    console.error('[BOOKS] APP_URL não configurada: a geração automática de books vai falhar ao gerar o PDF');
   }
 
   if (!process.env.RENDER_IMAGE_URL) {

@@ -26,7 +26,11 @@ class BooksService {
    * - tem_ams: true
    * - tipo_book: 'qualidade'
    */
-  async listarBooks(filtros: BooksFiltros): Promise<BookListItem[]> {
+  /**
+   * @param opcoes.propagarErro lança o erro em vez de devolver a lista de exemplo
+   *   (a geração automática de books não pode processar empresas fictícias)
+   */
+  async listarBooks(filtros: BooksFiltros, opcoes?: { propagarErro?: boolean }): Promise<BookListItem[]> {
     try {
       // PASSO 1: Buscar empresas que atendem aos critérios
       const { data: empresas, error: empresasError } = await supabase
@@ -129,7 +133,9 @@ class BooksService {
       return books;
     } catch (error) {
       console.error('Erro ao listar books:', error);
-      
+
+      if (opcoes?.propagarErro) throw error;
+
       // Fallback para dados mockados em caso de erro
       const mockBooks: BookListItem[] = [
         {

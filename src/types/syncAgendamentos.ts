@@ -4,6 +4,13 @@
  * A execução em si roda no sync-api.
  */
 
+/**
+ * sincronizacao = sync SQL Server → Supabase;
+ * books = gera e envia para a Qualidade os books liberados e ainda não enviados.
+ * As duas dividem a trava do sync-api: uma espera a outra terminar.
+ */
+export type TipoAgendamentoSync = 'sincronizacao' | 'books';
+
 export type FrequenciaAgendamento = 'diario' | 'semanal' | 'mensal';
 export type ModoHorarioAgendamento = 'horarios' | 'intervalo';
 
@@ -40,6 +47,7 @@ export interface RegraRecorrencia {
 
 export interface SyncAgendamento extends RegraRecorrencia {
   id: string;
+  tipo: TipoAgendamentoSync;
   nome: string;
   ativo: boolean;
   tabelas: TabelasSync;
@@ -52,6 +60,7 @@ export interface SyncAgendamento extends RegraRecorrencia {
 }
 
 export type SyncAgendamentoInput = RegraRecorrencia & {
+  tipo: TipoAgendamentoSync;
   nome: string;
   ativo: boolean;
   tabelas: TabelasSync;
@@ -65,6 +74,7 @@ export interface LogExecucaoSync {
 
 export interface SyncExecucao {
   id: string;
+  tipo: TipoAgendamentoSync;
   agendamento_id: string | null;
   origem: 'manual' | 'agendado';
   disparado_por: string | null;

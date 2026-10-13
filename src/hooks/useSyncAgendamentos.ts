@@ -74,6 +74,16 @@ export function useExecutarSyncAgora() {
   });
 }
 
+/** Geração de books agora (no sync-api); o andamento aparece no histórico */
+export function useGerarBooksAgora() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => syncAgendamentosService.gerarBooksAgora(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVE_EXECUCOES }),
+  });
+}
+
 /** Status do sync-api; `agendadorAtivo` fica undefined enquanto não há resposta */
 export function useStatusSyncJobs() {
   const { data } = useQuery({

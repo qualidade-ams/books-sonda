@@ -20,8 +20,11 @@ const pastaSrcFront = resolve(raizRepositorio, 'src');
 
 export const CAMINHO_PACOTE = resolve(pastaScripts, '..', 'vendor', 'saldoParcial.cjs');
 
-/** Resolve o alias "@/..." do front e troca o client do navegador pelo do servidor */
-const pluginAliasFront = {
+/**
+ * Resolve o alias "@/..." do front e troca o client do navegador pelo do servidor.
+ * Também usado por build-geracao-books.mjs.
+ */
+export const pluginAliasFront = {
   name: 'alias-front',
   setup(construcao) {
     construcao.onResolve({ filter: /^@\/integrations\/supabase\/client$/ }, () => ({

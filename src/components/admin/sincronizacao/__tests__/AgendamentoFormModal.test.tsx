@@ -6,7 +6,11 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (chave: string) => chave, i18n: { language: 'pt-BR' } }),
 }));
 
-const preverMock = vi.fn<(...args: any[]) => any>(() => ({ previsao: ['2026-09-24T10:00:00.000Z'], isFetching: false, error: null }));
+const preverMock = vi.fn<(...args: any[]) => any>(() => ({
+  previsao: ['2026-09-24T10:00:00.000Z'],
+  isFetching: false,
+  error: null,
+}));
 vi.mock('@/hooks/useSyncAgendamentos', () => ({
   usePreverExecucoes: (...args: any[]) => preverMock(...args),
 }));
@@ -16,19 +20,33 @@ import { AgendamentoFormModal } from '../AgendamentoFormModal';
 describe('AgendamentoFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    preverMock.mockReturnValue({ previsao: ['2026-09-24T10:00:00.000Z'], isFetching: false, error: null });
+    preverMock.mockReturnValue({
+      previsao: ['2026-09-24T10:00:00.000Z'],
+      isFetching: false,
+      error: null,
+    });
   });
 
   function renderizar(agendamento: SyncAgendamento | null = null) {
     const onSalvar = vi.fn<(dados: any) => Promise<void>>(async () => {});
-    render(<AgendamentoFormModal open onOpenChange={() => {}} agendamento={agendamento} onSalvar={onSalvar} salvando={false} />);
+    render(
+      <AgendamentoFormModal
+        open
+        onOpenChange={() => {}}
+        agendamento={agendamento}
+        onSalvar={onSalvar}
+        salvando={false}
+      />
+    );
     return { onSalvar };
   }
 
   it('salva um agendamento novo com os valores padrão normalizados', async () => {
     const { onSalvar } = renderizar();
 
-    fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), { target: { value: 'Diário 7h' } });
+    fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), {
+      target: { value: 'Diário 7h' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
 
     await waitFor(() => expect(onSalvar).toHaveBeenCalled());
@@ -47,7 +65,9 @@ describe('AgendamentoFormModal', () => {
     const { onSalvar } = renderizar();
     fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
 
-    expect(await screen.findByText('sincronizacaoSql.validacao.nomeObrigatorio')).toBeInTheDocument();
+    expect(
+      await screen.findByText('sincronizacaoSql.validacao.nomeObrigatorio')
+    ).toBeInTheDocument();
     expect(onSalvar).not.toHaveBeenCalled();
   });
 
@@ -60,7 +80,9 @@ describe('AgendamentoFormModal', () => {
 
   it('mostra todas as execuções das próximas 24 horas', () => {
     const base = Date.now();
-    const execucoes = Array.from({ length: 20 }, (_, i) => new Date(base + (i + 1) * 2 * 3600_000).toISOString());
+    const execucoes = Array.from({ length: 20 }, (_, i) =>
+      new Date(base + (i + 1) * 2 * 3600_000).toISOString()
+    );
     preverMock.mockReturnValue({ previsao: execucoes, isFetching: false, error: null });
 
     renderizar();
@@ -72,7 +94,9 @@ describe('AgendamentoFormModal', () => {
 
   it('sem execuções nas próximas 24 horas mostra as próximas 5', () => {
     const base = Date.now();
-    const semanais = Array.from({ length: 8 }, (_, i) => new Date(base + (i + 2) * 7 * 86400_000).toISOString());
+    const semanais = Array.from({ length: 8 }, (_, i) =>
+      new Date(base + (i + 2) * 7 * 86400_000).toISOString()
+    );
     preverMock.mockReturnValue({ previsao: semanais, isFetching: false, error: null });
 
     renderizar();
@@ -102,7 +126,91 @@ describe('AgendamentoFormModal', () => {
     expect(screen.getByLabelText('sincronizacaoSql.form.nome')).toHaveValue('Semanal');
     expect(screen.getByLabelText('sincronizacaoSql.form.horaInicio')).toHaveValue('07:00');
     expect(screen.getByLabelText('sincronizacaoSql.form.horaFim')).toHaveValue('19:00');
-    expect(screen.getByRole('button', { name: 'sincronizacaoSql.diasSemana.d1' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'sincronizacaoSql.diasSemana.d2' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'sincronizacaoSql.diasSemana.d1' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'sincronizacaoSql.diasSemana.d2' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  describe('geração de books (tipo books)', () => {
+    function renderizarBooks(agendamento: SyncAgendamento | null = null) {
+      const onSalvar = vi.fn<(dados: any) => Promise<void>>(async () => {});
+      render(
+        <AgendamentoFormModal
+          open
+          onOpenChange={() => {}}
+          agendamento={agendamento}
+          onSalvar={onSalvar}
+          salvando={false}
+          tipo="books"
+        />
+      );
+      return { onSalvar };
+    }
+
+    it('não mostra a seleção de tabelas e usa o título de books', () => {
+      renderizarBooks();
+      expect(screen.queryByText('sincronizacaoSql.form.tabelas')).not.toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.form.tituloNovoBooks')).toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.form.descricaoBooks')).toBeInTheDocument();
+    });
+
+    it('salva com tipo books e sem tabelas', async () => {
+      const { onSalvar } = renderizarBooks();
+
+      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), {
+        target: { value: 'Books mensais' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
+
+      await waitFor(() => expect(onSalvar).toHaveBeenCalled());
+      expect(onSalvar.mock.calls[0][0]).toMatchObject({
+        tipo: 'books',
+        nome: 'Books mensais',
+        tabelas: {},
+      });
+    });
+
+    it('edição de agendamento de books mantém o tipo', async () => {
+      const ag = {
+        id: 'a1',
+        tipo: 'books',
+        nome: 'Books',
+        ativo: true,
+        tabelas: {},
+        frequencia: 'mensal',
+        dias_semana: [],
+        dias_mes: [1],
+        ultimo_dia_mes: false,
+        modo_horario: 'horarios',
+        horarios: ['06:00'],
+        intervalo_horas: null,
+        hora_inicio: null,
+        hora_fim: null,
+      } as unknown as SyncAgendamento;
+      const onSalvar = vi.fn<(dados: any) => Promise<void>>(async () => {});
+      render(
+        <AgendamentoFormModal
+          open
+          onOpenChange={() => {}}
+          agendamento={ag}
+          onSalvar={onSalvar}
+          salvando={false}
+        />
+      );
+
+      expect(screen.getByText('sincronizacaoSql.form.tituloEditarBooks')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
+      await waitFor(() => expect(onSalvar).toHaveBeenCalled());
+      expect(onSalvar.mock.calls[0][0]).toMatchObject({
+        tipo: 'books',
+        dias_mes: [1],
+        horarios: ['06:00'],
+      });
+    });
   });
 });

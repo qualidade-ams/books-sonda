@@ -23,7 +23,8 @@ vi.mock('@/components/admin/pesquisas-satisfacao/SyncSelectionModal', () => ({
     ) : null,
 }));
 vi.mock('@/components/admin/sincronizacao/AgendamentoFormModal', () => ({
-  AgendamentoFormModal: ({ open }: any) => (open ? <div>modal-agendamento</div> : null),
+  AgendamentoFormModal: ({ open, tipo }: any) =>
+    open ? <div data-tipo={tipo ?? 'sincronizacao'}>modal-agendamento</div> : null,
 }));
 
 const estado = {
@@ -32,6 +33,7 @@ const estado = {
   agendadorAtivo: true as boolean | undefined,
 };
 const executarMock = vi.fn();
+const gerarBooksMock = vi.fn();
 const alternarMock = vi.fn();
 
 vi.mock('@/hooks/useSyncAgendamentos', () => ({
@@ -41,6 +43,7 @@ vi.mock('@/hooks/useSyncAgendamentos', () => ({
   useAlternarAgendamento: () => ({ mutateAsync: alternarMock, isPending: false }),
   useExcluirAgendamento: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExecutarSyncAgora: () => ({ mutateAsync: executarMock, isPending: false }),
+  useGerarBooksAgora: () => ({ mutateAsync: gerarBooksMock, isPending: false }),
   useStatusSyncJobs: () => ({ agendadorAtivo: estado.agendadorAtivo }),
 }));
 
@@ -157,5 +160,143 @@ describe('SincronizacaoSqlServer', () => {
     render(<SincronizacaoSqlServer />);
     fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.novoAgendamento/ }));
     expect(screen.getByText('modal-agendamento')).toBeInTheDocument();
+  });
+
+  describe('geração de books', () => {
+    const agendamentoBooks = { ...agendamento, id: 'b1', tipo: 'books', nome: 'Books mensais', tabelas: {} };
+
+    const abrirAbaBooks = () => fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.books' }));
+
+    it('botões do topo acompanham a aba ativa e somem no histórico', () => {
+      render(<SincronizacaoSqlServer />);
+      const botao = (nome: RegExp) => screen.queryByRole('button', { name: nome });
+
+      // Agendamentos (sincronização)
+      expect(botao(/sincronizacaoSql.executarAgora/)).toBeInTheDocument();
+      expect(botao(/^sincronizacaoSql.novoAgendamento$/)).toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.gerarAgora/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.novoAgendamento/)).not.toBeInTheDocument();
+
+      // Geração de Books: só os botões de books
+      abrirAbaBooks();
+      expect(botao(/sincronizacaoSql.books.gerarAgora/)).toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.novoAgendamento/)).toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.executarAgora/)).not.toBeInTheDocument();
+      expect(botao(/^sincronizacaoSql.novoAgendamento$/)).not.toBeInTheDocument();
+
+      // Histórico: nenhum botão de ação
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.historico' }));
+      expect(botao(/sincronizacaoSql.executarAgora/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.novoAgendamento/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.gerarAgora/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.novoAgendamento/)).not.toBeInTheDocument();
+    });
+
+    it('agendamentos de books ficam só na aba própria', () => {
+      estado.agendamentos = [{ ...agendamento, tipo: 'sincronizacao' }, agendamentoBooks];
+      render(<SincronizacaoSqlServer />);
+
+      expect(screen.getByText('Pesquisas 2h')).toBeInTheDocument();
+      expect(screen.queryByText('Books mensais')).not.toBeInTheDocument();
+
+      abrirAbaBooks();
+
+      expect(screen.getByText('Books mensais')).toBeInTheDocument();
+      expect(screen.queryByText('Pesquisas 2h')).not.toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.books.descricao')).toBeInTheDocument();
+    });
+
+    it('estado vazio da aba de books', () => {
+      estado.agendamentos = [agendamento];
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+      expect(screen.getByText('sincronizacaoSql.books.vazio')).toBeInTheDocument();
+    });
+
+    it('gerar books agora pede confirmação e dispara no sync-api', async () => {
+      gerarBooksMock.mockResolvedValue({ execucaoId: 'e2' });
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ }));
+      expect(gerarBooksMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' }));
+
+      await waitFor(() => expect(gerarBooksMock).toHaveBeenCalled());
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'sincronizacaoSql.toasts.booksIniciado' }));
+    });
+
+    it('gerar books agora mostra o motivo quando o sync-api recusa', async () => {
+      gerarBooksMock.mockRejectedValue(new Error('Já existe uma sincronização ou geração de books em andamento'));
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' }));
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: 'destructive', description: 'Já existe uma sincronização ou geração de books em andamento' })
+        )
+      );
+    });
+
+    it('gerar books agora fica bloqueado durante qualquer execução', () => {
+      estado.execucoes = [{ id: 'e1', tipo: 'sincronizacao', status: 'executando', origem: 'agendado', iniciado_em: '2026-09-24T10:00:00Z', logs: [], resultado: null }];
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+      expect(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ })).toBeDisabled();
+    });
+
+    it('novo agendamento na aba de books abre o modal do tipo books', () => {
+      render(<SincronizacaoSqlServer />);
+      abrirAbaBooks();
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.novoAgendamento/ }));
+      expect(screen.getByText('modal-agendamento')).toHaveAttribute('data-tipo', 'books');
+    });
+
+    it('novo agendamento do topo continua sendo de sincronização', () => {
+      render(<SincronizacaoSqlServer />);
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.novoAgendamento/ }));
+      expect(screen.getByText('modal-agendamento')).toHaveAttribute('data-tipo', 'sincronizacao');
+    });
+
+    it('histórico mostra o resumo da geração de books e as empresas com erro', () => {
+      estado.execucoes = [
+        {
+          id: 'e9',
+          tipo: 'books',
+          status: 'parcial',
+          origem: 'agendado',
+          iniciado_em: '2026-10-01T09:00:00Z',
+          finalizado_em: '2026-10-01T10:00:00Z',
+          logs: [],
+          agendamento: { nome: 'Books mensais' },
+          resultado: {
+            gerarBooks: {
+              sucesso: false,
+              mes: 9,
+              ano: 2026,
+              total: 2,
+              gerados: 1,
+              erros: 1,
+              pulados: 128,
+              empresas: [
+                { empresa: 'ABBOTT', sucesso: true },
+                { empresa: 'AGFA', sucesso: false, erro: 'Falha ao gerar book: sem dados' },
+              ],
+            },
+          },
+        },
+      ];
+      render(<SincronizacaoSqlServer />);
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.historico' }));
+
+      expect(screen.getByText('sincronizacaoSql.tabelas.gerarBooks')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Books mensais'));
+      expect(screen.getByText('sincronizacaoSql.historico.booksResumo')).toBeInTheDocument();
+      expect(screen.getByText('AGFA')).toBeInTheDocument();
+      expect(screen.getByText('Falha ao gerar book: sem dados')).toBeInTheDocument();
+    });
   });
 });

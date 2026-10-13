@@ -2221,6 +2221,7 @@ const ptBR = {
     novoAgendamento: 'Novo agendamento',
     tabs: {
       agendamentos: 'Agendamentos',
+      books: 'Geração de Books',
       historico: 'Histórico de execuções',
     },
     agendamentos: {
@@ -2255,10 +2256,11 @@ const ptBR = {
       agendado: 'Agendado',
       logs: 'Logs',
       semLogs: 'Sem logs registrados',
-      motivoIgnorada: 'Outra sincronização já estava em andamento',
+      motivoIgnorada: 'Outra execução (sincronização ou geração de books) já estava em andamento',
       erroGeral: 'Erro: {{erro}}',
       etapaResumo: '{{processados}} processados · {{novos}} novos · {{atualizados}} atualizados · {{erros}} erros',
       falhou: 'Falhou: {{erro}}',
+      booksResumo: 'Referência {{mes}}/{{ano}}: {{gerados}} gerados e enviados · {{erros}} com erro · {{pulados}} pulados',
     },
     status: {
       executando: 'Executando',
@@ -2267,6 +2269,16 @@ const ptBR = {
       erro: 'Erro',
       ignorada: 'Ignorada',
       interrompida: 'Interrompida',
+    },
+    books: {
+      titulo: 'Agendamentos de geração de books ({{count}})',
+      descricao: 'Gera e envia para a Qualidade os books liberados e ainda não enviados do período de referência (mês anterior), como na tela Geração de Books. Os já enviados são pulados. Nunca roda junto com a sincronização: uma espera a outra terminar.',
+      vazio: 'Nenhum agendamento de geração de books',
+      gerarAgora: 'Gerar books agora',
+      novoAgendamento: 'Novo agendamento de books',
+      confirmarTitulo: 'Gerar books agora?',
+      confirmarDescricao: 'Os books liberados e ainda não enviados do período de referência serão gerados e enviados para a Qualidade. O andamento aparece no histórico de execuções.',
+      confirmarGerar: 'Gerar e enviar',
     },
     tabelas: {
       pesquisas: 'Pesquisas',
@@ -2278,10 +2290,14 @@ const ptBR = {
       detectarInconsistencias: 'Detectar inconsistências',
       inconsistencias: 'Inconsistências',
       ajustesRetroativos: 'Ajustes retroativos',
+      gerarBooks: 'Geração de books',
     },
     form: {
       tituloNovo: 'Novo agendamento',
       tituloEditar: 'Editar agendamento',
+      tituloNovoBooks: 'Novo agendamento de geração de books',
+      tituloEditarBooks: 'Editar agendamento de geração de books',
+      descricaoBooks: 'Gera e envia para a Qualidade os books liberados e ainda não enviados. Os horários seguem o fuso de São Paulo.',
       descricao: 'Os horários seguem o fuso de São Paulo.',
       nome: 'Nome',
       nomePlaceholder: 'Ex.: Pesquisas a cada 2 horas',
@@ -2325,6 +2341,8 @@ const ptBR = {
       horaFimAntes: 'A hora de fim deve ser depois da hora de início',
     },
     toasts: {
+      booksIniciado: 'Geração de books iniciada',
+      booksErro: 'Não foi possível iniciar a geração de books',
       execucaoIniciada: 'Sincronização iniciada. Acompanhe no histórico.',
       execucaoErro: 'Não foi possível iniciar a sincronização',
       salvo: 'Agendamento salvo',
