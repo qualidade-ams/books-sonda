@@ -175,6 +175,21 @@ describe('inconsistenciasChamadosService.buscarEstatisticas', () => {
     expect(estatisticas.por_tipo.sem_atualizacao).toBe(1);
     expect(estatisticas.por_origem.tickets).toBe(3);
   });
+
+  it('conta a validação do campo Solução por tipo, começando em zero', async () => {
+    vi.spyOn(inconsistenciasChamadosService, 'buscarInconsistencias').mockResolvedValue([
+      criarInconsistencia({ id: '1', tipo_inconsistencia: 'validacao_solucao' }),
+      criarInconsistencia({ id: '2', tipo_inconsistencia: 'sem_atualizacao' }),
+    ]);
+
+    const estatisticas = await inconsistenciasChamadosService.buscarEstatisticas();
+
+    expect(estatisticas.por_tipo.validacao_solucao).toBe(1);
+
+    vi.spyOn(inconsistenciasChamadosService, 'buscarInconsistencias').mockResolvedValue([]);
+    const vazias = await inconsistenciasChamadosService.buscarEstatisticas();
+    expect(vazias.por_tipo.validacao_solucao).toBe(0);
+  });
 });
 
 describe('inconsistenciasChamadosService.buscarTarefasAntesDaTroca', () => {

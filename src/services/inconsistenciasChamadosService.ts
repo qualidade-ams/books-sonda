@@ -445,7 +445,8 @@ export class InconsistenciasChamadosService {
           tempo_excessivo: 0,
           ic_999999: 0,
           sem_atualizacao: 0,
-          troca_codigo_resolucao: 0
+          troca_codigo_resolucao: 0,
+          validacao_solucao: 0
         },
         por_origem: {
           apontamentos: 0,

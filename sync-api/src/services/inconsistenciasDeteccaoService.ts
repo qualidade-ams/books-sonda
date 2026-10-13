@@ -130,7 +130,8 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
       sem_atualizacao: totais.sem_atualizacao || 0,
       mes_diferente: totais.mes_diferente || 0,
       tempo_excessivo: totais.tempo_excessivo || 0,
-      troca_codigo_resolucao: totais.troca_codigo_resolucao || 0
+      troca_codigo_resolucao: totais.troca_codigo_resolucao || 0,
+      validacao_solucao: totais.validacao_solucao || 0
     };
 
     console.log(`📊 [DETECCAO] Total detectadas: ${resultado.total_detectadas}`);
@@ -139,6 +140,7 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
     console.log(`   📋 Mês diferente: ${totais.mes_diferente || 0}`);
     console.log(`   📋 Tempo excessivo: ${totais.tempo_excessivo || 0}`);
     console.log(`   📋 Troca de código de resolução: ${totais.troca_codigo_resolucao || 0}`);
+    console.log(`   📋 Validação campo Solução: ${totais.validacao_solucao || 0}`);
     resultado.mensagens.push(`Total detectadas: ${resultado.total_detectadas}`);
 
     // 2. Consolidar todas as inconsistências detectadas
@@ -147,7 +149,8 @@ export async function executarDeteccaoInconsistencias(supabase: SupabaseClient):
       ...(rpcResult.sem_atualizacao || []),
       ...(rpcResult.mes_diferente || []),
       ...(rpcResult.tempo_excessivo || []),
-      ...(rpcResult.troca_codigo_resolucao || [])
+      ...(rpcResult.troca_codigo_resolucao || []),
+      ...(rpcResult.validacao_solucao || [])
     ];
 
     // 3. Buscar ativas existentes no banco (paginado)

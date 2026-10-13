@@ -1850,6 +1850,7 @@ const en = {
     ic999999: 'IC 999999',
     noUpdate16Days: 'No Update 16+ days',
     resolutionCodeChange: 'Resolution code change',
+    solutionFieldValidation: 'Solution field validation',
     resolutionCodeChangeSubtitle: 'Resolution code changes that changed the hours bank charge',
     // Tabs
     tabDetected: 'Detected Inconsistencies',
@@ -1863,6 +1864,7 @@ const en = {
     openDate: 'Open Date',
     activityDate: 'Activity Date',
     publicNoteDate: 'Public Note Date',
+    solutionDate: 'Solution Date',
     systemDate: 'System Date',
     time: 'Time',
     analyst: 'Analyst',

@@ -1850,6 +1850,7 @@ const es = {
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sin Actualización 16+ días',
     resolutionCodeChange: 'Cambio de código de resolución',
+    solutionFieldValidation: 'Validación campo Solución',
     resolutionCodeChangeSubtitle: 'Cambios de código de resolución que modificaron el cobro del banco de horas',
     // Pestañas
     tabDetected: 'Inconsistencias Detectadas',
@@ -1863,6 +1864,7 @@ const es = {
     openDate: 'Fecha Apertura',
     activityDate: 'Fecha Actividad',
     publicNoteDate: 'Fecha Nota Pública',
+    solutionDate: 'Fecha Solución',
     systemDate: 'Fecha Sistema',
     time: 'Tiempo',
     analyst: 'Analista',

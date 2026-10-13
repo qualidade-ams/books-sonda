@@ -47,6 +47,10 @@ describe('colunasEmailPorTipo', () => {
   it('Troca de código de resolução tem código anterior, código atual, data da troca e tempo afetado', () => {
     expect(titulos('troca_codigo_resolucao')).toEqual(['Empresa', 'Chamado', 'Código Anterior', 'Código Atual', 'Data da Troca', 'Tempo', 'Analista']);
   });
+
+  it('Validação campo Solução tem coluna com as palavras faltantes', () => {
+    expect(titulos('validacao_solucao')).toEqual(['Empresa', 'Chamado', 'Palavras Faltantes', 'Analista']);
+  });
 });
 
 describe('valorColunaEmail', () => {
@@ -90,6 +94,19 @@ describe('valorColunaEmail', () => {
     expect(valorColunaEmail('cod_anterior', item, ctx)).toBe('Manutenção de Específico (Banco=N |SLA=N)');
     expect(valorColunaEmail('cod_atual', item, ctx)).toBe('Parametrização / Funcionalidade (Banco=S |SLA=N)');
     expect(valorColunaEmail('data_troca', item, ctx)).toBe('22/09/2026');
+  });
+
+  it('extrai as palavras faltantes da descrição da validação do campo Solução', () => {
+    const item = criarItem({
+      tipo_inconsistencia: 'validacao_solucao',
+      descricao_inconsistencia: 'Palavras faltando no campo Solução: CAUSA, PREVENÇÃO',
+    });
+    expect(valorColunaEmail('palavras_faltantes', item, ctx)).toBe('CAUSA, PREVENÇÃO');
+  });
+
+  it('usa "-" quando a descrição não traz as palavras faltantes', () => {
+    expect(valorColunaEmail('palavras_faltantes', criarItem({ descricao_inconsistencia: '' }), ctx)).toBe('-');
+    expect(valorColunaEmail('palavras_faltantes', criarItem({ descricao_inconsistencia: null }), ctx)).toBe('-');
   });
 
   it('usa "-" quando os códigos da troca estão vazios', () => {

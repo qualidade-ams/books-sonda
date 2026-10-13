@@ -182,3 +182,54 @@ describe('executarDeteccaoInconsistencias — inconsistências já ativas', () =
     expect(updates()[0].campos).not.toHaveProperty('cod_resolucao_anterior');
   });
 });
+
+describe('executarDeteccaoInconsistencias — validação do campo Solução', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('persiste e contabiliza as inconsistências de validação do campo Solução devolvidas pela RPC', async () => {
+    const validacao = detectada({
+      origem: 'tickets',
+      nro_chamado: 'IM 9500001',
+      nro_tarefa: null,
+      tipo_chamado: 'IM',
+      tipo_inconsistencia: 'validacao_solucao',
+      descricao_inconsistencia: 'Palavras faltando no campo Solução: CAUSA, PREVENÇÃO',
+      chave_unica: 'tickets-IM 9500001-validacao_solucao',
+    });
+
+    const fake = criarSupabaseFake((tabela, chamadas: Chamada[]) => {
+      if (tabela !== 'inconsistencias_chamados') return null;
+      return { data: chamadas.some(([m]) => m === 'upsert') ? null : [], error: null };
+    });
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        ic_999999: [],
+        sem_atualizacao: [],
+        mes_diferente: [],
+        tempo_excessivo: [],
+        troca_codigo_resolucao: [],
+        validacao_solucao: [validacao],
+        totais: { validacao_solucao: 1, total: 1 },
+      },
+      error: null,
+    });
+
+    const resultado = await executarDeteccaoInconsistencias({ ...fake.cliente, rpc } as any);
+
+    expect(resultado.por_tipo.validacao_solucao).toBe(1);
+    expect(resultado.novas).toBe(1);
+    const upsert = fake.consultas
+      .flatMap((c) => c.chamadas)
+      .find(([m]) => m === 'upsert');
+    expect(upsert![1][0]).toEqual([
+      expect.objectContaining({ chave_unica: 'tickets-IM 9500001-validacao_solucao', status: 'ativa' }),
+    ]);
+  });
+});

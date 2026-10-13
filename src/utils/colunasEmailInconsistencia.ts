@@ -6,7 +6,7 @@ import type { InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsis
  */
 export type ChaveColunaEmail =
   | 'empresa' | 'chamado' | 'tarefa' | 'tempo' | 'data_atividade' | 'data_sistema' | 'analista'
-  | 'cod_anterior' | 'cod_atual' | 'data_troca';
+  | 'cod_anterior' | 'cod_atual' | 'data_troca' | 'palavras_faltantes';
 
 export interface ColunaEmail {
   chave: ChaveColunaEmail;
@@ -25,6 +25,7 @@ const ANALISTA: ColunaEmail = { chave: 'analista', titulo: 'Analista' };
 const COD_ANTERIOR: ColunaEmail = { chave: 'cod_anterior', titulo: 'Código Anterior' };
 const COD_ATUAL: ColunaEmail = { chave: 'cod_atual', titulo: 'Código Atual' };
 const DATA_TROCA: ColunaEmail = { chave: 'data_troca', titulo: 'Data da Troca' };
+const PALAVRAS_FALTANTES: ColunaEmail = { chave: 'palavras_faltantes', titulo: 'Palavras Faltantes' };
 
 const COLUNAS_POR_TIPO: Record<TipoInconsistencia, ColunaEmail[]> = {
   sem_atualizacao: [EMPRESA, CHAMADO, ANALISTA],
@@ -32,6 +33,7 @@ const COLUNAS_POR_TIPO: Record<TipoInconsistencia, ColunaEmail[]> = {
   tempo_excessivo: [EMPRESA, CHAMADO, TAREFA, TEMPO, ANALISTA],
   mes_diferente: [EMPRESA, CHAMADO, TAREFA, DATA_ATIVIDADE, DATA_SISTEMA, ANALISTA],
   troca_codigo_resolucao: [EMPRESA, CHAMADO, COD_ANTERIOR, COD_ATUAL, DATA_TROCA, TEMPO, ANALISTA],
+  validacao_solucao: [EMPRESA, CHAMADO, PALAVRAS_FALTANTES, ANALISTA],
 };
 
 export function colunasEmailPorTipo(tipo: TipoInconsistencia): ColunaEmail[] {
@@ -69,5 +71,7 @@ export function valorColunaEmail(
     case 'cod_atual': return item.cod_resolucao || '-';
     // Na troca de código de resolução, data_atividade guarda a data da troca
     case 'data_troca': return formatarData(item.data_atividade);
+    // A detecção grava "Palavras faltando no campo Solução: CAUSA, PREVENÇÃO"
+    case 'palavras_faltantes': return item.descricao_inconsistencia?.split(': ').slice(1).join(': ') || '-';
   }
 }

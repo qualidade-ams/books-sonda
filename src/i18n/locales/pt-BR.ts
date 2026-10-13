@@ -1848,6 +1848,7 @@ const ptBR = {
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sem Atualização 16+ dias',
     resolutionCodeChange: 'Troca de código de resolução',
+    solutionFieldValidation: 'Validação campo Solução',
     resolutionCodeChangeSubtitle: 'Trocas de código de resolução que mudaram a cobrança do banco de horas',
     // Tabs
     tabDetected: 'Inconsistências Detectadas',
@@ -1861,6 +1862,7 @@ const ptBR = {
     openDate: 'Data Abertura',
     activityDate: 'Data Atividade',
     publicNoteDate: 'Data Anotação Pública',
+    solutionDate: 'Data Solução',
     systemDate: 'Data Sistema',
     time: 'Tempo',
     analyst: 'Analista',
