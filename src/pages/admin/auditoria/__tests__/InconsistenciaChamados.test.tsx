@@ -6,6 +6,8 @@ import {
   encontrarEmailEspecialista,
   agruparGestoresIC999999,
   montarTextoGestorIC999999,
+  calcularPeriodoFiltro,
+  listarAnosComDados,
 } from '../InconsistenciaChamados';
 import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import type { InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
@@ -270,5 +272,51 @@ describe('listarAnalistasDaAba', () => {
   it('não duplica o analista selecionado quando ele já está na aba', () => {
     const itens = [criarInconsistencia({ analista: 'Ana Lima' })];
     expect(listarAnalistasDaAba(itens, 'Ana Lima')).toEqual(['Ana Lima']);
+  });
+});
+
+describe('calcularPeriodoFiltro', () => {
+  it('não restringe datas quando nenhum ano é escolhido (traz todas as pendências)', () => {
+    expect(calcularPeriodoFiltro('all', 'all')).toEqual({ data_inicio: undefined, data_fim: undefined });
+  });
+
+  it('ignora o mês quando nenhum ano é escolhido', () => {
+    expect(calcularPeriodoFiltro('all', '03')).toEqual({ data_inicio: undefined, data_fim: undefined });
+  });
+
+  it('usa o ano inteiro quando o ano é escolhido sem mês', () => {
+    expect(calcularPeriodoFiltro(2025, 'all')).toEqual({ data_inicio: '2025-01-01', data_fim: '2025-12-31' });
+  });
+
+  it('usa o mês do ano escolhido, com o último dia correto', () => {
+    expect(calcularPeriodoFiltro(2024, '02')).toEqual({ data_inicio: '2024-02-01', data_fim: '2024-02-29' });
+    expect(calcularPeriodoFiltro(2026, '09')).toEqual({ data_inicio: '2026-09-01', data_fim: '2026-09-30' });
+  });
+});
+
+describe('listarAnosComDados', () => {
+  it('lista os anos da data_atividade, sem repetição e do mais recente para o mais antigo', () => {
+    const itens = [
+      criarInconsistencia({ id: '1', tipo_inconsistencia: 'tempo_excessivo', data_atividade: '2025-03-10' }),
+      criarInconsistencia({ id: '2', tipo_inconsistencia: 'tempo_excessivo', data_atividade: '2026-07-01' }),
+      criarInconsistencia({ id: '3', tipo_inconsistencia: 'tempo_excessivo', data_atividade: '2025-11-20' }),
+    ];
+    expect(listarAnosComDados(itens)).toEqual([2026, 2025]);
+  });
+
+  it('em "mes_diferente" usa a data mais recente entre atividade e sistema', () => {
+    const itens = [
+      criarInconsistencia({ tipo_inconsistencia: 'mes_diferente', data_atividade: '2025-12-20', data_sistema: '2026-01-05' }),
+    ];
+    expect(listarAnosComDados(itens)).toEqual([2026]);
+  });
+
+  it('ignora itens sem data de atividade', () => {
+    const itens = [criarInconsistencia({ data_atividade: null as any })];
+    expect(listarAnosComDados(itens)).toEqual([]);
+  });
+
+  it('retorna lista vazia quando não há itens', () => {
+    expect(listarAnosComDados([])).toEqual([]);
   });
 });

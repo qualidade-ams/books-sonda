@@ -154,6 +154,47 @@ export function encontrarEmpresaCadastrada(
 }
 
 /**
+ * Converte o filtro de ano/mês no período enviado ao service. Sem ano escolhido ('all') não há
+ * restrição de datas — todas as pendências aparecem e podem seguir juntas no mesmo email.
+ * O mês só vale combinado com um ano.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function calcularPeriodoFiltro(
+  ano: number | 'all',
+  mes: string
+): { data_inicio: string | undefined; data_fim: string | undefined } {
+  if (ano === 'all') return { data_inicio: undefined, data_fim: undefined };
+  if (mes === 'all') return { data_inicio: `${ano}-01-01`, data_fim: `${ano}-12-31` };
+
+  const ultimoDia = new Date(ano, parseInt(mes, 10), 0).getDate();
+  return {
+    data_inicio: `${ano}-${mes}-01`,
+    data_fim: `${ano}-${mes}-${String(ultimoDia).padStart(2, '0')}`,
+  };
+}
+
+/**
+ * Anos que possuem inconsistências, do mais recente para o mais antigo. Segue a mesma regra de
+ * período do service: "mes_diferente" pertence ao ano da data mais recente entre atividade e
+ * sistema; os demais tipos, ao ano da data_atividade.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function listarAnosComDados(itens: InconsistenciaChamado[]): number[] {
+  const anos = new Set<number>();
+  itens.forEach(inc => {
+    if (!inc.data_atividade) return;
+    let dataReferencia = inc.data_atividade;
+    if (inc.tipo_inconsistencia === 'mes_diferente' && inc.data_sistema &&
+        new Date(inc.data_sistema) > new Date(inc.data_atividade)) {
+      dataReferencia = inc.data_sistema;
+    }
+    const ano = parseInt(dataReferencia.slice(0, 4), 10);
+    if (!Number.isNaN(ano)) anos.add(ano);
+  });
+  return Array.from(anos).sort((a, b) => b - a);
+}
+
+/**
  * Resolve o email de um especialista a partir do nome do analista vindo do chamado.
  * Compara por nome normalizado (sem acento, sem espaços duplicados, case-insensitive) —
  * uma comparação de substring exata contra `especialistas.nome` falha quando os dados
@@ -271,8 +312,8 @@ export default function InconsistenciaChamados({
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedInconsistencia, setSelectedInconsistencia] = useState<any>(null);
   
-  // Estado de período (ano e mês)
-  const [anoAtual, setAnoAtual] = useState(Math.max(new Date().getFullYear(), 2024));
+  // Estado de período (ano e mês) — por padrão sem ano, para listar todas as pendências
+  const [anoAtual, setAnoAtual] = useState<number | 'all'>('all');
   const [mesAtual, setMesAtual] = useState<string>('all');
   const [filtroCodResolucao, setFiltroCodResolucao] = useState<string>('all');
   const [filtroEnvioEmail, setFiltroEnvioEmail] = useState<FiltroEnvioEmail>('all');
@@ -283,26 +324,13 @@ export default function InconsistenciaChamados({
     tipo_inconsistencia: 'all',
     origem: 'all',
     analista: '',
-    data_inicio: `${new Date().getFullYear()}-01-01`,
-    data_fim: `${new Date().getFullYear()}-12-31`
+    ...calcularPeriodoFiltro('all', 'all')
   });
 
   // Atualizar filtros quando ano/mês mudar
   useEffect(() => {
-    let primeiroDia: string;
-    let ultimoDia: string;
-    if (mesAtual === 'all') {
-      primeiroDia = `${anoAtual}-01-01`;
-      ultimoDia = `${anoAtual}-12-31`;
-    } else {
-      const mesNum = parseInt(mesAtual, 10);
-      primeiroDia = `${anoAtual}-${mesAtual}-01`;
-      const ultimoDiaDate = new Date(anoAtual, mesNum, 0);
-      ultimoDia = `${anoAtual}-${mesAtual}-${String(ultimoDiaDate.getDate()).padStart(2, '0')}`;
-    }
-    setFiltros(prev => ({ ...prev, data_inicio: primeiroDia, data_fim: ultimoDia }));
+    setFiltros(prev => ({ ...prev, ...calcularPeriodoFiltro(anoAtual, mesAtual) }));
   }, [anoAtual, mesAtual]);
-
   // Estado de seleção e paginação
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -318,6 +346,21 @@ export default function InconsistenciaChamados({
   const { inconsistencias, isLoading, refetch } = useInconsistenciasChamados(filtrosDaTela);
   const { estatisticas, isLoading: isLoadingStats } = useInconsistenciasEstatisticas(filtrosDaTela);
   const { resolvidas, isLoading: isLoadingResolvidas } = useInconsistenciasResolvidas(filtrosDaTela);
+
+  // Anos do filtro: só os que têm dados. Calculado enquanto nenhum ano está escolhido (lista
+  // completa); ao escolher um ano a lista é mantida, senão encolheria para o próprio ano.
+  // A dependência é uma string (não o array) porque o hook devolve um [] novo a cada render sem dados.
+  const [anosComDados, setAnosComDados] = useState<number[]>([]);
+  const chaveAnosComDados = React.useMemo(
+    () => (anoAtual === 'all' && !isLoading && !isLoadingResolvidas
+      ? listarAnosComDados([...inconsistencias, ...resolvidas]).join(',')
+      : null),
+    [anoAtual, inconsistencias, resolvidas, isLoading, isLoadingResolvidas]
+  );
+  useEffect(() => {
+    if (chaveAnosComDados === null) return;
+    setAnosComDados(chaveAnosComDados ? chaveAnosComDados.split(',').map(Number) : []);
+  }, [chaveAnosComDados]);
   const { enviarNotificacaoAsync } = useEnviarNotificacao();
   const { arquivar, isArquivando, arquivarMultiplas, isArquivandoMultiplas } = useArquivarInconsistencia();
   const { descartar, isDescartando } = useDescartarInconsistencias();
@@ -361,18 +404,13 @@ export default function InconsistenciaChamados({
     new Set(inconsistencias.map(inc => inc.analista).filter(a => a && a.trim() !== ''))
   ).sort() as string[];
 
-  // Navegação de ano (mínimo: 2024)
-  const navegarAnoAnterior = () => {
-    if (anoAtual > 2024) { setAnoAtual(anoAtual - 1); setCurrentPage(1); }
-  };
-  const navegarAnoProximo = () => { setAnoAtual(anoAtual + 1); setCurrentPage(1); };
-
   // Filtros ativos
   const hasActiveFilters = () => {
     return filtros.busca !== '' || filtros.tipo_inconsistencia !== 'all' ||
-      filtros.origem !== 'all' || filtros.analista !== '' || mesAtual !== 'all' || filtroCodResolucao !== 'all' || filtroEnvioEmail !== 'all' || (filtros.status_chamado && filtros.status_chamado !== 'all');
+      filtros.origem !== 'all' || filtros.analista !== '' || anoAtual !== 'all' || mesAtual !== 'all' || filtroCodResolucao !== 'all' || filtroEnvioEmail !== 'all' || (filtros.status_chamado && filtros.status_chamado !== 'all');
   };
   const limparFiltros = () => {
+    setAnoAtual('all');
     setMesAtual('all');
     setFiltroCodResolucao('all');
     setFiltroEnvioEmail('all');
@@ -422,7 +460,7 @@ export default function InconsistenciaChamados({
         destinatario,
         cc: '',
         bcc: '',
-        assunto: '[AUDITORIA ARANDA] – Regularização de Chamados e Tarefas',
+        assunto: '[AUDITORIA ARANDA] – Regularização de Chamados',
         anexos: [],
       };
     });
@@ -692,7 +730,7 @@ Atenciosamente.`;
           try {
             await enviarNotificacaoAsync({
               inconsistencias: envelope.itens,
-              ano_referencia: anoAtual,
+              ano_referencia: anoAtual === 'all' ? new Date().getFullYear() : anoAtual,
               email_analista: destinatarios.join(', '),
               email_cc: cc?.join(', '),
             });
@@ -863,12 +901,13 @@ Atenciosamente.`;
 
   const camposFiltro = showFilters && (
     <div className="space-y-4 pt-4 border-t">
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-4">
         <div><div className="text-sm font-medium mb-2">{t('common.search')}</div><div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder={t('inconsistencias.searchPlaceholder')} value={filtros.busca} onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setCurrentPage(1); setCurrentPageResolvidas(1); }} className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue" /></div></div>
         {tipos.length > 1 && (<div><div className="text-sm font-medium mb-2">{t('common.type')}</div><Select value={filtros.tipo_inconsistencia} onValueChange={(value: any) => { setFiltros({ ...filtros, tipo_inconsistencia: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('common.all')}</SelectItem>{tipos.includes('mes_diferente') && <SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem>}{tipos.includes('tempo_excessivo') && <SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem>}{tipos.includes('ic_999999') && <SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem>}{tipos.includes('sem_atualizacao') && <SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem>}{tipos.includes('troca_codigo_resolucao') && <SelectItem value="troca_codigo_resolucao">{t('inconsistencias.resolutionCodeChange')}</SelectItem>}{tipos.includes('validacao_solucao') && <SelectItem value="validacao_solucao">{t('inconsistencias.solutionFieldValidation')}</SelectItem>}</SelectContent></Select></div>)}
         <div><div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div><Select value={filtros.analista || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, analista: value === 'all' ? '' : value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder={t('inconsistencias.allAnalysts')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>{analistasDaAba.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select></div>
         <div><div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div><Select value={filtros.origem || 'all'} onValueChange={(value: any) => { setFiltros({ ...filtros, origem: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem><SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem><SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem></SelectContent></Select></div>
-        <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">Ano</div><Select value={String(anoAtual)} onValueChange={(value) => { setAnoAtual(value === 'all' ? 'all' : Number(value)); if (value === 'all') setMesAtual('all'); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os anos</SelectItem>{anosComDados.map((ano) => (<SelectItem key={ano} value={String(ano)}>{ano}</SelectItem>))}</SelectContent></Select></div>
+        <div><div className="text-sm font-medium mb-2">Mês</div><Select value={mesAtual} disabled={anoAtual === 'all'} onValueChange={(value) => { setMesAtual(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os meses</SelectItem><SelectItem value="01">Janeiro</SelectItem><SelectItem value="02">Fevereiro</SelectItem><SelectItem value="03">Março</SelectItem><SelectItem value="04">Abril</SelectItem><SelectItem value="05">Maio</SelectItem><SelectItem value="06">Junho</SelectItem><SelectItem value="07">Julho</SelectItem><SelectItem value="08">Agosto</SelectItem><SelectItem value="09">Setembro</SelectItem><SelectItem value="10">Outubro</SelectItem><SelectItem value="11">Novembro</SelectItem><SelectItem value="12">Dezembro</SelectItem></SelectContent></Select></div>
         <div><div className="text-sm font-medium mb-2">Cód. Resolução</div><Select value={filtroCodResolucao} onValueChange={(value) => { setFiltroCodResolucao(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{codResolucaoUnicosCombinados.map((cod) => (<SelectItem key={cod} value={cod}>{cod}</SelectItem>))}</SelectContent></Select></div>
         <div><div className="text-sm font-medium mb-2">Status</div><Select value={filtros.status_chamado || 'all'} onValueChange={(value) => { setFiltros({ ...filtros, status_chamado: value }); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{statusChamadoUnicosCombinados.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
         <div><div className="text-sm font-medium mb-2">Email</div><Select value={filtroEnvioEmail} onValueChange={(value: FiltroEnvioEmail) => { setFiltroEnvioEmail(value); setCurrentPage(1); setCurrentPageResolvidas(1); }}><SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="enviado">Email enviado</SelectItem><SelectItem value="nao_enviado">Email não enviado</SelectItem></SelectContent></Select></div>
@@ -915,13 +954,6 @@ Atenciosamente.`;
           {tipos.includes('troca_codigo_resolucao') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-rose-600"><div className="flex items-center gap-2"><RefreshCw className="h-4 w-4" />{t('inconsistencias.resolutionCodeChange')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-rose-600">{estatisticas?.por_tipo.troca_codigo_resolucao || 0}</div>}</CardContent></Card>)}
           {tipos.includes('validacao_solucao') && (<Card><CardHeader className="pb-2"><CardTitle className="text-xs lg:text-sm font-medium text-teal-600"><div className="flex items-center gap-2"><FileText className="h-4 w-4" />{t('inconsistencias.solutionFieldValidation')}</div></CardTitle></CardHeader><CardContent className="pt-0">{isLoadingStats ? <Skeleton className="h-8 w-16" /> : <div className="text-xl lg:text-2xl font-bold text-teal-600">{estatisticas?.por_tipo.validacao_solucao || 0}</div>}</CardContent></Card>)}
         </div>
-
-        {/* Navegação por Ano */}
-        <Card><CardContent className="py-3 px-4"><div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={navegarAnoAnterior} disabled={anoAtual <= 2024} className="flex items-center gap-1"><ChevronLeft className="h-4 w-4" />{t('common.previous')}</Button>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{anoAtual}</h2>
-          <Button variant="outline" size="sm" onClick={navegarAnoProximo} className="flex items-center gap-1">{t('common.next')}<ChevronRight className="h-4 w-4" /></Button>
-        </div></CardContent></Card>
 
         {/* Tabs - 3 Abas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
