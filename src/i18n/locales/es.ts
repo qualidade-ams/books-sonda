@@ -55,6 +55,12 @@ const es = {
     adminPanel: 'Panel Administrativo',
     manageApp: 'Administre su aplicación',
     user: 'Usuario',
+    notifications: {
+      open: 'Abrir notificaciones',
+      title: 'Notificaciones',
+      markAllRead: 'Marcar todas como leídas',
+      empty: 'Ninguna pendencia por el momento',
+    },
   },
 
   // Autenticación

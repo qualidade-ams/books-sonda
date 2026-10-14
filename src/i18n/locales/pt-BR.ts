@@ -55,6 +55,12 @@ const ptBR = {
     adminPanel: 'Painel Administrativo',
     manageApp: 'Gerencie sua aplicação',
     user: 'Usuário',
+    notifications: {
+      open: 'Abrir notificações',
+      title: 'Notificações',
+      markAllRead: 'Marcar todas como lidas',
+      empty: 'Nenhuma pendência no momento',
+    },
   },
 
   // Autenticação

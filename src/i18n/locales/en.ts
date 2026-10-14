@@ -55,6 +55,12 @@ const en = {
     adminPanel: 'Admin Panel',
     manageApp: 'Manage your application',
     user: 'User',
+    notifications: {
+      open: 'Open notifications',
+      title: 'Notifications',
+      markAllRead: 'Mark all as read',
+      empty: 'No pending items right now',
+    },
   },
 
   // Authentication
