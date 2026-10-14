@@ -433,6 +433,103 @@ export type Database = {
         }
         Relationships: []
       }
+      banco_horas_ajustes_retroativos: {
+        Row: {
+          analisado_em: string | null
+          analisado_por: string | null
+          ano_aplicacao: number | null
+          ano_referencia: number
+          created_at: string
+          created_by: string | null
+          detalhes_mudanca: Json | null
+          diferenca: string | null
+          diferenca_minutos: number | null
+          empresa_id: string
+          fechamento_id: string
+          id: string
+          mes_aplicacao: number | null
+          mes_referencia: number
+          motivo_decisao: string | null
+          reajuste_gerado_id: string | null
+          status: string
+          sync_id: string | null
+          tipo_dado: string
+          updated_at: string
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          analisado_em?: string | null
+          analisado_por?: string | null
+          ano_aplicacao?: number | null
+          ano_referencia: number
+          created_at?: string
+          created_by?: string | null
+          detalhes_mudanca?: Json | null
+          diferenca?: string | null
+          diferenca_minutos?: number | null
+          empresa_id: string
+          fechamento_id: string
+          id?: string
+          mes_aplicacao?: number | null
+          mes_referencia: number
+          motivo_decisao?: string | null
+          reajuste_gerado_id?: string | null
+          status?: string
+          sync_id?: string | null
+          tipo_dado: string
+          updated_at?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          analisado_em?: string | null
+          analisado_por?: string | null
+          ano_aplicacao?: number | null
+          ano_referencia?: number
+          created_at?: string
+          created_by?: string | null
+          detalhes_mudanca?: Json | null
+          diferenca?: string | null
+          diferenca_minutos?: number | null
+          empresa_id?: string
+          fechamento_id?: string
+          id?: string
+          mes_aplicacao?: number | null
+          mes_referencia?: number
+          motivo_decisao?: string | null
+          reajuste_gerado_id?: string | null
+          status?: string
+          sync_id?: string | null
+          tipo_dado?: string
+          updated_at?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banco_horas_ajustes_retroativos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banco_horas_ajustes_retroativos_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "banco_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banco_horas_ajustes_retroativos_reajuste_gerado_id_fkey"
+            columns: ["reajuste_gerado_id"]
+            isOneToOne: false
+            referencedRelation: "banco_horas_reajustes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banco_horas_alocacoes: {
         Row: {
           ativo: boolean | null
@@ -534,32 +631,32 @@ export type Database = {
       banco_horas_calculos: {
         Row: {
           ano: number
-          baseline_horas: unknown
+          baseline_horas: string | null
           baseline_tickets: number | null
-          consumo_horas: unknown
+          consumo_horas: string | null
           consumo_tickets: number | null
-          consumo_total_horas: unknown
+          consumo_total_horas: string | null
           consumo_total_tickets: number | null
           created_at: string | null
           created_by: string | null
           empresa_id: string
-          excedentes_horas: unknown
+          excedentes_horas: string | null
           excedentes_tickets: number | null
           id: string
           is_fim_periodo: boolean | null
           mes: number
           observacao_publica: string | null
-          reajustes_horas: unknown
+          reajustes_horas: string | null
           reajustes_tickets: number | null
-          repasse_horas: unknown
+          repasse_horas: string | null
           repasse_tickets: number | null
-          repasses_mes_anterior_horas: unknown
+          repasses_mes_anterior_horas: string | null
           repasses_mes_anterior_tickets: number | null
-          requerimentos_horas: unknown
+          requerimentos_horas: string | null
           requerimentos_tickets: number | null
-          saldo_a_utilizar_horas: unknown
+          saldo_a_utilizar_horas: string | null
           saldo_a_utilizar_tickets: number | null
-          saldo_horas: unknown
+          saldo_horas: string | null
           saldo_tickets: number | null
           taxa_hora_utilizada: number | null
           taxa_ticket_utilizada: number | null
@@ -571,32 +668,32 @@ export type Database = {
         }
         Insert: {
           ano: number
-          baseline_horas?: unknown
+          baseline_horas?: string | null
           baseline_tickets?: number | null
-          consumo_horas?: unknown
+          consumo_horas?: string | null
           consumo_tickets?: number | null
-          consumo_total_horas?: unknown
+          consumo_total_horas?: string | null
           consumo_total_tickets?: number | null
           created_at?: string | null
           created_by?: string | null
           empresa_id: string
-          excedentes_horas?: unknown
+          excedentes_horas?: string | null
           excedentes_tickets?: number | null
           id?: string
           is_fim_periodo?: boolean | null
           mes: number
           observacao_publica?: string | null
-          reajustes_horas?: unknown
+          reajustes_horas?: string | null
           reajustes_tickets?: number | null
-          repasse_horas?: unknown
+          repasse_horas?: string | null
           repasse_tickets?: number | null
-          repasses_mes_anterior_horas?: unknown
+          repasses_mes_anterior_horas?: string | null
           repasses_mes_anterior_tickets?: number | null
-          requerimentos_horas?: unknown
+          requerimentos_horas?: string | null
           requerimentos_tickets?: number | null
-          saldo_a_utilizar_horas?: unknown
+          saldo_a_utilizar_horas?: string | null
           saldo_a_utilizar_tickets?: number | null
-          saldo_horas?: unknown
+          saldo_horas?: string | null
           saldo_tickets?: number | null
           taxa_hora_utilizada?: number | null
           taxa_ticket_utilizada?: number | null
@@ -608,32 +705,32 @@ export type Database = {
         }
         Update: {
           ano?: number
-          baseline_horas?: unknown
+          baseline_horas?: string | null
           baseline_tickets?: number | null
-          consumo_horas?: unknown
+          consumo_horas?: string | null
           consumo_tickets?: number | null
-          consumo_total_horas?: unknown
+          consumo_total_horas?: string | null
           consumo_total_tickets?: number | null
           created_at?: string | null
           created_by?: string | null
           empresa_id?: string
-          excedentes_horas?: unknown
+          excedentes_horas?: string | null
           excedentes_tickets?: number | null
           id?: string
           is_fim_periodo?: boolean | null
           mes?: number
           observacao_publica?: string | null
-          reajustes_horas?: unknown
+          reajustes_horas?: string | null
           reajustes_tickets?: number | null
-          repasse_horas?: unknown
+          repasse_horas?: string | null
           repasse_tickets?: number | null
-          repasses_mes_anterior_horas?: unknown
+          repasses_mes_anterior_horas?: string | null
           repasses_mes_anterior_tickets?: number | null
-          requerimentos_horas?: unknown
+          requerimentos_horas?: string | null
           requerimentos_tickets?: number | null
-          saldo_a_utilizar_horas?: unknown
+          saldo_a_utilizar_horas?: string | null
           saldo_a_utilizar_tickets?: number | null
-          saldo_horas?: unknown
+          saldo_horas?: string | null
           saldo_tickets?: number | null
           taxa_hora_utilizada?: number | null
           taxa_ticket_utilizada?: number | null
@@ -656,74 +753,74 @@ export type Database = {
       banco_horas_calculos_segmentados: {
         Row: {
           alocacao_id: string
-          baseline_horas: unknown
+          baseline_horas: string | null
           baseline_tickets: number | null
           calculo_id: string
-          consumo_horas: unknown
+          consumo_horas: string | null
           consumo_tickets: number | null
-          consumo_total_horas: unknown
+          consumo_total_horas: string | null
           consumo_total_tickets: number | null
           created_at: string | null
           id: string
-          reajustes_horas: unknown
+          reajustes_horas: string | null
           reajustes_tickets: number | null
-          repasse_horas: unknown
+          repasse_horas: string | null
           repasse_tickets: number | null
-          repasses_mes_anterior_horas: unknown
+          repasses_mes_anterior_horas: string | null
           repasses_mes_anterior_tickets: number | null
-          requerimentos_horas: unknown
+          requerimentos_horas: string | null
           requerimentos_tickets: number | null
-          saldo_a_utilizar_horas: unknown
+          saldo_a_utilizar_horas: string | null
           saldo_a_utilizar_tickets: number | null
-          saldo_horas: unknown
+          saldo_horas: string | null
           saldo_tickets: number | null
         }
         Insert: {
           alocacao_id: string
-          baseline_horas?: unknown
+          baseline_horas?: string | null
           baseline_tickets?: number | null
           calculo_id: string
-          consumo_horas?: unknown
+          consumo_horas?: string | null
           consumo_tickets?: number | null
-          consumo_total_horas?: unknown
+          consumo_total_horas?: string | null
           consumo_total_tickets?: number | null
           created_at?: string | null
           id?: string
-          reajustes_horas?: unknown
+          reajustes_horas?: string | null
           reajustes_tickets?: number | null
-          repasse_horas?: unknown
+          repasse_horas?: string | null
           repasse_tickets?: number | null
-          repasses_mes_anterior_horas?: unknown
+          repasses_mes_anterior_horas?: string | null
           repasses_mes_anterior_tickets?: number | null
-          requerimentos_horas?: unknown
+          requerimentos_horas?: string | null
           requerimentos_tickets?: number | null
-          saldo_a_utilizar_horas?: unknown
+          saldo_a_utilizar_horas?: string | null
           saldo_a_utilizar_tickets?: number | null
-          saldo_horas?: unknown
+          saldo_horas?: string | null
           saldo_tickets?: number | null
         }
         Update: {
           alocacao_id?: string
-          baseline_horas?: unknown
+          baseline_horas?: string | null
           baseline_tickets?: number | null
           calculo_id?: string
-          consumo_horas?: unknown
+          consumo_horas?: string | null
           consumo_tickets?: number | null
-          consumo_total_horas?: unknown
+          consumo_total_horas?: string | null
           consumo_total_tickets?: number | null
           created_at?: string | null
           id?: string
-          reajustes_horas?: unknown
+          reajustes_horas?: string | null
           reajustes_tickets?: number | null
-          repasse_horas?: unknown
+          repasse_horas?: string | null
           repasse_tickets?: number | null
-          repasses_mes_anterior_horas?: unknown
+          repasses_mes_anterior_horas?: string | null
           repasses_mes_anterior_tickets?: number | null
-          requerimentos_horas?: unknown
+          requerimentos_horas?: string | null
           requerimentos_tickets?: number | null
-          saldo_a_utilizar_horas?: unknown
+          saldo_a_utilizar_horas?: string | null
           saldo_a_utilizar_tickets?: number | null
-          saldo_horas?: unknown
+          saldo_horas?: string | null
           saldo_tickets?: number | null
         }
         Relationships: [
@@ -739,6 +836,230 @@ export type Database = {
             columns: ["calculo_id"]
             isOneToOne: false
             referencedRelation: "banco_horas_calculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banco_horas_envio_agendamento_empresas: {
+        Row: {
+          agendamento_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+        }
+        Insert: {
+          agendamento_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+        }
+        Update: {
+          agendamento_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banco_horas_envio_agendamento_empresas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "banco_horas_envio_agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banco_horas_envio_agendamento_empresas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banco_horas_envio_agendamentos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          dias_mes: number[]
+          dias_semana: number[]
+          emails_cc: string[]
+          frequencia: string
+          hora_fim: string | null
+          hora_inicio: string | null
+          horarios: string[]
+          id: string
+          intervalo_horas: number | null
+          modo_horario: string
+          nome: string
+          proxima_execucao: string | null
+          ultima_execucao: string | null
+          ultimo_dia_mes: boolean
+          ultimo_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          dias_mes?: number[]
+          dias_semana?: number[]
+          emails_cc?: string[]
+          frequencia: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          horarios?: string[]
+          id?: string
+          intervalo_horas?: number | null
+          modo_horario: string
+          nome: string
+          proxima_execucao?: string | null
+          ultima_execucao?: string | null
+          ultimo_dia_mes?: boolean
+          ultimo_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          dias_mes?: number[]
+          dias_semana?: number[]
+          emails_cc?: string[]
+          frequencia?: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          horarios?: string[]
+          id?: string
+          intervalo_horas?: number | null
+          modo_horario?: string
+          nome?: string
+          proxima_execucao?: string | null
+          ultima_execucao?: string | null
+          ultimo_dia_mes?: boolean
+          ultimo_status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      banco_horas_envio_execucoes: {
+        Row: {
+          agendamento_id: string | null
+          disparado_por: string | null
+          empresa_id: string
+          erro: string | null
+          executado_para: string
+          finalizado_em: string | null
+          id: string
+          iniciado_em: string
+          origem: string
+          qtd_destinatarios: number | null
+          qtd_emails: number | null
+          status: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          disparado_por?: string | null
+          empresa_id: string
+          erro?: string | null
+          executado_para: string
+          finalizado_em?: string | null
+          id?: string
+          iniciado_em?: string
+          origem: string
+          qtd_destinatarios?: number | null
+          qtd_emails?: number | null
+          status?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          disparado_por?: string | null
+          empresa_id?: string
+          erro?: string | null
+          executado_para?: string
+          finalizado_em?: string | null
+          id?: string
+          iniciado_em?: string
+          origem?: string
+          qtd_destinatarios?: number | null
+          qtd_emails?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banco_horas_envio_execucoes_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "banco_horas_envio_agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banco_horas_envio_execucoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banco_horas_fechamentos: {
+        Row: {
+          ano: number
+          apontamentos_ids: string[] | null
+          created_at: string
+          empresa_id: string
+          fechado_em: string
+          fechado_por: string | null
+          id: string
+          mes: number
+          motivo: string | null
+          snapshot_calculo: Json | null
+          snapshot_consumo_horas: string | null
+          snapshot_consumo_tickets: number | null
+          snapshot_requerimentos_horas: string | null
+          snapshot_requerimentos_tickets: number | null
+          tickets_ids: string[] | null
+        }
+        Insert: {
+          ano: number
+          apontamentos_ids?: string[] | null
+          created_at?: string
+          empresa_id: string
+          fechado_em?: string
+          fechado_por?: string | null
+          id?: string
+          mes: number
+          motivo?: string | null
+          snapshot_calculo?: Json | null
+          snapshot_consumo_horas?: string | null
+          snapshot_consumo_tickets?: number | null
+          snapshot_requerimentos_horas?: string | null
+          snapshot_requerimentos_tickets?: number | null
+          tickets_ids?: string[] | null
+        }
+        Update: {
+          ano?: number
+          apontamentos_ids?: string[] | null
+          created_at?: string
+          empresa_id?: string
+          fechado_em?: string
+          fechado_por?: string | null
+          id?: string
+          mes?: number
+          motivo?: string | null
+          snapshot_calculo?: Json | null
+          snapshot_consumo_horas?: string | null
+          snapshot_consumo_tickets?: number | null
+          snapshot_requerimentos_horas?: string | null
+          snapshot_requerimentos_tickets?: number | null
+          tickets_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banco_horas_fechamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
             referencedColumns: ["id"]
           },
         ]
@@ -795,6 +1116,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           empresa_id: string
+          empresa_segmentada: string | null
           id: string
           mes: number
           observacao: string | null
@@ -809,6 +1131,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           empresa_id: string
+          empresa_segmentada?: string | null
           id?: string
           mes: number
           observacao?: string | null
@@ -823,6 +1146,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           empresa_id?: string
+          empresa_segmentada?: string | null
           id?: string
           mes?: number
           observacao?: string | null
@@ -955,6 +1279,368 @@ export type Database = {
           },
         ]
       }
+      baseline_historico: {
+        Row: {
+          baseline_horas: number | null
+          baseline_tickets: number | null
+          created_at: string | null
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string
+          empresa_id: string
+          id: string
+          motivo: string | null
+          observacao: string | null
+          tipo_banco: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          baseline_horas?: number | null
+          baseline_tickets?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio: string
+          empresa_id: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          tipo_banco?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          baseline_horas?: number | null
+          baseline_tickets?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          tipo_banco?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "baseline_historico_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "baseline_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "baseline_historico_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      book_generation_queue: {
+        Row: {
+          ano: number
+          batch_id: string
+          book_id: string | null
+          completed_at: string | null
+          created_at: string
+          criado_por: string | null
+          destinatarios_email: string[] | null
+          email_enviado: boolean | null
+          empresa_id: string
+          empresa_nome: string | null
+          empresa_nome_abreviado: string | null
+          enviar_email: boolean | null
+          erro_mensagem: string | null
+          etapa_atual: string | null
+          forcar_atualizacao: boolean | null
+          id: string
+          mes: number
+          pdf_url: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          batch_id?: string
+          book_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          criado_por?: string | null
+          destinatarios_email?: string[] | null
+          email_enviado?: boolean | null
+          empresa_id: string
+          empresa_nome?: string | null
+          empresa_nome_abreviado?: string | null
+          enviar_email?: boolean | null
+          erro_mensagem?: string | null
+          etapa_atual?: string | null
+          forcar_atualizacao?: boolean | null
+          id?: string
+          mes: number
+          pdf_url?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          batch_id?: string
+          book_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          criado_por?: string | null
+          destinatarios_email?: string[] | null
+          email_enviado?: boolean | null
+          empresa_id?: string
+          empresa_nome?: string | null
+          empresa_nome_abreviado?: string | null
+          enviar_email?: boolean | null
+          erro_mensagem?: string | null
+          etapa_atual?: string | null
+          forcar_atualizacao?: boolean | null
+          id?: string
+          mes?: number
+          pdf_url?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_generation_queue_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          ano: number
+          created_at: string | null
+          dados_backlog: Json | null
+          dados_capa: Json | null
+          dados_consumo: Json | null
+          dados_consumo_segmentado: Json | null
+          dados_pesquisa: Json | null
+          dados_requerimentos_em_desenvolvimento: Json | null
+          dados_sla: Json | null
+          dados_volumetria: Json | null
+          destinatarios_envio: string[] | null
+          empresa_id: string
+          enviado_em: string | null
+          enviado_por: string | null
+          erro_detalhes: string | null
+          id: string
+          mes: number
+          pdf_gerado_em: string | null
+          pdf_url: string | null
+          precisa_retificacao: boolean | null
+          status: string
+          updated_at: string | null
+          versao_atual: number | null
+        }
+        Insert: {
+          ano: number
+          created_at?: string | null
+          dados_backlog?: Json | null
+          dados_capa?: Json | null
+          dados_consumo?: Json | null
+          dados_consumo_segmentado?: Json | null
+          dados_pesquisa?: Json | null
+          dados_requerimentos_em_desenvolvimento?: Json | null
+          dados_sla?: Json | null
+          dados_volumetria?: Json | null
+          destinatarios_envio?: string[] | null
+          empresa_id: string
+          enviado_em?: string | null
+          enviado_por?: string | null
+          erro_detalhes?: string | null
+          id?: string
+          mes: number
+          pdf_gerado_em?: string | null
+          pdf_url?: string | null
+          precisa_retificacao?: boolean | null
+          status?: string
+          updated_at?: string | null
+          versao_atual?: number | null
+        }
+        Update: {
+          ano?: number
+          created_at?: string | null
+          dados_backlog?: Json | null
+          dados_capa?: Json | null
+          dados_consumo?: Json | null
+          dados_consumo_segmentado?: Json | null
+          dados_pesquisa?: Json | null
+          dados_requerimentos_em_desenvolvimento?: Json | null
+          dados_sla?: Json | null
+          dados_volumetria?: Json | null
+          destinatarios_envio?: string[] | null
+          empresa_id?: string
+          enviado_em?: string | null
+          enviado_por?: string | null
+          erro_detalhes?: string | null
+          id?: string
+          mes?: number
+          pdf_gerado_em?: string | null
+          pdf_url?: string | null
+          precisa_retificacao?: boolean | null
+          status?: string
+          updated_at?: string | null
+          versao_atual?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books_historico_geracao: {
+        Row: {
+          acao: string
+          book_id: string | null
+          created_at: string | null
+          detalhes: Json | null
+          id: string
+          status: string
+          tempo_processamento_ms: number | null
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          book_id?: string | null
+          created_at?: string | null
+          detalhes?: Json | null
+          id?: string
+          status: string
+          tempo_processamento_ms?: number | null
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          book_id?: string | null
+          created_at?: string | null
+          detalhes?: Json | null
+          id?: string
+          status?: string
+          tempo_processamento_ms?: number | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_historico_geracao_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_historico_geracao_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books_com_empresa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books_versoes: {
+        Row: {
+          book_id: string
+          created_at: string
+          dados_backlog: Json | null
+          dados_capa: Json | null
+          dados_consumo: Json | null
+          dados_pesquisa: Json | null
+          dados_sla: Json | null
+          dados_volumetria: Json | null
+          destinatarios: string[]
+          enviado_em: string
+          enviado_por: string | null
+          id: string
+          motivo_retificacao: string | null
+          pdf_gerado_em: string | null
+          pdf_url: string | null
+          retificado_em: string | null
+          retificado_por: string | null
+          versao: number
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          dados_backlog?: Json | null
+          dados_capa?: Json | null
+          dados_consumo?: Json | null
+          dados_pesquisa?: Json | null
+          dados_sla?: Json | null
+          dados_volumetria?: Json | null
+          destinatarios?: string[]
+          enviado_em?: string
+          enviado_por?: string | null
+          id?: string
+          motivo_retificacao?: string | null
+          pdf_gerado_em?: string | null
+          pdf_url?: string | null
+          retificado_em?: string | null
+          retificado_por?: string | null
+          versao: number
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          dados_backlog?: Json | null
+          dados_capa?: Json | null
+          dados_consumo?: Json | null
+          dados_pesquisa?: Json | null
+          dados_sla?: Json | null
+          dados_volumetria?: Json | null
+          destinatarios?: string[]
+          enviado_em?: string
+          enviado_por?: string | null
+          id?: string
+          motivo_retificacao?: string | null
+          pdf_gerado_em?: string | null
+          pdf_url?: string | null
+          retificado_em?: string | null
+          retificado_por?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_versoes_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_versoes_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books_com_empresa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           created_at: string | null
@@ -1008,6 +1694,42 @@ export type Database = {
           },
         ]
       }
+      codigo_resolucao_modificacoes_aranda: {
+        Row: {
+          created: string
+          created_at: string | null
+          id: string
+          id_externo: string
+          item_id: string
+          new_value: string | null
+          old_value: string | null
+          synced_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created: string
+          created_at?: string | null
+          id?: string
+          id_externo: string
+          item_id: string
+          new_value?: string | null
+          old_value?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created?: string
+          created_at?: string | null
+          id?: string
+          id_externo?: string
+          item_id?: string
+          new_value?: string | null
+          old_value?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       controle_mensal: {
         Row: {
           ano: number
@@ -1052,28 +1774,28 @@ export type Database = {
       de_para_categoria: {
         Row: {
           atualizado_em: string | null
-          categoria: string
           criado_em: string | null
           criado_por: string | null
-          grupo: string
+          grupo: string | null
+          grupo_book: string | null
           id: string
           status: string
         }
         Insert: {
           atualizado_em?: string | null
-          categoria: string
           criado_em?: string | null
           criado_por?: string | null
-          grupo: string
+          grupo?: string | null
+          grupo_book?: string | null
           id?: string
           status?: string
         }
         Update: {
           atualizado_em?: string | null
-          categoria?: string
           criado_em?: string | null
           criado_por?: string | null
-          grupo?: string
+          grupo?: string | null
+          grupo_book?: string | null
           id?: string
           status?: string
         }
@@ -1250,6 +1972,7 @@ export type Database = {
         Row: {
           assunto: string
           ativo: boolean | null
+          converter_em_imagem: boolean
           corpo: string
           created_at: string | null
           descricao: string | null
@@ -1264,6 +1987,7 @@ export type Database = {
         Insert: {
           assunto: string
           ativo?: boolean | null
+          converter_em_imagem?: boolean
           corpo: string
           created_at?: string | null
           descricao?: string | null
@@ -1278,6 +2002,7 @@ export type Database = {
         Update: {
           assunto?: string
           ativo?: boolean | null
+          converter_em_imagem?: boolean
           corpo?: string
           created_at?: string | null
           descricao?: string | null
@@ -1293,30 +2018,83 @@ export type Database = {
       }
       email_test_data: {
         Row: {
-          created_at: string | null
+          created_at: string
           created_by: string | null
           dados: Json
           id: string
           nome: string
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           created_by?: string | null
           dados: Json
           id?: string
           nome: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           created_by?: string | null
           dados?: Json
           id?: string
           nome?: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
+      }
+      empresa_anexos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome_arquivo: string
+          nome_original: string
+          ordem: number
+          storage_path: string
+          tamanho_bytes: number
+          tipo_mime: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome_arquivo: string
+          nome_original: string
+          ordem?: number
+          storage_path: string
+          tamanho_bytes: number
+          tipo_mime: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome_arquivo?: string
+          nome_original?: string
+          ordem?: number
+          storage_path?: string
+          tamanho_bytes?: number
+          tipo_mime?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_anexos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       empresa_grupos: {
         Row: {
@@ -1386,7 +2164,7 @@ export type Database = {
       empresas_clientes: {
         Row: {
           anexo: boolean | null
-          baseline_horas_mensal: unknown
+          baseline_horas_mensal: string | null
           baseline_segmentado: boolean | null
           baseline_tickets_mensal: number | null
           book_personalizado: boolean | null
@@ -1395,10 +2173,14 @@ export type Database = {
           created_at: string | null
           data_status: string | null
           descricao_status: string | null
-          dia_inicio_apuracao: number | null
           dia_fim_apuracao: number | null
+          dia_inicio_apuracao: number | null
+          duracao_periodo_meses: number | null
           em_projeto: boolean | null
+          email_comercial: string | null
           email_gestor: string | null
+          email_tm: string | null
+          empresa_consolidadora_id: string | null
           id: string
           inicio_vigencia: string | null
           link_sharepoint: string | null
@@ -1406,9 +2188,12 @@ export type Database = {
           nome_abreviado: string
           nome_completo: string
           observacao: string | null
+          percentual_dentro_periodo: number | null
+          percentual_entre_periodos: number | null
           percentual_repasse_especial: number | null
           percentual_repasse_mensal: number | null
           periodo_apuracao: number | null
+          periodos_ate_zerar: number | null
           possui_repasse_especial: boolean | null
           quantidade_minima_chamados_sla: number | null
           segmentacao_config: Json | null
@@ -1420,13 +2205,14 @@ export type Database = {
             | Database["public"]["Enums"]["tipo_cobranca_enum"]
             | null
           tipo_contrato: string | null
+          tipo_repasse_especial: string | null
           updated_at: string | null
           vigencia_final: string | null
           vigencia_inicial: string | null
         }
         Insert: {
           anexo?: boolean | null
-          baseline_horas_mensal?: unknown
+          baseline_horas_mensal?: string | null
           baseline_segmentado?: boolean | null
           baseline_tickets_mensal?: number | null
           book_personalizado?: boolean | null
@@ -1435,10 +2221,14 @@ export type Database = {
           created_at?: string | null
           data_status?: string | null
           descricao_status?: string | null
-          dia_inicio_apuracao?: number | null
           dia_fim_apuracao?: number | null
+          dia_inicio_apuracao?: number | null
+          duracao_periodo_meses?: number | null
           em_projeto?: boolean | null
+          email_comercial?: string | null
           email_gestor?: string | null
+          email_tm?: string | null
+          empresa_consolidadora_id?: string | null
           id?: string
           inicio_vigencia?: string | null
           link_sharepoint?: string | null
@@ -1446,9 +2236,12 @@ export type Database = {
           nome_abreviado: string
           nome_completo: string
           observacao?: string | null
+          percentual_dentro_periodo?: number | null
+          percentual_entre_periodos?: number | null
           percentual_repasse_especial?: number | null
           percentual_repasse_mensal?: number | null
           periodo_apuracao?: number | null
+          periodos_ate_zerar?: number | null
           possui_repasse_especial?: boolean | null
           quantidade_minima_chamados_sla?: number | null
           segmentacao_config?: Json | null
@@ -1460,13 +2253,14 @@ export type Database = {
             | Database["public"]["Enums"]["tipo_cobranca_enum"]
             | null
           tipo_contrato?: string | null
+          tipo_repasse_especial?: string | null
           updated_at?: string | null
           vigencia_final?: string | null
           vigencia_inicial?: string | null
         }
         Update: {
           anexo?: boolean | null
-          baseline_horas_mensal?: unknown
+          baseline_horas_mensal?: string | null
           baseline_segmentado?: boolean | null
           baseline_tickets_mensal?: number | null
           book_personalizado?: boolean | null
@@ -1475,10 +2269,14 @@ export type Database = {
           created_at?: string | null
           data_status?: string | null
           descricao_status?: string | null
-          dia_inicio_apuracao?: number | null
           dia_fim_apuracao?: number | null
+          dia_inicio_apuracao?: number | null
+          duracao_periodo_meses?: number | null
           em_projeto?: boolean | null
+          email_comercial?: string | null
           email_gestor?: string | null
+          email_tm?: string | null
+          empresa_consolidadora_id?: string | null
           id?: string
           inicio_vigencia?: string | null
           link_sharepoint?: string | null
@@ -1486,9 +2284,12 @@ export type Database = {
           nome_abreviado?: string
           nome_completo?: string
           observacao?: string | null
+          percentual_dentro_periodo?: number | null
+          percentual_entre_periodos?: number | null
           percentual_repasse_especial?: number | null
           percentual_repasse_mensal?: number | null
           periodo_apuracao?: number | null
+          periodos_ate_zerar?: number | null
           possui_repasse_especial?: boolean | null
           quantidade_minima_chamados_sla?: number | null
           segmentacao_config?: Json | null
@@ -1500,11 +2301,20 @@ export type Database = {
             | Database["public"]["Enums"]["tipo_cobranca_enum"]
             | null
           tipo_contrato?: string | null
+          tipo_repasse_especial?: string | null
           updated_at?: string | null
           vigencia_final?: string | null
           vigencia_inicial?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "empresas_clientes_empresa_consolidadora_id_fkey"
+            columns: ["empresa_consolidadora_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       especialistas: {
         Row: {
@@ -1690,13 +2500,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "historico_disparos_colaborador_id_fkey"
-            columns: ["colaborador_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "historico_disparos_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -1710,15 +2513,17 @@ export type Database = {
           analista: string | null
           ano_referencia: number
           created_at: string | null
-          data_atividade: string
+          data_atividade: string | null
           data_envio: string
-          data_sistema: string
+          data_sistema: string | null
           descricao_inconsistencia: string
           email_analista: string | null
+          email_cc: string | null
           empresa: string | null
           enviado_por: string | null
           enviado_por_nome: string | null
           id: string
+          inconsistencia_id: string | null
           mes_referencia: number
           nro_chamado: string
           origem: string
@@ -1732,15 +2537,17 @@ export type Database = {
           analista?: string | null
           ano_referencia: number
           created_at?: string | null
-          data_atividade: string
+          data_atividade?: string | null
           data_envio?: string
-          data_sistema: string
+          data_sistema?: string | null
           descricao_inconsistencia: string
           email_analista?: string | null
+          email_cc?: string | null
           empresa?: string | null
           enviado_por?: string | null
           enviado_por_nome?: string | null
           id?: string
+          inconsistencia_id?: string | null
           mes_referencia: number
           nro_chamado: string
           origem: string
@@ -1754,15 +2561,17 @@ export type Database = {
           analista?: string | null
           ano_referencia?: number
           created_at?: string | null
-          data_atividade?: string
+          data_atividade?: string | null
           data_envio?: string
-          data_sistema?: string
+          data_sistema?: string | null
           descricao_inconsistencia?: string
           email_analista?: string | null
+          email_cc?: string | null
           empresa?: string | null
           enviado_por?: string | null
           enviado_por_nome?: string | null
           id?: string
+          inconsistencia_id?: string | null
           mes_referencia?: number
           nro_chamado?: string
           origem?: string
@@ -1771,6 +2580,98 @@ export type Database = {
           tipo_chamado?: string | null
           tipo_inconsistencia?: string
           updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_inconsistencias_chamados_inconsistencia_id_fkey"
+            columns: ["inconsistencia_id"]
+            isOneToOne: false
+            referencedRelation: "inconsistencias_chamados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inconsistencias_chamados: {
+        Row: {
+          analista: string | null
+          arquivado_manualmente: boolean
+          chave_unica: string
+          cod_resolucao: string | null
+          cod_resolucao_anterior: string | null
+          created_at: string
+          data_abertura: string | null
+          data_atividade: string | null
+          data_deteccao: string
+          data_resolucao: string | null
+          data_sistema: string | null
+          descricao_inconsistencia: string
+          empresa: string | null
+          id: string
+          item_configuracao: string | null
+          nro_chamado: string
+          nro_tarefa: string | null
+          origem: string
+          status: string
+          status_chamado: string | null
+          tempo_gasto_horas: string | null
+          tempo_gasto_minutos: number | null
+          tipo_chamado: string | null
+          tipo_inconsistencia: string
+          updated_at: string
+        }
+        Insert: {
+          analista?: string | null
+          arquivado_manualmente?: boolean
+          chave_unica: string
+          cod_resolucao?: string | null
+          cod_resolucao_anterior?: string | null
+          created_at?: string
+          data_abertura?: string | null
+          data_atividade?: string | null
+          data_deteccao?: string
+          data_resolucao?: string | null
+          data_sistema?: string | null
+          descricao_inconsistencia: string
+          empresa?: string | null
+          id?: string
+          item_configuracao?: string | null
+          nro_chamado: string
+          nro_tarefa?: string | null
+          origem: string
+          status?: string
+          status_chamado?: string | null
+          tempo_gasto_horas?: string | null
+          tempo_gasto_minutos?: number | null
+          tipo_chamado?: string | null
+          tipo_inconsistencia: string
+          updated_at?: string
+        }
+        Update: {
+          analista?: string | null
+          arquivado_manualmente?: boolean
+          chave_unica?: string
+          cod_resolucao?: string | null
+          cod_resolucao_anterior?: string | null
+          created_at?: string
+          data_abertura?: string | null
+          data_atividade?: string | null
+          data_deteccao?: string
+          data_resolucao?: string | null
+          data_sistema?: string | null
+          descricao_inconsistencia?: string
+          empresa?: string | null
+          id?: string
+          item_configuracao?: string | null
+          nro_chamado?: string
+          nro_tarefa?: string | null
+          origem?: string
+          status?: string
+          status_chamado?: string | null
+          tempo_gasto_horas?: string | null
+          tempo_gasto_minutos?: number | null
+          tipo_chamado?: string | null
+          tipo_inconsistencia?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1870,6 +2771,293 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          chave: string
+          created_at: string
+          empresa_id: string | null
+          id: string
+          link: string | null
+          mensagem: string
+          referencia: Json
+          resolvida_em: string | null
+          resolvida_motivo: string | null
+          screen_key: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          link?: string | null
+          mensagem: string
+          referencia?: Json
+          resolvida_em?: string | null
+          resolvida_motivo?: string | null
+          screen_key: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          link?: string | null
+          mensagem?: string
+          referencia?: Json
+          resolvida_em?: string | null
+          resolvida_motivo?: string | null
+          screen_key?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_screen_key_fkey"
+            columns: ["screen_key"]
+            isOneToOne: false
+            referencedRelation: "screens"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      notificacoes_leituras: {
+        Row: {
+          lida_em: string
+          notificacao_id: string
+          user_id: string
+        }
+        Insert: {
+          lida_em?: string
+          notificacao_id: string
+          user_id: string
+        }
+        Update: {
+          lida_em?: string
+          notificacao_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_leituras_notificacao_id_fkey"
+            columns: ["notificacao_id"]
+            isOneToOne: false
+            referencedRelation: "notificacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizacao_estrutura: {
+        Row: {
+          cargo: string
+          created_at: string
+          departamento: string
+          email: string
+          foto_url: string | null
+          id: string
+          nome: string
+          ordem_exibicao: number | null
+          superior_id: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cargo: string
+          created_at?: string
+          departamento: string
+          email: string
+          foto_url?: string | null
+          id?: string
+          nome: string
+          ordem_exibicao?: number | null
+          superior_id?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string
+          created_at?: string
+          departamento?: string
+          email?: string
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          ordem_exibicao?: number | null
+          superior_id?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizacao_estrutura_superior_id_fkey"
+            columns: ["superior_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizacao_multiplos_superiores: {
+        Row: {
+          created_at: string
+          id: string
+          pessoa_id: string
+          produto: string
+          superior_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pessoa_id: string
+          produto: string
+          superior_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pessoa_id?: string
+          produto?: string
+          superior_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizacao_multiplos_superiores_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizacao_multiplos_superiores_superior_id_fkey"
+            columns: ["superior_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizacao_produto: {
+        Row: {
+          created_at: string
+          id: string
+          pessoa_id: string
+          produto: string
+          superior_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pessoa_id: string
+          produto: string
+          superior_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pessoa_id?: string
+          produto?: string
+          superior_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizacao_produto_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizacao_produto_superior_id_fkey"
+            columns: ["superior_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      percentual_repasse_historico: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string
+          empresa_id: string
+          id: string
+          motivo: string | null
+          observacao: string | null
+          percentual: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio: string
+          empresa_id: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          percentual: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          percentual?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "percentual_repasse_historico_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "percentual_repasse_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "percentual_repasse_historico_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permission_audit_logs: {
         Row: {
           action: string
@@ -1947,111 +3135,115 @@ export type Database = {
       }
       pesquisa_mensal_ams: {
         Row: {
-          id: string
-          identificador_questionario: string
-          nome_questionario: string
-          mes_referencia: number
-          inicio_real_questionario: string | null
-          nome_respondente: string | null
-          email_respondente: string | null
+          ano_referencia: number | null
           cliente: string | null
           cliente_foco: boolean | null
-          vertical: string | null
-          unidade_negocio: string | null
-          nota: number | null
           comentario: string | null
-          inicio_resposta: string | null
-          termino_resposta: string | null
-          situacao_resposta: string | null
-          incompleto: boolean | null
           created_at: string
-          updated_at: string
           created_by: string | null
-          ano_referencia: number | null
+          email_respondente: string | null
+          id: string
+          identificador_questionario: string
+          incompleto: boolean | null
+          inicio_real_questionario: string | null
+          inicio_resposta: string | null
+          mes_referencia: number
+          nome_questionario: string
+          nome_respondente: string | null
+          nota: number | null
+          situacao_resposta: string | null
+          termino_resposta: string | null
+          unidade_negocio: string | null
+          updated_at: string
+          vertical: string | null
         }
         Insert: {
+          ano_referencia?: number | null
+          cliente?: string | null
+          cliente_foco?: boolean | null
+          comentario?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_respondente?: string | null
           id?: string
           identificador_questionario: string
-          nome_questionario: string
-          mes_referencia: number
-          inicio_real_questionario?: string | null
-          nome_respondente?: string | null
-          email_respondente?: string | null
-          cliente?: string | null
-          cliente_foco?: boolean | null
-          vertical?: string | null
-          unidade_negocio?: string | null
-          nota?: number | null
-          comentario?: string | null
-          inicio_resposta?: string | null
-          termino_resposta?: string | null
-          situacao_resposta?: string | null
           incompleto?: boolean | null
-          created_at?: string
+          inicio_real_questionario?: string | null
+          inicio_resposta?: string | null
+          mes_referencia: number
+          nome_questionario: string
+          nome_respondente?: string | null
+          nota?: number | null
+          situacao_resposta?: string | null
+          termino_resposta?: string | null
+          unidade_negocio?: string | null
           updated_at?: string
-          created_by?: string | null
-          ano_referencia?: number | null
+          vertical?: string | null
         }
         Update: {
-          id?: string
-          identificador_questionario?: string
-          nome_questionario?: string
-          mes_referencia?: number
-          inicio_real_questionario?: string | null
-          nome_respondente?: string | null
-          email_respondente?: string | null
+          ano_referencia?: number | null
           cliente?: string | null
           cliente_foco?: boolean | null
-          vertical?: string | null
-          unidade_negocio?: string | null
-          nota?: number | null
           comentario?: string | null
-          inicio_resposta?: string | null
-          termino_resposta?: string | null
-          situacao_resposta?: string | null
-          incompleto?: boolean | null
           created_at?: string
-          updated_at?: string
           created_by?: string | null
-          ano_referencia?: number | null
+          email_respondente?: string | null
+          id?: string
+          identificador_questionario?: string
+          incompleto?: boolean | null
+          inicio_real_questionario?: string | null
+          inicio_resposta?: string | null
+          mes_referencia?: number
+          nome_questionario?: string
+          nome_respondente?: string | null
+          nota?: number | null
+          situacao_resposta?: string | null
+          termino_resposta?: string | null
+          unidade_negocio?: string | null
+          updated_at?: string
+          vertical?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "pesquisa_mensal_ams_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       pesquisas_satisfacao: {
         Row: {
           ano_abertura: number | null
           autor_id: string | null
           autor_nome: string | null
+          autor_notificacao: string | null
           categoria: string | null
           chave_unica: string | null
           cliente: string
           cliente_id: string | null
           comentario_pesquisa: string | null
+          coordenador_id: string | null
           created_at: string | null
           data_encaminhamento: string | null
           data_envio: string | null
+          data_fechamento: string | null
           data_resposta: string | null
+          data_ultima_modificacao: string | null
+          descricao: string | null
           email_cliente: string | null
           empresa: string
           empresa_id: string | null
+          estado: string | null
           grupo: string | null
           hash_origem: string | null
           id: string
           id_externo: string | null
+          log: string | null
           mes_abertura: number | null
+          nome_pesquisa: string | null
           nro_caso: string | null
           observacao: string | null
           origem: Database["public"]["Enums"]["origem_pesquisa_enum"]
+          pergunta: string | null
+          pesquisa_recebida: string | null
           prestador: string | null
           resposta: string | null
+          sequencia_pergunta: string | null
+          servico: string | null
           solicitante: string | null
           source_updated_at: string | null
           status: Database["public"]["Enums"]["status_pesquisa_enum"]
@@ -2064,28 +3256,40 @@ export type Database = {
           ano_abertura?: number | null
           autor_id?: string | null
           autor_nome?: string | null
+          autor_notificacao?: string | null
           categoria?: string | null
           chave_unica?: string | null
           cliente: string
           cliente_id?: string | null
           comentario_pesquisa?: string | null
+          coordenador_id?: string | null
           created_at?: string | null
           data_encaminhamento?: string | null
           data_envio?: string | null
+          data_fechamento?: string | null
           data_resposta?: string | null
+          data_ultima_modificacao?: string | null
+          descricao?: string | null
           email_cliente?: string | null
           empresa: string
           empresa_id?: string | null
+          estado?: string | null
           grupo?: string | null
           hash_origem?: string | null
           id?: string
           id_externo?: string | null
+          log?: string | null
           mes_abertura?: number | null
+          nome_pesquisa?: string | null
           nro_caso?: string | null
           observacao?: string | null
           origem?: Database["public"]["Enums"]["origem_pesquisa_enum"]
+          pergunta?: string | null
+          pesquisa_recebida?: string | null
           prestador?: string | null
           resposta?: string | null
+          sequencia_pergunta?: string | null
+          servico?: string | null
           solicitante?: string | null
           source_updated_at?: string | null
           status?: Database["public"]["Enums"]["status_pesquisa_enum"]
@@ -2098,28 +3302,40 @@ export type Database = {
           ano_abertura?: number | null
           autor_id?: string | null
           autor_nome?: string | null
+          autor_notificacao?: string | null
           categoria?: string | null
           chave_unica?: string | null
           cliente?: string
           cliente_id?: string | null
           comentario_pesquisa?: string | null
+          coordenador_id?: string | null
           created_at?: string | null
           data_encaminhamento?: string | null
           data_envio?: string | null
+          data_fechamento?: string | null
           data_resposta?: string | null
+          data_ultima_modificacao?: string | null
+          descricao?: string | null
           email_cliente?: string | null
           empresa?: string
           empresa_id?: string | null
+          estado?: string | null
           grupo?: string | null
           hash_origem?: string | null
           id?: string
           id_externo?: string | null
+          log?: string | null
           mes_abertura?: number | null
+          nome_pesquisa?: string | null
           nro_caso?: string | null
           observacao?: string | null
           origem?: Database["public"]["Enums"]["origem_pesquisa_enum"]
+          pergunta?: string | null
+          pesquisa_recebida?: string | null
           prestador?: string | null
           resposta?: string | null
+          sequencia_pergunta?: string | null
+          servico?: string | null
           solicitante?: string | null
           source_updated_at?: string | null
           status?: Database["public"]["Enums"]["status_pesquisa_enum"]
@@ -2141,6 +3357,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesquisas_satisfacao_coordenador_id_fkey"
+            columns: ["coordenador_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
             referencedColumns: ["id"]
           },
         ]
@@ -2237,6 +3460,7 @@ export type Database = {
         Row: {
           acao_preventiva: string | null
           atualizado_em: string | null
+          causa: string | null
           chamado: string | null
           comentario_cliente: string | null
           criado_em: string | null
@@ -2257,10 +3481,12 @@ export type Database = {
           retorno_cliente: string | null
           status_final: string | null
           status_plano: string
+          tipo_acao: string | null
         }
         Insert: {
           acao_preventiva?: string | null
           atualizado_em?: string | null
+          causa?: string | null
           chamado?: string | null
           comentario_cliente?: string | null
           criado_em?: string | null
@@ -2281,10 +3507,12 @@ export type Database = {
           retorno_cliente?: string | null
           status_final?: string | null
           status_plano?: string
+          tipo_acao?: string | null
         }
         Update: {
           acao_preventiva?: string | null
           atualizado_em?: string | null
+          causa?: string | null
           chamado?: string | null
           comentario_cliente?: string | null
           criado_em?: string | null
@@ -2305,6 +3533,7 @@ export type Database = {
           retorno_cliente?: string | null
           status_final?: string | null
           status_plano?: string
+          tipo_acao?: string | null
         }
         Relationships: [
           {
@@ -2318,27 +3547,89 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active: boolean | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
+          language: string
+          last_sign_in_at: string | null
           updated_at: string | null
         }
         Insert: {
+          active?: boolean | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          language?: string
+          last_sign_in_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          active?: boolean | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          language?: string
+          last_sign_in_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
+      }
+      requerimento_anexos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome_arquivo: string
+          nome_original: string
+          ordem: number
+          requerimento_id: string
+          storage_path: string
+          tamanho_bytes: number
+          tipo_mime: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome_arquivo: string
+          nome_original: string
+          ordem?: number
+          requerimento_id: string
+          storage_path: string
+          tamanho_bytes: number
+          tipo_mime: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome_arquivo?: string
+          nome_original?: string
+          ordem?: number
+          requerimento_id?: string
+          storage_path?: string
+          tamanho_bytes?: number
+          tipo_mime?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requerimento_anexos_requerimento_id_fkey"
+            columns: ["requerimento_id"]
+            isOneToOne: false
+            referencedRelation: "requerimentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       requerimentos: {
         Row: {
@@ -2352,8 +3643,10 @@ export type Database = {
           data_envio_faturamento: string | null
           data_faturamento: string | null
           descricao: string
+          empresa_segmentacao_nome: string | null
           enviado_faturamento: boolean
           horas_funcional: number
+          horas_gestor: number | null
           horas_tecnico: number
           horas_total: number | null
           id: string
@@ -2367,9 +3660,11 @@ export type Database = {
           tipo_hora_extra: string | null
           updated_at: string | null
           valor_hora_funcional: number | null
+          valor_hora_gestor: number | null
           valor_hora_tecnico: number | null
           valor_total_funcional: number | null
           valor_total_geral: number | null
+          valor_total_gestor: number | null
           valor_total_tecnico: number | null
         }
         Insert: {
@@ -2383,8 +3678,10 @@ export type Database = {
           data_envio_faturamento?: string | null
           data_faturamento?: string | null
           descricao: string
+          empresa_segmentacao_nome?: string | null
           enviado_faturamento?: boolean
           horas_funcional?: number
+          horas_gestor?: number | null
           horas_tecnico?: number
           horas_total?: number | null
           id?: string
@@ -2398,9 +3695,11 @@ export type Database = {
           tipo_hora_extra?: string | null
           updated_at?: string | null
           valor_hora_funcional?: number | null
+          valor_hora_gestor?: number | null
           valor_hora_tecnico?: number | null
           valor_total_funcional?: number | null
           valor_total_geral?: number | null
+          valor_total_gestor?: number | null
           valor_total_tecnico?: number | null
         }
         Update: {
@@ -2414,8 +3713,10 @@ export type Database = {
           data_envio_faturamento?: string | null
           data_faturamento?: string | null
           descricao?: string
+          empresa_segmentacao_nome?: string | null
           enviado_faturamento?: boolean
           horas_funcional?: number
+          horas_gestor?: number | null
           horas_tecnico?: number
           horas_total?: number | null
           id?: string
@@ -2429,9 +3730,11 @@ export type Database = {
           tipo_hora_extra?: string | null
           updated_at?: string | null
           valor_hora_funcional?: number | null
+          valor_hora_gestor?: number | null
           valor_hora_tecnico?: number | null
           valor_total_funcional?: number | null
           valor_total_geral?: number | null
+          valor_total_gestor?: number | null
           valor_total_tecnico?: number | null
         }
         Relationships: [
@@ -2516,6 +3819,78 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_agendamentos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          dias_mes: number[]
+          dias_semana: number[]
+          empresa_ids: string[]
+          frequencia: string
+          hora_fim: string | null
+          hora_inicio: string | null
+          horarios: string[]
+          id: string
+          intervalo_horas: number | null
+          modo_horario: string
+          nome: string
+          proxima_execucao: string | null
+          tabelas: Json
+          tipo: string
+          ultima_execucao: string | null
+          ultimo_dia_mes: boolean
+          ultimo_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          dias_mes?: number[]
+          dias_semana?: number[]
+          empresa_ids?: string[]
+          frequencia: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          horarios?: string[]
+          id?: string
+          intervalo_horas?: number | null
+          modo_horario: string
+          nome: string
+          proxima_execucao?: string | null
+          tabelas?: Json
+          tipo?: string
+          ultima_execucao?: string | null
+          ultimo_dia_mes?: boolean
+          ultimo_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          dias_mes?: number[]
+          dias_semana?: number[]
+          empresa_ids?: string[]
+          frequencia?: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          horarios?: string[]
+          id?: string
+          intervalo_horas?: number | null
+          modo_horario?: string
+          nome?: string
+          proxima_execucao?: string | null
+          tabelas?: Json
+          tipo?: string
+          ultima_execucao?: string | null
+          ultimo_dia_mes?: boolean
+          ultimo_status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sync_control: {
         Row: {
           created_at: string | null
@@ -2597,6 +3972,92 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_execucoes: {
+        Row: {
+          agendamento_id: string | null
+          disparado_por: string | null
+          finalizado_em: string | null
+          id: string
+          iniciado_em: string
+          logs: Json
+          origem: string
+          resultado: Json | null
+          status: string
+          tabelas: Json
+          tipo: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          disparado_por?: string | null
+          finalizado_em?: string | null
+          id?: string
+          iniciado_em?: string
+          logs?: Json
+          origem: string
+          resultado?: Json | null
+          status?: string
+          tabelas?: Json
+          tipo?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          disparado_por?: string | null
+          finalizado_em?: string | null
+          id?: string
+          iniciado_em?: string
+          logs?: Json
+          origem?: string
+          resultado?: Json | null
+          status?: string
+          tabelas?: Json
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_execucoes_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "sync_agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_metadata: {
+        Row: {
+          id: string
+          registros_atualizados: number | null
+          registros_erros: number | null
+          registros_novos: number | null
+          registros_processados: number | null
+          resultado: string | null
+          tabela: string
+          ultima_execucao: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          registros_atualizados?: number | null
+          registros_erros?: number | null
+          registros_novos?: number | null
+          registros_processados?: number | null
+          resultado?: string | null
+          tabela: string
+          ultima_execucao?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          registros_atualizados?: number | null
+          registros_erros?: number | null
+          registros_novos?: number | null
+          registros_processados?: number | null
+          resultado?: string | null
+          tabela?: string
+          ultima_execucao?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       taxas_clientes: {
         Row: {
           atualizado_em: string | null
@@ -2605,6 +4066,7 @@ export type Database = {
           criado_por: string | null
           id: string
           personalizado: boolean | null
+          prazo_pagamento: number | null
           ticket_excedente: number | null
           ticket_excedente_1: number | null
           ticket_excedente_2: number | null
@@ -2624,6 +4086,7 @@ export type Database = {
           criado_por?: string | null
           id?: string
           personalizado?: boolean | null
+          prazo_pagamento?: number | null
           ticket_excedente?: number | null
           ticket_excedente_1?: number | null
           ticket_excedente_2?: number | null
@@ -2643,6 +4106,7 @@ export type Database = {
           criado_por?: string | null
           id?: string
           personalizado?: boolean | null
+          prazo_pagamento?: number | null
           ticket_excedente?: number | null
           ticket_excedente_1?: number | null
           ticket_excedente_2?: number | null
@@ -2875,9 +4339,75 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      book_generation_batch_summary: {
+        Row: {
+          ano: number | null
+          batch_id: string | null
+          batch_status: string | null
+          cancelados: number | null
+          concluidos: number | null
+          created_at: string | null
+          emails_enviados: number | null
+          erros: number | null
+          mes: number | null
+          pendentes: number | null
+          processando: number | null
+          total: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      books_com_empresa: {
+        Row: {
+          ano: number | null
+          created_at: string | null
+          empresa_id: string | null
+          empresa_nome: string | null
+          empresa_nome_abreviado: string | null
+          id: string | null
+          mes: number | null
+          pdf_gerado_em: string | null
+          pdf_url: string | null
+          status: string | null
+          tem_dados: boolean | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      admin_create_user: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_group_id: string
+          p_password: string
+        }
+        Returns: Json
+      }
+      admin_delete_user: { Args: { p_user_id: string }; Returns: Json }
+      admin_reset_user_password: {
+        Args: { p_new_password: string; p_user_id: string }
+        Returns: Json
+      }
+      admin_update_user: {
+        Args: {
+          p_active?: boolean
+          p_email?: string
+          p_full_name?: string
+          p_group_id?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       assign_user_to_group: {
         Args: {
           assigned_by_uuid: string
@@ -2885,6 +4415,20 @@ export type Database = {
           user_uuid: string
         }
         Returns: boolean
+      }
+      buscar_books_por_periodo: {
+        Args: { p_ano: number; p_mes: number }
+        Returns: {
+          ano: number
+          data_geracao: string
+          empresa_id: string
+          empresa_nome: string
+          id: string
+          mes: number
+          pdf_url: string
+          status: string
+          tem_dados: boolean
+        }[]
       }
       buscar_historico_com_anexos:
         | {
@@ -2932,12 +4476,6 @@ export type Database = {
           view_name: string
         }[]
       }
-      check_requerimentos_permission:
-        | {
-            Args: { required_level?: string; screen_key_param: string }
-            Returns: boolean
-          }
-        | { Args: { user_id: string }; Returns: boolean }
       cleanup_old_jobs: { Args: never; Returns: number }
       cleanup_realtime_old_data: { Args: never; Returns: undefined }
       create_banco_horas_audit_log: {
@@ -2958,6 +4496,7 @@ export type Database = {
         }
         Returns: string
       }
+      detectar_inconsistencias: { Args: never; Returns: Json }
       especialistas_ativos: {
         Args: never
         Returns: {
@@ -3000,14 +4539,6 @@ export type Database = {
           total_anexos: number
         }[]
       }
-      force_recalculate_banco_horas: {
-        Args: {
-          p_empresa_id: string
-          p_mes: number
-          p_ano: number
-        }
-        Returns: string
-      }
       gerar_caminho_anexo:
         | {
             Args: { empresa_id: string; nome_arquivo: string }
@@ -3031,6 +4562,25 @@ export type Database = {
         Returns: string
       }
       gerar_hash_pesquisa: { Args: { dados: Json }; Returns: string }
+      get_baseline_horas_vigente: {
+        Args: { p_data?: string; p_empresa_id: string }
+        Returns: number
+      }
+      get_baseline_tickets_vigente: {
+        Args: { p_data?: string; p_empresa_id: string }
+        Returns: number
+      }
+      get_baseline_vigente: {
+        Args: { p_data?: string; p_empresa_id: string }
+        Returns: {
+          baseline_horas: number
+          baseline_tickets: number
+          data_fim: string
+          data_inicio: string
+          motivo: string
+          tipo_banco: string
+        }[]
+      }
       get_especialistas_stats: {
         Args: never
         Returns: {
@@ -3047,13 +4597,41 @@ export type Database = {
           status: string
         }[]
       }
-      get_percentual_repasse_vigente: {
-        Args: {
-          p_empresa_id: string
-          p_data: string
-        }
+      get_organizacao_por_produto: {
+        Args: { p_produto: string }
         Returns: {
+          cargo: string
+          created_at: string
+          departamento: string
+          email: string
+          foto_url: string
+          id: string
+          nome: string
+          produto: string
+          superior_id: string
+          telefone: string
+          updated_at: string
+        }[]
+      }
+      get_percentual_repasse_valor: {
+        Args: { p_data?: string; p_empresa_id: string }
+        Returns: number
+      }
+      get_percentual_repasse_vigente: {
+        Args: { p_data?: string; p_empresa_id: string }
+        Returns: {
+          data_fim: string
+          data_inicio: string
+          motivo: string
           percentual: number
+        }[]
+      }
+      get_superiores_pessoa: {
+        Args: { p_pessoa_id: string; p_produto: string }
+        Returns: {
+          superior_cargo: string
+          superior_id: string
+          superior_nome: string
         }[]
       }
       get_user_group: {
@@ -3082,8 +4660,27 @@ export type Database = {
             Args: { required_level?: string; screen_key_param: string }
             Returns: boolean
           }
+      has_sync_write_permission: { Args: never; Returns: boolean }
       inativar_empresas_vencidas: { Args: never; Returns: number }
+      iniciar_retificacao_book: {
+        Args: { p_book_id: string; p_motivo: string; p_usuario_id: string }
+        Returns: number
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_user_admin: { Args: { user_id_param?: string }; Returns: boolean }
       limpar_anexos_expirados: { Args: never; Returns: number }
+      list_all_users: {
+        Args: never
+        Returns: {
+          group_name: string
+          user_active: boolean
+          user_created_at: string
+          user_email: string
+          user_full_name: string
+          user_id: string
+          user_last_sign_in_at: string
+        }[]
+      }
       marcar_pesquisa_encaminhada: {
         Args: { pesquisa_id: string }
         Returns: undefined
@@ -3096,26 +4693,56 @@ export type Database = {
           recommendation: string
         }[]
       }
-      obter_estatisticas_valores_requerimentos: {
-        Args: { p_mes_cobranca?: number; p_tipo_cobranca?: string }
-        Returns: {
-          quantidade_requerimentos: number
-          tipo_cobranca: string
-          total_horas_funcional: number
-          total_horas_geral: number
-          total_horas_tecnico: number
-          valor_medio_hora_funcional: number
-          valor_medio_hora_tecnico: number
-          valor_total_funcional: number
-          valor_total_geral: number
-          valor_total_tecnico: number
-        }[]
+      notificacoes_abrir: {
+        Args: {
+          p_chave: string
+          p_empresa_id: string
+          p_link: string
+          p_mensagem: string
+          p_referencia?: Json
+          p_screen_key: string
+          p_tipo: string
+          p_titulo: string
+        }
+        Returns: undefined
+      }
+      notificacoes_nome_empresa: {
+        Args: { p_empresa_id: string }
+        Returns: string
+      }
+      notificacoes_resolver: {
+        Args: { p_chave: string; p_motivo: string }
+        Returns: undefined
+      }
+      notificacoes_sync_book: {
+        Args: { p_book_id: string }
+        Returns: undefined
+      }
+      notificacoes_sync_geracao_books: {
+        Args: { p_execucao_id: string }
+        Returns: undefined
+      }
+      notificacoes_sync_retroativo: {
+        Args: { p_ano: number; p_empresa_id: string; p_mes: number }
+        Returns: undefined
+      }
+      notificacoes_sync_saldo_parcial: {
+        Args: { p_execucao_id: string }
+        Returns: undefined
       }
       obter_ultima_sincronizacao_pesquisas: {
         Args: { p_tipo_sincronizacao: string }
         Returns: string
       }
       realtime_maintenance: { Args: never; Returns: string }
+      registrar_envio_book: {
+        Args: {
+          p_book_id: string
+          p_destinatarios: string[]
+          p_usuario_id: string
+        }
+        Returns: string
+      }
       registrar_sincronizacao_pesquisas: {
         Args: {
           p_detalhes?: Json
@@ -3150,22 +4777,6 @@ export type Database = {
           status: string
         }[]
       }
-      test_requerimentos_data_operations: {
-        Args: never
-        Returns: {
-          message: string
-          operation: string
-          status: string
-        }[]
-      }
-      test_sistema_requerimentos_infrastructure: {
-        Args: never
-        Returns: {
-          component: string
-          message: string
-          status: string
-        }[]
-      }
       update_group_permissions:
         | {
             Args: { group_id: string; permissions_data: Json }
@@ -3179,9 +4790,22 @@ export type Database = {
             }
             Returns: boolean
           }
+      update_last_sign_in: { Args: never; Returns: undefined }
+      user_can_access_baseline_historico: { Args: never; Returns: boolean }
+      user_can_access_percentual_repasse_historico: {
+        Args: never
+        Returns: boolean
+      }
+      user_can_manage_banco_horas: { Args: never; Returns: boolean }
+      user_can_manage_permissions: { Args: never; Returns: boolean }
       user_has_banco_horas_permission: { Args: never; Returns: boolean }
+      user_has_baseline_permission: { Args: never; Returns: boolean }
       user_has_books_permission: {
-        Args: { required_level?: string; required_screen: string }
+        Args: { required_level?: string }
+        Returns: boolean
+      }
+      user_has_organograma_permission: {
+        Args: { required_level?: string }
         Returns: boolean
       }
       user_has_permission: {
@@ -3193,7 +4817,7 @@ export type Database = {
         Returns: boolean
       }
       user_has_requerimentos_permission: {
-        Args: { required_level?: string; required_screen: string }
+        Args: { required_level?: string }
         Returns: boolean
       }
       user_has_screen_permission: {
@@ -3215,7 +4839,7 @@ export type Database = {
     Enums: {
       origem_especialista_enum: "sql_server" | "manual"
       origem_pesquisa_enum: "sql_server" | "manual"
-      status_especialista_enum: "ativo" | "inativo"
+      status_especialista_enum: "ativo" | "inativo" | "manual"
       status_pesquisa_enum:
         | "pendente"
         | "enviado"
@@ -3238,12 +4862,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3267,11 +4891,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3292,11 +4916,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3317,11 +4941,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3334,11 +4958,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3352,7 +4976,7 @@ export const Constants = {
     Enums: {
       origem_especialista_enum: ["sql_server", "manual"],
       origem_pesquisa_enum: ["sql_server", "manual"],
-      status_especialista_enum: ["ativo", "inativo"],
+      status_especialista_enum: ["ativo", "inativo", "manual"],
       status_pesquisa_enum: [
         "pendente",
         "enviado",

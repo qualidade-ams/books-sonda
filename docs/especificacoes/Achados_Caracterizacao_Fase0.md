@@ -58,3 +58,15 @@ Os testes de caracterização registram o comportamento **atual** do banco de ho
 ## Fuso das bordas do mês (D-16)
 
 O dado gravado está correto em America/Sao_Paulo. O erro é a borda do mês usada por cada cópia: os Excels usam UTC. A medição está em `Decisoes_Negocio_Bancos_de_Horas.md`.
+
+## Código que usa objetos inexistentes no banco (revelado pelo types.ts regerado)
+
+O `types.ts` gerado do banco real em 14/10/2026 mostra três usos de objetos que não existem. Os três foram confirmados por consulta ao catálogo:
+
+| Objeto | Onde o código usa | Efeito hoje |
+|---|---|---|
+| Função `force_recalculate_banco_horas` | `BotaoForcarRecalculo.tsx` | O botão "Forçar recálculo" sempre falha (já registrado no Inventário, achado 9). |
+| Função `get_users_by_ids` | `requerimentosService.ts`, busca do nome do autor | A chamada falha e só gera `console.error`. Os nomes não encontrados em `profiles` ficam sem nome. |
+| Coluna `banco_horas_calculos.versao` | `bancoHorasVersionamentoService.ts` | Leitura sempre `undefined` (o Inventário registra que a coluna não existe, mas não o uso no service). |
+
+Os outros 23 erros de tipo novos são de tipagem (union literal × string, Json × array) e não indicam diferença de comportamento.
