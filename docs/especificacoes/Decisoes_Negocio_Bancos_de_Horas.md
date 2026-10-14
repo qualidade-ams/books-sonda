@@ -41,3 +41,23 @@ Base: books-qualidade, de out/2025 a set/2026, com os filtros de AMS do motor (a
   - apontamentos: 12 de 29.603 mudam de mês (19,7 h de 71.062 h), em 9 empresas e 4 meses;
   - tickets fechados: 20 de 15.943, em 18 organizações e 5 meses.
 - **Conclusão:** padronizar em America/Sao_Paulo (decisão D-16) corrige o Excel e mantém o resultado do motor. Na comparação Legado x Novo, uma diferença nesses registros é explicada por esta correção.
+
+## Pontos em aberto da Especificação v2.0 (seção 9.3)
+
+| # | Ponto | Decisão | Data |
+|---|---|---|---|
+| 9.3-1 | Horas de produtos sem banco (cenário 1) | Vão para um **Banco padrão interno**, que não aparece para o cliente (fica fora do Book e do Saldo Parcial). Essas horas **são convertidas em valor faturado** pelas taxas cadastradas (detalhes em 9.3-1a e 9.3-1b). | 14/10/2026 |
+| 9.3-3 | Permissão de edição no De-para e em Produtos e Módulos | Telas próprias em `screens`/`screen_permissions`. Na carga inicial, só o grupo administrador recebe Edição; os demais recebem Visualização se precisarem. | 14/10/2026 |
+| 9.3-9 | Lista inicial de Ramos de Atividade | A tabela nasce vazia; a lista será cadastrada pela tela Ramos de Atividade (Fase 3) antes de o campo virar obrigatório. | 14/10/2026 |
+| 9.3-11 | Correspondência módulo do requerimento → produto/módulo | Como proposto: Comex → COMEX; Comply, pw.SATI, pw.SPED e pw.SATI/pw.SPED → FISCAL; Comply e-DOCS → FISCAL › COMPLY e-DOCS; Gallery → GALLERY. Sem correspondência, vai para o Banco padrão. A tabela `modulos_requerimento_produto` pode ser editada. Valores conferidos nos requerimentos reais. | 14/10/2026 |
+| 9.3-1a | Quando as horas do Banco padrão interno viram valor faturado | **No fechamento do período de apuração** do banco interno. As horas acumulam durante o período e são faturadas no fechamento, como excedente. | 14/10/2026 |
+| 9.3-1b | Taxa que converte essas horas | **Escolhida no cadastro do banco**: hora excedente (adicional) ou hora normal (valor base da função). | 14/10/2026 |
+| 9.3-2 | Mês de corte da ANGLO | Primeiro mês aberto depois de a comparação Legado x Novo da ANGLO ser aprovada. Os meses anteriores ficam como foram fechados. | 14/10/2026 |
+| 9.3-4 | Nomes dos bancos no assunto do e-mail de Saldo Parcial | Manter o assunto atual (por empresa); os bancos aparecem só no corpo. | 14/10/2026 |
+| 9.3-5 | Visão consolidada no Controle | Fica fora da 1ª versão (uma aba por banco); avaliar depois do uso. | 14/10/2026 |
+| 9.3-6 | O banco que cede também autoriza? | Não: qualquer banco elegível cede. Um parâmetro "não ceder saldo" pode vir depois, se houver necessidade. | 14/10/2026 |
+| 9.3-7 | Consumo entre bancos × repasse especial por período | Manter a RN-23: o saldo é cedido antes de aplicar a regra de fim de período do banco que cede. | 14/10/2026 |
+| 9.3-8 | Opção DBA "Não contratado" | Incluir, como no protótipo. | 14/10/2026 |
+| 9.3-10 | Clientes já cadastrados sem as informações novas | Exigir na próxima edição da empresa e oferecer o filtro "informações pendentes" (RN-35). | 14/10/2026 |
+| 9.3-12 | Prazo de convivência entre a tela atual e a nova de empresas | A definir com as áreas usuárias antes da Fase 6. | — |
+| 9.3-13 | Decisões D-01 a D-16 | Fechadas (tabela acima). | 14/10/2026 |
