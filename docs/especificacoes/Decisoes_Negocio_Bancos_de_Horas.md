@@ -30,3 +30,14 @@ Decidido por: Willian Faria.
 | Notificações do sino | Pendências passam a aparecer no sino do header, só para quem tem permissão de **Edição** na tela responsável (quem só visualiza não recebe). Eventos: book precisa de retificação (Geração de Books), ajuste retroativo pendente (Ajustes Retroativos), falha no Saldo Parcial (Envio de Saldo Parcial) e falha na geração automática de books (Geração de Books). Cada usuário marca como lida para si; a notificação é resolvida para todos quando a pendência é resolvida: a de retificação, quando o Book retificado é reenviado. As pendências que já existiam entram na carga inicial. Implementado na branch `feat/notificacoes-sino`, já no fluxo atual. | 14/10/2026 |
 | Notificação "Grupo Aranda não mapeado" | Fica para a Fase 3, junto com a tela De-para de Grupos, que é a tela responsável por ela. | 14/10/2026 |
 | Design system | O novo design system (com responsividade) é definido antes da Fase 3 e vale só para as telas novas; as telas atuais não são redesenhadas agora. | 14/10/2026 |
+
+## Medição do D-16 (fuso das bordas do mês) — 14/10/2026
+
+Base: books-qualidade, de out/2025 a set/2026, com os filtros de AMS do motor (atividade não interna, sem PROJETOS APL, IM/RF/PM, grupos AMS). Os códigos de resolução ficaram de fora, então é uma aproximação.
+
+- **O dado gravado está correto.** O sync envia a data sem fuso, mas a sessão do banco usa America/Sao_Paulo, então ela é gravada como o instante certo em Brasília. Os apontamentos se concentram entre 8h e 17h de Brasília.
+- **Quem erra é a borda do mês, não o dado.** O motor, quando roda em Brasília, usa a borda certa. Os Excels (`T00:00:00.000Z`) usam UTC: incluem as últimas 3 h (21h às 24h) do último dia do mês anterior e excluem as do mês corrente.
+- **Impacto em 12 meses (janela UTC contra janela de Brasília):**
+  - apontamentos: 12 de 29.603 mudam de mês (19,7 h de 71.062 h), em 9 empresas e 4 meses;
+  - tickets fechados: 20 de 15.943, em 18 organizações e 5 meses.
+- **Conclusão:** padronizar em America/Sao_Paulo (decisão D-16) corrige o Excel e mantém o resultado do motor. Na comparação Legado x Novo, uma diferença nesses registros é explicada por esta correção.
