@@ -1,11 +1,11 @@
 -- =====================================================================
 -- Teste da migration 20261015000001_fase1_infra_catalogos.
 --
--- Roda dentro de uma transação revertida: nada fica gravado.
---   BEGIN; <este arquivo>; ROLLBACK;
+-- O próprio arquivo abre a transação e termina com ROLLBACK: nada fica gravado.
 -- Cada verificação levanta exceção com a descrição do que falhou. Se chegar ao
 -- fim, devolve 'ok'.
 -- =====================================================================
+BEGIN;
 
 -- Usuários de teste: um do grupo Administradores e um que não está nele
 CREATE TEMP TABLE _usuarios ON COMMIT DROP AS
@@ -214,3 +214,5 @@ $teste$;
 RESET ROLE;
 
 SELECT 'ok' AS resultado;
+
+ROLLBACK;

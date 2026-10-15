@@ -1,11 +1,11 @@
 -- =====================================================================
 -- Teste da migration 20261015000002_fase1_empresas.
 --
--- Roda dentro de uma transação revertida: nada fica gravado.
---   BEGIN; <este arquivo>; ROLLBACK;
+-- O próprio arquivo abre a transação e termina com ROLLBACK: nada fica gravado.
 -- Cada verificação levanta exceção com a descrição do que falhou. Se chegar ao
 -- fim, devolve 'ok'.
 -- =====================================================================
+BEGIN;
 
 CREATE TEMP TABLE _usuarios ON COMMIT DROP AS
 SELECT
@@ -217,3 +217,5 @@ $teste$;
 RESET ROLE;
 
 SELECT 'ok' AS resultado;
+
+ROLLBACK;
