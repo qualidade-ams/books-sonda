@@ -62,7 +62,10 @@ export interface ResultadoSaida {
 }
 
 /** Meses desde o início da vigência: 0 no mês de início, negativo antes dele */
-export function mesesDesdeVigencia(p: ParametrosCalculo, m: MesAno): number {
+export function mesesDesdeVigencia(
+  p: Pick<ParametrosCalculo, 'inicioVigencia'>,
+  m: MesAno
+): number {
   return (m.ano - p.inicioVigencia.ano) * 12 + (m.mes - p.inicioVigencia.mes);
 }
 
