@@ -169,16 +169,32 @@ Os padrões são os da Fase 1:
 
 ## 7. Arquivos e sequência de entrega (TDD)
 
-| #   | Entrega                                                                                               | Teste primeiro                                                                                         |
-| --- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1   | `src/services/bancosHoras/calculo.ts`: cadeia mensal, repasse, fim de período, por período, excedente | Vitest com as regras da seção 5 e os casos do Inventário                                               |
-| 2   | `src/services/bancosHoras/consumoEntreBancos.ts`                                                      | Vitest com o caso 8.3 da spec e as RN-17 a RN-23                                                       |
-| 3   | `src/services/bancosHoras/classificacao.ts`                                                           | Vitest com o caso 8.1 da spec (3 bancos, DEDICADOS e T&M no padrão), ANGLO (filtro) e as RN-03 a RN-06 |
-| 4   | Migration `…_fase2_tabelas.sql`: tabelas da seção 6, RLS, auditoria, carga dos códigos                | `supabase/tests/fase2_01_tabelas.test.sql` (bloco `DO`)                                                |
-| 5   | Migration `…_fase2_consumo.sql`: as funções da seção 3                                                | `fase2_02_consumo.test.sql`: compara com a consulta do motor atual em empresas reais                   |
-| 6   | `src/services/bancosHoras/motorBancosHoras.ts` + repositório (orquestração, seção 2)                  | Vitest com o fake do Supabase em memória                                                               |
-| 7   | Migration `…_fase2_fechamento.sql`: `bancos_horas_registrar_fechamento`                               | `fase2_03_fechamento.test.sql`                                                                         |
-| 8   | Tipos regerados e `src/types/bancosHoras.ts`                                                          | `npm run typecheck`                                                                                    |
+Todos os passos foram entregues em 15/10/2026, na branch . As migrations foram aplicadas pelo Willian no SQL Editor, com os testes verdes.
+
+| #   | Entrega                                                                                          | Teste                                                                                                 | Situação              |
+| --- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | --------------------- |
+| 1   | e : cadeia mensal, repasse, fim de período, por período, excedente, baseline e percentual do mês | Vitest                                                                                                | Feito                 |
+| 2   |                                                                                                  | Vitest com o caso 8.3 da spec e as RN-17 a RN-24                                                      | Feito                 |
+| 3   |                                                                                                  | Vitest com o caso 8.1 da spec, ANGLO (filtro) e as RN-03 a RN-06                                      | Feito                 |
+| 4   | : tabelas da seção 6, RLS, auditoria, carga dos códigos, regra Q3                                |                                                                                                       | Aplicada; teste verde |
+| 5   | : as funções da seção 3                                                                          | : inclui a equivalência com o motor atual nas 140 empresas com banco, jul a set/2026, sem divergência | Aplicada; teste verde |
+| 6   | , (orquestração, seção 2) e                                                                      | Vitest; repositório com o fake do Supabase em memória                                                 | Feito                 |
+| 7   | ( e leitura dos bancos por quem vê o Controle ou a Geração de Books) e                           | e Vitest                                                                                              | Aplicada; teste verde |
+| 8   | Tipos do Supabase regerados                                                                      | (mesmos 333 erros preexistentes) e build                                                              | Feito                 |
+
+Os tipos do motor ficam nos próprios módulos de , que formam uma biblioteca de domínio sem dependência de tela. Eles vão para quando os hooks e as telas da Fase 3 passarem a usá-los.
+
+Ainda não ligado (fases seguintes): ninguém chama nem o motor fora dos testes. A ligação com a geração do Book e com o modo sombra é das Fases 4 e 5.
+
+--- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1 | `src/services/bancosHoras/calculo.ts`: cadeia mensal, repasse, fim de período, por período, excedente | Vitest com as regras da seção 5 e os casos do Inventário |
+| 2 | `src/services/bancosHoras/consumoEntreBancos.ts` | Vitest com o caso 8.3 da spec e as RN-17 a RN-23 |
+| 3 | `src/services/bancosHoras/classificacao.ts` | Vitest com o caso 8.1 da spec (3 bancos, DEDICADOS e T&M no padrão), ANGLO (filtro) e as RN-03 a RN-06 |
+| 4 | Migration `…_fase2_tabelas.sql`: tabelas da seção 6, RLS, auditoria, carga dos códigos | `supabase/tests/fase2_01_tabelas.test.sql` (bloco `DO`) |
+| 5 | Migration `…_fase2_consumo.sql`: as funções da seção 3 | `fase2_02_consumo.test.sql`: compara com a consulta do motor atual em empresas reais |
+| 6 | `src/services/bancosHoras/motorBancosHoras.ts` + repositório (orquestração, seção 2) | Vitest com o fake do Supabase em memória |
+| 7 | Migration `…_fase2_fechamento.sql`: `bancos_horas_registrar_fechamento` | `fase2_03_fechamento.test.sql` |
+| 8 | Tipos regerados e `src/types/bancosHoras.ts` | `npm run typecheck` |
 
 As funções puras (1 a 3) vêm antes do banco: são o coração do motor, e o ciclo de TDD delas roda inteiro no Vitest.
 
