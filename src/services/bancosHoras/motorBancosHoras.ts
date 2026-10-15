@@ -29,6 +29,7 @@ import {
 import {
   criarClassificador,
   type BancoClassificavel,
+  type Classificador,
   type GrupoDePara,
   type Quantidades,
 } from './classificacao';
@@ -79,6 +80,7 @@ export interface LinhaRequerimento {
 }
 
 export interface ReajusteBanco {
+  id?: string;
   bancoId: string;
   mes: number;
   ano: number;
@@ -207,10 +209,29 @@ function entradaDaUnidade(
 // Motor
 // ---------------------------------------------------------------------------
 
+/**
+ * Banco do requerimento: o ajuste manual prevalece, se o banco participa do mês;
+ * senão, a classificação pelo produto/módulo (RN-09).
+ */
+export function bancoDoRequerimento(
+  r: LinhaRequerimento,
+  classificador: Classificador,
+  bancosDoMes: string[]
+): string | null {
+  if (r.bancoAjustadoId && bancosDoMes.includes(r.bancoAjustadoId)) return r.bancoAjustadoId;
+  return classificador.porProdutoModulo(r.produtoId, r.moduloId, null);
+}
+
+export interface OpcoesCalculo {
+  /** Retificação: recalcula o próprio mês mesmo fechado (os anteriores continuam congelados) */
+  recalcularMesFechado?: boolean;
+}
+
 export async function calcularEmpresaMes(
   repo: RepositorioBancosHoras,
   empresaId: string,
-  mes: MesAno
+  mes: MesAno,
+  opcoes: OpcoesCalculo = {}
 ): Promise<ResultadoEmpresaMes> {
   const todos = await repo.bancos(empresaId);
   const vigentes = todos
@@ -238,7 +259,9 @@ export async function calcularEmpresaMes(
   const partida = new Map<string, { inicio: number; repasse: Record<Unidade, number> }>();
   const congelados: ResultadoBancoMes[] = [];
   for (const b of vigentes) {
-    const doMes = fechadoEm.get(`${b.bancoId}|${chave(mes)}`);
+    const doMes = opcoes.recalcularMesFechado
+      ? undefined
+      : fechadoEm.get(`${b.bancoId}|${chave(mes)}`);
     if (doMes) {
       congelados.push(doMes);
       continue;
@@ -315,10 +338,11 @@ export async function calcularEmpresaMes(
     }
 
     for (const r of await repo.requerimentos(empresaId, m)) {
-      const ajustado = r.bancoAjustadoId && precisam.some((b) => b.bancoId === r.bancoAjustadoId);
-      const bancoId = ajustado
-        ? r.bancoAjustadoId
-        : classificador.porProdutoModulo(r.produtoId, r.moduloId, null);
+      const bancoId = bancoDoRequerimento(
+        r,
+        classificador,
+        precisam.map((b) => b.bancoId)
+      );
       if (bancoId === null) {
         semBancoMes.minutos += Math.round(r.horas * 60);
         semBancoMes.tickets += r.tickets;

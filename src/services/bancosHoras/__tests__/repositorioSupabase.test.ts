@@ -99,6 +99,7 @@ function cenario() {
       ],
       bancos_horas_reajustes: [
         {
+          id: 'rj1',
           banco_id: 'b1',
           mes: 2,
           ano: 2026,
@@ -212,6 +213,20 @@ function cenario() {
           itens: 1,
         },
       ],
+      bancos_horas_consumo_itens: () => [
+        {
+          fonte: 'apontamento',
+          item_id: 'a1',
+          grupo: 'AMS APL - CAMBIO',
+          item_configuracao: 'IC',
+          minutos: 90,
+          tickets: 0,
+        },
+      ],
+      bancos_horas_registrar_fechamento: () => ({
+        acao: 'criado',
+        fechamentos: [{ banco_id: 'b1', fechamento_id: 'f9', versao: 1 }],
+      }),
       bancos_horas_requerimentos: () => [
         {
           requerimento_id: 'r1',
@@ -333,7 +348,7 @@ describe('criarRepositorioSupabase', () => {
       MES
     );
     expect(r).toEqual([
-      { bancoId: 'b1', mes: 2, ano: 2026, tipo: 'entrada', minutos: 60, tickets: 0 },
+      { id: 'rj1', bancoId: 'b1', mes: 2, ano: 2026, tipo: 'entrada', minutos: 60, tickets: 0 },
     ]);
   });
 
@@ -389,6 +404,46 @@ describe('criarRepositorioSupabase', () => {
         funcoesRemotas: [{ funcao: 'Funcional', valorBase: 100, valorAdicional: 150 }],
       },
     ]);
+  });
+
+  it('itens de consumo pela rpc, com o id de cada apontamento ou ticket', async () => {
+    const cliente = cenario();
+    const itens = await criarRepositorioSupabase(cliente).consumoItens('e1', MES, 1, 0);
+    expect(cliente.chamadasRpc).toContainEqual({
+      nome: 'bancos_horas_consumo_itens',
+      args: { p_empresa_id: 'e1', p_ano: 2026, p_mes: 3, p_dia_inicio: 1, p_dia_fim: 0 },
+    });
+    expect(itens).toEqual([
+      {
+        itemId: 'a1',
+        fonte: 'apontamento',
+        grupo: 'AMS APL - CAMBIO',
+        itemConfiguracao: 'IC',
+        minutos: 90,
+        tickets: 0,
+      },
+    ]);
+  });
+
+  it('grava o fechamento pela rpc, numa chamada só', async () => {
+    const cliente = cenario();
+    const payload = {
+      empresa_id: 'e1',
+      ano: 2026,
+      mes: 3,
+      motivo: 'geracao_book' as const,
+      bancos: [],
+      transferencias: [],
+    };
+    const r = await criarRepositorioSupabase(cliente).gravarFechamento(payload);
+    expect(cliente.chamadasRpc).toContainEqual({
+      nome: 'bancos_horas_registrar_fechamento',
+      args: { p_fechamento: payload },
+    });
+    expect(r).toEqual({
+      acao: 'criado',
+      fechamentos: [{ banco_id: 'b1', fechamento_id: 'f9', versao: 1 }],
+    });
   });
 
   it('erro do Supabase vira exceção com a mensagem', async () => {

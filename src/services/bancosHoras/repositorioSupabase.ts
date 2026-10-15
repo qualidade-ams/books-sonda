@@ -12,11 +12,11 @@ import type {
   LinhaConsumo,
   LinhaRequerimento,
   ReajusteBanco,
-  RepositorioBancosHoras,
   ResultadoBancoMes,
   ResultadoUnidade,
 } from './motorBancosHoras';
 import type { TaxaCliente } from './taxas';
+import type { ItemConsumo, RepositorioFechamento, RetornoFechamento } from './fechamento';
 
 /** O que o repositório usa do cliente Supabase */
 export interface ClienteSupabase {
@@ -69,7 +69,7 @@ function unidadeDoFechamento(f: Linha, sufixo: 'minutos' | 'tickets'): Resultado
   };
 }
 
-export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioBancosHoras {
+export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioFechamento {
   return {
     async bancos(empresaId) {
       const bancos = await consultar(
@@ -171,6 +171,35 @@ export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioB
       }));
     },
 
+    async consumoItens(empresaId, m, diaInicio, diaFim) {
+      const linhas = await consultar(
+        cliente.rpc('bancos_horas_consumo_itens', {
+          p_empresa_id: empresaId,
+          p_ano: m.ano,
+          p_mes: m.mes,
+          p_dia_inicio: diaInicio,
+          p_dia_fim: diaFim,
+        }),
+        'bancos_horas_consumo_itens'
+      );
+      return linhas.map((l): ItemConsumo => ({
+        itemId: l.item_id,
+        fonte: l.fonte,
+        grupo: l.grupo,
+        itemConfiguracao: l.item_configuracao,
+        minutos: numero(l.minutos) ?? 0,
+        tickets: numero(l.tickets) ?? 0,
+      }));
+    },
+
+    async gravarFechamento(payload) {
+      const { data, error } = await cliente.rpc('bancos_horas_registrar_fechamento', {
+        p_fechamento: payload,
+      });
+      if (error) throw new Error(`Falha ao gravar o fechamento: ${error.message}`);
+      return data as RetornoFechamento;
+    },
+
     async requerimentos(empresaId, m) {
       const linhas = await consultar(
         cliente.rpc('bancos_horas_requerimentos', {
@@ -205,6 +234,7 @@ export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioB
       return linhas
         .filter((r) => indice(r) >= indice(de) && indice(r) <= indice(ate))
         .map((r): ReajusteBanco => ({
+          id: r.id,
           bancoId: r.banco_id,
           mes: r.mes,
           ano: r.ano,
