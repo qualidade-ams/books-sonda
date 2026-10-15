@@ -1,0 +1,198 @@
+/*
+ * Design System v2 — tokens.
+ * Valores e motivo de cada cor: docs/especificacoes/design-system-v2/Tokens.md
+ *
+ * Os tokens só valem dentro de [data-ds="v2"]. As telas atuais, fora desse
+ * escopo, continuam com as variáveis de :root e as cores sonda-* de sempre.
+ */
+
+[data-ds='v2'] {
+  /* Superfícies */
+  --ds-bg-page: #f5f5f5;
+  --ds-bg-surface: #ffffff;
+  --ds-bg-raised: #ffffff;
+  --ds-bg-subtle: #f5f5f5;
+  --ds-bg-selected: #e0f8fb;
+  --ds-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Texto */
+  --ds-fg: #000000;
+  --ds-fg-secondary: #3d3d3d;
+  --ds-fg-muted: #6b6b6b;
+  --ds-fg-disabled: #b1b1b1;
+  --ds-fg-accent: #006f7d;
+  --ds-fg-on-accent: #000000;
+
+  /* Bordas e foco */
+  --ds-border: #e4e4e4;
+  --ds-border-strong: #8a8a8a;
+  --ds-focus: #006f7d;
+
+  /* Destaque */
+  --ds-accent: #00d4e8;
+  --ds-accent-hover: #00bfd1;
+  --ds-accent-pressed: #00a9b9;
+  --ds-accent-subtle: #e0f8fb;
+
+  /* Status */
+  --ds-success-fg: #1e7a3d;
+  --ds-success-bg: #e8f5ec;
+  --ds-success-border: #b7dec3;
+  --ds-warning-fg: #a15c00;
+  --ds-warning-bg: #fff3e0;
+  --ds-warning-border: #f5d49e;
+  --ds-danger-fg: #b42328;
+  --ds-danger-bg: #fdecec;
+  --ds-danger-border: #f3b9bb;
+  --ds-info-fg: #006f7d;
+  --ds-info-bg: #e0f8fb;
+  --ds-info-border: #9fe6ee;
+  --ds-danger-solid: #b42328;
+  --ds-fg-on-danger: #ffffff;
+
+  /* Shell (sidebar e header) */
+  --ds-shell-bg: #ffffff;
+  --ds-shell-fg: #000000;
+  --ds-shell-fg-muted: #6b6b6b;
+  --ds-shell-hover: #f5f5f5;
+  --ds-shell-active-bg: #e0f8fb;
+  --ds-shell-active-fg: #006f7d;
+  --ds-shell-border: #e4e4e4;
+
+  /* Sombra (só no claro) */
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --ds-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.14);
+}
+
+.dark [data-ds='v2'],
+.dark[data-ds='v2'] {
+  --ds-bg-page: #121212;
+  --ds-bg-surface: #1c1c1c;
+  --ds-bg-raised: #262626;
+  --ds-bg-subtle: #262626;
+  --ds-bg-selected: #0d2b2e;
+  --ds-overlay: rgba(0, 0, 0, 0.7);
+
+  --ds-fg: #ffffff;
+  --ds-fg-secondary: #b1b1b1;
+  --ds-fg-muted: #8a8a8a;
+  --ds-fg-disabled: #5c5c5c;
+  --ds-fg-accent: #00d4e8;
+  --ds-fg-on-accent: #000000;
+
+  --ds-border: #3d3d3d;
+  --ds-border-strong: #737373;
+  --ds-focus: #00d4e8;
+
+  --ds-accent: #00d4e8;
+  --ds-accent-hover: #33dded;
+  --ds-accent-pressed: #00bfd1;
+  --ds-accent-subtle: #0d2b2e;
+
+  --ds-success-fg: #4cc77a;
+  --ds-success-bg: #0f2a1a;
+  --ds-success-border: #1f5a35;
+  --ds-warning-fg: #f0a43a;
+  --ds-warning-bg: #2e2210;
+  --ds-warning-border: #6b4a17;
+  --ds-danger-fg: #ff6b6b;
+  --ds-danger-bg: #331616;
+  --ds-danger-border: #7a2a2a;
+  --ds-info-fg: #00d4e8;
+  --ds-info-bg: #0d2b2e;
+  --ds-info-border: #11606a;
+  --ds-danger-solid: #ff6b6b;
+  --ds-fg-on-danger: #000000;
+
+  --ds-shell-bg: #1c1c1c;
+  --ds-shell-fg: #ffffff;
+  --ds-shell-fg-muted: #b1b1b1;
+  --ds-shell-hover: #262626;
+  --ds-shell-active-bg: #0d2b2e;
+  --ds-shell-active-fg: #00d4e8;
+  --ds-shell-border: #262626;
+
+  --ds-shadow-sm: none;
+  --ds-shadow-lg: none;
+}
+
+/* Inter com "a" de um andar e dígitos abertos: leitura mais moderna */
+[data-ds='v2'] {
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+/* ------------------------------------------------------------------
+ * Movimento
+ * Curta, com propósito, e sempre desligado com prefers-reduced-motion.
+ * ------------------------------------------------------------------ */
+
+@keyframes ds-surgir {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ds-crescer {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes ds-desenhar {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ds-aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ds-flutuar {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-28px, 18px) scale(1.08);
+  }
+}
+
+.ds-surgir {
+  animation: ds-surgir 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ds-crescer {
+  animation: ds-crescer 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: left center;
+}
+.ds-desenhar {
+  stroke-dasharray: 100;
+  animation: ds-desenhar 1.1s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.ds-aparecer {
+  animation: ds-aparecer 0.8s ease-out both;
+}
+.ds-flutuar {
+  animation: ds-flutuar 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ds='v2'] *,
+  [data-ds='v2'] *::before,
+  [data-ds='v2'] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

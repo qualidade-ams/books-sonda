@@ -55,6 +55,25 @@ const ptBR = {
     adminPanel: 'Painel Administrativo',
     manageApp: 'Gerencie sua aplicação',
     user: 'Usuário',
+    mainMenu: 'Menu principal',
+    openMenu: 'Abrir menu',
+    collapseMenu: 'Recolher menu',
+    expandMenu: 'Expandir menu',
+  },
+
+  // Design System v2 (src/components/ds)
+  ds: {
+    loading: 'Carregando',
+    filters: 'Filtros',
+    applyFilters: 'Ver resultados',
+    clearFilters: 'Limpar filtros',
+    moreActions: 'Mais ações',
+    previous: 'Anterior',
+    next: 'Próximo',
+    positionOf: '{{atual}} de {{total}}',
+    previousPeriod: 'Período anterior',
+    nextPeriod: 'Próximo período',
+    cancel: 'Cancelar',
   },
 
   // Autenticação
@@ -167,7 +186,8 @@ const ptBR = {
       title: 'Requerimentos',
       requirements: 'Requerimentos',
       totalHours: 'Total Horas',
-      totalHoursTooltip: 'Inclui todas as horas: Faturado, Hora Extra, Sobreaviso, Bolsão Enel e Banco de Horas',
+      totalHoursTooltip:
+        'Inclui todas as horas: Faturado, Hora Extra, Sobreaviso, Bolsão Enel e Banco de Horas',
       billing: 'Faturamento',
       tickets: 'Tickets',
       // Monthly Evolution Chart
@@ -350,7 +370,8 @@ const ptBR = {
         registerNewContact: 'Registrar Novo Contato',
         editContact: 'Editar Contato',
         confirmDeletion: 'Confirmar Exclusão',
-        confirmDeletionDesc: 'Tem certeza que deseja remover este contato? Esta ação não pode ser desfeita.',
+        confirmDeletionDesc:
+          'Tem certeza que deseja remover este contato? Esta ação não pode ser desfeita.',
         cancel: 'Cancelar',
         removing: 'Removendo...',
         remove: 'Remover',
@@ -581,7 +602,8 @@ const ptBR = {
     rectifyBook: 'Retificar Book',
     rectifyDesc: 'Você está solicitando a retificação do book de',
     rectifyCurrentVersion: 'versão atual',
-    rectifyExplanation: 'Isso irá desbloquear o book para edição e criar uma nova versão quando for reenviado. A versão anterior permanecerá armazenada como histórico imutável.',
+    rectifyExplanation:
+      'Isso irá desbloquear o book para edição e criar uma nova versão quando for reenviado. A versão anterior permanecerá armazenada como histórico imutável.',
     rectifyReasonLabel: 'Motivo da Retificação',
     rectifyReasonPlaceholder: 'Descreva o motivo da retificação (mínimo 10 caracteres)...',
     rectifyMinChars: 'Mínimo de 10 caracteres ({{count}}/10)',
@@ -589,9 +611,11 @@ const ptBR = {
     confirmRectification: 'Confirmar Retificação',
     // Modal Histórico de Versões (Books)
     booksVersionHistory: 'Histórico de Versões',
-    booksVersionHistoryDesc: 'Versões enviadas do book de <strong>{{company}}</strong>. Cada versão é um snapshot imutável do que foi enviado ao cliente.',
+    booksVersionHistoryDesc:
+      'Versões enviadas do book de <strong>{{company}}</strong>. Cada versão é um snapshot imutável do que foi enviado ao cliente.',
     noVersionRegistered: 'Nenhuma versão registrada',
-    noVersionRegisteredDesc: 'As versões são criadas automaticamente quando o book é enviado por email.',
+    noVersionRegisteredDesc:
+      'As versões são criadas automaticamente quando o book é enviado por email.',
     immutableSnapshot: 'Snapshot Imutável',
     sentOnDate: 'Enviado em {{date}}',
     rectification: 'Retificação',
@@ -754,7 +778,8 @@ const ptBR = {
       noRequirementsMonth: 'Nenhum requerimento encontrado neste mês',
       // Requerimentos em Desenvolvimento
       requirementsInDevelopmentTitle: 'Requerimentos em Desenvolvimento',
-      requirementsInDevelopmentSubtitle: 'Requerimentos em andamento que ainda não foram considerados no banco de horas/faturamento',
+      requirementsInDevelopmentSubtitle:
+        'Requerimentos em andamento que ainda não foram considerados no banco de horas/faturamento',
       requirementsInDevelopmentTotal: 'Total de Requerimentos',
       requirementsInDevelopmentHours: 'Total de Horas',
       requirementsInDevelopmentStatus: 'Em Andamento',
@@ -812,16 +837,33 @@ const ptBR = {
       },
       // Abbreviated month mapping (from backend Portuguese to current language)
       monthsAbbrev: {
-        DEZ: 'DEZ', JAN: 'JAN', FEV: 'FEV', MAR: 'MAR',
-        ABR: 'ABR', MAI: 'MAI', JUN: 'JUN', JUL: 'JUL',
-        AGO: 'AGO', SET: 'SET', OUT: 'OUT', NOV: 'NOV',
+        DEZ: 'DEZ',
+        JAN: 'JAN',
+        FEV: 'FEV',
+        MAR: 'MAR',
+        ABR: 'ABR',
+        MAI: 'MAI',
+        JUN: 'JUN',
+        JUL: 'JUL',
+        AGO: 'AGO',
+        SET: 'SET',
+        OUT: 'OUT',
+        NOV: 'NOV',
       },
       // Full month names for periodo (from backend Portuguese)
       monthsFull: {
-        Janeiro: 'Janeiro', Fevereiro: 'Fevereiro', Março: 'Março',
-        Abril: 'Abril', Maio: 'Maio', Junho: 'Junho',
-        Julho: 'Julho', Agosto: 'Agosto', Setembro: 'Setembro',
-        Outubro: 'Outubro', Novembro: 'Novembro', Dezembro: 'Dezembro',
+        Janeiro: 'Janeiro',
+        Fevereiro: 'Fevereiro',
+        Março: 'Março',
+        Abril: 'Abril',
+        Maio: 'Maio',
+        Junho: 'Junho',
+        Julho: 'Julho',
+        Agosto: 'Agosto',
+        Setembro: 'Setembro',
+        Outubro: 'Outubro',
+        Novembro: 'Novembro',
+        Dezembro: 'Dezembro',
       },
     },
   },
@@ -874,7 +916,8 @@ const ptBR = {
     // Delete dialog
     deletePerson: 'Excluir pessoa',
     deleteConfirm: 'Tem certeza que deseja excluir',
-    deleteWarning: 'Esta ação não pode ser desfeita. Pessoas com subordinados não podem ser excluídas.',
+    deleteWarning:
+      'Esta ação não pode ser desfeita. Pessoas com subordinados não podem ser excluídas.',
     cancel: 'Cancelar',
     deleting: 'Excluindo...',
     // Toast messages
@@ -936,7 +979,8 @@ const ptBR = {
       noManager: 'Nenhum Gerente cadastrado em {{product}} ainda.',
       noCoordinator: 'Nenhum Coordenador cadastrado em {{product}} ainda.',
       autoLinking: 'Vinculação Automática',
-      autoLinkingDesc: 'Central Escalação será automaticamente vinculado a TODOS os Coordenadores dos produtos selecionados.',
+      autoLinkingDesc:
+        'Central Escalação será automaticamente vinculado a TODOS os Coordenadores dos produtos selecionados.',
       noCoordinatorRegistered: 'Nenhum Coordenador cadastrado ainda',
       cancel: 'Cancelar',
       close: 'Fechar',
@@ -977,7 +1021,8 @@ const ptBR = {
     loadingData: 'Carregando dados...',
     loadingDataDescription: 'Aguarde enquanto buscamos os cálculos do banco de horas',
     noCalculationAvailable: 'Nenhum cálculo disponível',
-    noCalculationDescription: 'Não há cálculos para este período. Clique em "Recalcular" para gerar.',
+    noCalculationDescription:
+      'Não há cálculos para este período. Clique em "Recalcular" para gerar.',
     calculating: 'Calculando...',
     calculateNow: 'Calcular Agora',
     // Tabs
@@ -999,26 +1044,33 @@ const ptBR = {
     recalculationSuccess: 'O banco de horas foi recalculado com sucesso.',
     recalculationError: 'Erro ao recalcular',
     periodNotAvailable: 'Período não disponível',
-    periodNotAvailableDesc: 'Não é possível navegar para períodos anteriores ao início da vigência ({{date}}).',
+    periodNotAvailableDesc:
+      'Não é possível navegar para períodos anteriores ao início da vigência ({{date}}).',
     // Filtros
     goToPeriod: 'Ir para período',
     // Seções
     periodRequirements: 'Requerimentos do Período',
-    periodRequirementsTooltip: 'Os valores abaixo estão sendo considerados na linha <strong>Requerimentos</strong> da tabela acima, em seus respectivos meses.',
+    periodRequirementsTooltip:
+      'Os valores abaixo estão sendo considerados na linha <strong>Requerimentos</strong> da tabela acima, em seus respectivos meses.',
     requirementsInDevelopment: 'Requerimentos em Desenvolvimento',
-    requirementsInDevelopmentTooltip: '<strong>⚠️ Atenção:</strong> Estes requerimentos estão com status "Lançado" e ainda não foram enviados para solicitação de faturamento. As horas/tickets abaixo ainda serão descontadas do banco quando os requerimentos forem enviados e aprovados.',
+    requirementsInDevelopmentTooltip:
+      '<strong>⚠️ Atenção:</strong> Estes requerimentos estão com status "Lançado" e ainda não foram enviados para solicitação de faturamento. As horas/tickets abaixo ainda serão descontadas do banco quando os requerimentos forem enviados e aprovados.',
     periodRequirementsNotCompleted: 'Requerimentos do Período NÃO CONCLUÍDOS',
     viewDetails: 'Visualizar detalhes',
     parityRuleTitle: 'Nota – Regra de Paridade:',
-    parityRuleDesc1: 'Para fins de apuração de esforço, 1 ticket complexo equivale a 2 tickets simples.',
-    parityRuleDesc2: 'A proposta considera 5 tickets simples e 2 complexos, totalizando 9 tickets equivalentes no quadro de horas.',
+    parityRuleDesc1:
+      'Para fins de apuração de esforço, 1 ticket complexo equivale a 2 tickets simples.',
+    parityRuleDesc2:
+      'A proposta considera 5 tickets simples e 2 complexos, totalizando 9 tickets equivalentes no quadro de horas.',
     ticketBalanceTitle: 'Saldo de tickets:',
-    ticketBalanceDesc: 'Poderá ser transportado para o mês seguinte até 50% do saldo, desde que haja no mínimo 2 tickets válidos dentro do trimestre. Após o término do terceiro mês, o saldo remanescente será zerado.',
+    ticketBalanceDesc:
+      'Poderá ser transportado para o mês seguinte até 50% do saldo, desde que haja no mínimo 2 tickets válidos dentro do trimestre. Após o término do terceiro mês, o saldo remanescente será zerado.',
     // Mensagens de cópia de excedentes
     surplusHoursLabel: 'Horas Excedentes',
     surplusHourRateLabel: 'Valor Hora Excedentes',
     surplusTotalLabel: 'Valor total dos Excedentes',
-    surplusAwaitingApproval: 'Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.',
+    surplusAwaitingApproval:
+      'Ficamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.',
     copiedTitle: 'Copiado!',
     copiedSurplusMessage: 'Mensagem de excedentes copiada para a área de transferência.',
     copyErrorTitle: 'Erro',
@@ -1028,7 +1080,8 @@ const ptBR = {
     periodLabel: '{{number}}º Período',
     // Alertas e paginação
     zeroConsumptionDetected: 'Consumo zerado detectado.',
-    zeroConsumptionDescription: 'Se você sabe que existem apontamentos para este período, clique no botão "Forçar Recálculo" acima para atualizar os valores.',
+    zeroConsumptionDescription:
+      'Se você sabe que existem apontamentos para este período, clique no botão "Forçar Recálculo" acima para atualizar os valores.',
     firstSemester: '1º Semestre',
     secondSemester: '2º Semestre',
     pageLabel: 'Parte {{page}} ({{months}} meses)',
@@ -1056,7 +1109,8 @@ const ptBR = {
     edited: '(editado)',
     viewVersionHistory: 'Ver histórico de versões',
     confirmDeletion: 'Confirmar Exclusão',
-    confirmDeletionDesc: 'Tem certeza que deseja excluir esta observação? Esta ação não pode ser desfeita.',
+    confirmDeletionDesc:
+      'Tem certeza que deseja excluir esta observação? Esta ação não pode ser desfeita.',
     // Modal Enviar Email
     partialBalance: 'Saldo Parcial',
     partialBalanceDesc: 'Previsão parcial do período em andamento',
@@ -1067,13 +1121,15 @@ const ptBR = {
     partial: 'Parcial',
     closing: 'Fechamento',
     recipients: 'Destinatários',
-    recipientsPlaceholder: 'Digite emails separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com',
+    recipientsPlaceholder:
+      'Digite emails separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com',
     ccOptional: 'Cópia (CC) - Opcional',
     ccPlaceholder: 'Emails em cópia separados por ponto e vírgula (;)',
     subject: 'Assunto',
     subjectPlaceholder: 'Assunto do email',
     emailText: 'Texto do Email',
-    emailTextDesc: 'Edite o texto introdutório do email. As tabelas serão adicionadas automaticamente abaixo.',
+    emailTextDesc:
+      'Edite o texto introdutório do email. As tabelas serão adicionadas automaticamente abaixo.',
     attachments: 'Anexos',
     addFiles: 'Adicionar Arquivos',
     sizeLimit: 'Limite: 25MB total',
@@ -1086,7 +1142,8 @@ const ptBR = {
     generatingImage: 'Gerando imagem das tabelas...',
     wait: 'Aguarde...',
     confirmSend: 'Confirmar Envio',
-    confirmSendDesc: 'Deseja enviar o email de <strong>{{type}}</strong> para <strong>{{count}} destinatário(s)</strong>?',
+    confirmSendDesc:
+      'Deseja enviar o email de <strong>{{type}}</strong> para <strong>{{count}} destinatário(s)</strong>?',
     confirmSendDescPre: 'Deseja enviar o email de',
     confirmSendDescMid: 'para',
     recipientsCount: 'destinatário(s)',
@@ -1108,8 +1165,10 @@ const ptBR = {
     surplusRate: 'Taxa/hora Excedente',
     totalAmount: 'Valor Total',
     segmentedExceedanceNote: 'Nota – Excedente na Visão Segmentada:',
-    segmentedExceedanceDesc1: 'Os excedentes identificados na visão segmentada não geram cobrança individual por segmento.',
-    segmentedExceedanceDesc2: 'A cobrança de excedentes é sempre calculada e faturada com base na visão consolidada do contrato.',
+    segmentedExceedanceDesc1:
+      'Os excedentes identificados na visão segmentada não geram cobrança individual por segmento.',
+    segmentedExceedanceDesc2:
+      'A cobrança de excedentes é sempre calculada e faturada com base na visão consolidada do contrato.',
     // Histórico de Versões
     versionHistory: 'Histórico de Versões',
     versionHistoryDesc: 'Visualize todas as mudanças realizadas no período selecionado',
@@ -1128,7 +1187,8 @@ const ptBR = {
     system: 'Sistema',
     noReasonRegistered: 'Sem motivo registrado',
     showingVersions: 'Mostrando {{count}} versão(ões)',
-    confirmDeleteVersionDesc: 'Tem certeza que deseja excluir esta versão do histórico? Esta ação não pode ser desfeita.',
+    confirmDeleteVersionDesc:
+      'Tem certeza que deseja excluir esta versão do histórico? Esta ação não pode ser desfeita.',
     adjustmentWillBeDeactivated: 'O reajuste associado a esta versão também será desativado.',
     deleting: 'Excluindo...',
     versionDeleted: 'Versão excluída',
@@ -1210,7 +1270,8 @@ const ptBR = {
     deleteConfirm: 'Tem certeza que deseja excluir este requerimento?',
     deleteConfirmDesc: 'Esta ação não pode ser desfeita.',
     confirmSendTitle: 'Confirmar Envio para Faturamento',
-    confirmSendDesc: 'Tem certeza que deseja enviar o requerimento "{{chamado}}" para faturamento? Esta ação não pode ser desfeita.',
+    confirmSendDesc:
+      'Tem certeza que deseja enviar o requerimento "{{chamado}}" para faturamento? Esta ação não pode ser desfeita.',
     confirmSendBtn: 'Confirmar Envio',
     billingDate: 'Data Faturamento',
     description: 'Descrição',
@@ -1335,7 +1396,8 @@ const ptBR = {
     technicalHourlyRate: 'Valor/Hora Técnico',
     estimatedTotalValue: 'Valor Total Estimado',
     ticketControl: 'Controle de Tickets',
-    ticketControlTooltip: 'Campo automático para empresas do tipo \'ticket\' quando selecionado \'Banco de Horas\'',
+    ticketControlTooltip:
+      "Campo automático para empresas do tipo 'ticket' quando selecionado 'Banco de Horas'",
     ticketQuantity: 'Quantidade de Tickets',
     pendingRequiredFields: 'Campos obrigatórios pendentes:',
     bankHoursNotAvailable: 'A opção "Banco de Horas" não está disponível para esta empresa',
@@ -1419,7 +1481,8 @@ const ptBR = {
     // Empty States
     noRequirementFound: 'Nenhum requerimento encontrado',
     adjustFilters: 'Tente ajustar os filtros para encontrar requerimentos.',
-    noRequirementsForPeriod: 'Não há requerimentos enviados para faturamento no período de {{month}} {{year}}.',
+    noRequirementsForPeriod:
+      'Não há requerimentos enviados para faturamento no período de {{month}} {{year}}.',
     noBilledRequirements: 'Nenhum requerimento faturado',
     noBilledForPeriod: 'Não há requerimentos faturados no período de',
     noMatchingFilters: 'Não há requerimentos que correspondam aos filtros selecionados.',
@@ -1462,13 +1525,16 @@ const ptBR = {
     // Email Modal
     emailModalTitle: 'Disparar Faturamento por Email',
     recipients: 'Destinatários',
-    recipientsPlaceholder: 'Cole ou digite emails separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com',
+    recipientsPlaceholder:
+      'Cole ou digite emails separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com',
     emailsAdded: '{{count}} email(s) adicionado(s)',
     ccRecipients: 'Destinatários em Cópia (CC) - Opcional',
-    ccPlaceholder: 'Cole ou digite emails em cópia separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com',
+    ccPlaceholder:
+      'Cole ou digite emails em cópia separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com',
     ccEmailsAdded: '{{count}} email(s) em cópia adicionado(s)',
     bccRecipients: 'Destinatários em Cópia Oculta (BCC) - Opcional',
-    bccPlaceholder: 'Cole ou digite emails em cópia oculta separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com',
+    bccPlaceholder:
+      'Cole ou digite emails em cópia oculta separados por ponto e vírgula (;)\nEx: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com',
     bccEmailsAdded: '{{count}} email(s) em cópia oculta adicionado(s)',
     subject: 'Assunto',
     subjectPlaceholder: 'Assunto do email',
@@ -1492,7 +1558,8 @@ const ptBR = {
     ticketLabel: 'Chamado:',
     clientLabel: 'Cliente:',
     totalHoursLabel: 'Horas Total:',
-    rejectionWarning: '⚠️ O requerimento voltará para a tela "Lançar Requerimentos" e precisará ser enviado novamente para faturamento.',
+    rejectionWarning:
+      '⚠️ O requerimento voltará para a tela "Lançar Requerimentos" e precisará ser enviado novamente para faturamento.',
     confirmRejection: 'Confirmar Rejeição',
     rejecting: 'Rejeitando...',
     // Toast Messages
@@ -1530,11 +1597,11 @@ const ptBR = {
     typeName: {
       'Banco de Horas': 'Banco de Horas',
       'Cobro Interno': 'Cobro Interno',
-      'Contrato': 'Contrato',
-      'Faturado': 'Faturado',
+      Contrato: 'Contrato',
+      Faturado: 'Faturado',
       'Hora Extra': 'Hora Extra',
-      'Sobreaviso': 'Sobreaviso',
-      'Reprovado': 'Reprovado',
+      Sobreaviso: 'Sobreaviso',
+      Reprovado: 'Reprovado',
       'Bolsão Enel': 'Bolsão Enel',
     },
   },
@@ -1594,7 +1661,8 @@ const ptBR = {
     resendCompaniesWithFailure: 'Reenviar {{count}} empresa(s) com falha',
     // Modais
     confirmResendTitle: 'Confirmar Reenvio de Falhas',
-    confirmResendDescription: 'Deseja reenviar os books para as {{count}} empresas que falharam em {{month}} de {{year}}?',
+    confirmResendDescription:
+      'Deseja reenviar os books para as {{count}} empresas que falharam em {{month}} de {{year}}?',
     confirmResend: 'Confirmar Reenvio',
     scheduleDispatch: 'Agendar Disparo',
     scheduleDatetime: 'Data e Hora do Agendamento',
@@ -1618,14 +1686,16 @@ const ptBR = {
     preview: {
       buttonTooltip: 'Pré-visualizar e-mail',
       title: 'Pré-visualização do E-mail',
-      description: '{{company}} — Referência {{month}}/{{year}}. Este é o e-mail exatamente como será enviado.',
+      description:
+        '{{company}} — Referência {{month}}/{{year}}. Este é o e-mail exatamente como será enviado.',
       generating: 'Gerando pré-visualização...',
       errorTitle: 'Não foi possível gerar a pré-visualização',
       retry: 'Tentar novamente',
       subject: 'Assunto:',
       to: 'Para:',
       cc: 'CC:',
-      recipientsHint: 'Os destinatários acima são apenas informativos. O teste abaixo é enviado somente para o e-mail que você informar.',
+      recipientsHint:
+        'Os destinatários acima são apenas informativos. O teste abaixo é enviado somente para o e-mail que você informar.',
       bodyTitle: 'Corpo do e-mail',
       sendTestTo: 'Enviar teste para',
       testEmailPlaceholder: 'digite-um-email@exemplo.com',
@@ -1657,7 +1727,8 @@ const ptBR = {
     companyWithAttachments: 'Empresa com anexos',
     // Tooltips
     waitingUpload: 'Aguarde o upload dos anexos',
-    noCompanyNeedsDispatchOrMissingAttachments: 'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios',
+    noCompanyNeedsDispatchOrMissingAttachments:
+      'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios',
     dispatchCustomBooksFor: 'Disparar books personalizados de {{count}} empresa(s) selecionada(s)',
     // Toasts
     attachmentsRequired: 'Anexos obrigatórios',
@@ -1666,7 +1737,8 @@ const ptBR = {
     attachmentsWithErrorDesc: 'A empresa "{{company}}" possui anexos com erro',
     statusDataUnavailable: 'Dados de status não disponíveis',
     customDispatchCompleted: 'Disparo personalizado concluído',
-    customDispatchCompletedDesc: '{{success}} empresas processadas com sucesso, {{failures}} falhas',
+    customDispatchCompletedDesc:
+      '{{success}} empresas processadas com sucesso, {{failures}} falhas',
     customDispatchError: 'Erro no disparo personalizado selecionado',
     customResendCompleted: 'Reenvio personalizado concluído',
     customResendCompletedDesc: '{{success}} empresas reprocessadas com sucesso',
@@ -1675,7 +1747,8 @@ const ptBR = {
     customResendFailedCompletedDesc: '{{success}} empresas processadas com sucesso',
     customResendFailedError: 'Erro no reenvio personalizado',
     confirmResendCustomTitle: 'Confirmar Reenvio de Falhas Personalizadas',
-    confirmResendCustomDescription: 'Deseja reenviar os books personalizados para as {{count}} empresas que falharam em {{month}} de {{year}}?',
+    confirmResendCustomDescription:
+      'Deseja reenviar os books personalizados para as {{count}} empresas que falharam em {{month}} de {{year}}?',
     customScheduleDispatch: 'Agendar Disparo Personalizado',
     customScheduleObservationsPlaceholder: 'Observações sobre o agendamento personalizado...',
     customScheduleCompleted: 'Agendamento personalizado realizado',
@@ -1818,9 +1891,11 @@ const ptBR = {
     allPeriodsUpdated: 'Todos os períodos estão atualizados',
     // Modal Aprovar
     approveTitle: 'Aprovar Ajuste Retroativo',
-    approveDescription: 'Ao aprovar, um reajuste será gerado automaticamente no mês de aplicação e o banco de horas será recalculado.',
+    approveDescription:
+      'Ao aprovar, um reajuste será gerado automaticamente no mês de aplicação e o banco de horas será recalculado.',
     action: 'Ação',
-    actionDescription: 'O consumo de {{period}} será atualizado de {{from}} para {{to}} e o banco será recalculado.',
+    actionDescription:
+      'O consumo de {{period}} será atualizado de {{from}} para {{to}} e o banco será recalculado.',
     justification: 'Justificativa',
     justificationPlaceholder: 'Descreva o motivo da aprovação...',
     approving: 'Aprovando...',
@@ -1848,7 +1923,8 @@ const ptBR = {
     ic999999: 'IC 999999',
     noUpdate16Days: 'Sem Atualização 16+ dias',
     resolutionCodeChange: 'Troca de código de resolução',
-    resolutionCodeChangeSubtitle: 'Trocas de código de resolução que mudaram a cobrança do banco de horas',
+    resolutionCodeChangeSubtitle:
+      'Trocas de código de resolução que mudaram a cobrança do banco de horas',
     // Tabs
     tabDetected: 'Inconsistências Detectadas',
     tabHistory: 'Histórico de Inconsistências',
@@ -1900,7 +1976,8 @@ const ptBR = {
     totalLimit: 'Limite: 25MB total',
     emailPreview: 'Preview do Email',
     previewHeader: '⚠️ Inconsistências Detectadas em Chamados',
-    previewAttention: 'Atenção! Foram detectadas inconsistências nos chamados que requerem sua verificação e correção.',
+    previewAttention:
+      'Atenção! Foram detectadas inconsistências nos chamados que requerem sua verificação e correção.',
     previewSummary: 'Resumo das Inconsistências',
     previewExample: 'Exemplo de Inconsistências',
     additionalInconsistencies: '+ {{count}} inconsistências adicionais',
@@ -1955,7 +2032,8 @@ const ptBR = {
     responseLabel: 'Resposta',
     noSurveyFound: 'Nenhum pesquisa encontrado',
     confirmDeleteTitle: 'Excluir Pesquisa',
-    confirmDeleteDescription: 'Tem certeza que deseja excluir esta pesquisa? Esta ação não pode ser desfeita.',
+    confirmDeleteDescription:
+      'Tem certeza que deseja excluir esta pesquisa? Esta ação não pode ser desfeita.',
     sendToActionPlan: 'Enviar p/ Plano de Ação',
     sendToCompliments: 'Enviar p/ Elogios',
     // Badges de resposta
@@ -1990,7 +2068,8 @@ const ptBR = {
     leaveEmptyForIncremental: 'Deixe vazio para usar a sincronização incremental automática',
     tablesSelected: '{{count}} tabela selecionada',
     tablesSelectedPlural: '{{count}} tabelas selecionadas',
-    syncMayTakeMinutes: 'A sincronização pode levar alguns minutos dependendo da quantidade de dados',
+    syncMayTakeMinutes:
+      'A sincronização pode levar alguns minutos dependendo da quantidade de dados',
     selectAtLeastOneTable: 'Selecione pelo menos uma tabela',
     needSelectOneTable: 'Você precisa selecionar ao menos uma tabela para sincronizar',
     syncButton: 'Sincronizar',
@@ -2027,7 +2106,8 @@ const ptBR = {
       responseDate: 'Data da Resposta',
       selectDateTime: 'Selecione a data e hora',
       surveyComment: 'Comentário da Pesquisa',
-      commentPlaceholderManual: 'Comentário obrigatório para pesquisas manuais - descreva o contexto ou motivo da pesquisa',
+      commentPlaceholderManual:
+        'Comentário obrigatório para pesquisas manuais - descreva o contexto ou motivo da pesquisa',
       commentPlaceholder: 'Comentários adicionais da pesquisa',
       internalObservation: 'Observação Interna',
       observationPlaceholder: 'Observações internas (não visível para o cliente)',
@@ -2116,7 +2196,8 @@ const ptBR = {
   },
   // Sincronização SQL Server (agendamentos)
   sincronizacaoSql: {
-    agendadorDesligado: 'O agendador está desligado no sync-api: os agendamentos não vão rodar. No servidor, defina SCHEDULER_ENABLED=true no .env e reinicie o serviço.',
+    agendadorDesligado:
+      'O agendador está desligado no sync-api: os agendamentos não vão rodar. No servidor, defina SCHEDULER_ENABLED=true no .env e reinicie o serviço.',
     title: 'Sincronização SQL Server',
     subtitle: 'Agende e acompanhe a sincronização com o SQL Server (Aranda)',
     apiOffline: 'API de sincronização indisponível',
@@ -2144,7 +2225,8 @@ const ptBR = {
       editar: 'Editar',
       excluir: 'Excluir',
       excluirTitulo: 'Excluir agendamento',
-      excluirDescricao: 'O agendamento "{{nome}}" será excluído. O histórico de execuções é mantido.',
+      excluirDescricao:
+        'O agendamento "{{nome}}" será excluído. O histórico de execuções é mantido.',
       cancelar: 'Cancelar',
     },
     historico: {
@@ -2161,7 +2243,8 @@ const ptBR = {
       semLogs: 'Sem logs registrados',
       motivoIgnorada: 'Outra sincronização já estava em andamento',
       erroGeral: 'Erro: {{erro}}',
-      etapaResumo: '{{processados}} processados · {{novos}} novos · {{atualizados}} atualizados · {{erros}} erros',
+      etapaResumo:
+        '{{processados}} processados · {{novos}} novos · {{atualizados}} atualizados · {{erros}} erros',
       falhou: 'Falhou: {{erro}}',
     },
     status: {

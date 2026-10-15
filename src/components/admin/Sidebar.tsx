@@ -36,7 +36,7 @@ import {
   Palette,
   Clock,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,7 +46,17 @@ import { useToast } from '@/hooks/use-toast';
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  /** fixed: coluna fixa do desktop. drawer: conteúdo da gaveta abaixo de 1024 px, sempre expandido. */
+  variant?: 'fixed' | 'drawer';
+  /** Chamado depois de navegar (a gaveta usa para fechar). */
+  onNavigate?: () => void;
 }
+
+// Classes do Design System v2 (tokens em src/styles/ds-v2.css)
+const itemClasses =
+  'text-ds-shell-fg hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:ring-ds-focus';
+const activeItemClasses =
+  'bg-ds-shell-active-bg text-ds-shell-active-fg shadow-[inset_2px_0_0_var(--ds-shell-active-fg)] hover:bg-ds-shell-active-bg hover:text-ds-shell-active-fg';
 
 interface MenuItem {
   icon: React.ComponentType<any>;
@@ -56,7 +66,14 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  isCollapsed: isCollapsedProp,
+  onToggle,
+  variant = 'fixed',
+  onNavigate,
+}) => {
+  // Na gaveta o menu fica sempre expandido
+  const isCollapsed = variant === 'fixed' && isCollapsedProp;
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
@@ -70,7 +87,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   // Estado para controlar o submenu flutuante quando minimizado
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  const [submenuPosition, setSubmenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [submenuPosition, setSubmenuPosition] = useState<{ top: number; left: number } | null>(
+    null
+  );
   const submenuRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -80,7 +99,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/ajustes-retroativos')) {
+    if (
+      path.includes('/controle-disparos') ||
+      path.includes('/historico-books') ||
+      path.includes('/geracao-books') ||
+      path.includes('/controle-banco-horas') ||
+      path.includes('/ajustes-retroativos')
+    ) {
       return 'comunicacao';
     }
     if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
@@ -89,7 +114,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
       return 'configuracoes';
     }
-    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias') || path.includes('/sincronizacao-sql-server')) {
+    if (
+      path.includes('/grupos') ||
+      path.includes('/usuarios') ||
+      path.includes('/audit-logs') ||
+      path.includes('/monitoramento-vigencias') ||
+      path.includes('/sincronizacao-sql-server')
+    ) {
       return 'administracao';
     }
     return null;
@@ -99,13 +130,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
     // Verificar se é uma nova sessão (sem estado salvo de seções expandidas)
     const hasSessionState = sessionStorage.getItem('sidebar-session-initialized');
-    
+
     if (!hasSessionState) {
       // Primeira vez na sessão - iniciar com menus fechados
       sessionStorage.setItem('sidebar-session-initialized', 'true');
       return [];
     }
-    
+
     // Sessão já inicializada - usar estado salvo do localStorage
     try {
       const saved = localStorage.getItem('sidebar-expanded-sections');
@@ -136,13 +167,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         // Usar window.location para forçar o redirecionamento
         window.location.href = '/';
       }, 500);
-
     } catch (error) {
       console.error('Sidebar: Erro no logout:', error);
       toast({
         title: t('toast.errorTitle'),
         description: t('toast.operationError'),
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -150,9 +180,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const toggleSection = (sectionKey: string) => {
     if (isCollapsed) return; // Não permitir toggle quando colapsado
 
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const newState = prev.includes(sectionKey)
-        ? prev.filter(key => key !== sectionKey)
+        ? prev.filter((key) => key !== sectionKey)
         : [...prev, sectionKey];
 
       // Salvar no localStorage
@@ -170,7 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const handleNavigation = (path: string) => {
     // Ativar prevenção de scroll
     preventScrollRef.current = true;
-    
+
     // Salvar posição atual do scroll no sessionStorage
     if (navRef.current) {
       sessionStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString());
@@ -180,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     const targetSection = getCurrentSectionForPath(path);
 
     if (targetSection) {
-      setExpandedSections(prev => {
+      setExpandedSections((prev) => {
         const newState = prev.includes(targetSection) ? prev : [...prev, targetSection];
 
         // Salvar no localStorage
@@ -196,6 +226,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
     // Navegar
     navigate(path);
+    onNavigate?.();
 
     // Desativar prevenção após um tempo
     setTimeout(() => {
@@ -208,7 +239,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/ajustes-retroativos')) {
+    if (
+      path.includes('/controle-disparos') ||
+      path.includes('/historico-books') ||
+      path.includes('/geracao-books') ||
+      path.includes('/controle-banco-horas') ||
+      path.includes('/ajustes-retroativos')
+    ) {
       return 'comunicacao';
     }
     if (path.includes('/auditoria')) {
@@ -220,7 +257,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
       return 'configuracoes';
     }
-    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias') || path.includes('/sincronizacao-sql-server')) {
+    if (
+      path.includes('/grupos') ||
+      path.includes('/usuarios') ||
+      path.includes('/audit-logs') ||
+      path.includes('/monitoramento-vigencias') ||
+      path.includes('/sincronizacao-sql-server')
+    ) {
       return 'administracao';
     }
     return null;
@@ -231,12 +274,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       icon: Home,
       label: t('nav.dashboard'),
       path: '/admin/dashboard',
-      screenKey: 'dashboard'
+      screenKey: 'dashboard',
     },
     {
       icon: Award,
       label: t('nav.surveys'),
-      children: []
+      children: [],
     },
     {
       icon: FileText,
@@ -246,15 +289,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: FileText,
           label: t('nav.registerRequirements'),
           path: '/admin/lancar-requerimentos',
-          screenKey: 'lancar_requerimentos'
+          screenKey: 'lancar_requerimentos',
         },
         {
           icon: DollarSign,
           label: t('nav.billingRequirements'),
           path: '/admin/faturar-requerimentos',
-          screenKey: 'faturar_requerimentos'
-        }
-      ]
+          screenKey: 'faturar_requerimentos',
+        },
+      ],
     },
     {
       icon: MessageSquare,
@@ -264,27 +307,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: FileText,
           label: t('nav.registerSurveys'),
           path: '/admin/lancar-pesquisas',
-          screenKey: 'lancar_pesquisas'
+          screenKey: 'lancar_pesquisas',
         },
         {
           icon: ClipboardCheck,
           label: t('nav.actionPlan'),
           path: '/admin/plano-acao',
-          screenKey: 'plano_acao'
+          screenKey: 'plano_acao',
         },
         {
           icon: Eye,
           label: t('nav.viewSurveys'),
           path: '/admin/visualizar-pesquisas',
-          screenKey: 'visualizar_pesquisas'
+          screenKey: 'visualizar_pesquisas',
         },
         {
           icon: BarChart3,
           label: t('nav.monthlySurveyAMS'),
           path: '/admin/pesquisa-mensal-ams',
-          screenKey: 'pesquisa_mensal_ams'
-        }
-      ]
+          screenKey: 'pesquisa_mensal_ams',
+        },
+      ],
     },
     {
       icon: ThumbsUp,
@@ -294,15 +337,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: Heart,
           label: t('nav.registerCompliments'),
           path: '/admin/lancar-elogios',
-          screenKey: 'lancar_elogios'
+          screenKey: 'lancar_elogios',
         },
         {
           icon: Send,
           label: t('nav.sendCompliments'),
           path: '/admin/enviar-elogios',
-          screenKey: 'lancar_elogios'
-        }
-      ]
+          screenKey: 'lancar_elogios',
+        },
+      ],
     },
     {
       icon: Speech,
@@ -312,39 +355,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: Send,
           label: t('nav.controlShoots'),
           path: '/admin/controle-disparos',
-          screenKey: 'controle_disparos'
+          screenKey: 'controle_disparos',
         },
         {
           icon: Send,
           label: t('nav.customShoots'),
           path: '/admin/disparos-personalizados',
-          screenKey: 'controle_disparos'
+          screenKey: 'controle_disparos',
         },
         {
           icon: BarChart3,
           label: t('nav.historyBooks'),
           path: '/admin/historico-books',
-          screenKey: 'historico_books'
+          screenKey: 'historico_books',
         },
         {
           icon: FileText,
           label: t('nav.generateBooks'),
           path: '/admin/geracao-books',
-          screenKey: 'geracao_books'
+          screenKey: 'geracao_books',
         },
         {
           icon: Clock,
           label: t('nav.bankHours'),
           path: '/admin/controle-banco-horas',
-          screenKey: 'controle_banco_horas'
+          screenKey: 'controle_banco_horas',
         },
         {
           icon: AlertTriangle,
           label: t('nav.retroactiveAdjustments'),
           path: '/admin/ajustes-retroativos',
-          screenKey: 'banco_horas_ajustes_retroativos'
-        }
-      ]
+          screenKey: 'banco_horas_ajustes_retroativos',
+        },
+      ],
     },
     {
       icon: AlertTriangle,
@@ -354,15 +397,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: AlertTriangle,
           label: t('nav.inconsistencies'),
           path: '/admin/auditoria/inconsistencia-chamados',
-          screenKey: 'inconsistencia_chamados'
+          screenKey: 'inconsistencia_chamados',
         },
         {
           icon: RefreshCw,
           label: t('nav.ticketMonitoring'),
           path: '/admin/auditoria/monitoramento-chamados',
-          screenKey: 'troca_codigo_resolucao'
-        }
-      ]
+          screenKey: 'troca_codigo_resolucao',
+        },
+      ],
     },
     {
       icon: Building2,
@@ -372,21 +415,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: Building2,
           label: t('nav.companies'),
           path: '/admin/empresas-clientes',
-          screenKey: 'empresas_clientes'
+          screenKey: 'empresas_clientes',
         },
         {
           icon: Contact,
           label: t('nav.clientEmails'),
           path: '/admin/clientes',
-          screenKey: 'clientes'
+          screenKey: 'clientes',
         },
         {
           icon: DollarSign,
           label: t('nav.clientRates'),
           path: '/admin/cadastro-taxas-clientes',
-          screenKey: 'cadastro_taxas_clientes'
-        }
-      ]
+          screenKey: 'cadastro_taxas_clientes',
+        },
+      ],
     },
     {
       icon: Settings,
@@ -396,15 +439,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: UsersRound,
           label: t('nav.responsibleGroups'),
           path: '/admin/grupos-responsaveis',
-          screenKey: 'grupos_responsaveis'
+          screenKey: 'grupos_responsaveis',
         },
         {
           icon: Mail,
           label: t('nav.emailConfig'),
           path: '/admin/email-config',
-          screenKey: 'email-config'
-        }
-      ]
+          screenKey: 'email-config',
+        },
+      ],
     },
     {
       icon: Shield,
@@ -414,51 +457,51 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: Users,
           label: t('nav.groups'),
           path: '/admin/grupos',
-          screenKey: 'grupos'
+          screenKey: 'grupos',
         },
         {
           icon: UserPlus,
           label: t('nav.userManagement'),
           path: '/admin/cadastro-usuarios',
-          screenKey: 'cadastro-usuarios'
+          screenKey: 'cadastro-usuarios',
         },
         {
           icon: UserCheck,
           label: t('nav.userGroups'),
           path: '/admin/usuarios-grupos',
-          screenKey: 'usuarios-grupos'
+          screenKey: 'usuarios-grupos',
         },
         {
           icon: History,
           label: t('nav.auditLogs'),
           path: '/admin/audit-logs',
-          screenKey: 'audit-logs'
+          screenKey: 'audit-logs',
         },
         {
           icon: BarChart3,
           label: t('nav.monitoringTerms'),
           path: '/admin/monitoramento-vigencias',
-          screenKey: 'monitoramento_vigencias'
+          screenKey: 'monitoramento_vigencias',
         },
         {
           icon: DatabaseZap,
           label: t('nav.sqlServerSync'),
           path: '/admin/sincronizacao-sql-server',
-          screenKey: 'sincronizacao_sql_server'
+          screenKey: 'sincronizacao_sql_server',
         },
         {
           icon: Palette,
           label: t('nav.designSystem'),
           path: '/admin/design-system',
-          screenKey: 'design_system'
-        }
-      ]
-    }
+          screenKey: 'design_system',
+        },
+      ],
+    },
   ];
 
   // Filtrar itens baseado nas permissões
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
-    return items.filter(item => {
+    return items.filter((item) => {
       // Se tem screenKey, verificar permissão
       if (item.screenKey) {
         return hasPermission(item.screenKey, 'view');
@@ -526,7 +569,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   // (removido para evitar scroll automático)
 
   // Funções para controlar o submenu flutuante
-  const handleMouseEnterSection = (sectionKey: string, event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMouseEnterSection = (
+    sectionKey: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
     if (!isCollapsed) return;
 
     // Limpar timeout anterior
@@ -537,7 +583,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     const rect = event.currentTarget.getBoundingClientRect();
     setSubmenuPosition({
       top: rect.top,
-      left: rect.right + 8 // 8px de espaçamento
+      left: rect.right + 8, // 8px de espaçamento
     });
     setHoveredSection(sectionKey);
   };
@@ -573,18 +619,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   }, []);
 
   return (
-    <div className={cn(
-      "bg-blue-600 flex flex-col transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
+    <aside
+      data-ds="v2"
+      aria-label={t('layout.mainMenu')}
+      className={cn(
+        'bg-ds-shell-bg text-ds-shell-fg font-ds-sans flex flex-col',
+        variant === 'fixed'
+          ? cn(
+              'transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10 border-r border-ds-shell-border',
+              isCollapsed ? 'w-16' : 'w-64'
+            )
+          : 'h-full w-full'
+      )}
+    >
       {/* Header com Logo */}
-      <div className="p-4 border-b border-blue-700 relative">
+      <div className="p-4 border-b border-ds-shell-border relative">
         <div className="flex items-center justify-center">
+          {/* Logo branco: no tema claro vira preto (brightness-0) até chegar a versão para fundo claro */}
           {!isCollapsed && (
             <img
               src="/images/logo-sonda.png"
               alt="Sonda Logo"
-              className="h-12 w-auto"
+              className="h-12 w-auto brightness-0 dark:brightness-100"
             />
           )}
           {isCollapsed && (
@@ -595,32 +651,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             />
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className="h-6 w-6 absolute -right-3 top-1/2 transform -translate-y-1/2 text-white hover:bg-blue-700 bg-blue-600 z-50 shadow-lg border border-blue-500"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-3 w-3" />
-          ) : (
-            <ChevronLeft className="h-3 w-3" />
-          )}
-        </Button>
+        {variant === 'fixed' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            aria-label={isCollapsed ? t('layout.expandMenu') : t('layout.collapseMenu')}
+            className="h-6 w-6 absolute -right-3 top-1/2 transform -translate-y-1/2 z-50 shadow-lg border border-ds-shell-border bg-ds-shell-bg text-ds-shell-fg hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:ring-ds-focus"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Menu Items */}
-      <nav 
-        ref={navRef} 
-        className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden sidebar-scroll" 
-        style={{ 
+      <nav
+        ref={navRef}
+        className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden sidebar-scroll"
+        style={{
           scrollBehavior: 'auto',
-          overscrollBehavior: 'contain'
+          overscrollBehavior: 'contain',
         }}
       >
         {menuItems.map((item, index) => {
           const Icon = item.icon;
-          const sectionKey = item.label.toLowerCase()
+          const sectionKey = item.label
+            .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '') // Remove acentos
             .replace(/\s+/g, '-');
@@ -633,15 +693,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             const buttonContent = (
               <Button
                 key={item.path || index}
-                variant={isActive ? "secondary" : "ghost"}
+                variant="ghost"
                 className={cn(
-                  "w-full text-white hover:bg-blue-700 min-w-0 flex-shrink-0",
-                  isCollapsed ? "justify-center px-2" : "justify-start px-3",
-                  isActive && "bg-blue-800 text-white"
+                  'w-full min-w-0 flex-shrink-0',
+                  itemClasses,
+                  isCollapsed ? 'justify-center px-2' : 'justify-start px-3',
+                  isActive && activeItemClasses
                 )}
                 onClick={() => item.path && handleNavigation(item.path)}
               >
-                <Icon className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
+                <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
               </Button>
             );
@@ -649,9 +710,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             if (isCollapsed) {
               return (
                 <Tooltip key={item.path || index}>
-                  <TooltipTrigger asChild>
-                    {buttonContent}
-                  </TooltipTrigger>
+                  <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
                   <TooltipContent side="right">
                     <p>{item.label}</p>
                   </TooltipContent>
@@ -667,8 +726,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             <Button
               variant="ghost"
               className={cn(
-                "w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0 gap-3",
-                isCollapsed ? "justify-center px-4" : "justify-start px-3 pr-2"
+                'w-full font-medium min-w-0 flex-shrink-0 gap-3',
+                itemClasses,
+                isCollapsed ? 'justify-center px-4' : 'justify-start px-3 pr-2'
               )}
               onClick={() => toggleSection(sectionKey)}
               onMouseEnter={(e) => handleMouseEnterSection(sectionKey, e)}
@@ -676,13 +736,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
               {!isCollapsed && <span className="truncate flex-shrink">{item.label}</span>}
-              {!isCollapsed && item.children.length > 0 && (
-                isExpanded ? (
+              {!isCollapsed &&
+                item.children.length > 0 &&
+                (isExpanded ? (
                   <ChevronUp className="h-3 w-3 flex-shrink-0" />
                 ) : (
                   <ChevronDown className="h-3 w-3 flex-shrink-0" />
-                )
-              )}
+                ))}
             </Button>
           );
 
@@ -691,9 +751,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               {/* Cabeçalho da seção */}
               {isCollapsed ? (
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    {sectionButton}
-                  </TooltipTrigger>
+                  <TooltipTrigger asChild>{sectionButton}</TooltipTrigger>
                   <TooltipContent side="right">
                     <p>{item.label}</p>
                   </TooltipContent>
@@ -703,30 +761,33 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               )}
 
               {/* Itens filhos (quando não está colapsado) */}
-              {!isCollapsed && isExpanded && item.children.map((child, childIndex) => {
-                const ChildIcon = child.icon;
-                const isChildActive = child.path && location.pathname === child.path;
+              {!isCollapsed &&
+                isExpanded &&
+                item.children.map((child, childIndex) => {
+                  const ChildIcon = child.icon;
+                  const isChildActive = child.path && location.pathname === child.path;
 
-                return (
-                  <Button
-                    key={child.path || childIndex}
-                    variant={isChildActive ? "secondary" : "ghost"}
-                    className={cn(
-                      "w-full text-white hover:bg-blue-700 ml-4 min-w-0 flex-shrink-0",
-                      "justify-start px-3 text-sm",
-                      isChildActive && "bg-blue-800 text-white"
-                    )}
-                    onClick={() => child.path && handleNavigation(child.path)}
-                  >
-                    <ChildIcon className="h-3 w-3 mr-3 flex-shrink-0" />
-                    <span className="truncate">{child.label}</span>
-                  </Button>
-                );
-              })}
+                  return (
+                    <Button
+                      key={child.path || childIndex}
+                      variant="ghost"
+                      className={cn(
+                        'w-full ml-4 min-w-0 flex-shrink-0',
+                        itemClasses,
+                        'justify-start px-3 text-sm',
+                        isChildActive && activeItemClasses
+                      )}
+                      onClick={() => child.path && handleNavigation(child.path)}
+                    >
+                      <ChildIcon className="h-3 w-3 mr-3 flex-shrink-0" />
+                      <span className="truncate">{child.label}</span>
+                    </Button>
+                  );
+                })}
 
               {/* Separador visual entre seções */}
               {index < menuItems.length - 1 && !isCollapsed && (
-                <div className="h-px bg-blue-700 mx-2 my-2" />
+                <div className="h-px bg-ds-shell-border mx-2 my-2" />
               )}
             </div>
           );
@@ -734,7 +795,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       </nav>
 
       {/* User Actions */}
-      <div className="p-2 border-t border-blue-700 space-y-1">
+      <div className="p-2 border-t border-ds-shell-border space-y-1">
         {isCollapsed ? (
           <>
             {hasPermission('user-config', 'view') && (
@@ -742,7 +803,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-center px-2 text-white hover:bg-blue-700"
+                    className={cn('w-full justify-center px-2', itemClasses)}
                     onClick={() => handleNavigation('/admin/user-config')}
                   >
                     <User className="h-4 w-4" />
@@ -758,7 +819,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-center px-2 text-red-300 hover:text-red-200 hover:bg-blue-700"
+                  className="w-full justify-center px-2 text-ds-danger-fg hover:text-ds-danger-fg hover:bg-ds-shell-hover focus-visible:ring-ds-focus"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
@@ -774,7 +835,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             {hasPermission('user-config', 'view') && (
               <Button
                 variant="ghost"
-                className="w-full justify-start px-3 text-white hover:bg-blue-700 min-w-0 flex-shrink-0"
+                className={cn('w-full justify-start px-3 min-w-0 flex-shrink-0', itemClasses)}
                 onClick={() => handleNavigation('/admin/user-config')}
               >
                 <User className="h-4 w-4 mr-3 flex-shrink-0" />
@@ -784,7 +845,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
             <Button
               variant="ghost"
-              className="w-full justify-start px-3 text-red-300 hover:text-red-200 hover:bg-blue-700 min-w-0 flex-shrink-0"
+              className="w-full justify-start px-3 min-w-0 flex-shrink-0 text-ds-danger-fg hover:text-ds-danger-fg hover:bg-ds-shell-hover focus-visible:ring-ds-focus"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-3 flex-shrink-0" />
@@ -798,7 +859,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       {isCollapsed && hoveredSection && submenuPosition && (
         <div
           ref={submenuRef}
-          className="fixed bg-blue-600 border border-blue-500/30 rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
+          className="fixed bg-ds-shell-bg border border-ds-shell-border rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
           style={{
             top: `${submenuPosition.top}px`,
             left: `${submenuPosition.left}px`,
@@ -807,7 +868,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           onMouseLeave={handleMouseLeaveSubmenu}
         >
           {menuItems.map((item) => {
-            const sectionKey = item.label.toLowerCase()
+            const sectionKey = item.label
+              .toLowerCase()
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
               .replace(/\s+/g, '-');
@@ -816,7 +878,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               return (
                 <div key={sectionKey} className="space-y-0.5">
                   {/* Título da seção */}
-                  <div className="px-2 py-1.5 text-white font-semibold text-sm border-b border-blue-500 mb-1">
+                  <div className="px-2 py-1.5 text-ds-shell-fg font-semibold text-sm border-b border-ds-shell-border mb-1">
                     {item.label}
                   </div>
 
@@ -828,10 +890,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                     return (
                       <Button
                         key={child.path || childIndex}
-                        variant={isChildActive ? "secondary" : "ghost"}
+                        variant="ghost"
                         className={cn(
-                          "w-full text-white hover:bg-blue-700 justify-start px-2 py-1.5 h-8 text-sm gap-2",
-                          isChildActive && "bg-blue-800 text-white"
+                          'w-full justify-start px-2 py-1.5 h-8 text-sm gap-2',
+                          itemClasses,
+                          isChildActive && activeItemClasses
                         )}
                         onClick={() => {
                           if (child.path) {
@@ -853,7 +916,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           })}
         </div>
       )}
-    </div>
+    </aside>
   );
 };
 

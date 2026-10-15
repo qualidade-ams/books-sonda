@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tokens DS v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@500&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,700&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens — claro (padrão) ===== */
+:root {
+  --ds-bg-page: #F5F5F5;
+  --ds-bg-surface: #FFFFFF;
+  --ds-bg-raised: #FFFFFF;
+  --ds-bg-subtle: #F5F5F5;
+  --ds-bg-selected: #E0F8FB;
+  --ds-overlay: rgba(0,0,0,.5);
+
+  --ds-fg: #000000;
+  --ds-fg-secondary: #3D3D3D;
+  --ds-fg-muted: #6B6B6B;
+  --ds-fg-disabled: #B1B1B1;
+  --ds-fg-accent: #006F7D;
+  --ds-fg-on-accent: #000000;
+
+  --ds-border: #E4E4E4;
+  --ds-border-strong: #8A8A8A;
+  --ds-focus: #006F7D;
+
+  --ds-accent: #00D4E8;
+  --ds-accent-hover: #00BFD1;
+  --ds-accent-pressed: #00A9B9;
+  --ds-accent-subtle: #E0F8FB;
+
+  --ds-success-fg: #1E7A3D; --ds-success-bg: #E8F5EC; --ds-success-border: #B7DEC3;
+  --ds-warning-fg: #A15C00; --ds-warning-bg: #FFF3E0; --ds-warning-border: #F5D49E;
+  --ds-danger-fg:  #B42328; --ds-danger-bg:  #FDECEC; --ds-danger-border:  #F3B9BB;
+  --ds-info-fg:    #006F7D; --ds-info-bg:    #E0F8FB; --ds-info-border:    #9FE6EE;
+  --ds-danger-solid: #B42328; --ds-fg-on-danger: #FFFFFF;
+
+  --ds-shell-bg: #FFFFFF;
+  --ds-shell-fg: #000000;
+  --ds-shell-fg-muted: #6B6B6B;
+  --ds-shell-hover: #F5F5F5;
+  --ds-shell-active-bg: #E0F8FB;
+  --ds-shell-active-fg: #006F7D;
+  --ds-shell-border: #E4E4E4;
+
+  --ds-shadow-sm: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+  --ds-shadow-lg: 0 10px 30px rgba(0,0,0,.14);
+
+  --ds-radius-sm: 6px; --ds-radius-md: 8px; --ds-radius-lg: 12px;
+  --ds-font-title: "Kumbh Sans", system-ui, sans-serif;
+  --ds-font: "Roboto", system-ui, sans-serif;
+  --ds-font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+/* ===== Tokens — escuro ===== */
+:root[data-theme="dark"] {
+  --ds-bg-page: #121212;
+  --ds-bg-surface: #1C1C1C;
+  --ds-bg-raised: #262626;
+  --ds-bg-subtle: #262626;
+  --ds-bg-selected: #0D2B2E;
+  --ds-overlay: rgba(0,0,0,.7);
+
+  --ds-fg: #FFFFFF;
+  --ds-fg-secondary: #B1B1B1;
+  --ds-fg-muted: #8A8A8A;
+  --ds-fg-disabled: #5C5C5C;
+  --ds-fg-accent: #00D4E8;
+  --ds-fg-on-accent: #000000;
+
+  --ds-border: #3D3D3D;
+  --ds-border-strong: #737373;
+  --ds-focus: #00D4E8;
+
+  --ds-accent: #00D4E8;
+  --ds-accent-hover: #33DDED;
+  --ds-accent-pressed: #00BFD1;
+  --ds-accent-subtle: #0D2B2E;
+
+  --ds-success-fg: #4CC77A; --ds-success-bg: #0F2A1A; --ds-success-border: #1F5A35;
+  --ds-warning-fg: #F0A43A; --ds-warning-bg: #2E2210; --ds-warning-border: #6B4A17;
+  --ds-danger-fg:  #FF6B6B; --ds-danger-bg:  #331616; --ds-danger-border:  #7A2A2A;
+  --ds-info-fg:    #00D4E8; --ds-info-bg:    #0D2B2E; --ds-info-border:    #11606A;
+  --ds-danger-solid: #FF6B6B; --ds-fg-on-danger: #000000;
+
+  --ds-shell-bg: #1C1C1C;
+  --ds-shell-fg: #FFFFFF;
+  --ds-shell-fg-muted: #B1B1B1;
+  --ds-shell-hover: #262626;
+  --ds-shell-active-bg: #0D2B2E;
+  --ds-shell-active-fg: #00D4E8;
+  --ds-shell-border: #262626;
+
+  --ds-shadow-sm: none;
+  --ds-shadow-lg: none;
+  color-scheme: dark;
+}
+
+/* ===== Base ===== */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ds-bg-page);
+  color: var(--ds-fg);
+  font: 400 14px/20px var(--ds-font);
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .seg button, .switch span, .nav a { transition: background-color .12s ease-out, color .12s ease-out, border-color .12s ease-out, transform .12s ease-out; }
+}
+:focus-visible { outline: 2px solid var(--ds-focus); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--ds-font-mono); font-size: 13px; }
+
+/* ===== Página de documentação ===== */
+.doc-top {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 24px; background: var(--ds-bg-surface); border-bottom: 1px solid var(--ds-border);
+}
+.doc-top h1 { margin: 0; font: 500 18px/24px var(--ds-font-title); }
+.doc-top p { margin: 0; color: var(--ds-fg-muted); font-size: 12px; line-height: 16px; }
+.doc { max-width: 1280px; margin: 0 auto; padding: 24px; display: grid; gap: 32px; }
+.doc > section > h2 {
+  margin: 0 0 4px; font: 700 12px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .06em; color: var(--ds-fg-secondary);
+}
+.doc > section > p.lead { margin: 0 0 16px; color: var(--ds-fg-muted); }
+
+/* ===== Swatches ===== */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.sw { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); overflow: hidden; background: var(--ds-bg-surface); }
+.sw .chip { height: 64px; border-bottom: 1px solid var(--ds-border); }
+.sw .meta { padding: 8px 12px; }
+.sw .meta b { display: block; font-weight: 500; }
+.sw .meta span { color: var(--ds-fg-muted); font-size: 12px; }
+.tag-m, .tag-d { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font: 500 11px/16px var(--ds-font); }
+.tag-m { background: var(--ds-accent-subtle); color: var(--ds-fg-accent); }
+.tag-d { background: var(--ds-bg-subtle); color: var(--ds-fg-muted); }
+
+.tokens { width: 100%; border-collapse: collapse; background: var(--ds-bg-surface); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); overflow: hidden; }
+.tokens th, .tokens td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--ds-border); vertical-align: middle; }
+.tokens th { background: var(--ds-bg-subtle); color: var(--ds-fg-muted); font: 500 12px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .04em; }
+.tokens tr:last-child td { border-bottom: 0; }
+.tokens .dot { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--ds-border); vertical-align: middle; margin-right: 8px; }
+.ratio { font-variant-numeric: tabular-nums; font-weight: 500; }
+.ratio.ok { color: var(--ds-success-fg); }
+.ratio.fail { color: var(--ds-danger-fg); }
+.table-wrap { overflow-x: auto; border-radius: var(--ds-radius-lg); }
+
+/* ===== Tipografia ===== */
+.type { background: var(--ds-bg-surface); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); }
+.type > div { display: grid; grid-template-columns: 200px 1fr; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--ds-border); align-items: baseline; }
+.type > div:last-child { border-bottom: 0; }
+.type code { color: var(--ds-fg-muted); font: 400 12px/16px var(--ds-font-mono); }
+.t-page-title { font: 500 28px/36px var(--ds-font-title); }
+.t-title { font: 500 18px/24px var(--ds-font); }
+.t-section { font: 700 12px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .06em; }
+.t-body { font: 400 14px/20px var(--ds-font); }
+.t-body-strong { font: 500 14px/20px var(--ds-font); }
+.t-small { font: 400 12px/16px var(--ds-font); color: var(--ds-fg-muted); }
+.t-table-head { font: 500 12px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .04em; color: var(--ds-fg-muted); }
+.t-kpi { font: 700 28px/32px var(--ds-font); font-variant-numeric: tabular-nums; }
+.t-lead { font: 300 20px/28px var(--ds-font); color: var(--ds-fg-secondary); }
+
+/* ===== Amostra de tela ===== */
+.app { display: grid; grid-template-columns: 232px 1fr; min-height: 760px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); overflow: hidden; background: var(--ds-bg-page); }
+.shell { background: var(--ds-shell-bg); color: var(--ds-shell-fg); border-right: 1px solid var(--ds-shell-border); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+.brand { padding: 4px 8px 16px; border-bottom: 1px solid var(--ds-shell-border); margin-bottom: 8px; }
+.brand b { display: block; font: 700 18px/20px var(--ds-font); letter-spacing: .02em; }
+.brand span { font: 500 10px/14px var(--ds-font); letter-spacing: .2em; color: var(--ds-shell-active-fg); text-transform: uppercase; }
+.nav-label { padding: 12px 8px 4px; font: 500 11px/16px var(--ds-font); letter-spacing: .08em; text-transform: uppercase; color: var(--ds-shell-fg-muted); }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--ds-radius-md); color: var(--ds-shell-fg); text-decoration: none; min-height: 36px; }
+.nav a svg { color: var(--ds-shell-fg-muted); flex: none; }
+.nav a:hover { background: var(--ds-shell-hover); }
+.nav a[aria-current="page"] { background: var(--ds-shell-active-bg); color: var(--ds-shell-active-fg); box-shadow: inset 2px 0 0 var(--ds-shell-active-fg); }
+.nav a[aria-current="page"] svg { color: var(--ds-shell-active-fg); }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.header { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 10px 24px; background: var(--ds-bg-surface); border-bottom: 1px solid var(--ds-border); }
+.avatar { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--ds-accent-subtle); color: var(--ds-fg-accent); font: 700 12px/1 var(--ds-font); }
+.header .who { text-align: right; }
+.header .who b { display: block; font-weight: 500; }
+.header .who span { color: var(--ds-fg-muted); font-size: 12px; }
+.content { padding: 24px; display: grid; gap: 24px; }
+
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.page-head h3 { margin: 0; font: 500 28px/36px var(--ds-font-title); }
+.page-head p { margin: 4px 0 0; color: var(--ds-fg-secondary); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: var(--ds-radius-md); border: 1px solid transparent; font: 500 14px/20px var(--ds-font); cursor: pointer; white-space: nowrap; }
+.btn-primary { background: var(--ds-accent); color: var(--ds-fg-on-accent); }
+.btn-primary:hover { background: var(--ds-accent-hover); }
+.btn-primary:active { background: var(--ds-accent-pressed); }
+.btn-secondary { background: var(--ds-bg-surface); color: var(--ds-fg); border-color: var(--ds-border-strong); }
+.btn-secondary:hover { background: var(--ds-bg-subtle); }
+.btn-ghost { background: transparent; color: var(--ds-fg-accent); }
+.btn-ghost:hover { background: var(--ds-accent-subtle); }
+.btn-danger { background: var(--ds-danger-solid); color: var(--ds-fg-on-danger); }
+.btn[disabled] { background: var(--ds-bg-subtle); color: var(--ds-fg-disabled); border-color: var(--ds-border); cursor: not-allowed; }
+
+.card { background: var(--ds-bg-surface); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); }
+.card-pad { padding: 20px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--ds-border); }
+.card-head h4 { margin: 0; font: 700 12px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .06em; }
+.card-head p { margin: 2px 0 0; color: var(--ds-fg-muted); font-size: 12px; line-height: 16px; }
+
+.ctx { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 16px 20px; }
+.select { display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 200px; height: 36px; padding: 0 12px; border: 1px solid var(--ds-border-strong); border-radius: var(--ds-radius-md); background: var(--ds-bg-surface); color: var(--ds-fg); font: inherit; }
+.select small { color: var(--ds-fg-muted); font-size: 14px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.kpi { display: flex; gap: 14px; align-items: flex-start; padding: 16px 20px; }
+.kpi .ico { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; background: var(--ds-accent-subtle); color: var(--ds-fg-accent); flex: none; }
+.kpi .label { font: 500 11px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .06em; color: var(--ds-fg-muted); }
+.kpi .value { font: 700 28px/32px var(--ds-font); font-variant-numeric: tabular-nums; }
+.v-success { color: var(--ds-success-fg); }
+.v-danger { color: var(--ds-danger-fg); }
+.v-info { color: var(--ds-info-fg); }
+.v-warning { color: var(--ds-warning-fg); }
+
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--ds-bg-subtle); border: 1px solid var(--ds-border); border-radius: 999px; }
+.seg button { height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--ds-fg-secondary); font: 500 14px/20px var(--ds-font); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.seg button[aria-pressed="true"] { background: var(--ds-bg-surface); color: var(--ds-fg); box-shadow: var(--ds-shadow-sm); outline: 1px solid var(--ds-border); }
+
+.badge { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 10px; border-radius: 999px; border: 1px solid; font: 500 12px/16px var(--ds-font); white-space: nowrap; }
+.b-success { color: var(--ds-success-fg); background: var(--ds-success-bg); border-color: var(--ds-success-border); }
+.b-warning { color: var(--ds-warning-fg); background: var(--ds-warning-bg); border-color: var(--ds-warning-border); }
+.b-danger  { color: var(--ds-danger-fg);  background: var(--ds-danger-bg);  border-color: var(--ds-danger-border); }
+.b-info    { color: var(--ds-info-fg);    background: var(--ds-info-bg);    border-color: var(--ds-info-border); }
+.b-neutral { color: var(--ds-fg-secondary); background: var(--ds-bg-subtle); border-color: var(--ds-border); }
+.b-new     { color: var(--ds-fg-accent); background: var(--ds-accent-subtle); border-color: transparent; height: 20px; padding: 0 8px; font-size: 11px; }
+
+.grid { width: 100%; border-collapse: collapse; }
+.grid th, .grid td { height: 44px; padding: 0 16px; border-bottom: 1px solid var(--ds-border); text-align: left; white-space: nowrap; }
+.grid th { background: var(--ds-bg-subtle); font: 500 12px/16px var(--ds-font); text-transform: uppercase; letter-spacing: .04em; color: var(--ds-fg-muted); }
+.grid td.r, .grid th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.grid tbody tr:hover td { background: var(--ds-bg-subtle); }
+.grid tr.total td { background: var(--ds-bg-subtle); font-weight: 700; }
+.grid tr.row-info td { background: var(--ds-info-bg); color: var(--ds-info-fg); }
+.grid tr.row-warning td { background: var(--ds-warning-bg); color: var(--ds-warning-fg); }
+.grid tr.selected td { background: var(--ds-bg-selected); }
+.grid td:first-child, .grid th:first-child { position: sticky; left: 0; background-clip: padding-box; }
+.grid td:first-child { background: var(--ds-bg-surface); }
+.grid tbody tr:last-child td { border-bottom: 0; }
+
+.callout { display: flex; gap: 12px; padding: 12px 16px; border: 1px solid; border-radius: var(--ds-radius-md); }
+.callout b { display: block; font-weight: 500; }
+.callout svg { flex: none; margin-top: 2px; }
+.c-info { color: var(--ds-info-fg); background: var(--ds-info-bg); border-color: var(--ds-info-border); }
+.c-warning { color: var(--ds-warning-fg); background: var(--ds-warning-bg); border-color: var(--ds-warning-border); }
+.c-success { color: var(--ds-success-fg); background: var(--ds-success-bg); border-color: var(--ds-success-border); }
+.c-danger { color: var(--ds-danger-fg); background: var(--ds-danger-bg); border-color: var(--ds-danger-border); }
+.callout p { margin: 2px 0 0; color: var(--ds-fg); }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.form { display: grid; gap: 16px; padding: 20px; }
+.field label { display: block; margin-bottom: 6px; font-weight: 500; }
+.field label .req { color: var(--ds-danger-fg); }
+.input { width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--ds-border-strong); border-radius: var(--ds-radius-md); background: var(--ds-bg-surface); color: var(--ds-fg); font: 400 14px/20px var(--ds-font); }
+.input::placeholder { color: var(--ds-fg-muted); }
+.input.is-focus { outline: 2px solid var(--ds-focus); outline-offset: 2px; }
+.input.is-error { border-color: var(--ds-danger-fg); }
+.input[disabled] { background: var(--ds-bg-subtle); color: var(--ds-fg-disabled); border-color: var(--ds-border); }
+.help { margin-top: 6px; font-size: 12px; line-height: 16px; color: var(--ds-fg-muted); }
+.help.err { color: var(--ds-danger-fg); }
+.row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.switch span { width: 40px; height: 22px; border-radius: 999px; background: var(--ds-border-strong); position: relative; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 999px; background: #FFFFFF; }
+.switch[aria-checked="true"] span { background: var(--ds-accent); }
+.switch[aria-checked="true"] span::after { transform: translateX(18px); background: #000000; }
+.check { display: inline-flex; align-items: center; gap: 8px; }
+.check i { width: 18px; height: 18px; border: 1px solid var(--ds-border-strong); border-radius: 4px; display: grid; place-items: center; background: var(--ds-bg-surface); }
+.check i.on { background: var(--ds-accent); border-color: var(--ds-accent); color: #000; }
+
+.list-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ===== Responsivo ===== */
+@media (max-width: 1023px) {
+  .app { grid-template-columns: 1fr; }
+  .shell { display: none; }
+  .header { justify-content: space-between; }
+  .menu-btn { display: inline-flex !important; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .two { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .doc { padding: 16px; }
+  .doc-top { padding: 12px 16px; }
+  .content { padding: 16px; }
+  .page-head h3 { font-size: 22px; line-height: 28px; }
+  .kpi .value { font-size: 22px; line-height: 28px; }
+  .type > div { grid-template-columns: 1fr; gap: 4px; }
+  .input, .select { font-size: 16px; height: 44px; }
+  .btn { height: 44px; }
+  .select { min-width: 0; width: 100%; }
+  .grid-cards thead { display: none; }
+  .grid-cards, .grid-cards tbody, .grid-cards tr, .grid-cards td { display: block; width: 100%; }
+  .grid-cards tr { padding: 12px 16px; border-bottom: 1px solid var(--ds-border); }
+  .grid-cards td { height: auto; padding: 2px 0; border: 0; white-space: normal; text-align: left !important; position: static; }
+  .grid-cards td[data-label]::before { content: attr(data-label) " · "; color: var(--ds-fg-muted); font-size: 12px; }
+  .grid-cards td:first-child { font-weight: 500; font-size: 15px; }
+  .grid-cards .list-actions { justify-content: flex-start; margin-top: 8px; }
+}
+.menu-btn { display: none; }
+</style>
+</head>
+<body>
+
+<header class="doc-top">
+  <div>
+    <h1>Tokens — Design System v2</h1>
+    <p>Aprovada em 15/10/2026 · tema padrão claro · sidebar acompanha o tema · contraste calculado ao vivo</p>
+  </div>
+  <div class="seg" role="group" aria-label="Tema">
+    <button type="button" data-set-theme="light" aria-pressed="true">Claro</button>
+    <button type="button" data-set-theme="dark" aria-pressed="false">Escuro</button>
+  </div>
+</header>
+
+<main class="doc">
+
+  <!-- ===== Amostra ===== -->
+  <section>
+    <h2>Amostra aplicada</h2>
+    <p class="lead">Telas fictícias montadas só com os tokens. Redimensione a janela para ver tablet (abaixo de 1024 px) e celular (abaixo de 768 px).</p>
+
+    <div class="app">
+      <aside class="shell" aria-label="Menu">
+        <div class="brand"><b>SONDA</b><span>Books SND</span><!-- logo: versão para fundo claro (a enviar) e para fundo escuro (/images/logo-sonda.png, branca) --></div>
+        <div class="nav-label">Banco de horas</div>
+        <nav class="nav">
+          <a href="#" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Controle</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 7 8 6 8-6"/></svg>Envio de Saldo Parcial</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M3 8h5M16 16h5"/></svg>Comparação</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Ajustes Retroativos</a>
+        </nav>
+        <div class="nav-label">Cadastros</div>
+        <nav class="nav">
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1"/></svg>Empresas</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>Produtos e Módulos</a>
+        </nav>
+      </aside>
+
+      <div class="main">
+        <div class="header">
+          <button class="btn btn-secondary menu-btn" type="button" aria-label="Abrir menu">☰ Menu</button>
+          <div class="row" style="gap:12px">
+            <div class="who"><b>Usuário Exemplo</b><span>Administradores</span></div>
+            <div class="avatar">UE</div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="page-head">
+            <div>
+              <h3>Controle de Banco de Horas</h3>
+              <p>Acompanhamento mensal de consumo, saldo e repasse</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" type="button">Histórico</button>
+              <button class="btn btn-secondary" type="button">Enviar Saldo Parcial</button>
+              <button class="btn btn-primary" type="button">Recalcular</button>
+            </div>
+          </div>
+
+          <div class="card ctx">
+            <span class="select">EMPRESA EXEMPLO <small>▾</small></span>
+            <span class="select">Jul/2026 – Set/2026 <small>▾</small></span>
+            <span class="badge b-success">Modelo: Bancos múltiplos</span>
+          </div>
+
+          <div class="kpis">
+            <div class="card kpi"><div class="ico">⏱</div><div><div class="label">Baseline</div><div class="value">40:00</div></div></div>
+            <div class="card kpi"><div class="ico">∑</div><div><div class="label">Consumo no mês</div><div class="value">28:40</div></div></div>
+            <div class="card kpi"><div class="ico">↗</div><div><div class="label">Saldo</div><div class="value v-success">03:40</div></div></div>
+            <div class="card kpi"><div class="ico">!</div><div><div class="label">Excedentes</div><div class="value">00:00</div></div></div>
+          </div>
+
+          <div class="row" style="justify-content:space-between">
+            <div class="seg" role="group" aria-label="Bancos">
+              <button type="button" aria-pressed="false">Banco COMEX</button>
+              <button type="button" aria-pressed="true">FISCAL – e-DOCS</button>
+              <button type="button" aria-pressed="false">Banco FISCAL <span class="badge b-neutral" style="height:20px">padrão</span></button>
+            </div>
+            <span class="t-small">Contrato: horas · semestral · consome de outros bancos: <b style="color:var(--ds-fg-accent);font-weight:500">sim</b></span>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div><h4>FISCAL – e-DOCS</h4><p>Dez/2026 é o mês de fechamento do período de apuração</p></div>
+              <button class="btn btn-ghost" type="button">Reajuste</button>
+            </div>
+            <div class="table-wrap">
+              <table class="grid">
+                <thead><tr><th>Indicador</th><th class="r">Out/2026</th><th class="r">Nov/2026</th><th class="r">Dez/2026 (fechamento)</th></tr></thead>
+                <tbody>
+                  <tr><td>Baseline</td><td class="r">40:00</td><td class="r">40:00</td><td class="r">40:00</td></tr>
+                  <tr><td>Repasse do mês anterior</td><td class="r">03:40</td><td class="r">-01:30</td><td class="r">-02:30</td></tr>
+                  <tr><td>Saldo a utilizar</td><td class="r">43:40</td><td class="r">38:30</td><td class="r">37:30</td></tr>
+                  <tr class="total"><td>Consumo total</td><td class="r">45:10</td><td class="r">41:00</td><td class="r">44:00</td></tr>
+                  <tr class="total"><td>Saldo do banco</td><td class="r v-danger">-01:30</td><td class="r v-danger">-02:30</td><td class="r v-danger">-06:30</td></tr>
+                  <tr class="row-info"><td style="background:var(--ds-info-bg)">Consumido de outros bancos <span class="badge b-new">novo</span></td><td class="r">—</td><td class="r">—</td><td class="r">+06:30</td></tr>
+                  <tr class="row-warning"><td style="background:var(--ds-warning-bg)">Cedido a outros bancos <span class="badge b-new">novo</span></td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>
+                  <tr class="total"><td>Saldo após consumo entre bancos</td><td class="r">—</td><td class="r">—</td><td class="r v-success">00:00</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-pad">
+              <div class="callout c-info">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <div><b>Observação automática — Dez/2026</b><p>No fechamento do período, 06:30 horas foram consumidas do Banco FISCAL para cobrir o saldo negativo deste banco.</p></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div><h4>Comparação Legado x Novo</h4><p>Set/2026 · 5 empresas</p></div><button class="btn btn-secondary" type="button">Exportar</button></div>
+            <div class="table-wrap">
+              <table class="grid grid-cards">
+                <thead><tr><th>Empresa</th><th class="r">Bancos</th><th class="r">Legado</th><th class="r">Novo</th><th class="r">Diferença</th><th>Situação</th><th class="r">Ação</th></tr></thead>
+                <tbody>
+                  <tr><td>EMPRESA EXEMPLO</td><td class="r" data-label="Bancos">3</td><td class="r" data-label="Legado">142:35</td><td class="r" data-label="Novo">142:35</td><td class="r" data-label="Diferença">00:00</td><td><span class="badge b-success">Soma confere</span></td><td><div class="list-actions"><button class="btn btn-primary" type="button">Liberar empresa</button></div></td></tr>
+                  <tr class="selected"><td>CLIENTE BETA</td><td class="r" data-label="Bancos">1</td><td class="r" data-label="Legado">96:40</td><td class="r" data-label="Novo">95:10</td><td class="r v-danger" data-label="Diferença">-01:30</td><td><span class="badge b-danger">Divergente</span></td><td><div class="list-actions"><button class="btn btn-secondary" type="button">Ver detalhes</button></div></td></tr>
+                  <tr><td>CLIENTE DELTA</td><td class="r" data-label="Bancos">1</td><td class="r" data-label="Legado">12:20</td><td class="r" data-label="Novo">12:20</td><td class="r" data-label="Diferença">00:00</td><td><span class="badge b-neutral">Liberada em 01/10</span></td><td><div class="list-actions"><button class="btn btn-secondary" type="button">Voltar para legado</button></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="two">
+            <div class="card">
+              <div class="card-head"><div><h4>Formulário</h4><p>Estados de campo</p></div></div>
+              <div class="form">
+                <div class="field"><label>Nome do banco <span class="req">*</span></label><input class="input" value="FISCAL – e-DOCS"><div class="help">Aparece para o cliente no Book e no e-mail de Saldo Parcial</div></div>
+                <div class="field"><label>Com foco</label><input class="input is-focus" placeholder="Digite para buscar…"></div>
+                <div class="field"><label>Baseline <span class="req">*</span></label><input class="input is-error num" value="40:7"><div class="help err">Use o formato HH:MM, por exemplo 40:00</div></div>
+                <div class="field"><label>Desabilitado</label><input class="input" value="Somente leitura" disabled></div>
+                <div class="field"><label>Modalidade <span class="req">*</span></label>
+                  <div class="seg" role="group" aria-label="Modalidade"><button type="button" aria-pressed="false">SaaS</button><button type="button" aria-pressed="true">On Premise</button></div>
+                </div>
+                <div class="row">
+                  <span class="switch" role="switch" aria-checked="true" tabindex="0"><span></span>Ativo</span>
+                  <span class="switch" role="switch" aria-checked="false" tabindex="0"><span></span>Banco padrão</span>
+                  <span class="check"><i class="on">✓</i>COMEX</span>
+                  <span class="check"><i></i>GALLERY</span>
+                </div>
+                <div class="row"><button class="btn btn-secondary" type="button">Cancelar</button><button class="btn btn-primary" type="button">Salvar banco</button><button class="btn" type="button" disabled>Desabilitado</button></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div><h4>Feedback</h4><p>Selos e avisos</p></div></div>
+              <div class="form">
+                <div class="row" style="gap:8px">
+                  <span class="badge b-success">Ativo</span><span class="badge b-success">Idêntico</span>
+                  <span class="badge b-warning">Legado (em validação)</span><span class="badge b-warning">Sem módulo</span>
+                  <span class="badge b-danger">Divergente</span><span class="badge b-info">Automática</span>
+                  <span class="badge b-neutral">Inativo</span><span class="badge b-new">Novo</span>
+                </div>
+                <div class="callout c-warning"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg><div><b>Impacto da alteração</b><p>Alterar o Módulo pode mover horas entre bancos de 8 empresas a partir do próximo recálculo.</p></div></div>
+                <div class="callout c-success"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><b>Sem conflito</b><p>Nenhum outro banco da empresa cobre FISCAL › COMPLY e-DOCS.</p></div></div>
+                <div class="callout c-danger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16h.01"/></svg><div><b>Falha no envio do Saldo Parcial</b><p>2 empresas não receberam o e-mail. Veja o histórico.</p></div></div>
+                <div class="row"><button class="btn btn-danger" type="button">Voltar para legado</button><span class="mono">AMS APL - E-DOCS - N2</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Marca ===== -->
+  <section>
+    <h2>Paleta do manual e derivadas</h2>
+    <p class="lead">M = manual de marca · D = derivada (motivo no Tokens.md).</p>
+    <div class="swatches" id="palette"></div>
+  </section>
+
+  <!-- ===== Tokens ===== -->
+  <section>
+    <h2>Tokens semânticos — contraste no tema atual</h2>
+    <p class="lead">Mínimo: 4,5 para texto, 3,0 para borda de componente e foco. Troque o tema no topo para recalcular.</p>
+    <div class="table-wrap">
+      <table class="tokens">
+        <thead><tr><th>Token</th><th>Valor</th><th>Sobre</th><th>Contraste</th><th>Mínimo</th></tr></thead>
+        <tbody id="token-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== Tipografia ===== -->
+  <section>
+    <h2>Tipografia</h2>
+    <p class="lead">Kumbh Sans só no título de página. Roboto no resto. Light só a partir de 18–20 px.</p>
+    <div class="type">
+      <div><code>page-title · Kumbh 500 28/36</code><span class="t-page-title">Controle de Banco de Horas</span></div>
+      <div><code>title · Roboto 500 18/24</code><span class="t-title">Editar Banco de Horas</span></div>
+      <div><code>section · Roboto 700 12/16</code><span class="t-section">Parâmetros do contrato</span></div>
+      <div><code>body · Roboto 400 14/20</code><span class="t-body">No fechamento do período, se o saldo deste banco ficar negativo, a diferença é coberta com o saldo positivo dos outros bancos.</span></div>
+      <div><code>body-strong · Roboto 500 14/20</code><span class="t-body-strong">Ao zerar, consumir saldo dos outros bancos</span></div>
+      <div><code>small · Roboto 400 12/16</code><span class="t-small">Última alteração: 12/09/2026 14:32 por M. Souza</span></div>
+      <div><code>table-head · Roboto 500 12/16</code><span class="t-table-head">Consumo total legado</span></div>
+      <div><code>kpi · Roboto 700 28/32</code><span class="t-kpi">142:35</span></div>
+      <div><code>lead · Roboto 300 20/28</code><span class="t-lead">Gestão de bancos de horas mais simples e precisa.</span></div>
+      <div><code>mono · ui-monospace 13/20</code><span class="mono">AMS APL - COMEX - DUIMP - N1</span></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+
+  // ---- tema ----
+  function setTheme(t) {
+    root.setAttribute('data-theme', t);
+    document.querySelectorAll('[data-set-theme]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-set-theme') === t));
+    });
+    try { localStorage.setItem('ds-v2-preview-theme', t); } catch (e) {}
+    render();
+  }
+  document.querySelectorAll('[data-set-theme]').forEach(function (b) {
+    b.addEventListener('click', function () { setTheme(b.getAttribute('data-set-theme')); });
+  });
+
+  // ---- contraste (WCAG 2.1) ----
+  function lum(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    return [0, 2, 4].map(function (i) {
+      var v = parseInt(hex.substr(i, 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    }).reduce(function (acc, v, i) { return acc + v * [0.2126, 0.7152, 0.0722][i]; }, 0);
+  }
+  function ratio(a, b) {
+    var x = lum(a), y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function v(name) { return getComputedStyle(root).getPropertyValue('--' + name).trim(); }
+
+  // ---- paleta ----
+  var palette = [
+    ['#00D4E8', 'cyan-500', 'M'], ['#33DDED', 'cyan-400', 'D'], ['#00BFD1', 'cyan-600', 'D'], ['#00A9B9', 'cyan-700', 'D'],
+    ['#006F7D', 'cyan-900', 'D'], ['#E0F8FB', 'cyan-50', 'D'], ['#0D2B2E', 'cyan-950', 'D'],
+    ['#FFFFFF', 'white', 'M'], ['#F5F5F5', 'gray-50', 'D'], ['#E4E4E4', 'gray-100', 'M'], ['#B1B1B1', 'gray-300', 'M'],
+    ['#8A8A8A', 'gray-400', 'D'], ['#737373', 'gray-500', 'D'], ['#6B6B6B', 'gray-550', 'D'], ['#5C5C5C', 'gray-600', 'D'],
+    ['#3D3D3D', 'gray-700', 'M'], ['#1F1F1F', 'gray-850', 'D'], ['#141414', 'gray-900', 'D'], ['#000000', 'black', 'M']
+  ];
+  document.getElementById('palette').innerHTML = palette.map(function (p) {
+    return '<div class="sw"><div class="chip" style="background:' + p[0] + '"></div><div class="meta"><b>' + p[1] +
+      '<span class="' + (p[2] === 'M' ? 'tag-m' : 'tag-d') + '">' + p[2] + '</span></b><span>' + p[0] + '</span></div></div>';
+  }).join('');
+
+  // ---- tokens: [token, fundo, mínimo] ----
+  var checks = [
+    ['ds-fg', 'ds-bg-surface', 4.5], ['ds-fg', 'ds-bg-page', 4.5], ['ds-fg', 'ds-bg-raised', 4.5],
+    ['ds-fg-secondary', 'ds-bg-surface', 4.5], ['ds-fg-secondary', 'ds-bg-subtle', 4.5],
+    ['ds-fg-muted', 'ds-bg-surface', 4.5], ['ds-fg-muted', 'ds-bg-subtle', 4.5],
+    ['ds-fg-accent', 'ds-bg-surface', 4.5], ['ds-fg-accent', 'ds-bg-page', 4.5], ['ds-fg-accent', 'ds-accent-subtle', 4.5],
+    ['ds-fg-on-accent', 'ds-accent', 4.5], ['ds-fg-on-accent', 'ds-accent-hover', 4.5], ['ds-fg-on-accent', 'ds-accent-pressed', 4.5],
+    ['ds-border-strong', 'ds-bg-surface', 3], ['ds-border-strong', 'ds-bg-page', 3],
+    ['ds-focus', 'ds-bg-surface', 3], ['ds-focus', 'ds-bg-page', 3],
+    ['ds-success-fg', 'ds-success-bg', 4.5], ['ds-success-fg', 'ds-bg-surface', 4.5], ['ds-success-fg', 'ds-bg-subtle', 4.5],
+    ['ds-warning-fg', 'ds-warning-bg', 4.5], ['ds-warning-fg', 'ds-bg-surface', 4.5],
+    ['ds-danger-fg', 'ds-danger-bg', 4.5], ['ds-danger-fg', 'ds-bg-surface', 4.5], ['ds-danger-fg', 'ds-bg-subtle', 4.5],
+    ['ds-info-fg', 'ds-info-bg', 4.5], ['ds-info-fg', 'ds-bg-surface', 4.5],
+    ['ds-fg-on-danger', 'ds-danger-solid', 4.5],
+    ['ds-shell-fg', 'ds-shell-bg', 4.5], ['ds-shell-fg-muted', 'ds-shell-bg', 4.5], ['ds-shell-active-fg', 'ds-shell-active-bg', 4.5]
+  ];
+
+  function render() {
+    var rows = checks.map(function (c) {
+      var fg = v(c[0]), bg = v(c[1]);
+      var r = ratio(fg, bg), ok = r >= c[2];
+      return '<tr><td><span class="dot" style="background:' + fg + '"></span>' + c[0] + '</td><td class="mono">' + fg +
+        '</td><td><span class="dot" style="background:' + bg + '"></span>' + c[1] + '</td><td><span class="ratio ' + (ok ? 'ok' : 'fail') + '">' +
+        r.toFixed(2).replace('.', ',') + (ok ? ' ✓' : ' ✗') + '</span></td><td class="num">' + String(c[2]).replace('.', ',') + '</td></tr>';
+    });
+    document.getElementById('token-rows').innerHTML = rows.join('');
+  }
+
+  var saved = 'light';
+  try { saved = localStorage.getItem('ds-v2-preview-theme') || 'light'; } catch (e) {}
+  setTheme(saved === 'dark' ? 'dark' : 'light');
+})();
+</script>
+</body>
+</html>
