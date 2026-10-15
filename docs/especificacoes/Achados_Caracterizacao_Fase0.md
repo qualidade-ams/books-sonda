@@ -77,20 +77,20 @@ Os outros 23 erros de tipo novos são de tipagem (union literal × string, Json 
 
 ## Funções SECURITY DEFINER do legado executáveis por qualquer usuário (advisors do Supabase, 15/10/2026)
 
-Os advisors de segurança apontam 11 funções antigas do schema public, com SECURITY DEFINER, que qualquer usuário logado pode chamar via . Cinco delas também podem ser chamadas sem login (). Nenhuma é das tabelas novas das Fases 1 e 2.
+Os advisors de segurança apontam 11 funções antigas do schema public, com SECURITY DEFINER, que qualquer usuário logado pode chamar via `/rest/v1/rpc`. Cinco delas também podem ser chamadas sem login (`anon`). Nenhuma é das tabelas novas das Fases 1 e 2.
 
-| Função | Pode ser chamada por                                              |
-| ------ | ----------------------------------------------------------------- |
-|        | anon e autenticado                                                |
-|        | anon e autenticado                                                |
-|        | anon e autenticado                                                |
-|        | anon e autenticado                                                |
-|        | anon e autenticado                                                |
-|        | autenticado                                                       |
-|        | autenticado                                                       |
-|        | autenticado                                                       |
-|        | autenticado: qualquer usuário logado inativa as empresas vencidas |
-|        | autenticado                                                       |
-|        | autenticado                                                       |
+| Função                                                     | Pode ser chamada por                                              |
+| ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| `detectar_inconsistencias()`                               | anon e autenticado                                                |
+| `sync_agendamentos_before_write()`                         | anon e autenticado                                                |
+| `sync_percentual_repasse_to_empresa()`                     | anon e autenticado                                                |
+| `sync_percentual_repasse_to_empresa_on_delete()`           | anon e autenticado                                                |
+| `update_codigo_resolucao_modificacoes_aranda_updated_at()` | anon e autenticado                                                |
+| `get_baseline_vigente(uuid, date)`                         | autenticado                                                       |
+| `get_percentual_repasse_vigente(uuid, date)`               | autenticado                                                       |
+| `has_sync_write_permission()`                              | autenticado                                                       |
+| `inativar_empresas_vencidas()`                             | autenticado: qualquer usuário logado inativa as empresas vencidas |
+| `registrar_envio_book(uuid, uuid, text[])`                 | autenticado                                                       |
+| `user_can_access_percentual_repasse_historico()`           | autenticado                                                       |
 
-As funções de gatilho (, ) não fazem nada chamadas fora de um gatilho, mas devem ter o EXECUTE revogado. A correção fica fora da reconstrução, por não ser escopo dela; o ponto mais sensível é .
+As funções de gatilho (`sync_*` e `update_*_updated_at`) não fazem nada quando chamadas fora de um gatilho, mas devem ter o EXECUTE revogado. A correção fica fora da reconstrução, por não ser escopo dela. O ponto mais sensível é `inativar_empresas_vencidas()`.
