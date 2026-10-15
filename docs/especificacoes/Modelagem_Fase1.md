@@ -366,8 +366,17 @@ Cada passo é uma migration. Cada um tem antes um teste SQL de verificação, qu
 1. `20261015000001_fase1_infra_catalogos.sql`: autoria e auditoria genérica (antes, para as tabelas já nascerem auditadas), mais os catálogos e as telas de catálogo. **Aplicada em 15/10/2026; teste `supabase/tests/fase1_01_catalogos.test.sql` verde.**
 2. `20261015000002_fase1_empresas.sql`: empresas e satélites, com RLS e auditoria. **Aplicada em 15/10/2026; teste verde.**
 3. `20261015000003_fase1_bancos_horas.sql`: bancos, escopo e históricos, com gatilhos de validação (RN-01, RN-05, RN-14, D-12, EXCLUDE). **Aplicada em 15/10/2026; teste verde.**
-4. `…_fase1_sincronizacao.sql`: tabela de falhas e gatilhos de sincronização.
-5. `…_fase1_carga.sql`: carga inicial (5.1) e conferência (5.2).
+4. `20261015000004_fase1_sincronizacao.sql`: tabela de falhas e gatilhos de sincronização. **Aplicada em 15/10/2026; teste verde.**
+5. `20261015000005_fase1_ajuste_sinc_cadastro_incompleto.sql`: o espelho ignora empresa sem período de apuração (caso HYPERA PHARMA). O banco nasce sozinho quando o cadastro atual for completado. **Aplicada em 15/10/2026.**
+6. `20261015000006_fase1_carga.sql`: carga inicial (5.1) e conferência (5.2), num único bloco que aborta se algo não bater. **Aplicada em 15/10/2026.** Resultado:
+   - 190 empresas, 220 produtos contratados e 190 organizações do Aranda.
+   - 140 bancos padrão espelho, com 154 vigências de baseline e 146 de repasse.
+   - 55 módulos, 170 grupos do de-para e 7 módulos de requerimento.
+   - Dos 170 grupos, 151 estão ligados a um módulo. Os outros 19 ficaram como "não se aplica": BPO, DEDICADOS, CUSTOMER SUCCESS, GERAL, GERENTE, PROJETO, Qualidade AMS, T&M e Ticket Manager. Podem ser reclassificados na tela do de-para (Fase 3).
+   - 11 empresas AMS ativas ficaram sem banco porque o cadastro atual está incompleto. Dez não têm tipo de contrato: CEEE, COPASA, COPREL, GOODYEAR, MAT INCENDIO, OI, TIM, V.TAL, VIBRA e VOTORANTIM. A HYPERA PHARMA não tem período de apuração.
+   - Nenhuma falha de sincronização ficou aberta.
+
+Os testes 1 a 4 foram reescritos como bloco `DO` autorreversível e rodados de novo após a carga: todos verdes.
 
 Do lado do app, entram tipos regerados e testes de integração dos gatilhos, rodando no banco dentro de transação revertida. Não há tela nesta fase.
 
