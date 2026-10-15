@@ -58,6 +58,8 @@ Ciclo por camada testável (services → hooks → componentes com lógica relev
 
 Padrões de teste: skill `testes`.
 
+Única exceção: protótipos descartáveis em `src/pages/prototipos/` (skill `prototipo`). Ao virarem tela real, o TDD volta a valer.
+
 ## Regras obrigatórias
 
 1. **Nunca logar dados pessoais** (nome, email, ID de usuário, payload de `profiles`/`users`) em `console.log/warn/info`. `console.error` só com `error.message`/`error.code`. É regra de segurança (LGPD), não estilo — o console é visível a qualquer usuário com DevTools. → skill `seguranca`
@@ -82,21 +84,22 @@ Padrões de teste: skill `testes`.
 
 Carregue **só** a skill da tarefa em questão; cada uma indica qual referência abrir.
 
-| Tarefa | Skill |
-|---|---|
-| Feature nova atravessando várias camadas | `criar-feature` |
-| Tela/página administrativa nova | `criar-tela` |
-| Migration, tabela, coluna, RLS, trigger | `criar-migration` |
-| Endpoint serverless (Vercel ou Edge Function) | `criar-api` |
-| Sincronização com o SQL Server Aranda, dado que não chegou | `sync-api` |
-| Classes Tailwind, layout, filtro, tabela, modal, formulário | `design-system` |
-| Escrever service, hook, tratamento de erro, Zod, cache | `padroes-codigo` |
-| Log, PII, secret, autorização | `seguranca` |
-| Permissão de tela, ProtectedRoute/Action, acesso negado | `autenticacao` |
-| Bug reportado | `corrigir-bug` |
-| Escrever/rodar teste | `testes` |
-| Revisar diff ou PR | `code-review` |
-| Publicar, migrar ou reverter | `deploy` |
+| Tarefa                                                           | Skill             |
+| ---------------------------------------------------------------- | ----------------- |
+| Feature nova atravessando várias camadas                         | `criar-feature`   |
+| Tela/página administrativa nova                                  | `criar-tela`      |
+| Protótipo visual de tela (dados fictícios, antes de implementar) | `prototipo`       |
+| Migration, tabela, coluna, RLS, trigger                          | `criar-migration` |
+| Endpoint serverless (Vercel ou Edge Function)                    | `criar-api`       |
+| Sincronização com o SQL Server Aranda, dado que não chegou       | `sync-api`        |
+| Classes Tailwind, layout, filtro, tabela, modal, formulário      | `design-system`   |
+| Escrever service, hook, tratamento de erro, Zod, cache           | `padroes-codigo`  |
+| Log, PII, secret, autorização                                    | `seguranca`       |
+| Permissão de tela, ProtectedRoute/Action, acesso negado          | `autenticacao`    |
+| Bug reportado                                                    | `corrigir-bug`    |
+| Escrever/rodar teste                                             | `testes`          |
+| Revisar diff ou PR                                               | `code-review`     |
+| Publicar, migrar ou reverter                                     | `deploy`          |
 
 Referências de projeto (fora de skill): `.claude/references/dominios.md` (mapa domínio → arquivos) e `.claude/references/estrutura.md` (árvore de diretórios e convenções de nome).
 
@@ -115,7 +118,7 @@ Referências de projeto (fora de skill): `.claude/references/dominios.md` (mapa 
 
 ## Avisos deste repositório
 
-- **Toast**: duas convenções coexistem — `sonner` (~54 arquivos) e o hook `useToast` (~59 arquivos), este pensado para substituir o primeiro, migração inacabada. Ao editar arquivo existente siga o padrão *daquele arquivo*; em código novo prefira `useToast`.
+- **Toast**: duas convenções coexistem — `sonner` (~54 arquivos) e o hook `useToast` (~59 arquivos), este pensado para substituir o primeiro, migração inacabada. Ao editar arquivo existente siga o padrão _daquele arquivo_; em código novo prefira `useToast`.
 - **Lint**: `npm run lint` funciona, mas o baseline tem ~11 erros e ~890 warnings preexistentes. Confira que sua mudança não aumentou a contagem; "lint passou" sozinho não é sinal de qualidade.
 - **Credenciais versionadas**: `sync-api/.env.temp` e `sync-api/deployment/.env.production.sondalyze` estão no git com exceção explícita no `.gitignore` — vazamento real (senha de SQL Server, IP interno) ainda não remediado. Ao mexer em `sync-api/`, não replique esse padrão.
 - **Arquivos gigantes**: `Dashboard.tsx`, `booksDataCollectorService.ts`, `booksDisparoService.ts` e outros têm 2.000–6.600 linhas. Extraia lógica nova em vez de engordá-los.
