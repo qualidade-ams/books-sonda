@@ -360,10 +360,10 @@ O problema é este. Até a liberação de cada empresa, a tela atual continua al
 
 Cada passo é uma migration. Cada um tem antes um teste SQL de verificação, que falha e depois passa (TDD aplicado a schema).
 
-1. `…_fase1_catalogos.sql`: produtos, módulos, grupos_aranda, ramos e módulos de requerimento, com RLS e auditoria.
+1. `20261015000001_fase1_infra_catalogos.sql`: autoria e auditoria genérica (antes, para as tabelas já nascerem auditadas), mais os catálogos e as telas de catálogo. **Aplicada em 15/10/2026; teste `supabase/tests/fase1_01_catalogos.test.sql` verde.**
 2. `…_fase1_empresas.sql`: empresas e satélites, com RLS e auditoria.
 3. `…_fase1_bancos_horas.sql`: bancos, escopo e históricos, com gatilhos de validação (RN-01, RN-05, RN-14, D-12, EXCLUDE).
-4. `…_fase1_auditoria_sincronizacao.sql`: auditoria genérica, falhas, gatilhos de sincronização e registro das telas.
+4. `…_fase1_sincronizacao.sql`: tabela de falhas e gatilhos de sincronização.
 5. `…_fase1_carga.sql`: carga inicial (5.1) e conferência (5.2).
 
 Do lado do app, entram tipos regerados e testes de integração dos gatilhos, rodando no banco dentro de transação revertida. Não há tela nesta fase.
