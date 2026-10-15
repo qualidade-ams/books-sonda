@@ -312,6 +312,7 @@ Detalhes da carga:
 - **ANGLO (segmentada):** entra com **um único Banco padrão**, com o baseline total, igual ao legado. A divisão em NIQUEL e IOB acontece no mês de corte, depois da validação (9.3-2).
 - **10 empresas AMS ativas sem `tipo_contrato`:** ficam **sem banco** e aparecem como pendência. O legado também não calcula para elas.
 - **Todas** as empresas entram com `modelo_calculo = 'legado'`.
+- **Pré-requisito da carga (D-12):** o banco não pode começar antes da vigência do contrato. Em 15/10/2026, só a REPSOL viola essa regra (banco desde 12/2024, contrato com início em 01/12/2025). O cadastro está errado e precisa ser corrigido na tela atual antes da carga. A carga faz essa verificação antes de começar e para, listando as empresas nessa situação.
 
 ### 5.2 Conferência pós-carga (consultas que precisam bater)
 
@@ -363,8 +364,8 @@ O problema é este. Até a liberação de cada empresa, a tela atual continua al
 Cada passo é uma migration. Cada um tem antes um teste SQL de verificação, que falha e depois passa (TDD aplicado a schema).
 
 1. `20261015000001_fase1_infra_catalogos.sql`: autoria e auditoria genérica (antes, para as tabelas já nascerem auditadas), mais os catálogos e as telas de catálogo. **Aplicada em 15/10/2026; teste `supabase/tests/fase1_01_catalogos.test.sql` verde.**
-2. `…_fase1_empresas.sql`: empresas e satélites, com RLS e auditoria.
-3. `…_fase1_bancos_horas.sql`: bancos, escopo e históricos, com gatilhos de validação (RN-01, RN-05, RN-14, D-12, EXCLUDE).
+2. `20261015000002_fase1_empresas.sql`: empresas e satélites, com RLS e auditoria. **Aplicada em 15/10/2026; teste verde.**
+3. `20261015000003_fase1_bancos_horas.sql`: bancos, escopo e históricos, com gatilhos de validação (RN-01, RN-05, RN-14, D-12, EXCLUDE). **Aplicada em 15/10/2026; teste verde.**
 4. `…_fase1_sincronizacao.sql`: tabela de falhas e gatilhos de sincronização.
 5. `…_fase1_carga.sql`: carga inicial (5.1) e conferência (5.2).
 
