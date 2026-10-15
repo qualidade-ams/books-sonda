@@ -433,6 +433,51 @@ export type Database = {
         }
         Relationships: []
       }
+      auditoria_alteracoes: {
+        Row: {
+          acao: string
+          banco_id: string | null
+          campos_alterados: string[] | null
+          created_at: string
+          dados_antes: Json | null
+          dados_depois: Json | null
+          empresa_id: string | null
+          id: number
+          origem: string
+          registro_id: string
+          tabela: string
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          banco_id?: string | null
+          campos_alterados?: string[] | null
+          created_at?: string
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          empresa_id?: string | null
+          id?: never
+          origem: string
+          registro_id: string
+          tabela: string
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          banco_id?: string | null
+          campos_alterados?: string[] | null
+          created_at?: string
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          empresa_id?: string | null
+          id?: never
+          origem?: string
+          registro_id?: string
+          tabela?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       banco_horas_ajustes_retroativos: {
         Row: {
           analisado_em: string | null
@@ -1279,6 +1324,686 @@ export type Database = {
           },
         ]
       }
+      bancos_horas: {
+        Row: {
+          ativo: boolean
+          consome_outros_bancos: boolean
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          dia_fim_apuracao: number
+          dia_inicio_apuracao: number
+          duracao_periodo_meses: number | null
+          empresa_id: string
+          espelha_legado: boolean
+          filtro_ic_operador: string | null
+          filtro_ic_valor: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          inicio_vigencia: string
+          nome: string
+          ordem: number
+          origem: string
+          padrao: boolean
+          periodo_apuracao: number
+          periodos_ate_zerar: number | null
+          repasse_especial: string
+          taxa_produto: string
+          taxa_tipo_hora: string
+          tipo_contrato: string
+          updated_at: string
+          updated_by: string | null
+          visivel_cliente: boolean
+        }
+        Insert: {
+          ativo?: boolean
+          consome_outros_bancos?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          dia_fim_apuracao?: number
+          dia_inicio_apuracao?: number
+          duracao_periodo_meses?: number | null
+          empresa_id: string
+          espelha_legado?: boolean
+          filtro_ic_operador?: string | null
+          filtro_ic_valor?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          inicio_vigencia: string
+          nome: string
+          ordem: number
+          origem: string
+          padrao?: boolean
+          periodo_apuracao: number
+          periodos_ate_zerar?: number | null
+          repasse_especial?: string
+          taxa_produto: string
+          taxa_tipo_hora?: string
+          tipo_contrato: string
+          updated_at?: string
+          updated_by?: string | null
+          visivel_cliente?: boolean
+        }
+        Update: {
+          ativo?: boolean
+          consome_outros_bancos?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          dia_fim_apuracao?: number
+          dia_inicio_apuracao?: number
+          duracao_periodo_meses?: number | null
+          empresa_id?: string
+          espelha_legado?: boolean
+          filtro_ic_operador?: string | null
+          filtro_ic_valor?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          inicio_vigencia?: string
+          nome?: string
+          ordem?: number
+          origem?: string
+          padrao?: boolean
+          periodo_apuracao?: number
+          periodos_ate_zerar?: number | null
+          repasse_especial?: string
+          taxa_produto?: string
+          taxa_tipo_hora?: string
+          tipo_contrato?: string
+          updated_at?: string
+          updated_by?: string | null
+          visivel_cliente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_baseline: {
+        Row: {
+          banco_id: string
+          baseline_minutos: number | null
+          baseline_tickets: number | null
+          created_at: string
+          created_by: string | null
+          credito: string
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          motivo: string | null
+          observacao: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          banco_id: string
+          baseline_minutos?: number | null
+          baseline_tickets?: number | null
+          created_at?: string
+          created_by?: string | null
+          credito?: string
+          data_fim?: string | null
+          data_inicio: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          banco_id?: string
+          baseline_minutos?: number | null
+          baseline_tickets?: number | null
+          created_at?: string
+          created_by?: string | null
+          credito?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_baseline_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_escopo: {
+        Row: {
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          modulo_id: string | null
+          produto_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          banco_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          modulo_id?: string | null
+          produto_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          banco_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          modulo_id?: string | null
+          produto_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_escopo_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_escopo_modulo_fk"
+            columns: ["modulo_id", "produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto_modulos"
+            referencedColumns: ["id", "produto_id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_escopo_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_fechamento_itens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fechamento_id: string
+          id: string
+          item_id: string
+          minutos: number
+          tickets: number
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fechamento_id: string
+          id?: string
+          item_id: string
+          minutos?: number
+          tickets?: number
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fechamento_id?: string
+          id?: string
+          item_id?: string
+          minutos?: number
+          tickets?: number
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_fechamento_itens_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_fechamentos: {
+        Row: {
+          alertas: string[]
+          ano: number
+          banco_id: string
+          baseline_minutos: number | null
+          baseline_tickets: number | null
+          cedido_outros_minutos: number | null
+          cedido_outros_tickets: number | null
+          consumido_outros_minutos: number | null
+          consumido_outros_tickets: number | null
+          consumo_minutos: number | null
+          consumo_tickets: number | null
+          consumo_total_minutos: number | null
+          consumo_total_tickets: number | null
+          created_at: string
+          created_by: string | null
+          excedente_minutos: number | null
+          excedente_tickets: number | null
+          fechado_em: string
+          fechado_por: string | null
+          fim_periodo: boolean
+          id: string
+          mes: number
+          motivo: string
+          nome_banco: string
+          parametros: Json
+          percentual_repasse: number | null
+          reajustes_minutos: number | null
+          reajustes_tickets: number | null
+          repasse_anterior_minutos: number | null
+          repasse_anterior_tickets: number | null
+          repasse_minutos: number | null
+          repasse_tickets: number | null
+          requerimentos_minutos: number | null
+          requerimentos_tickets: number | null
+          saldo_a_utilizar_minutos: number | null
+          saldo_a_utilizar_tickets: number | null
+          saldo_final_minutos: number | null
+          saldo_final_tickets: number | null
+          saldo_minutos: number | null
+          saldo_tickets: number | null
+          taxa_hora: number | null
+          taxa_ticket: number | null
+          transicao_periodo: boolean
+          updated_at: string
+          updated_by: string | null
+          valor_a_faturar: number
+          valor_excedente_horas: number
+          valor_excedente_tickets: number
+          versao: number
+          vigente: boolean
+        }
+        Insert: {
+          alertas?: string[]
+          ano: number
+          banco_id: string
+          baseline_minutos?: number | null
+          baseline_tickets?: number | null
+          cedido_outros_minutos?: number | null
+          cedido_outros_tickets?: number | null
+          consumido_outros_minutos?: number | null
+          consumido_outros_tickets?: number | null
+          consumo_minutos?: number | null
+          consumo_tickets?: number | null
+          consumo_total_minutos?: number | null
+          consumo_total_tickets?: number | null
+          created_at?: string
+          created_by?: string | null
+          excedente_minutos?: number | null
+          excedente_tickets?: number | null
+          fechado_em?: string
+          fechado_por?: string | null
+          fim_periodo?: boolean
+          id?: string
+          mes: number
+          motivo: string
+          nome_banco: string
+          parametros?: Json
+          percentual_repasse?: number | null
+          reajustes_minutos?: number | null
+          reajustes_tickets?: number | null
+          repasse_anterior_minutos?: number | null
+          repasse_anterior_tickets?: number | null
+          repasse_minutos?: number | null
+          repasse_tickets?: number | null
+          requerimentos_minutos?: number | null
+          requerimentos_tickets?: number | null
+          saldo_a_utilizar_minutos?: number | null
+          saldo_a_utilizar_tickets?: number | null
+          saldo_final_minutos?: number | null
+          saldo_final_tickets?: number | null
+          saldo_minutos?: number | null
+          saldo_tickets?: number | null
+          taxa_hora?: number | null
+          taxa_ticket?: number | null
+          transicao_periodo?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          valor_a_faturar?: number
+          valor_excedente_horas?: number
+          valor_excedente_tickets?: number
+          versao: number
+          vigente?: boolean
+        }
+        Update: {
+          alertas?: string[]
+          ano?: number
+          banco_id?: string
+          baseline_minutos?: number | null
+          baseline_tickets?: number | null
+          cedido_outros_minutos?: number | null
+          cedido_outros_tickets?: number | null
+          consumido_outros_minutos?: number | null
+          consumido_outros_tickets?: number | null
+          consumo_minutos?: number | null
+          consumo_tickets?: number | null
+          consumo_total_minutos?: number | null
+          consumo_total_tickets?: number | null
+          created_at?: string
+          created_by?: string | null
+          excedente_minutos?: number | null
+          excedente_tickets?: number | null
+          fechado_em?: string
+          fechado_por?: string | null
+          fim_periodo?: boolean
+          id?: string
+          mes?: number
+          motivo?: string
+          nome_banco?: string
+          parametros?: Json
+          percentual_repasse?: number | null
+          reajustes_minutos?: number | null
+          reajustes_tickets?: number | null
+          repasse_anterior_minutos?: number | null
+          repasse_anterior_tickets?: number | null
+          repasse_minutos?: number | null
+          repasse_tickets?: number | null
+          requerimentos_minutos?: number | null
+          requerimentos_tickets?: number | null
+          saldo_a_utilizar_minutos?: number | null
+          saldo_a_utilizar_tickets?: number | null
+          saldo_final_minutos?: number | null
+          saldo_final_tickets?: number | null
+          saldo_minutos?: number | null
+          saldo_tickets?: number | null
+          taxa_hora?: number | null
+          taxa_ticket?: number | null
+          transicao_periodo?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          valor_a_faturar?: number
+          valor_excedente_horas?: number
+          valor_excedente_tickets?: number
+          versao?: number
+          vigente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_fechamentos_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_observacoes: {
+        Row: {
+          ano: number
+          ativo: boolean
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          fechamento_id: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          mes: number
+          origem: string
+          reajuste_id: string | null
+          texto: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ano: number
+          ativo?: boolean
+          banco_id: string
+          created_at?: string
+          created_by?: string | null
+          fechamento_id?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          mes: number
+          origem: string
+          reajuste_id?: string | null
+          texto: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ano?: number
+          ativo?: boolean
+          banco_id?: string
+          created_at?: string
+          created_by?: string | null
+          fechamento_id?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          mes?: number
+          origem?: string
+          reajuste_id?: string | null
+          texto?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_observacoes_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_observacoes_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_observacoes_reajuste_id_fkey"
+            columns: ["reajuste_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_reajustes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_reajustes: {
+        Row: {
+          ano: number
+          ativo: boolean
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          justificativa: string
+          mes: number
+          minutos: number
+          motivo_inativacao: string | null
+          origem: string
+          tickets: number
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ano: number
+          ativo?: boolean
+          banco_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          justificativa: string
+          mes: number
+          minutos?: number
+          motivo_inativacao?: string | null
+          origem?: string
+          tickets?: number
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ano?: number
+          ativo?: boolean
+          banco_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          justificativa?: string
+          mes?: number
+          minutos?: number
+          motivo_inativacao?: string | null
+          origem?: string
+          tickets?: number
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_reajustes_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_repasse: {
+        Row: {
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          motivo: string | null
+          observacao: string | null
+          percentual_dentro_periodo: number | null
+          percentual_entre_periodos: number | null
+          percentual_mensal: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          banco_id: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          percentual_dentro_periodo?: number | null
+          percentual_entre_periodos?: number | null
+          percentual_mensal: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          banco_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          percentual_dentro_periodo?: number | null
+          percentual_entre_periodos?: number | null
+          percentual_mensal?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_repasse_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_transferencias: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fechamento_cedente_id: string
+          fechamento_consumidor_id: string
+          id: string
+          quantidade: number
+          unidade: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fechamento_cedente_id: string
+          fechamento_consumidor_id: string
+          id?: string
+          quantidade: number
+          unidade: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fechamento_cedente_id?: string
+          fechamento_consumidor_id?: string
+          id?: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_transferencias_fechamento_cedente_id_fkey"
+            columns: ["fechamento_cedente_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_transferencias_fechamento_consumidor_id_fkey"
+            columns: ["fechamento_consumidor_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       baseline_historico: {
         Row: {
           baseline_horas: number | null
@@ -1730,6 +2455,36 @@ export type Database = {
         }
         Relationships: []
       }
+      codigos_resolucao_banco: {
+        Row: {
+          codigo: string
+          conta_horas: boolean
+          conta_tickets: boolean
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          codigo: string
+          conta_horas: boolean
+          conta_tickets: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          codigo?: string
+          conta_horas?: boolean
+          conta_tickets?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       controle_mensal: {
         Row: {
           ano: number
@@ -2161,6 +2916,116 @@ export type Database = {
           },
         ]
       }
+      empresas: {
+        Row: {
+          book_anexo: boolean
+          book_personalizado: boolean
+          created_at: string
+          created_by: string | null
+          data_status: string | null
+          descricao_status: string | null
+          em_projeto: boolean
+          email_comercial: string | null
+          email_gestor: string | null
+          email_tm: string | null
+          empresa_consolidadora_id: string | null
+          excluida_no_legado_em: string | null
+          id: string
+          link_sharepoint: string | null
+          meta_sla_percentual: number | null
+          modelo_alterado_em: string | null
+          modelo_alterado_por: string | null
+          modelo_calculo: string
+          nome_abreviado: string
+          nome_completo: string
+          observacao: string | null
+          quantidade_minima_chamados_sla: number | null
+          sincronizado_em: string | null
+          status: string
+          tem_ams: boolean
+          template_padrao: string | null
+          tipo_book: string
+          updated_at: string
+          updated_by: string | null
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          book_anexo?: boolean
+          book_personalizado?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_status?: string | null
+          descricao_status?: string | null
+          em_projeto?: boolean
+          email_comercial?: string | null
+          email_gestor?: string | null
+          email_tm?: string | null
+          empresa_consolidadora_id?: string | null
+          excluida_no_legado_em?: string | null
+          id: string
+          link_sharepoint?: string | null
+          meta_sla_percentual?: number | null
+          modelo_alterado_em?: string | null
+          modelo_alterado_por?: string | null
+          modelo_calculo?: string
+          nome_abreviado: string
+          nome_completo: string
+          observacao?: string | null
+          quantidade_minima_chamados_sla?: number | null
+          sincronizado_em?: string | null
+          status?: string
+          tem_ams?: boolean
+          template_padrao?: string | null
+          tipo_book?: string
+          updated_at?: string
+          updated_by?: string | null
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          book_anexo?: boolean
+          book_personalizado?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_status?: string | null
+          descricao_status?: string | null
+          em_projeto?: boolean
+          email_comercial?: string | null
+          email_gestor?: string | null
+          email_tm?: string | null
+          empresa_consolidadora_id?: string | null
+          excluida_no_legado_em?: string | null
+          id?: string
+          link_sharepoint?: string | null
+          meta_sla_percentual?: number | null
+          modelo_alterado_em?: string | null
+          modelo_alterado_por?: string | null
+          modelo_calculo?: string
+          nome_abreviado?: string
+          nome_completo?: string
+          observacao?: string | null
+          quantidade_minima_chamados_sla?: number | null
+          sincronizado_em?: string | null
+          status?: string
+          tem_ams?: boolean
+          template_padrao?: string | null
+          tipo_book?: string
+          updated_at?: string
+          updated_by?: string | null
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresas_empresa_consolidadora_id_fkey"
+            columns: ["empresa_consolidadora_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas_clientes: {
         Row: {
           anexo: boolean | null
@@ -2316,6 +3181,158 @@ export type Database = {
           },
         ]
       }
+      empresas_informacoes_contrato: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          fiscal_atualizacao_contratada: boolean | null
+          fiscal_atualizacoes_por_ano: number | null
+          fiscal_banco_dados: string | null
+          fiscal_dba: string | null
+          fiscal_edocs_24x7: boolean | null
+          fiscal_modalidade: string | null
+          ramo_atividade_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          fiscal_atualizacao_contratada?: boolean | null
+          fiscal_atualizacoes_por_ano?: number | null
+          fiscal_banco_dados?: string | null
+          fiscal_dba?: string | null
+          fiscal_edocs_24x7?: boolean | null
+          fiscal_modalidade?: string | null
+          ramo_atividade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          fiscal_atualizacao_contratada?: boolean | null
+          fiscal_atualizacoes_por_ano?: number | null
+          fiscal_banco_dados?: string | null
+          fiscal_dba?: string | null
+          fiscal_edocs_24x7?: boolean | null
+          fiscal_modalidade?: string | null
+          ramo_atividade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresas_informacoes_contrato_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empresas_informacoes_contrato_ramo_atividade_id_fkey"
+            columns: ["ramo_atividade_id"]
+            isOneToOne: false
+            referencedRelation: "ramos_atividade"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas_organizacoes_aranda: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          nome_organizacao: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome_organizacao: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome_organizacao?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresas_organizacoes_aranda_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas_produtos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          produto_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          produto_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          produto_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresas_produtos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empresas_produtos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       especialistas: {
         Row: {
           autor_id: string | null
@@ -2407,6 +3424,69 @@ export type Database = {
             columns: ["grupo_id"]
             isOneToOne: false
             referencedRelation: "grupos_responsaveis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_aranda: {
+        Row: {
+          ativo: boolean
+          classificacao: string
+          created_at: string
+          created_by: string | null
+          grupo_aranda: string
+          grupo_book: string
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          modulo_id: string | null
+          produto_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          classificacao: string
+          created_at?: string
+          created_by?: string | null
+          grupo_aranda: string
+          grupo_book: string
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          modulo_id?: string | null
+          produto_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          classificacao?: string
+          created_at?: string
+          created_by?: string | null
+          grupo_aranda?: string
+          grupo_book?: string
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          modulo_id?: string | null
+          produto_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_aranda_modulo_fk"
+            columns: ["modulo_id", "produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto_modulos"
+            referencedColumns: ["id", "produto_id"]
+          },
+          {
+            foreignKeyName: "grupos_aranda_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -2770,6 +3850,54 @@ export type Database = {
           operacao?: string
         }
         Relationships: []
+      }
+      modulos_requerimento_produto: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          modulo_id: string | null
+          modulo_requerimento: string
+          produto_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          modulo_id?: string | null
+          modulo_requerimento: string
+          produto_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          modulo_id?: string | null
+          modulo_requerimento?: string
+          produto_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modulos_requerimento_produto_modulo_fk"
+            columns: ["modulo_id", "produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto_modulos"
+            referencedColumns: ["id", "produto_id"]
+          },
+          {
+            foreignKeyName: "modulos_requerimento_produto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notificacoes: {
         Row: {
@@ -3545,6 +4673,104 @@ export type Database = {
           },
         ]
       }
+      produto_modulos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          nome: string
+          ordem: number
+          produto_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome: string
+          ordem: number
+          produto_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome?: string
+          ordem?: number
+          produto_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_modulos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          nome: string
+          ordem: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome: string
+          ordem: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome?: string
+          ordem?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active: boolean | null
@@ -3575,6 +4801,45 @@ export type Database = {
           language?: string
           last_sign_in_at?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ramos_atividade: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          nome: string
+          ordem: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome: string
+          ordem: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome?: string
+          ordem?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -3747,6 +5012,51 @@ export type Database = {
           },
         ]
       }
+      requerimentos_bancos: {
+        Row: {
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          motivo: string
+          requerimento_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          banco_id: string
+          created_at?: string
+          created_by?: string | null
+          motivo: string
+          requerimento_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          banco_id?: string
+          created_at?: string
+          created_by?: string | null
+          motivo?: string
+          requerimento_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requerimentos_bancos_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requerimentos_bancos_requerimento_id_fkey"
+            columns: ["requerimento_id"]
+            isOneToOne: true
+            referencedRelation: "requerimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       screen_permissions: {
         Row: {
           created_at: string | null
@@ -3816,6 +5126,42 @@ export type Database = {
           key?: string
           name?: string
           route?: string | null
+        }
+        Relationships: []
+      }
+      sincronizacao_legado_falhas: {
+        Row: {
+          created_at: string
+          erro: string
+          id: number
+          operacao: string
+          registro_id: string
+          resolvida_em: string | null
+          resolvida_por: string | null
+          sqlstate: string
+          tabela_origem: string
+        }
+        Insert: {
+          created_at?: string
+          erro: string
+          id?: never
+          operacao: string
+          registro_id: string
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          sqlstate: string
+          tabela_origem: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string
+          id?: never
+          operacao?: string
+          registro_id?: string
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          sqlstate?: string
+          tabela_origem?: string
         }
         Relationships: []
       }
@@ -4416,6 +5762,69 @@ export type Database = {
         }
         Returns: boolean
       }
+      bancos_horas_consumo: {
+        Args: {
+          p_ano: number
+          p_dia_fim?: number
+          p_dia_inicio?: number
+          p_empresa_id: string
+          p_mes: number
+        }
+        Returns: {
+          fonte: string
+          grupo: string
+          item_configuracao: string
+          itens: number
+          minutos: number
+          tickets: number
+        }[]
+      }
+      bancos_horas_consumo_itens: {
+        Args: {
+          p_ano: number
+          p_dia_fim?: number
+          p_dia_inicio?: number
+          p_empresa_id: string
+          p_mes: number
+        }
+        Returns: {
+          fonte: string
+          grupo: string
+          item_configuracao: string
+          item_id: string
+          minutos: number
+          tickets: number
+        }[]
+      }
+      bancos_horas_janela: {
+        Args: {
+          p_ano: number
+          p_dia_fim?: number
+          p_dia_inicio?: number
+          p_mes: number
+        }
+        Returns: {
+          fim: string
+          inicio: string
+        }[]
+      }
+      bancos_horas_registrar_fechamento: {
+        Args: { p_fechamento: Json }
+        Returns: Json
+      }
+      bancos_horas_requerimentos: {
+        Args: { p_ano: number; p_empresa_id: string; p_mes: number }
+        Returns: {
+          banco_ajustado_id: string
+          chamado: string
+          horas: number
+          modulo: string
+          modulo_id: string
+          produto_id: string
+          requerimento_id: string
+          tickets: number
+        }[]
+      }
       buscar_books_por_periodo: {
         Args: { p_ano: number; p_mes: number }
         Returns: {
@@ -4734,6 +6143,7 @@ export type Database = {
         Args: { p_tipo_sincronizacao: string }
         Returns: string
       }
+      pode_consultar_bancos_horas: { Args: never; Returns: boolean }
       realtime_maintenance: { Args: never; Returns: string }
       registrar_envio_book: {
         Args: {
@@ -4742,6 +6152,16 @@ export type Database = {
           p_usuario_id: string
         }
         Returns: string
+      }
+      registrar_falha_sincronizacao: {
+        Args: {
+          p_erro: string
+          p_operacao: string
+          p_registro: string
+          p_sqlstate: string
+          p_tabela: string
+        }
+        Returns: undefined
       }
       registrar_sincronizacao_pesquisas: {
         Args: {
@@ -4769,6 +6189,19 @@ export type Database = {
             }
             Returns: string
           }
+      sinc_banco_espelho: { Args: { p_empresa_id: string }; Returns: undefined }
+      sinc_empresa_do_legado: {
+        Args: { p_empresa_id: string }
+        Returns: undefined
+      }
+      sinc_empresa_excluida: {
+        Args: { p_empresa_id: string }
+        Returns: undefined
+      }
+      sinc_empresa_produtos: {
+        Args: { p_empresa_id: string }
+        Returns: undefined
+      }
       test_especialistas_security: {
         Args: never
         Returns: {
