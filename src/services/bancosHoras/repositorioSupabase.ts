@@ -34,7 +34,7 @@ const mesAno = (data: string): MesAno => ({
   ano: Number(data.slice(0, 4)),
   mes: Number(data.slice(5, 7)),
 });
-const indice = (m: MesAno) => m.ano * 12 + (m.mes - 1);
+const indice = (m: MesAno | Linha) => m.ano * 12 + (m.mes - 1);
 const OBSERVACOES_AUTOMATICAS = ['consumo_entre_bancos', 'faturamento'];
 
 async function consultar(
