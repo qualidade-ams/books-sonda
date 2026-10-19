@@ -185,11 +185,17 @@ const LancarRequerimentos = () => {
   // Hooks
   const { data: requerimentos = [], isLoading, refetch } = useRequerimentosNaoEnviados();
 
+  // Quando há texto de busca, ignorar o filtro de mês no servidor para buscar todos os meses.
+  // mes_cobranca permanece preservado em filtrosEnviados.mes_cobranca e é reaplicado ao limpar a busca.
+  const filtrosEnviadosEfetivos: FiltrosRequerimentos = filtrosEnviados.busca
+    ? { ...filtrosEnviados, mes_cobranca: undefined }
+    : filtrosEnviados;
+
   const {
     data: requerimentosEnviados = [],
     isLoading: isLoadingEnviados,
     refetch: refetchEnviados,
-  } = useRequerimentosEnviados(filtrosEnviados);
+  } = useRequerimentosEnviados(filtrosEnviadosEfetivos);
 
   const { data: estatisticas } = useEstatisticasRequerimentos();
 
@@ -233,8 +239,9 @@ const LancarRequerimentos = () => {
         if (!tipos.includes(req.tipo_cobranca)) return false;
       }
 
-      // Filtro de mês/ano - SEMPRE aplicar se estiver definido
-      if (currentFiltros.mes_cobranca) {
+      // Filtro de mês/ano - aplicar apenas quando NÃO houver busca textual.
+      // Durante a busca, o mês é ignorado (a query já busca todos os meses) e o mês selecionado é preservado no estado.
+      if (currentFiltros.mes_cobranca && !currentFiltros.busca) {
         if (req.mes_cobranca !== currentFiltros.mes_cobranca) return false;
       }
 
@@ -891,7 +898,11 @@ const LancarRequerimentos = () => {
         {activeTab === 'enviados' && (
           <Card>
             <CardContent className="py-3">
-              <div className="flex items-center justify-between gap-4">
+              <div
+                className={`flex items-center justify-between gap-4 ${
+                  filtrosEnviados.busca ? 'opacity-50' : ''
+                }`}
+              >
                 <Button
                   variant="outline"
                   size="sm"
@@ -913,6 +924,7 @@ const LancarRequerimentos = () => {
                   }}
                   className="flex items-center gap-2"
                   aria-label="Mês anterior"
+                  disabled={!!filtrosEnviados.busca}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   {t('common.previous')}
@@ -969,6 +981,7 @@ const LancarRequerimentos = () => {
                   }}
                   className="flex items-center gap-2"
                   aria-label="Próximo mês"
+                  disabled={!!filtrosEnviados.busca}
                 >
                   {t('common.next')}
                   <ChevronRight className="h-4 w-4" />
@@ -1359,6 +1372,7 @@ const LancarRequerimentos = () => {
                           value={filtrosEnviados.mes_cobranca || ''}
                           onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
                           placeholder={t('requirements.allMonths')}
+                          disabled={!!filtrosEnviados.busca}
                         />
                       </div>
                     </div>
