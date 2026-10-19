@@ -1,16 +1,5 @@
 {
-  "verdict": "CHANGES_REQUESTED",
-  "findings": [
-    {
-      "id": "F1",
-      "file": "src/pages/admin/LancarRequerimentos.tsx",
-      "severity": "blocker",
-      "criterion": "Foco da revisão: 'que NÃO houve ... refatoração além do necessário'; plano aprova mudança cirúrgica de ~5 edições (A/B/C1/C2) com blocos before/after específicos.",
-      "summary": "O commit incluiu reformatação extensa (Prettier-style) em todo o arquivo, muito além das 4 mudanças funcionais aprovadas.",
-      "evidence": "git show 6bd7eb5 --numstat = 1512 ins / 1347 del; git show 6bd7eb5 -w --numstat = 314 ins / 149 del (apenas conteúdo não-whitespace) para ~5 edições planejadas. Exemplos no diff: imports expandidos para multi-linha (lucide-react, Select, useRequerimentos, requerimentosPerformance, LoadingStates, dialog); arrow functions parens-addicionadas (c => -> (c) =>, prev => -> (prev) =>, req => -> (req) =>); trailing commas por todo o arquivo; reindentação de blocos não relacionados (useRequerimentosNaoEnviados, statsRequerimentos, handleFiltroChange, handleFiltroEnviadosChange, handleCreate/Multiplo, JSX de estatísticas/paginação/dialogs); reescrita de whitespace JSX (R$ {expr} -> R${' '}{expr}; {t('common.of')} {x} -> {t('common.of')}{' '}{x}); remoção de linhas em branco em CardContent.",
-      "consequence": "Diff ~95x maior que o aprovado (2859 linhas vs ~30), obscurecendo as 4 mudanças funcionais durante a revisão (percorrer 1090 linhas de diff -w para isolá-las) e criando superfície evitável de conflito de merge com trabalho concorrente no mesmo arquivo. Transformações behavior-preserving (nenhuma falha de corretude/segurança/dado — typecheck com 0 erros introduzidos), mas a violação de escopo é material e era critério de bloqueio explícito.",
-      "correction": "Reverter TODAS as mudanças de formatação e manter apenas as 4 edições funcionais do plano: (A) filtrosEnviadosEfetivos + useRequerimentosEnviados(filtrosEnviadosEfetivos) (linhas 189-198); (B) guard '&& !currentFiltros.busca' no bloco de mês do useMemo (linhas 243-247); (C1) disabled={!!filtrosEnviados.busca} no MonthYearPicker da aba enviados (linha 1378); (C2) opacity-50 no div flex (linha 902), disabled={!!filtrosEnviados.busca} nos botões Mês anterior (925) e Próximo mês (987) e o bloco de texto 'Mês ignorado durante a busca' (960-964). O diff final deve corresponder aos blocos before/after do plan.md. Se a reformatção veio de formatador on-save/on-commit, isolar as mudanças funcionais (ou separar a formatação em outro commit)."
-    }
-  ],
+  "verdict": "APPROVED",
+  "findings": [],
   "reviewDoc": "c:/Users/willian.faria/OneDrive - Sonda S.A/Documentos/books-sonda/.agents/tasks/disable-month-filter/review.md"
 }
