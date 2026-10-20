@@ -239,6 +239,7 @@ class BooksService {
           dados_pesquisa,
           dados_consumo_segmentado,
           dados_requerimentos_em_desenvolvimento,
+          dados_requerimentos_faturados,
           empresas_clientes (
             nome_completo,
             nome_abreviado
@@ -318,6 +319,7 @@ class BooksService {
         pesquisa: data.dados_pesquisa || this.getPesquisaVazia(),
         consumo_segmentado: data.dados_consumo_segmentado || undefined,
         requerimentos_em_desenvolvimento: data.dados_requerimentos_em_desenvolvimento || undefined,
+        requerimentos_faturados: data.dados_requerimentos_faturados || undefined,
       };
 
       return bookData;
@@ -640,6 +642,7 @@ class BooksService {
                 dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
                 dados_requerimentos_em_desenvolvimento:
                   dadosBook.requerimentos_em_desenvolvimento || null,
+                dados_requerimentos_faturados: dadosBook.requerimentos_faturados || null,
                 updated_at: new Date().toISOString(),
               })
               .eq('id', bookExistente.id)
@@ -666,6 +669,7 @@ class BooksService {
                 dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
                 dados_requerimentos_em_desenvolvimento:
                   dadosBook.requerimentos_em_desenvolvimento || null,
+                dados_requerimentos_faturados: dadosBook.requerimentos_faturados || null,
               })
               .select()
               .single();

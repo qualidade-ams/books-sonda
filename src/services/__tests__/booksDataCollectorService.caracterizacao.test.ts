@@ -627,6 +627,62 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     });
   });
 
+  describe('abas de requerimentos do book', () => {
+    const ehEmDesenvolvimento = (c: Consulta) =>
+      c.tabela === 'requerimentos' && valorDe(c, 'eq', 'status') === 'lancado';
+    const ehFaturadosDoBook = (c: Consulta) =>
+      c.tabela === 'requerimentos' && tem(c, 'in', 'status') && tem(c, 'order', 'chamado');
+
+    it('requerimentos em desenvolvimento levam a descrição', async () => {
+      responder(ehEmDesenvolvimento, [
+        {
+          id: 'req-d',
+          chamado: 'RF-1',
+          descricao: 'Nova interface',
+          data_envio: '2026-01-10',
+          horas_funcional: 1,
+        },
+      ]);
+
+      const { requerimentos_em_desenvolvimento } = await coletar();
+
+      expect(requerimentos_em_desenvolvimento[0]).toMatchObject({
+        numero_chamado: 'RF-1',
+        descricao: 'Nova interface',
+      });
+    });
+
+    it('coleta os requerimentos faturados do mês para a aba "Requerimentos Faturados"', async () => {
+      responder(ehFaturadosDoBook, [
+        {
+          id: 'req-f',
+          chamado: 'RF-2',
+          descricao: 'Ajuste fiscal',
+          horas_tecnico: 24,
+          mes_cobranca: '01/2026',
+        },
+      ]);
+
+      const { requerimentos_faturados } = await coletar();
+
+      expect(filtrosDe(unica(ehFaturadosDoBook))).toEqual([
+        ['eq', ['cliente_id', EMPRESA_ID]],
+        ['eq', ['mes_cobranca', '01/2026']],
+        ['eq', ['tipo_cobranca', 'Banco de Horas']],
+        ['in', ['status', ['enviado_faturamento', 'faturado', 'concluido']]],
+        ['order', ['chamado', { ascending: true }]],
+      ]);
+      expect(requerimentos_faturados).toEqual([
+        expect.objectContaining({
+          numero_chamado: 'RF-2',
+          descricao: 'Ajuste fiscal',
+          total_horas: '24:00',
+          status: 'Faturado',
+        }),
+      ]);
+    });
+  });
+
   describe('[RC-148] consumo segmentado — percentual de repasse', () => {
     const SEGMENTADA = {
       baseline_segmentado: true,

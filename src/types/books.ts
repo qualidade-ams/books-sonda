@@ -38,6 +38,10 @@ export interface BookData {
   // Requerimentos em desenvolvimento (snapshot - visível apenas quando existirem)
   requerimentos_em_desenvolvimento?: RequerimentoEmDesenvolvimentoData[];
 
+  // Requerimentos faturados no mês (snapshot - visível apenas quando existirem;
+  // ausente em books gerados antes da aba existir)
+  requerimentos_faturados?: RequerimentoEmDesenvolvimentoData[];
+
   // Consumo segmentado (snapshot - apenas se empresa tem baseline_segmentado)
   consumo_segmentado?: BookConsumoSegmentadoData[];
 
@@ -267,8 +271,8 @@ export interface RequerimentoDescontadoData {
 }
 
 /**
- * Requerimentos em desenvolvimento (status = 'lancado')
- * Exibidos em aba própria quando existirem
+ * Linha das abas de requerimentos do book: em desenvolvimento (status = 'lancado')
+ * e faturados no mês. Cada aba é exibida quando existirem requerimentos.
  */
 export interface RequerimentoEmDesenvolvimentoData {
   id: string;
@@ -276,6 +280,7 @@ export interface RequerimentoEmDesenvolvimentoData {
   ticket_externo?: string;
   cliente: string;
   modulo: string;
+  descricao?: string;
   tipo_cobranca: string;
   horas_funcional: string;
   horas_tecnica: string;

@@ -17,6 +17,7 @@ import type {
 } from '@/types/books';
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
 import type { Requerimento } from '@/types/requerimentos';
+import { buscarRequerimentosFaturadosParaBook } from './requerimentosBookService';
 
 /**
  * Calcula o período de apuração (mês) de uma empresa, respeitando a periodicidade
@@ -66,6 +67,7 @@ class BooksDataCollectorService {
     pesquisa: BookPesquisaData;
     consumo_segmentado?: BookConsumoSegmentadoData[];
     requerimentos_em_desenvolvimento?: RequerimentoEmDesenvolvimentoData[];
+    requerimentos_faturados?: RequerimentoEmDesenvolvimentoData[];
   }> {
     console.log('🚀 INICIANDO COLETA DE DADOS DO BOOK:', { empresaId, mes, ano });
 
@@ -276,6 +278,11 @@ class BooksDataCollectorService {
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano),
         consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano),
         requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(
+          empresaId,
+          mes,
+          ano
+        ),
+        requerimentos_faturados: await this.buscarRequerimentosFaturadosParaBook(
           empresaId,
           mes,
           ano
@@ -2587,6 +2594,7 @@ class BooksDataCollectorService {
           ticket_externo: ticketExternoMap[(req.chamado || '').replace('RF-', '')] || '',
           cliente: nomeCliente,
           modulo: req.modulo || '--',
+          descricao: req.descricao || '',
           tipo_cobranca: req.tipo_cobranca || '--',
           horas_funcional: `${String(horasFuncH).padStart(2, '0')}:${String(horasFuncM).padStart(2, '0')}`,
           horas_tecnica: `${String(horasTecH).padStart(2, '0')}:${String(horasTecM).padStart(2, '0')}`,
@@ -2608,6 +2616,26 @@ class BooksDataCollectorService {
     } catch (error) {
       console.error('❌ Erro ao buscar requerimentos em desenvolvimento para book:', error);
       return [];
+    }
+  }
+
+  /**
+   * Requerimentos faturados no mês para a aba "Requerimentos Faturados" do book.
+   * Se a consulta falhar, devolve undefined (snapshot nulo): a tela busca em tempo real.
+   */
+  private async buscarRequerimentosFaturadosParaBook(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<RequerimentoEmDesenvolvimentoData[] | undefined> {
+    try {
+      return await buscarRequerimentosFaturadosParaBook(empresaId, mes, ano);
+    } catch (error) {
+      console.error(
+        '❌ Erro ao buscar requerimentos faturados para book:',
+        error instanceof Error ? error.message : (error as any)?.message
+      );
+      return undefined;
     }
   }
 

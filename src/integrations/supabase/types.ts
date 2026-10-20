@@ -2164,6 +2164,7 @@ export type Database = {
           dados_consumo_segmentado: Json | null
           dados_pesquisa: Json | null
           dados_requerimentos_em_desenvolvimento: Json | null
+          dados_requerimentos_faturados: Json | null
           dados_sla: Json | null
           dados_volumetria: Json | null
           destinatarios_envio: string[] | null
@@ -2189,6 +2190,7 @@ export type Database = {
           dados_consumo_segmentado?: Json | null
           dados_pesquisa?: Json | null
           dados_requerimentos_em_desenvolvimento?: Json | null
+          dados_requerimentos_faturados?: Json | null
           dados_sla?: Json | null
           dados_volumetria?: Json | null
           destinatarios_envio?: string[] | null
@@ -2214,6 +2216,7 @@ export type Database = {
           dados_consumo_segmentado?: Json | null
           dados_pesquisa?: Json | null
           dados_requerimentos_em_desenvolvimento?: Json | null
+          dados_requerimentos_faturados?: Json | null
           dados_sla?: Json | null
           dados_volumetria?: Json | null
           destinatarios_envio?: string[] | null

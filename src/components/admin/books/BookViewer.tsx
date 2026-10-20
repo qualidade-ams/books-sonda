@@ -32,6 +32,7 @@ import BookContraCapa from './BookContraCapa';
 import BookConsumoSegmentado from './BookConsumoSegmentado';
 import BookRequerimentos from './BookRequerimentos';
 import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
+import { useRequerimentosFaturadosBook } from '@/hooks/useRequerimentosFaturadosBook';
 
 interface BookViewerProps {
   book: BookListItem | null;
@@ -106,6 +107,14 @@ export default function BookViewer({
     bookData.requerimentos_em_desenvolvimento.length > 0
       ? bookData.requerimentos_em_desenvolvimento
       : requerimentosEmDesenvolvimentoReal;
+
+  // Requerimentos faturados: snapshot do book; books antigos (sem snapshot) buscam em tempo real
+  const { requerimentosFaturados } = useRequerimentosFaturadosBook({
+    empresaId: bookData?.empresa_id,
+    mes: bookData?.mes,
+    ano: bookData?.ano,
+    snapshot: bookData?.requerimentos_faturados,
+  });
 
   // Limpar cache e recarregar dados quando o modal for aberto
   useEffect(() => {
@@ -261,6 +270,7 @@ export default function BookViewer({
                 ticket_externo: ticketExternoMap[(req.chamado || '').replace('RF-', '')] || '',
                 cliente: nomeCliente,
                 modulo: req.modulo || '--',
+                descricao: req.descricao || '',
                 tipo_cobranca: req.tipo_cobranca || '--',
                 horas_funcional: `${String(horasFuncH).padStart(2, '0')}:${String(horasFuncM).padStart(2, '0')}`,
                 horas_tecnica: `${String(horasTecH).padStart(2, '0')}:${String(horasTecM).padStart(2, '0')}`,
@@ -548,6 +558,23 @@ export default function BookViewer({
                     </TabsTrigger>
                   ));
                 })()}
+              {/* Aba Requerimentos Compensados (faturados no mês) - visível apenas quando existirem */}
+              {requerimentosFaturados.length > 0 &&
+                (() => {
+                  const ITEMS_PER_PAGE = 11;
+                  const totalPages = Math.ceil(requerimentosFaturados.length / ITEMS_PER_PAGE);
+                  return Array.from({ length: totalPages }, (_, pageIdx) => (
+                    <TabsTrigger
+                      key={`requerimentos-faturados-${pageIdx}`}
+                      value={`requerimentos-faturados-${pageIdx}`}
+                      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                    >
+                      {totalPages === 1
+                        ? t('books.tabs.requerimentosCompensados')
+                        : `${t('books.tabs.requerimentosCompensados')} ${pageIdx + 1}`}
+                    </TabsTrigger>
+                  ));
+                })()}
               <TabsTrigger
                 value="pesquisa"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
@@ -667,6 +694,34 @@ export default function BookViewer({
                         </TabsContent>
                       );
                     });
+                  })()}
+
+                {/* TabsContent: Requerimentos Compensados (paginado - máx 11 por página) */}
+                {requerimentosFaturados.length > 0 &&
+                  (() => {
+                    const ITEMS_PER_PAGE = 11;
+                    const totalPages = Math.ceil(requerimentosFaturados.length / ITEMS_PER_PAGE);
+                    return Array.from({ length: totalPages }, (_, pageIdx) => (
+                      <TabsContent
+                        key={`requerimentos-faturados-${pageIdx}`}
+                        value={`requerimentos-faturados-${pageIdx}`}
+                        className="mt-0 h-full"
+                      >
+                        <BookRequerimentos
+                          variante="faturado"
+                          data={requerimentosFaturados.slice(
+                            pageIdx * ITEMS_PER_PAGE,
+                            (pageIdx + 1) * ITEMS_PER_PAGE
+                          )}
+                          allData={requerimentosFaturados}
+                          empresaNome={
+                            bookData.capa.empresa_nome_abreviado || bookData.empresa_nome
+                          }
+                          pageIndex={pageIdx}
+                          totalPages={totalPages}
+                        />
+                      </TabsContent>
+                    ));
                   })()}
 
                 <TabsContent value="pesquisa" className="mt-0 h-full">

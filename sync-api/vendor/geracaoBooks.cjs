@@ -14841,6 +14841,75 @@ var MESES_ABREVIADOS = {
   12: "DEZ"
 };
 
+// src/services/requerimentosBookService.ts
+var STATUS_FATURADOS = ["enviado_faturamento", "faturado", "concluido"];
+function paraMinutos(valor) {
+  if (!valor) return 0;
+  if (typeof valor === "string" && valor.includes(":")) {
+    const [h, m] = valor.split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+  return Math.round((Number(valor) || 0) * 60);
+}
+function formatarMinutos(minutos) {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function formatarData(data) {
+  if (!data) return "--";
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+function formatarRequerimentoParaBook(req, opcoes) {
+  const minutosFuncional = paraMinutos(req.horas_funcional);
+  const minutosTecnico = paraMinutos(req.horas_tecnico);
+  return {
+    id: req.id,
+    numero_chamado: req.chamado || "--",
+    ticket_externo: opcoes.ticketExterno,
+    cliente: opcoes.nomeCliente,
+    modulo: req.modulo || "--",
+    descricao: req.descricao || "",
+    tipo_cobranca: req.tipo_cobranca || "--",
+    horas_funcional: formatarMinutos(minutosFuncional),
+    horas_tecnica: formatarMinutos(minutosTecnico),
+    total_horas: formatarMinutos(minutosFuncional + minutosTecnico),
+    data_envio: formatarData(req.data_envio),
+    status: opcoes.status,
+    valor_total: (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0) || void 0,
+    periodo_cobranca: req.mes_cobranca || void 0
+  };
+}
+async function buscarTicketsExternos(chamados) {
+  const numeros = chamados.map((chamado) => (chamado || "").replace("RF-", "")).filter(Boolean);
+  if (numeros.length === 0) return {};
+  const { data } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, ticket_externo").in("nro_solicitacao", numeros);
+  const mapa = {};
+  (data || []).forEach((t) => {
+    if (t.nro_solicitacao && t.ticket_externo) {
+      mapa[t.nro_solicitacao] = t.ticket_externo.trim();
+    }
+  });
+  return mapa;
+}
+async function buscarRequerimentosFaturadosParaBook(empresaId, mes, ano) {
+  const mesCobranca = `${String(mes).padStart(2, "0")}/${ano}`;
+  const { data: requerimentos, error } = await supabase.from("requerimentos").select("*").eq("cliente_id", empresaId).eq("mes_cobranca", mesCobranca).eq("tipo_cobranca", "Banco de Horas").in("status", STATUS_FATURADOS).order("chamado", { ascending: true });
+  if (error) throw error;
+  if (!requerimentos || requerimentos.length === 0) return [];
+  const ticketsExternos = await buscarTicketsExternos(requerimentos.map((req) => req.chamado));
+  const { data: empresa } = await supabase.from("empresas_clientes").select("nome_abreviado").eq("id", empresaId).single();
+  const nomeCliente = empresa?.nome_abreviado || "--";
+  return requerimentos.map(
+    (req) => formatarRequerimentoParaBook(req, {
+      nomeCliente,
+      ticketExterno: ticketsExternos[(req.chamado || "").replace("RF-", "")] || "",
+      status: "Faturado"
+    })
+  );
+}
+
 // src/types/configuration.ts
 var CacheError = class extends Error {
   constructor(message, cause) {
@@ -15664,7 +15733,8 @@ var BooksDataCollectorService = class {
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano),
         consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano),
-        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(empresaId, mes, ano)
+        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(empresaId, mes, ano),
+        requerimentos_faturados: await this.buscarRequerimentosFaturadosParaBook(empresaId, mes, ano)
       };
       console.log("\u2705 DADOS DO BOOK GERADOS COM SUCESSO:", {
         empresa: empresa.nome_abreviado,
@@ -17183,6 +17253,7 @@ var BooksDataCollectorService = class {
           ticket_externo: ticketExternoMap[(req.chamado || "").replace("RF-", "")] || "",
           cliente: nomeCliente,
           modulo: req.modulo || "--",
+          descricao: req.descricao || "",
           tipo_cobranca: req.tipo_cobranca || "--",
           horas_funcional: `${String(horasFuncH).padStart(2, "0")}:${String(horasFuncM).padStart(2, "0")}`,
           horas_tecnica: `${String(horasTecH).padStart(2, "0")}:${String(horasTecM).padStart(2, "0")}`,
@@ -17199,6 +17270,18 @@ var BooksDataCollectorService = class {
     } catch (error) {
       console.error("\u274C Erro ao buscar requerimentos em desenvolvimento para book:", error);
       return [];
+    }
+  }
+  /**
+   * Requerimentos faturados no mês para a aba "Requerimentos Faturados" do book.
+   * Se a consulta falhar, devolve undefined (snapshot nulo): a tela busca em tempo real.
+   */
+  async buscarRequerimentosFaturadosParaBook(empresaId, mes, ano) {
+    try {
+      return await buscarRequerimentosFaturadosParaBook(empresaId, mes, ano);
+    } catch (error) {
+      console.error("\u274C Erro ao buscar requerimentos faturados para book:", error instanceof Error ? error.message : error?.message);
+      return void 0;
     }
   }
   /**
@@ -21299,6 +21382,7 @@ var BooksService = class {
           dados_pesquisa,
           dados_consumo_segmentado,
           dados_requerimentos_em_desenvolvimento,
+          dados_requerimentos_faturados,
           empresas_clientes (
             nome_completo,
             nome_abreviado
@@ -21362,7 +21446,8 @@ var BooksService = class {
         consumo: data.dados_consumo || this.getConsumoVazio(),
         pesquisa: data.dados_pesquisa || this.getPesquisaVazia(),
         consumo_segmentado: data.dados_consumo_segmentado || void 0,
-        requerimentos_em_desenvolvimento: data.dados_requerimentos_em_desenvolvimento || void 0
+        requerimentos_em_desenvolvimento: data.dados_requerimentos_em_desenvolvimento || void 0,
+        requerimentos_faturados: data.dados_requerimentos_faturados || void 0
       };
       return bookData;
     } catch (error) {
@@ -21565,6 +21650,7 @@ var BooksService = class {
               dados_pesquisa: dadosBook.pesquisa,
               dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
               dados_requerimentos_em_desenvolvimento: dadosBook.requerimentos_em_desenvolvimento || null,
+              dados_requerimentos_faturados: dadosBook.requerimentos_faturados || null,
               updated_at: (/* @__PURE__ */ new Date()).toISOString()
             }).eq("id", bookExistente.id).select().single();
             if (error) throw error;
@@ -21582,7 +21668,8 @@ var BooksService = class {
               dados_consumo: dadosBook.consumo,
               dados_pesquisa: dadosBook.pesquisa,
               dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
-              dados_requerimentos_em_desenvolvimento: dadosBook.requerimentos_em_desenvolvimento || null
+              dados_requerimentos_em_desenvolvimento: dadosBook.requerimentos_em_desenvolvimento || null,
+              dados_requerimentos_faturados: dadosBook.requerimentos_faturados || null
             }).select().single();
             if (error) throw error;
             bookId = novoBook.id;
@@ -21993,7 +22080,7 @@ var MSG_STYLE = {
   font: { bold: true, sz: 12, color: { rgb: "6B7280" } },
   alignment: { horizontal: "left", vertical: "center" }
 };
-function formatarData(dataISO) {
+function formatarData2(dataISO) {
   if (!dataISO) return "";
   try {
     const data = new Date(dataISO);
@@ -22302,9 +22389,9 @@ function ticketParaRow(t) {
     t.nome_responsavel || "",
     codResolucaoLimpo,
     t.status || "",
-    formatarData(t.data_abertura),
-    formatarData(t.data_solucao),
-    formatarData(t.data_fechamento),
+    formatarData2(t.data_abertura),
+    formatarData2(t.data_solucao),
+    formatarData2(t.data_fechamento),
     t.ticket_externo || "",
     t.numero_pai || "",
     t.tds_cumprido || "",
@@ -22406,10 +22493,10 @@ function criarSheetHoras(apontamentos, mesNome, ano) {
     apt.analista_caso || apt.analista_tarefa || "",
     apt.cod_resolucao ? apt.cod_resolucao.replace(/\s*\(.*\)$/, "").trim() : "",
     apt.caso_estado || "",
-    formatarData(apt.data_sistema),
-    formatarData(apt.data_atividade),
-    formatarData(apt.data_abertura),
-    formatarData(apt.data_fechamento),
+    formatarData2(apt.data_sistema),
+    formatarData2(apt.data_atividade),
+    formatarData2(apt.data_abertura),
+    formatarData2(apt.data_fechamento),
     horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
     apt.tempo_gasto_minutos || 0,
     truncarTexto(apt.descricao_tarefa)
@@ -22502,8 +22589,8 @@ function criarSheetTicketsConsumo(tickets, mesNome, ano) {
     t.nome_responsavel || "",
     t.cod_resolucao ? t.cod_resolucao.replace(/\s*\(.*\)$/, "").trim() : "",
     t.status || "",
-    formatarData(t.data_abertura),
-    formatarData(t.data_fechamento)
+    formatarData2(t.data_abertura),
+    formatarData2(t.data_fechamento)
   ]);
   const sheetData = [TICKETS_HEADERS, ...rows];
   const sheet = XLSX.utils.aoa_to_sheet(sheetData);
@@ -22551,7 +22638,7 @@ function criarSheetPesquisasEnviadas(pesquisas, mesNome, ano) {
     p.solicitante || "",
     p.grupo || "",
     p.prestador || "",
-    formatarData(p.data_fechamento),
+    formatarData2(p.data_fechamento),
     truncarTexto(p.descricao),
     truncarTexto(p.pergunta)
   ]);
@@ -22607,9 +22694,9 @@ function criarSheetPesquisasRespondidas(pesquisas, mesNome, ano) {
     p.solicitante || "",
     p.grupo || "",
     p.prestador || "",
-    formatarData(p.data_fechamento),
+    formatarData2(p.data_fechamento),
     truncarTexto(p.descricao),
-    formatarData(p.data_resposta),
+    formatarData2(p.data_resposta),
     truncarTexto(p.pergunta),
     truncarTexto(p.comentario_pesquisa),
     truncarTexto(p.resposta)
@@ -22660,7 +22747,7 @@ function criarSheetPesquisasNaoRespondidas(pesquisas, mesNome, ano) {
     p.solicitante || "",
     p.grupo || "",
     p.prestador || "",
-    formatarData(p.data_fechamento),
+    formatarData2(p.data_fechamento),
     truncarTexto(p.descricao),
     truncarTexto(p.pergunta)
   ]);
