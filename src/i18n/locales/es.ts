@@ -618,7 +618,7 @@ const es = {
       sla: 'SLA',
       backlog: 'Backlog',
       consumo: 'Consumo',
-      requerimentos: 'Requerimientos',
+      requerimentos: 'Requerimientos en Curso',
       requerimentosCompensados: 'Requerimientos Compensados',
       pesquisa: 'Encuesta',
       portfolio: 'Portafolio',
@@ -759,7 +759,7 @@ const es = {
       totalHours: 'TOTAL DE HORAS',
       noRequirementsMonth: 'Ningún requerimiento encontrado en este mes',
       // Requerimientos en Desarrollo
-      requirementsInDevelopmentTitle: 'Requerimientos en Desarrollo',
+      requirementsInDevelopmentTitle: 'Requerimientos en Curso',
       requirementsInDevelopmentSubtitle:
         'Requerimientos en curso que aún no han sido enviados para facturación',
       requirementsInDevelopmentTotal: 'Total de Requerimientos',

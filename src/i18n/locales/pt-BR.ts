@@ -618,7 +618,7 @@ const ptBR = {
       sla: 'SLA',
       backlog: 'Backlog',
       consumo: 'Consumo',
-      requerimentos: 'Requerimentos',
+      requerimentos: 'Requerimentos em Andamento',
       requerimentosCompensados: 'Requerimentos Compensados',
       pesquisa: 'Pesquisa',
       portfolio: 'Portfólio',
@@ -759,7 +759,7 @@ const ptBR = {
       totalHours: 'TOTAL DE HORAS',
       noRequirementsMonth: 'Nenhum requerimento encontrado neste mês',
       // Requerimentos em Desenvolvimento
-      requirementsInDevelopmentTitle: 'Requerimentos em Desenvolvimento',
+      requirementsInDevelopmentTitle: 'Requerimentos em Andamento',
       requirementsInDevelopmentSubtitle:
         'Requerimentos em andamento que ainda não foram considerados no banco de horas/faturamento',
       requirementsInDevelopmentTotal: 'Total de Requerimentos',

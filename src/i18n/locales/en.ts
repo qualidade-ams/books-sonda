@@ -617,7 +617,7 @@ const en = {
       sla: 'SLA',
       backlog: 'Backlog',
       consumo: 'Consumption',
-      requerimentos: 'Requirements',
+      requerimentos: 'Requirements in Progress',
       requerimentosCompensados: 'Offset Requirements',
       pesquisa: 'Survey',
       portfolio: 'Portfolio',
@@ -758,7 +758,7 @@ const en = {
       totalHours: 'TOTAL HOURS',
       noRequirementsMonth: 'No requirements found for this month',
       // Requirements in Development
-      requirementsInDevelopmentTitle: 'Requirements in Development',
+      requirementsInDevelopmentTitle: 'Requirements in Progress',
       requirementsInDevelopmentSubtitle: 'Ongoing requirements not yet sent for billing',
       requirementsInDevelopmentTotal: 'Total Requirements',
       requirementsInDevelopmentHours: 'Total Hours',

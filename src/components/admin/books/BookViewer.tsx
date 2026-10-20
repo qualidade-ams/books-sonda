@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useBookData } from '@/hooks/useBooks';
 import { useEmpresaProdutos } from '@/hooks/useEmpresaProdutos';
 import { useQueryClient } from '@tanstack/react-query';
-import type { BookListItem, BookData, RequerimentoEmDesenvolvimentoData } from '@/types/books';
+import type { BookListItem, BookData } from '@/types/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
 import { gerarExcelDetalhadoBook } from '@/utils/gerarExcelDetalhadoBook';
@@ -32,6 +32,7 @@ import BookContraCapa from './BookContraCapa';
 import BookConsumoSegmentado from './BookConsumoSegmentado';
 import BookRequerimentos from './BookRequerimentos';
 import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
+import { useRequerimentosEmDesenvolvimentoBook } from '@/hooks/useRequerimentosEmDesenvolvimentoBook';
 import { useRequerimentosFaturadosBook } from '@/hooks/useRequerimentosFaturadosBook';
 
 interface BookViewerProps {
@@ -50,9 +51,6 @@ export default function BookViewer({
   const [activeTab, setActiveTab] = useState<string>('capa');
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
-  const [requerimentosEmDesenvolvimentoReal, setRequerimentosEmDesenvolvimentoReal] = useState<
-    RequerimentoEmDesenvolvimentoData[] | null
-  >(null);
   const { bookData: bookDataFetched, isLoading, refetch } = useBookData(book?.id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(
     book?.empresa_id || null
@@ -101,12 +99,13 @@ export default function BookViewer({
       })()
     : paginasSegmentosHook;
 
-  // Requerimentos em desenvolvimento: priorizar snapshot, fallback para tempo real
-  const requerimentosEmDesenvolvimento =
-    bookData?.requerimentos_em_desenvolvimento &&
-    bookData.requerimentos_em_desenvolvimento.length > 0
-      ? bookData.requerimentos_em_desenvolvimento
-      : requerimentosEmDesenvolvimentoReal;
+  // Requerimentos em andamento: priorizar snapshot, fallback para tempo real
+  const { requerimentosEmDesenvolvimento } = useRequerimentosEmDesenvolvimentoBook({
+    empresaId: bookData?.empresa_id,
+    mes: bookData?.mes,
+    ano: bookData?.ano,
+    snapshot: bookData?.requerimentos_em_desenvolvimento,
+  });
 
   // Requerimentos faturados: snapshot do book; books antigos (sem snapshot) buscam em tempo real
   const { requerimentosFaturados } = useRequerimentosFaturadosBook({
@@ -162,147 +161,6 @@ export default function BookViewer({
     }
   }, [bookData, book?.id]);
 
-  // Buscar requerimentos em desenvolvimento em tempo real quando snapshot está vazio
-  useEffect(() => {
-    if (!bookData || !book?.empresa_id) return;
-
-    // Se o snapshot já tem dados, usar o snapshot
-    if (
-      bookData.requerimentos_em_desenvolvimento &&
-      bookData.requerimentos_em_desenvolvimento.length > 0
-    ) {
-      setRequerimentosEmDesenvolvimentoReal(null);
-      return;
-    }
-
-    // Buscar em tempo real
-    const buscarRequerimentos = async () => {
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-        // Último dia do mês do book (não mostrar requerimentos com data_envio futura)
-        const ultimoDia = new Date(bookData.ano, bookData.mes, 0).getDate();
-        const dataFimISO = `${bookData.ano}-${String(bookData.mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
-
-        const { data: requerimentos } = await supabase
-          .from('requerimentos')
-          .select('*')
-          .eq('cliente_id', book.empresa_id)
-          .eq('tipo_cobranca', 'Banco de Horas')
-          .eq('status', 'lancado')
-          .lte('data_envio', dataFimISO)
-          .order('chamado', { ascending: true });
-
-        if (requerimentos && requerimentos.length > 0) {
-          // Filtrar: não exibir requerimentos cuja data_envio é posterior ao mês/ano do book
-          const requerimentosFiltrados = requerimentos.filter((req) => {
-            if (!req.data_envio) return true;
-            const partes = req.data_envio.split('-');
-            const anoEnvio = parseInt(partes[0], 10);
-            const mesEnvio = parseInt(partes[1], 10);
-            if (anoEnvio > bookData.ano) return false;
-            if (anoEnvio === bookData.ano && mesEnvio > bookData.mes) return false;
-            return true;
-          });
-
-          if (requerimentosFiltrados.length === 0) {
-            setRequerimentosEmDesenvolvimentoReal(null);
-            return;
-          }
-
-          // Buscar ticket_externo
-          const chamadosNumeros = requerimentosFiltrados
-            .map((req) => (req.chamado || '').replace('RF-', ''))
-            .filter(Boolean);
-
-          const ticketExternoMap: Record<string, string> = {};
-          if (chamadosNumeros.length > 0) {
-            const { data: ticketsData } = await supabase
-              .from('apontamentos_tickets_aranda')
-              .select('nro_solicitacao, ticket_externo')
-              .in('nro_solicitacao', chamadosNumeros);
-
-            if (ticketsData) {
-              ticketsData.forEach((t: any) => {
-                if (t.nro_solicitacao && t.ticket_externo) {
-                  ticketExternoMap[t.nro_solicitacao] = t.ticket_externo.trim();
-                }
-              });
-            }
-          }
-
-          const nomeCliente = bookData.capa.empresa_nome_abreviado || bookData.empresa_nome || '--';
-
-          const formatados: RequerimentoEmDesenvolvimentoData[] = requerimentosFiltrados.map(
-            (req) => {
-              let horasFuncional = 0;
-              let horasTecnico = 0;
-
-              if (req.horas_funcional) {
-                const val = req.horas_funcional as string | number;
-                if (typeof val === 'string' && val.includes(':')) {
-                  const [h, m] = val.split(':').map(Number);
-                  horasFuncional = h + m / 60;
-                } else {
-                  horasFuncional = Number(val) || 0;
-                }
-              }
-              if (req.horas_tecnico) {
-                const val = req.horas_tecnico as string | number;
-                if (typeof val === 'string' && val.includes(':')) {
-                  const [h, m] = val.split(':').map(Number);
-                  horasTecnico = h + m / 60;
-                } else {
-                  horasTecnico = Number(val) || 0;
-                }
-              }
-
-              const totalDecimal = horasFuncional + horasTecnico;
-              const totalH = Math.floor(totalDecimal);
-              const totalM = Math.round((totalDecimal - totalH) * 60);
-              const horasFuncH = Math.floor(horasFuncional);
-              const horasFuncM = Math.round((horasFuncional - horasFuncH) * 60);
-              const horasTecH = Math.floor(horasTecnico);
-              const horasTecM = Math.round((horasTecnico - horasTecH) * 60);
-
-              return {
-                id: req.id,
-                numero_chamado: req.chamado || '--',
-                ticket_externo: ticketExternoMap[(req.chamado || '').replace('RF-', '')] || '',
-                cliente: nomeCliente,
-                modulo: req.modulo || '--',
-                descricao: req.descricao || '',
-                tipo_cobranca: req.tipo_cobranca || '--',
-                horas_funcional: `${String(horasFuncH).padStart(2, '0')}:${String(horasFuncM).padStart(2, '0')}`,
-                horas_tecnica: `${String(horasTecH).padStart(2, '0')}:${String(horasTecM).padStart(2, '0')}`,
-                total_horas: `${String(totalH).padStart(2, '0')}:${String(totalM).padStart(2, '0')}`,
-                data_envio: req.data_envio
-                  ? (() => {
-                      // Parse manual para evitar problema de timezone (+1 dia)
-                      const parts = req.data_envio.split('-');
-                      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-                    })()
-                  : '--',
-                status: 'Em desenvolvimento',
-                valor_total:
-                  (Number(req.valor_total_funcional) || 0) +
-                    (Number(req.valor_total_tecnico) || 0) || undefined,
-                periodo_cobranca: req.mes_cobranca || undefined,
-              };
-            }
-          );
-
-          setRequerimentosEmDesenvolvimentoReal(formatados);
-        } else {
-          setRequerimentosEmDesenvolvimentoReal(null);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar requerimentos em desenvolvimento:', error);
-        setRequerimentosEmDesenvolvimentoReal(null);
-      }
-    };
-
-    buscarRequerimentos();
-  }, [bookData, book?.empresa_id]);
   const handleDownloadPDF = async () => {
     if (!book) return;
 
@@ -538,7 +396,7 @@ export default function BookViewer({
                       : `${t('books.tabs.consumoSegmentado', 'Consumo Segmentado')} ${pageIdx + 1}`}
                   </TabsTrigger>
                 ))}
-              {/* Aba Requerimentos em Desenvolvimento - visível apenas quando existirem */}
+              {/* Aba Requerimentos em Andamento - visível apenas quando existirem */}
               {requerimentosEmDesenvolvimento &&
                 requerimentosEmDesenvolvimento.length > 0 &&
                 (() => {
@@ -663,7 +521,7 @@ export default function BookViewer({
                     </TabsContent>
                   ))}
 
-                {/* TabsContent: Requerimentos em Desenvolvimento (paginado - máx 11 por página) */}
+                {/* TabsContent: Requerimentos em Andamento (paginado - máx 11 por página) */}
                 {requerimentosEmDesenvolvimento &&
                   requerimentosEmDesenvolvimento.length > 0 &&
                   (() => {

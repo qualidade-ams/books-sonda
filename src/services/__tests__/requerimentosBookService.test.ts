@@ -39,8 +39,10 @@ vi.mock('@/integrations/supabase/client', () => {
 });
 
 import {
+  buscarRequerimentosEmDesenvolvimentoParaBook,
   buscarRequerimentosFaturadosParaBook,
   formatarRequerimentoParaBook,
+  paginarRequerimentosBook,
 } from '../requerimentosBookService';
 
 const EMPRESA_ID = 'emp-1';
@@ -172,6 +174,79 @@ describe('requerimentosBookService', () => {
           message: 'falhou',
         }
       );
+    });
+  });
+
+  describe('buscarRequerimentosEmDesenvolvimentoParaBook', () => {
+    const REQ_LANCADO = {
+      ...REQ_FATURADO,
+      status: 'lancado',
+      data_envio: '2026-09-25',
+      mes_cobranca: null,
+    };
+
+    it('busca os requerimentos de Banco de Horas lançados com data de envio até o fim do mês do book', async () => {
+      estado.respostas.requerimentos = { data: [REQ_LANCADO], error: null };
+
+      await buscarRequerimentosEmDesenvolvimentoParaBook(EMPRESA_ID, 9, 2026);
+
+      expect(filtrosDe(consultaDe('requerimentos'))).toEqual([
+        ['eq', ['cliente_id', EMPRESA_ID]],
+        ['eq', ['tipo_cobranca', 'Banco de Horas']],
+        ['eq', ['status', 'lancado']],
+        ['lte', ['data_envio', '2026-09-30']],
+        ['order', ['chamado', { ascending: true }]],
+      ]);
+    });
+
+    it('devolve as linhas com status "Em desenvolvimento" e a descrição', async () => {
+      estado.respostas.requerimentos = { data: [REQ_LANCADO], error: null };
+
+      const linhas = await buscarRequerimentosEmDesenvolvimentoParaBook(EMPRESA_ID, 9, 2026);
+
+      expect(linhas).toEqual([
+        expect.objectContaining({
+          numero_chamado: 'RF-9175039',
+          cliente: 'SAINT GOBAIN',
+          descricao: 'Ajuste no layout da nota fiscal',
+          data_envio: '25/09/2026',
+          status: 'Em desenvolvimento',
+        }),
+      ]);
+    });
+
+    it('descarta requerimento com data de envio em mês posterior ao do book', async () => {
+      estado.respostas.requerimentos = {
+        data: [REQ_LANCADO, { ...REQ_LANCADO, id: 'req-futuro', data_envio: '2026-10-02' }],
+        error: null,
+      };
+
+      const linhas = await buscarRequerimentosEmDesenvolvimentoParaBook(EMPRESA_ID, 9, 2026);
+
+      expect(linhas.map((l) => l.id)).toEqual(['req-1']);
+    });
+
+    it('propaga o erro da consulta de requerimentos', async () => {
+      estado.respostas.requerimentos = { data: null, error: { message: 'falhou', code: '500' } };
+
+      await expect(
+        buscarRequerimentosEmDesenvolvimentoParaBook(EMPRESA_ID, 9, 2026)
+      ).rejects.toMatchObject({ message: 'falhou' });
+    });
+  });
+
+  describe('paginarRequerimentosBook', () => {
+    const linhas = Array.from({ length: 23 }, (_, i) => ({ id: `r${i}` })) as any[];
+
+    it('divide em páginas de 11 linhas', () => {
+      const paginas = paginarRequerimentosBook(linhas);
+
+      expect(paginas.map((p) => p.length)).toEqual([11, 11, 1]);
+      expect(paginas[2][0].id).toBe('r22');
+    });
+
+    it('lista vazia não gera página', () => {
+      expect(paginarRequerimentosBook([])).toEqual([]);
     });
   });
 });

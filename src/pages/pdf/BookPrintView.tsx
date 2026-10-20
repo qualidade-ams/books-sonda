@@ -30,7 +30,11 @@ import BookOrganograma from '@/components/admin/books/BookOrganograma';
 import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganogramaComercialCS';
 import BookContraCapa from '@/components/admin/books/BookContraCapa';
 import BookConsumoSegmentado from '@/components/admin/books/BookConsumoSegmentado';
+import BookRequerimentos from '@/components/admin/books/BookRequerimentos';
 import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
+import { useRequerimentosEmDesenvolvimentoBook } from '@/hooks/useRequerimentosEmDesenvolvimentoBook';
+import { useRequerimentosFaturadosBook } from '@/hooks/useRequerimentosFaturadosBook';
+import { paginarRequerimentosBook } from '@/services/requerimentosBookService';
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
@@ -70,6 +74,23 @@ export default function BookPrintView() {
     useEmpresaSegmentacao(bookData?.empresa_id || null);
   const [isReady, setIsReady] = useState(false);
   const [consumoDataLoaded, setConsumoDataLoaded] = useState(false);
+
+  // Abas de requerimentos: mesma origem de dados do BookViewer (snapshot ou tempo real)
+  const { requerimentosEmDesenvolvimento, isLoading: isLoadingReqAndamento } =
+    useRequerimentosEmDesenvolvimentoBook({
+      empresaId: bookData?.empresa_id,
+      mes: bookData?.mes,
+      ano: bookData?.ano,
+      snapshot: bookData?.requerimentos_em_desenvolvimento,
+    });
+  const { requerimentosFaturados, isLoading: isLoadingReqCompensados } =
+    useRequerimentosFaturadosBook({
+      empresaId: bookData?.empresa_id,
+      mes: bookData?.mes,
+      ano: bookData?.ano,
+      snapshot: bookData?.requerimentos_faturados,
+    });
+  const requerimentosCarregados = !isLoadingReqAndamento && !isLoadingReqCompensados;
 
   // Consumo Segmentado: priorizar snapshot do bookData
   const hasSnapshotSegmentado = !!(
@@ -122,7 +143,13 @@ export default function BookPrintView() {
   }, [id, isLoading, isLoadingProdutos, bookData, produtos, error]);
 
   useEffect(() => {
-    if (!isLoading && !isLoadingProdutos && bookData && consumoDataLoaded) {
+    if (
+      !isLoading &&
+      !isLoadingProdutos &&
+      bookData &&
+      consumoDataLoaded &&
+      requerimentosCarregados
+    ) {
       console.log('✅ Dados carregados (incluindo banco de horas), aguardando fontes...');
 
       // Aguardar carregamento de fontes
@@ -136,7 +163,7 @@ export default function BookPrintView() {
         }, 8000); // Aumentado de 5s para 8s para dar tempo dos organogramas renderizarem
       });
     }
-  }, [isLoading, isLoadingProdutos, bookData, consumoDataLoaded]);
+  }, [isLoading, isLoadingProdutos, bookData, consumoDataLoaded, requerimentosCarregados]);
 
   // Loading state
   if (isLoading || isLoadingProdutos) {
@@ -310,6 +337,41 @@ export default function BookPrintView() {
             />
           </div>
         ))}
+
+      {/* Requerimentos em Andamento (condicional, paginado) */}
+      {paginarRequerimentosBook(requerimentosEmDesenvolvimento).map((pagina, pageIdx, paginas) => (
+        <div
+          key={`req-andamento-${pageIdx}`}
+          className="page-section page-break"
+          data-section={`requerimentos-em-andamento-${pageIdx}`}
+        >
+          <BookRequerimentos
+            data={pagina}
+            allData={requerimentosEmDesenvolvimento}
+            empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+            pageIndex={pageIdx}
+            totalPages={paginas.length}
+          />
+        </div>
+      ))}
+
+      {/* Requerimentos Compensados (condicional, paginado) */}
+      {paginarRequerimentosBook(requerimentosFaturados).map((pagina, pageIdx, paginas) => (
+        <div
+          key={`req-compensados-${pageIdx}`}
+          className="page-section page-break"
+          data-section={`requerimentos-compensados-${pageIdx}`}
+        >
+          <BookRequerimentos
+            variante="faturado"
+            data={pagina}
+            allData={requerimentosFaturados}
+            empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+            pageIndex={pageIdx}
+            totalPages={paginas.length}
+          />
+        </div>
+      ))}
 
       {/* Pesquisa */}
       <div className="page-section page-break" data-section="pesquisa">

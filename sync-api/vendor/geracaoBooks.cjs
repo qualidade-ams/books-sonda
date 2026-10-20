@@ -422,9 +422,9 @@ var init_bancoHorasRepasseService = __esm({
   }
 });
 
-// node_modules/xlsx-js-style/dist/cpexcel.js
+// ../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/cpexcel.js
 var require_cpexcel = __commonJS({
-  "node_modules/xlsx-js-style/dist/cpexcel.js"(exports2, module2) {
+  "../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/cpexcel.js"(exports2, module2) {
     var cptable2 = { version: "1.15.0" };
     cptable2[437] = (function() {
       var d = "\0\x07\b	\n\v\f\r\x1B !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F\xC7\xFC\xE9\xE2\xE4\xE0\xE5\xE7\xEA\xEB\xE8\xEF\xEE\xEC\xC4\xC5\xC9\xE6\xC6\xF4\xF6\xF2\xFB\xF9\xFF\xD6\xDC\xA2\xA3\xA5\u20A7\u0192\xE1\xED\xF3\xFA\xF1\xD1\xAA\xBA\xBF\u2310\xAC\xBD\xBC\xA1\xAB\xBB\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255D\u255C\u255B\u2510\u2514\u2534\u252C\u251C\u2500\u253C\u255E\u255F\u255A\u2554\u2569\u2566\u2560\u2550\u256C\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256B\u256A\u2518\u250C\u2588\u2584\u258C\u2590\u2580\u03B1\xDF\u0393\u03C0\u03A3\u03C3\xB5\u03C4\u03A6\u0398\u03A9\u03B4\u221E\u03C6\u03B5\u2229\u2261\xB1\u2265\u2264\u2320\u2321\xF7\u2248\xB0\u2219\xB7\u221A\u207F\xB2\u25A0\xA0", D = [], e = {};
@@ -3676,9 +3676,9 @@ var require_cpexcel = __commonJS({
   }
 });
 
-// node_modules/xlsx-js-style/dist/xlsx.min.js
+// ../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/xlsx.min.js
 var require_xlsx_min = __commonJS({
-  "node_modules/xlsx-js-style/dist/xlsx.min.js"(exports2, module2) {
+  "../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/xlsx.min.js"(exports2, module2) {
     var XLSX2 = {};
     function make_xlsx_lib(a) {
       a.version = "0.18.5", a.style_version = "1.2.0";
@@ -14897,7 +14897,10 @@ async function buscarRequerimentosFaturadosParaBook(empresaId, mes, ano) {
   const mesCobranca = `${String(mes).padStart(2, "0")}/${ano}`;
   const { data: requerimentos, error } = await supabase.from("requerimentos").select("*").eq("cliente_id", empresaId).eq("mes_cobranca", mesCobranca).eq("tipo_cobranca", "Banco de Horas").in("status", STATUS_FATURADOS).order("chamado", { ascending: true });
   if (error) throw error;
-  if (!requerimentos || requerimentos.length === 0) return [];
+  return formatarLinhas(empresaId, requerimentos || [], "Faturado");
+}
+async function formatarLinhas(empresaId, requerimentos, status) {
+  if (requerimentos.length === 0) return [];
   const ticketsExternos = await buscarTicketsExternos(requerimentos.map((req) => req.chamado));
   const { data: empresa } = await supabase.from("empresas_clientes").select("nome_abreviado").eq("id", empresaId).single();
   const nomeCliente = empresa?.nome_abreviado || "--";
@@ -14905,7 +14908,7 @@ async function buscarRequerimentosFaturadosParaBook(empresaId, mes, ano) {
     (req) => formatarRequerimentoParaBook(req, {
       nomeCliente,
       ticketExterno: ticketsExternos[(req.chamado || "").replace("RF-", "")] || "",
-      status: "Faturado"
+      status
     })
   );
 }

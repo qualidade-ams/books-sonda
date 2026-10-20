@@ -1,6 +1,6 @@
 /**
- * Requerimentos exibidos nas abas do book (Requerimentos em Desenvolvimento e
- * Requerimentos Faturados): consulta e formatação de cada linha da tabela.
+ * Requerimentos exibidos nas abas do book (Requerimentos em Andamento e
+ * Requerimentos Compensados): consulta, formatação e paginação das tabelas.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,17 @@ import type { RequerimentoEmDesenvolvimentoData } from '@/types/books';
 
 /** Status que contam como requerimento faturado no mês (mesma regra dos Requerimentos Descontados do Consumo) */
 const STATUS_FATURADOS = ['enviado_faturamento', 'faturado', 'concluido'];
+
+/** Linhas por página nas abas de requerimentos (tela e PDF) */
+export const REQUERIMENTOS_POR_PAGINA = 11;
+
+export function paginarRequerimentosBook<T>(lista: T[]): T[][] {
+  const paginas: T[][] = [];
+  for (let i = 0; i < lista.length; i += REQUERIMENTOS_POR_PAGINA) {
+    paginas.push(lista.slice(i, i + REQUERIMENTOS_POR_PAGINA));
+  }
+  return paginas;
+}
 
 /** Converte horas do requerimento (decimal ou "HH:MM") em minutos */
 function paraMinutos(valor: string | number | null | undefined): number {
@@ -99,7 +110,51 @@ export async function buscarRequerimentosFaturadosParaBook(
     .order('chamado', { ascending: true });
 
   if (error) throw error;
-  if (!requerimentos || requerimentos.length === 0) return [];
+  return formatarLinhas(empresaId, requerimentos || [], 'Faturado');
+}
+
+/**
+ * Requerimentos de Banco de Horas lançados (ainda não enviados para faturamento)
+ * com data de envio até o fim do mês do book. Mesma regra do snapshot gravado
+ * pelo booksDataCollectorService; usado quando o snapshot do book está vazio.
+ * Lança o erro da consulta (quem chama decide o fallback).
+ */
+export async function buscarRequerimentosEmDesenvolvimentoParaBook(
+  empresaId: string,
+  mes: number,
+  ano: number
+): Promise<RequerimentoEmDesenvolvimentoData[]> {
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const dataFimISO = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+
+  const { data: requerimentos, error } = await supabase
+    .from('requerimentos')
+    .select('*')
+    .eq('cliente_id', empresaId)
+    .eq('tipo_cobranca', 'Banco de Horas')
+    .eq('status', 'lancado')
+    .lte('data_envio', dataFimISO)
+    .order('chamado', { ascending: true });
+
+  if (error) throw error;
+
+  // Não exibir requerimentos com data de envio em mês posterior ao do book
+  const doMes = (requerimentos || []).filter((req) => {
+    if (!req.data_envio) return true;
+    const [anoEnvio, mesEnvio] = req.data_envio.split('-').map(Number);
+    return anoEnvio < ano || (anoEnvio === ano && mesEnvio <= mes);
+  });
+
+  return formatarLinhas(empresaId, doMes, 'Em desenvolvimento');
+}
+
+/** Formata as linhas com ticket externo e nome abreviado da empresa */
+async function formatarLinhas(
+  empresaId: string,
+  requerimentos: Record<string, any>[],
+  status: string
+): Promise<RequerimentoEmDesenvolvimentoData[]> {
+  if (requerimentos.length === 0) return [];
 
   const ticketsExternos = await buscarTicketsExternos(requerimentos.map((req) => req.chamado));
 
@@ -114,7 +169,7 @@ export async function buscarRequerimentosFaturadosParaBook(
     formatarRequerimentoParaBook(req, {
       nomeCliente,
       ticketExterno: ticketsExternos[(req.chamado || '').replace('RF-', '')] || '',
-      status: 'Faturado',
+      status,
     })
   );
 }
