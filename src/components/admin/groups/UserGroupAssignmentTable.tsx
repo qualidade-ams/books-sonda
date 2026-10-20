@@ -7,18 +7,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 import { permissionsService } from '@/services/permissionsService';
 import type { UserWithGroup, UserGroup } from '@/types/permissions';
 import { Users, UserCheck, UserX, RefreshCw } from 'lucide-react';
@@ -35,7 +27,6 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
   const [loading, setLoading] = useState(true);
   const [assigningUsers, setAssigningUsers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
-  const { user: currentUser } = useAuth();
 
   // Load users and groups
   const loadData = async () => {
@@ -49,7 +40,7 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
       setUsers(usersData);
       setGroups(groupsData);
     } catch (error) {
-      console.error('Error loading users and groups:', error);
+      console.error('Error loading users and groups:', error instanceof Error ? error.message : error);
       toast({
         title: "Erro ao carregar dados",
         description: "Não foi possível carregar a lista de usuários e grupos.",
@@ -64,45 +55,35 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
     loadData();
   }, []);
 
-  // Handle user group assignment
-  const handleAssignUserToGroup = async (userId: string, groupId: string | null) => {
-    if (!currentUser?.id) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Usuário não autenticado.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const groupOptions = groups
+    .filter((group) => group.id && group.id.trim() !== '')
+    .map((group) => ({ label: group.name, value: group.id }));
 
+  // Replace the user's groups with the selected list
+  const handleChangeUserGroups = async (userId: string, groupIds: string[]) => {
     setAssigningUsers(prev => new Set(prev).add(userId));
 
     try {
-      if (groupId === null) {
-        // Remove user from current group
-        await permissionsService.removeUserFromGroup(userId);
-        toast({
-          title: "Usuário removido do grupo",
-          description: "O usuário foi removido do grupo com sucesso.",
-        });
-      } else {
-        // Assign user to new group
-        await permissionsService.assignUserToGroup(userId, groupId, currentUser.id);
-        const groupName = groups.find(g => g.id === groupId)?.name || 'Grupo';
-        toast({
-          title: "Usuário atribuído ao grupo",
-          description: `O usuário foi atribuído ao grupo "${groupName}" com sucesso.`,
-        });
-      }
+      await permissionsService.setUserGroups(userId, groupIds);
 
-      // Reload data to reflect changes
-      await loadData();
+      // Update only this row, so the selector stays open to add more groups
+      const groupNames = groupIds.map(id => groups.find(g => g.id === id)?.name || 'Grupo');
+      setUsers(prev => prev.map(user =>
+        user.id === userId ? { ...user, group_ids: groupIds, group_names: groupNames } : user
+      ));
+
+      toast({
+        title: "Grupos atualizados",
+        description: groupIds.length > 0
+          ? `Grupos do usuário: ${groupNames.join(', ')}.`
+          : "O usuário ficou sem grupo.",
+      });
       onUserAssignmentChange?.();
     } catch (error) {
-      console.error('Error assigning user to group:', error);
+      console.error('Error setting user groups:', error instanceof Error ? error.message : error);
       toast({
-        title: "Erro ao atribuir usuário",
-        description: "Não foi possível atribuir o usuário ao grupo.",
+        title: "Erro ao atribuir grupos",
+        description: "Não foi possível atualizar os grupos do usuário.",
         variant: "destructive",
       });
     } finally {
@@ -160,11 +141,11 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
         <div className="flex items-center space-x-4 text-sm text-gray-600">
           <span className="flex items-center">
             <UserCheck className="h-4 w-4 mr-1" />
-            {users.filter(u => u.group_id).length} usuários com grupo
+            {users.filter(u => u.group_ids.length > 0).length} usuários com grupo
           </span>
           <span className="flex items-center">
             <UserX className="h-4 w-4 mr-1" />
-            {users.filter(u => !u.group_id).length} usuários sem grupo
+            {users.filter(u => u.group_ids.length === 0).length} usuários sem grupo
           </span>
         </div>
       </div>
@@ -177,8 +158,7 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
               <TableRow>
                 <TableHead>Usuário</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Grupo Atual</TableHead>
-                <TableHead>Atribuir Grupo</TableHead>
+                <TableHead>Grupos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -192,35 +172,17 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
                   </TableCell>
                   <TableCell>{user.email || '-'}</TableCell>
                   <TableCell>
-                    {user.group_name ? (
-                      <Badge variant="default">{user.group_name}</Badge>
-                    ) : (
-                      <Badge variant="secondary">Sem grupo</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={user.group_id && user.group_id.trim() !== '' ? user.group_id : 'no-group'}
-                      onValueChange={(value) => {
-                        const groupId = value === 'no-group' ? null : value;
-                        handleAssignUserToGroup(user.id, groupId);
-                      }}
+                    {/* Badges removíveis no próprio seletor; o popover lista os grupos ainda não atribuídos */}
+                    <MultiSelect
+                      options={groupOptions}
+                      selected={user.group_ids}
+                      onChange={(groupIds) => handleChangeUserGroups(user.id, groupIds)}
+                      placeholder="Sem grupo"
+                      maxCount={groupOptions.length}
+                      showSelectAll={false}
                       disabled={assigningUsers.has(user.id)}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Selecionar grupo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no-group">Sem grupo</SelectItem>
-                        {groups
-                          .filter((group) => group.id && group.id.trim() !== '')
-                          .map((group) => (
-                            <SelectItem key={group.id} value={group.id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                      className="max-w-[420px]"
+                    />
                   </TableCell>
                 </TableRow>
               ))}

@@ -64,7 +64,7 @@ if (hasPermission('nova_tela', 'edit')) { /* ... */ }
 
 1. Inserir na tabela `user_groups`.
 2. Definir `screen_permissions` para o grupo.
-3. Atribuir usuários ao grupo via `user_group_assignments`.
+3. Atribuir usuários ao grupo pela tela Grupos ou pelo cadastro de usuário (RPC `set_user_groups`). Um usuário pode ter vários grupos; em cada tela vale o maior nível entre eles.
 
 ## Troubleshooting
 

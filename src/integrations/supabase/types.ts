@@ -6084,7 +6084,9 @@ export type Database = {
       list_all_users: {
         Args: never
         Returns: {
+          group_ids: string[]
           group_name: string
+          group_names: string[]
           user_active: boolean
           user_created_at: string
           user_email: string
@@ -6192,6 +6194,10 @@ export type Database = {
             }
             Returns: string
           }
+      set_user_groups: {
+        Args: { p_group_ids: string[]; p_user_id: string }
+        Returns: undefined
+      }
       sinc_banco_espelho: { Args: { p_empresa_id: string }; Returns: undefined }
       sinc_empresa_do_legado: {
         Args: { p_empresa_id: string }

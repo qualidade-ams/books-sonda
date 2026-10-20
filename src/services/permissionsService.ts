@@ -9,9 +9,13 @@ import type {
   CreateScreenPermissionInput,
   CreateUserGroupAssignmentInput,
   PermissionError,
-  PermissionsServiceMethods
+  PermissionLevel,
+  PermissionsServiceMethods,
+  UserWithGroup
 } from '@/types/permissions';
 import { PermissionErrors, retryPermissionOperation } from '@/errors/permissionErrors';
+
+const PERMISSION_WEIGHT: Record<PermissionLevel, number> = { none: 1, view: 2, edit: 3 };
 
 /**
  * Service for managing user groups, permissions, and user assignments
@@ -20,16 +24,16 @@ import { PermissionErrors, retryPermissionOperation } from '@/errors/permissionE
 class PermissionsService implements PermissionsServiceMethods {
 
   /**
-   * Get all permissions for a specific user based on their group assignment
+   * Get all permissions for a specific user, merging every group they belong to.
+   * The effective level per screen is the highest one among the groups (edit > view > none).
    */
   async getUserPermissions(userId: string): Promise<UserPermissions> {
     return retryPermissionOperation(async () => {
-      // First, get the user's group assignment
-      const { data: assignment, error: assignmentError } = await supabase
+      // First, get the user's group assignments
+      const { data: assignments, error: assignmentError } = await supabase
         .from('user_group_assignments')
         .select('group_id')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (assignmentError) {
         // Handle 406 (Not Acceptable) which can occur with publishable keys
@@ -41,25 +45,29 @@ class PermissionsService implements PermissionsServiceMethods {
         throw PermissionErrors.userNotAssigned(userId);
       }
 
-      if (!assignment) {
-        // No assignment found (maybeSingle returns null) - return empty permissions
+      const groupIds = (assignments || []).map(assignment => assignment.group_id).filter(Boolean);
+      if (groupIds.length === 0) {
         return {};
       }
 
-      // Get all screen permissions for the user's group
+      // Get all screen permissions for the user's groups
       const { data: permissions, error: permissionsError } = await supabase
         .from('screen_permissions')
         .select('screen_key, permission_level')
-        .eq('group_id', assignment.group_id);
+        .in('group_id', groupIds);
 
       if (permissionsError) {
         throw new Error(`Failed to get group permissions: ${permissionsError.message}`);
       }
 
-      // Convert to UserPermissions format
+      // Convert to UserPermissions format, keeping the highest level per screen
       const userPermissions: UserPermissions = {};
       permissions?.forEach(permission => {
-        userPermissions[permission.screen_key] = permission.permission_level;
+        const current = userPermissions[permission.screen_key];
+        const level = permission.permission_level as PermissionLevel;
+        if (!current || PERMISSION_WEIGHT[level] > PERMISSION_WEIGHT[current]) {
+          userPermissions[permission.screen_key] = level;
+        }
       });
 
       return userPermissions;
@@ -67,11 +75,11 @@ class PermissionsService implements PermissionsServiceMethods {
   }
 
   /**
-   * Get the user group for a specific user
+   * Get every group the user belongs to
    */
-  async getUserGroup(userId: string): Promise<UserGroup | null> {
+  async getUserGroups(userId: string): Promise<UserGroup[]> {
     try {
-      const { data: assignment, error: assignmentError } = await supabase
+      const { data: assignments, error: assignmentError } = await supabase
         .from('user_group_assignments')
         .select(`
           group_id,
@@ -84,24 +92,21 @@ class PermissionsService implements PermissionsServiceMethods {
             updated_at
           )
         `)
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (assignmentError) {
         if (assignmentError.code === 'PGRST116' || assignmentError.message?.includes('406')) {
           // No assignment found or session issue
-          return null;
+          return [];
         }
-        throw new Error(`Failed to get user group: ${assignmentError.message}`);
+        throw new Error(`Failed to get user groups: ${assignmentError.message}`);
       }
 
-      if (!assignment) {
-        return null;
-      }
-
-      return assignment.user_groups as UserGroup;
+      return (assignments || [])
+        .map(assignment => assignment.user_groups as UserGroup)
+        .filter(Boolean);
     } catch (error) {
-      console.error('Error getting user group:', error);
+      console.error('Error getting user groups:', error instanceof Error ? error.message : error);
       throw error;
     }
   }
@@ -149,54 +154,18 @@ class PermissionsService implements PermissionsServiceMethods {
   }
 
   /**
-   * Assign a user to a group
+   * Replace the user's groups with the given list (empty list removes every group).
+   * The RPC checks edit permission on usuarios-grupos and records who made the change.
    */
-  async assignUserToGroup(userId: string, groupId: string, assignedBy: string): Promise<void> {
-    try {
-      // Validate group exists
-      await this.validateGroupExists(groupId);
+  async setUserGroups(userId: string, groupIds: string[]): Promise<void> {
+    const { error } = await supabase.rpc('set_user_groups', {
+      p_user_id: userId,
+      p_group_ids: groupIds
+    });
 
-      // Check if user already has an assignment
-      const { data: existingAssignments } = await supabase
-        .from('user_group_assignments')
-        .select('id')
-        .eq('user_id', userId);
-
-      const existingAssignment = existingAssignments && existingAssignments.length > 0 ? existingAssignments[0] : null;
-
-      if (existingAssignment) {
-        // Update existing assignment
-        const { error: updateError } = await supabase
-          .from('user_group_assignments')
-          .update({
-            group_id: groupId,
-            assigned_by: assignedBy,
-            updated_by: assignedBy,
-            assigned_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (updateError) {
-          throw new Error(`Failed to update user assignment: ${updateError.message}`);
-        }
-      } else {
-        // Create new assignment
-        const { error: insertError } = await supabase
-          .from('user_group_assignments')
-          .insert({
-            user_id: userId,
-            group_id: groupId,
-            assigned_by: assignedBy,
-            updated_by: assignedBy
-          });
-
-        if (insertError) {
-          throw new Error(`Failed to create user assignment: ${insertError.message}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error assigning user to group:', error);
-      throw error;
+    if (error) {
+      console.error('Error setting user groups:', error.message);
+      throw new Error(error.message);
     }
   }
 
@@ -352,65 +321,13 @@ class PermissionsService implements PermissionsServiceMethods {
   /**
    * Get all users in the system with their group assignments
    */
-  async getAllUsersWithGroups(): Promise<Array<{
-    id: string;
-    email: string;
-    full_name: string;
-    group_id: string | null;
-    group_name: string | null;
-  }>> {
+  async getAllUsersWithGroups(): Promise<UserWithGroup[]> {
     try {
-      // First, try to get users from profiles table
-      let { data: profilesData, error: profilesError } = await supabase
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name')
         .order('full_name');
 
-      // If profiles table doesn't exist or is empty, get from auth.users
-      if (profilesError || !profilesData || profilesData.length === 0) {
-        console.warn('Profiles table not available, using auth.users directly');
-
-        // Get users from auth.users and their group assignments
-        const { data: usersData, error: usersError } = await supabase
-          .from('user_group_assignments')
-          .select(`
-            user_id,
-            group_id,
-            user_groups (
-              id,
-              name
-            )
-          `);
-
-        if (usersError) {
-          throw new Error(`Failed to get user assignments: ${usersError.message}`);
-        }
-
-        // Usar apenas dados dos profiles (não tenta buscar auth.users que requer permissões admin)
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, email, full_name');
-
-        if (profilesError) {
-          console.warn('⚠️ Erro ao buscar profiles:', profilesError);
-        }
-
-        // Combinar dados dos assignments com profiles
-        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
-        
-        return usersData?.map(assignment => {
-          const profile = profilesMap.get(assignment.user_id);
-          return {
-            id: assignment.user_id,
-            email: profile?.email || '',
-            full_name: profile?.full_name || profile?.email || 'Usuário sem nome',
-            group_id: assignment?.group_id || null,
-            group_name: assignment?.user_groups?.name || null,
-          };
-        }) || [];
-      }
-
-      // Get group assignments for profiles
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('user_group_assignments')
         .select(`
@@ -426,38 +343,35 @@ class PermissionsService implements PermissionsServiceMethods {
         throw new Error(`Failed to get group assignments: ${assignmentsError.message}`);
       }
 
-      // Combine profiles with their group assignments
-      return profilesData.map(user => {
-        const assignment = assignmentsData?.find(a => a.user_id === user.id);
-        return {
-          id: user.id,
-          email: user.email || '',
-          full_name: user.full_name || 'Usuário sem nome',
-          group_id: assignment?.group_id || null,
-          group_name: assignment?.user_groups?.name || null,
-        };
+      // Group the assignments by user
+      const groupsByUser = new Map<string, { group_ids: string[]; group_names: string[] }>();
+      assignmentsData?.forEach(assignment => {
+        if (!assignment.group_id) return;
+        const groups = groupsByUser.get(assignment.user_id) ?? { group_ids: [], group_names: [] };
+        groups.group_ids.push(assignment.group_id);
+        groups.group_names.push(assignment.user_groups?.name || '');
+        groupsByUser.set(assignment.user_id, groups);
       });
-    } catch (error) {
-      console.error('Error getting all users with groups:', error);
-      throw error;
-    }
-  }
 
-  /**
-   * Remove user from their current group
-   */
-  async removeUserFromGroup(userId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('user_group_assignments')
-        .delete()
-        .eq('user_id', userId);
-
-      if (error) {
-        throw new Error(`Failed to remove user from group: ${error.message}`);
+      // Without profiles, list only the users that have assignments
+      if (profilesError || !profilesData || profilesData.length === 0) {
+        console.warn('Profiles table not available, listing users from group assignments');
+        return [...groupsByUser.entries()].map(([userId, groups]) => ({
+          id: userId,
+          email: '',
+          full_name: 'Usuário sem nome',
+          ...groups,
+        }));
       }
+
+      return profilesData.map(user => ({
+        id: user.id,
+        email: user.email || '',
+        full_name: user.full_name || 'Usuário sem nome',
+        ...(groupsByUser.get(user.id) ?? { group_ids: [], group_names: [] }),
+      }));
     } catch (error) {
-      console.error('Error removing user from group:', error);
+      console.error('Error getting all users with groups:', error instanceof Error ? error.message : error);
       throw error;
     }
   }

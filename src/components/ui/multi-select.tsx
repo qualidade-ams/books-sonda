@@ -34,6 +34,8 @@ interface MultiSelectProps {
   modalPopover?: boolean
   asChild?: boolean
   side?: "top" | "bottom" | "left" | "right"
+  /** Exibe a opção "Selecionar todos" (padrão: true) */
+  showSelectAll?: boolean
 }
 
 export function MultiSelect({
@@ -47,6 +49,7 @@ export function MultiSelect({
   modalPopover = false,
   asChild = false,
   side = "bottom",
+  showSelectAll = true,
 }: MultiSelectProps) {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
@@ -157,6 +160,7 @@ export function MultiSelect({
             <CommandEmpty>{t('table.noResults')}</CommandEmpty>
             <CommandGroup className="max-h-64 overflow-auto">
               {/* Opção "Todos" */}
+              {showSelectAll && (
               <CommandItem
                 onSelect={() => {
                   if (selected.length === options.length) {
@@ -179,11 +183,14 @@ export function MultiSelect({
                 />
                 {t('multiSelect.selectAll')}
               </CommandItem>
-              
+              )}
+
               {/* Separador visual */}
+              {showSelectAll && (
               <div className="px-2 py-1">
                 <div className="h-px bg-border" />
               </div>
+              )}
               
               {/* Opções individuais */}
               {selectables.map((option) => (

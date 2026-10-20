@@ -49,6 +49,7 @@ import { requerValorHora } from '@/types/requerimentos';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { pertenceAGrupoAdmin } from '@/utils/gruposUsuario';
 
 interface RequerimentosTableProps {
   requerimentos: Requerimento[];
@@ -87,7 +88,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   const enviarParaFaturamento = useEnviarParaFaturamento();
   const { screenReader } = useAccessibility();
   const { user } = useAuth();
-  const { userGroup } = usePermissions();
+  const { userGroups } = usePermissions();
   const { t } = useTranslation();
   const translatedTipoCobranca = useTranslatedTipoCobranca();
 
@@ -97,8 +98,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
     if (!user?.id) return false;
 
     // Se é administrador, pode editar todos
-    if (userGroup?.name?.toLowerCase().includes('administrador') ||
-      userGroup?.name?.toLowerCase().includes('admin')) {
+    if (pertenceAGrupoAdmin(userGroups)) {
       return true;
     }
 

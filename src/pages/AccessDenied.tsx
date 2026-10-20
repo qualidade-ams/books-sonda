@@ -30,7 +30,7 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { refreshPermissions, userGroup } = usePermissions();
+  const { refreshPermissions, userGroups = [] } = usePermissions();
   const { signOut } = useAuth();
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -82,14 +82,15 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
           </p>
 
           {/* Show user group info if available */}
-          {userGroup && (
+          {userGroups.length > 0 && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Seu grupo atual:</strong> {userGroup.name}
+                <strong>{userGroups.length > 1 ? 'Seus grupos atuais:' : 'Seu grupo atual:'}</strong>{' '}
+                {userGroups.map(group => group.name).join(', ')}
               </p>
-              {userGroup.description && (
+              {userGroups.length === 1 && userGroups[0].description && (
                 <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                  {userGroup.description}
+                  {userGroups[0].description}
                 </p>
               )}
             </div>
