@@ -19045,6 +19045,28 @@ var RequerimentosService = class {
     return this.buscarRequerimentosPorStatusEMes("enviado_faturamento", mesCobrancaAtual);
   }
   /**
+   * Listar meses (MM/YYYY) anteriores ao informado que ainda têm requerimentos
+   * pendentes de envio para faturamento, com a quantidade, em ordem cronológica
+   */
+  async listarMesesPendentesAnteriores(mes, ano) {
+    const { data, error } = await supabase.from("requerimentos").select("mes_cobranca").eq("status", "enviado_faturamento");
+    if (error) {
+      throw new Error(`Erro ao buscar pendentes de meses anteriores: ${error.message}`);
+    }
+    const referencia = ano * 12 + mes;
+    const meses = /* @__PURE__ */ new Map();
+    (data || []).forEach(({ mes_cobranca }) => {
+      const match = /^(\d{2})\/(\d{4})$/.exec(mes_cobranca || "");
+      if (!match) return;
+      const valor = Number(match[2]) * 12 + Number(match[1]);
+      if (valor >= referencia) return;
+      const atual = meses.get(valor);
+      if (atual) atual.quantidade += 1;
+      else meses.set(valor, { mes_cobranca, quantidade: 1 });
+    });
+    return [...meses.entries()].sort(([a], [b]) => a - b).map(([, mesPendente]) => mesPendente);
+  }
+  /**
    * Obter requerimento por ID
    */
   async obterRequerimentoPorId(id) {
