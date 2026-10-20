@@ -512,13 +512,12 @@ const ptBR = {
     controlBankHours: 'Controle Banco de Horas',
     auditBankHours: 'Auditoria Banco de Horas',
     retroactiveAdjustments: 'Apontamentos Retroativos',
-    partialBalanceSchedule: 'Envio Automático de Saldo Parcial',
     compliments: 'Elogios',
     registerCompliments: 'Validar Elogios',
     sendCompliments: 'Enviar Elogios',
     surveys: 'Pesquisas de Satisfação',
     registerSurveys: 'Lançar Pesquisas',
-    sqlServerSync: 'Sincronização SQL Server',
+    automatedRoutines: 'Rotinas Automáticas',
     viewSurveys: 'Visualizar Pesquisas',
     monthlySurveyAMS: 'Pesquisa Mensal AMS',
     requirements: 'Requerimentos',
@@ -2289,15 +2288,17 @@ const ptBR = {
   sincronizacaoSql: {
     agendadorDesligado:
       'O agendador está desligado no sync-api: os agendamentos não vão rodar. No servidor, defina SCHEDULER_ENABLED=true no .env e reinicie o serviço.',
-    title: 'Sincronização SQL Server',
-    subtitle: 'Agende e acompanhe a sincronização com o SQL Server (Aranda)',
+    title: 'Rotinas Automáticas',
+    subtitle:
+      'Agende e acompanhe as rotinas automáticas: sincronização com o Aranda, geração de books e envio de saldo parcial',
     apiOffline: 'API de sincronização indisponível',
     executarAgora: 'Executar agora',
     emExecucao: 'Sincronização em andamento',
     novoAgendamento: 'Novo agendamento',
     tabs: {
-      agendamentos: 'Agendamentos',
+      agendamentos: 'Sincronização Aranda',
       books: 'Geração de Books',
+      saldoParcial: 'Saldo Parcial',
       historico: 'Histórico de execuções',
     },
     agendamentos: {

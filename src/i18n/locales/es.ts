@@ -512,13 +512,12 @@ const es = {
     controlBankHours: 'Control Banco de Horas',
     auditBankHours: 'Auditoría Banco de Horas',
     retroactiveAdjustments: 'Ajustes Retroactivos',
-    partialBalanceSchedule: 'Envío Automático de Saldo Parcial',
     compliments: 'Elogios',
     registerCompliments: 'Validar Elogios',
     sendCompliments: 'Enviar Elogios',
     surveys: 'Encuestas de Satisfacción',
     registerSurveys: 'Registrar Encuestas',
-    sqlServerSync: 'Sincronización SQL Server',
+    automatedRoutines: 'Rutinas Automáticas',
     viewSurveys: 'Ver Encuestas',
     monthlySurveyAMS: 'Encuesta Mensual AMS',
     requirements: 'Requerimientos',
@@ -2288,15 +2287,17 @@ const es = {
   sincronizacaoSql: {
     agendadorDesligado:
       'El programador está apagado en sync-api: las programaciones no se ejecutarán. En el servidor, defina SCHEDULER_ENABLED=true en .env y reinicie el servicio.',
-    title: 'Sincronización SQL Server',
-    subtitle: 'Programe y acompañe la sincronización con SQL Server (Aranda)',
+    title: 'Rutinas Automáticas',
+    subtitle:
+      'Programe y acompañe las rutinas automáticas: sincronización con Aranda, generación de books y envío de saldo parcial',
     apiOffline: 'API de sincronización no disponible',
     executarAgora: 'Ejecutar ahora',
     emExecucao: 'Sincronización en curso',
     novoAgendamento: 'Nueva programación',
     tabs: {
-      agendamentos: 'Programaciones',
+      agendamentos: 'Sincronización Aranda',
       books: 'Generación de Books',
+      saldoParcial: 'Saldo Parcial',
       historico: 'Historial de ejecuciones',
     },
     agendamentos: {

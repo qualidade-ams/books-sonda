@@ -512,13 +512,12 @@ const en = {
     controlBankHours: 'Hours Bank Control',
     auditBankHours: 'Hours Bank Audit',
     retroactiveAdjustments: 'Retroactive Adjustments',
-    partialBalanceSchedule: 'Automatic Partial Balance',
     compliments: 'Compliments',
     registerCompliments: 'Validate Compliments',
     sendCompliments: 'Send Compliments',
     surveys: 'Satisfaction Surveys',
     registerSurveys: 'Register Surveys',
-    sqlServerSync: 'SQL Server Sync',
+    automatedRoutines: 'Automated Routines',
     viewSurveys: 'View Surveys',
     monthlySurveyAMS: 'Monthly Survey AMS',
     requirements: 'Requirements',
@@ -2282,15 +2281,17 @@ const en = {
   sincronizacaoSql: {
     agendadorDesligado:
       'The scheduler is off in sync-api: schedules will not run. On the server, set SCHEDULER_ENABLED=true in .env and restart the service.',
-    title: 'SQL Server Sync',
-    subtitle: 'Schedule and monitor the synchronization with SQL Server (Aranda)',
+    title: 'Automated Routines',
+    subtitle:
+      'Schedule and monitor automated routines: Aranda sync, book generation and partial balance sending',
     apiOffline: 'Sync API unavailable',
     executarAgora: 'Run now',
     emExecucao: 'Synchronization in progress',
     novoAgendamento: 'New schedule',
     tabs: {
-      agendamentos: 'Schedules',
+      agendamentos: 'Aranda sync',
       books: 'Book generation',
+      saldoParcial: 'Partial balance',
       historico: 'Run history',
     },
     agendamentos: {

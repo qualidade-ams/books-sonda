@@ -43,7 +43,7 @@ sync-api/
 
 `server.ts` tem ~4.000 linhas e concentra todas as rotas. Lógica nova vai para `src/services/`, não para o final do `server.ts`.
 
-## Agendamento (tela "Sincronização SQL Server")
+## Agendamento (tela "Rotinas Automáticas", `/admin/rotinas-automaticas`; chave de permissão `sincronizacao_sql_server`)
 
 Execução manual e agendada passam pela **mesma** sequência, em `src/scheduler/`:
 
@@ -57,7 +57,7 @@ Execução manual e agendada passam pela **mesma** sequência, em `src/scheduler
 
 - O agendador **só liga com `SCHEDULER_ENABLED=true`** — deixe `false` em dev local para não disparar jobs contra o Supabase de produção.
 
-### Envio automático de Saldo Parcial (tela "Envio Automático de Saldo Parcial")
+### Envio automático de Saldo Parcial (aba "Saldo Parcial" da tela Rotinas Automáticas)
 
 | Arquivo | Papel |
 |---|---|
