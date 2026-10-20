@@ -15583,7 +15583,9 @@ var BooksDataCollectorService = class {
   async coletarDadosCompletos(empresaId, mes, ano) {
     console.log("\u{1F680} INICIANDO COLETA DE DADOS DO BOOK:", { empresaId, mes, ano });
     try {
-      const { data: empresa, error: empresaError } = await supabase.from("empresas_clientes").select("nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, baseline_tickets_mensal, dia_inicio_apuracao, dia_fim_apuracao").eq("id", empresaId).single();
+      const { data: empresa, error: empresaError } = await supabase.from("empresas_clientes").select(
+        "nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, baseline_tickets_mensal, dia_inicio_apuracao, dia_fim_apuracao"
+      ).eq("id", empresaId).single();
       if (empresaError) {
         console.error("\u274C Erro ao buscar empresa:", empresaError);
         throw empresaError;
@@ -15604,10 +15606,13 @@ var BooksDataCollectorService = class {
           tipoContrato
         });
         if (tipoContrato === "tickets" || tipoContrato === "ambos") {
-          const { data: baselineVigente, error: baselineError } = await supabase.rpc("get_baseline_vigente", {
-            p_empresa_id: empresaId,
-            p_data: dataReferencia
-          });
+          const { data: baselineVigente, error: baselineError } = await supabase.rpc(
+            "get_baseline_vigente",
+            {
+              p_empresa_id: empresaId,
+              p_data: dataReferencia
+            }
+          );
           if (!baselineError && baselineVigente && baselineVigente.length > 0) {
             const baseline = baselineVigente[0];
             if (baseline.baseline_tickets !== null && baseline.baseline_tickets !== void 0) {
@@ -15617,12 +15622,17 @@ var BooksDataCollectorService = class {
           if (baselineHoras === 0 && empresa.baseline_tickets_mensal) {
             baselineHoras = Number(empresa.baseline_tickets_mensal) || 0;
           }
-          console.log("\u{1F4CA} [booksDataCollector] Baseline TICKETS para c\xE1lculo:", { baselineTickets: baselineHoras });
-        } else {
-          const { data: baselineVigente, error: baselineError } = await supabase.rpc("get_baseline_vigente", {
-            p_empresa_id: empresaId,
-            p_data: dataReferencia
+          console.log("\u{1F4CA} [booksDataCollector] Baseline TICKETS para c\xE1lculo:", {
+            baselineTickets: baselineHoras
           });
+        } else {
+          const { data: baselineVigente, error: baselineError } = await supabase.rpc(
+            "get_baseline_vigente",
+            {
+              p_empresa_id: empresaId,
+              p_data: dataReferencia
+            }
+          );
           if (!baselineError && baselineVigente && baselineVigente.length > 0) {
             const baseline = baselineVigente[0];
             if (baseline.baseline_horas !== null && baseline.baseline_horas !== void 0) {
@@ -15676,12 +15686,7 @@ var BooksDataCollectorService = class {
       );
       const diaInicioApuracao = empresa.dia_inicio_apuracao ?? 1;
       const diaFimApuracao = empresa.dia_fim_apuracao ?? 0;
-      const {
-        apontamentosHoras,
-        apontamentosTickets,
-        ticketsAbertos,
-        ticketsFechados
-      } = await this.buscarApontamentosPorTipoContrato(
+      const { apontamentosHoras, apontamentosTickets, ticketsAbertos, ticketsFechados } = await this.buscarApontamentosPorTipoContrato(
         empresa.nome_completo,
         empresa.nome_abreviado,
         mes,
@@ -15693,13 +15698,7 @@ var BooksDataCollectorService = class {
       const mesNome = MESES_LABELS[mes];
       const periodo = `${mesNome} ${ano}`;
       const dadosGerados = {
-        capa: this.gerarDadosCapa(
-          empresa.nome_completo,
-          empresa.nome_abreviado,
-          mes,
-          ano,
-          periodo
-        ),
+        capa: this.gerarDadosCapa(empresa.nome_completo, empresa.nome_abreviado, mes, ano, periodo),
         volumetria: await this.gerarDadosVolumetria(
           apontamentosHoras,
           apontamentosTickets,
@@ -15733,8 +15732,16 @@ var BooksDataCollectorService = class {
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano),
         consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano),
-        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(empresaId, mes, ano),
-        requerimentos_faturados: await this.buscarRequerimentosFaturadosParaBook(empresaId, mes, ano)
+        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(
+          empresaId,
+          mes,
+          ano
+        ),
+        requerimentos_faturados: await this.buscarRequerimentosFaturadosParaBook(
+          empresaId,
+          mes,
+          ano
+        )
       };
       console.log("\u2705 DADOS DO BOOK GERADOS COM SUCESSO:", {
         empresa: empresa.nome_abreviado,
@@ -15769,12 +15776,11 @@ var BooksDataCollectorService = class {
    * IMPORTANTE: Para os cards de volumetria, SEMPRE buscar de apontamentos_tickets_aranda
    */
   async buscarApontamentosPorTipoContrato(empresaNomeCompleto, empresaNomeAbreviado, mes, ano, tipoContrato, diaInicioApuracao = 1, diaFimApuracao = 0) {
-    const { dataInicio, dataFim, proximoPeriodoInicio: proximoMesInicio } = calcularPeriodoApuracao(
-      mes,
-      ano,
-      diaInicioApuracao,
-      diaFimApuracao
-    );
+    const {
+      dataInicio,
+      dataFim,
+      proximoPeriodoInicio: proximoMesInicio
+    } = calcularPeriodoApuracao(mes, ano, diaInicioApuracao, diaFimApuracao);
     if (diaInicioApuracao > 1) {
       console.log("\u{1F4C5} Periodicidade CUSTOMIZADA:", {
         empresa: empresaNomeAbreviado,
@@ -15794,15 +15800,29 @@ var BooksDataCollectorService = class {
       dataInicio: dataInicio.toISOString(),
       dataFim: dataFim.toISOString()
     });
-    let apontamentosHoras = [];
+    const apontamentosHoras = [];
     let apontamentosTickets = [];
-    const { data: ticketsAbertos, error: ticketsAbertosError } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_abertura", dataInicio.toISOString()).lte("data_abertura", dataFim.toISOString()).neq("cod_tipo", "Problema").neq("status", "Cancelled").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
-    const { data: ticketsFechados, error: ticketsFechadosError } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    const { data: ticketsAbertos, error: ticketsAbertosError } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_abertura", dataInicio.toISOString()).lte("data_abertura", dataFim.toISOString()).neq("cod_tipo", "Problema").neq("status", "Cancelled").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    const { data: ticketsFechados, error: ticketsFechadosError } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
     if (ticketsAbertosError) {
-      console.error("\u274C Erro ao buscar apontamentos_tickets_aranda (abertos):", ticketsAbertosError);
+      console.error(
+        "\u274C Erro ao buscar apontamentos_tickets_aranda (abertos):",
+        ticketsAbertosError
+      );
     }
     if (ticketsFechadosError) {
-      console.error("\u274C Erro ao buscar apontamentos_tickets_aranda (fechados):", ticketsFechadosError);
+      console.error(
+        "\u274C Erro ao buscar apontamentos_tickets_aranda (fechados):",
+        ticketsFechadosError
+      );
     }
     const ticketsAbertosFiltrados = ticketsAbertos || [];
     const ticketsFechadosFiltrados = ticketsFechados || [];
@@ -15865,9 +15885,7 @@ var BooksDataCollectorService = class {
       ticketsFechados: ticketsFechados.length,
       totalTicketsUnicos: apontamentosTickets.length
     });
-    const abertosIncidente = ticketsAbertos.filter(
-      (a) => a.cod_tipo === "Incidente"
-    ).length;
+    const abertosIncidente = ticketsAbertos.filter((a) => a.cod_tipo === "Incidente").length;
     const abertosSolicitacao = ticketsAbertos.filter(
       (a) => a.cod_tipo && a.cod_tipo !== "Incidente"
     ).length;
@@ -15887,9 +15905,7 @@ var BooksDataCollectorService = class {
         data_abertura: t.data_abertura
       }))
     });
-    const fechadosIncidente = ticketsFechados.filter(
-      (a) => a.cod_tipo === "Incidente"
-    ).length;
+    const fechadosIncidente = ticketsFechados.filter((a) => a.cod_tipo === "Incidente").length;
     const fechadosSolicitacao = ticketsFechados.filter(
       (a) => a.cod_tipo && a.cod_tipo !== "Incidente"
     ).length;
@@ -15924,8 +15940,14 @@ var BooksDataCollectorService = class {
       }
     });
     const ultimoDiaMes = new Date(ano, mes, 0).toISOString();
-    console.log("\u{1F4CA} Buscando backlog total (chamados em aberto at\xE9 o per\xEDodo)...", { dataLimite: ultimoDiaMes });
-    const { data: ticketsBacklogTotal, error: errorBacklog } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao").ilike("organizacao", empresaNomeCompleto).lte("data_abertura", ultimoDiaMes).not("status", "in", '("Closed","Resolved","Canceled","Cancelled")').neq("cod_tipo", "Problema").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    console.log("\u{1F4CA} Buscando backlog total (chamados em aberto at\xE9 o per\xEDodo)...", {
+      dataLimite: ultimoDiaMes
+    });
+    const { data: ticketsBacklogTotal, error: errorBacklog } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao").ilike("organizacao", empresaNomeCompleto).lte("data_abertura", ultimoDiaMes).not("status", "in", '("Closed","Resolved","Canceled","Cancelled")').neq("cod_tipo", "Problema").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
     if (errorBacklog) {
       console.error("\u274C Erro ao buscar backlog total:", errorBacklog);
     }
@@ -15946,11 +15968,7 @@ var BooksDataCollectorService = class {
     const chamadosPorGrupo = await this.agruparPorGrupo(ticketsAbertos, ticketsFechados);
     const taxaResolucao = apontamentosTickets.length > 0 ? Math.round(totalFechados / apontamentosTickets.length * 100) : 0;
     const chamadosPorCausa = await this.agruparChamadosPorCausa(ticketsAbertos, ticketsFechados);
-    const slaMedioData = await this.calcularSLAMedioUltimos5Meses(
-      empresaNomeCompleto,
-      mes,
-      ano
-    );
+    const slaMedioData = await this.calcularSLAMedioUltimos5Meses(empresaNomeCompleto, mes, ano);
     return {
       abertos_mes: {
         solicitacao: abertosSolicitacao,
@@ -15985,7 +16003,11 @@ var BooksDataCollectorService = class {
       }
       const dataInicio = new Date(ano, mes - 1, 1);
       const proximoMesInicio = new Date(ano, mes, 1);
-      const { data: ticketsFechados } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).eq("cod_tipo", "Incidente").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+      const { data: ticketsFechados } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).eq("cod_tipo", "Incidente").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+        "nome_grupo",
+        "in",
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
       const totalIncidentes = (ticketsFechados || []).length;
       const codResolucaoElegiveisMedia = [
         "AMS SAP",
@@ -16062,8 +16084,18 @@ var BooksDataCollectorService = class {
       mesInicial += 12;
       anoInicial -= 1;
     }
-    const { dataInicio } = calcularPeriodoApuracao(mesInicial, anoInicial, diaInicioApuracao, diaFimApuracao);
-    const { dataFim } = calcularPeriodoApuracao(mesAtual, anoAtual, diaInicioApuracao, diaFimApuracao);
+    const { dataInicio } = calcularPeriodoApuracao(
+      mesInicial,
+      anoInicial,
+      diaInicioApuracao,
+      diaFimApuracao
+    );
+    const { dataFim } = calcularPeriodoApuracao(
+      mesAtual,
+      anoAtual,
+      diaInicioApuracao,
+      diaFimApuracao
+    );
     console.log("\u{1F4C5} Buscando dados do semestre:", {
       empresa: empresaNomeCompleto,
       periodo: `${MESES_NOMES[mesInicial - 1]}/${anoInicial} at\xE9 ${MESES_NOMES[mesAtual - 1]}/${anoAtual}`,
@@ -16074,7 +16106,11 @@ var BooksDataCollectorService = class {
       mesAtual,
       anoAtual
     });
-    const { data: ticketsAbertos, error: errorAbertos } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, cod_tipo, data_abertura").ilike("organizacao", empresaNomeCompleto).gte("data_abertura", dataInicio.toISOString()).lte("data_abertura", dataFim.toISOString()).neq("cod_tipo", "Problema").neq("status", "Cancelled").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    const { data: ticketsAbertos, error: errorAbertos } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, cod_tipo, data_abertura").ilike("organizacao", empresaNomeCompleto).gte("data_abertura", dataInicio.toISOString()).lte("data_abertura", dataFim.toISOString()).neq("cod_tipo", "Problema").neq("status", "Cancelled").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
     if (errorAbertos) {
       console.error("\u274C Erro ao buscar tickets abertos do semestre:", errorAbertos);
     }
@@ -16086,7 +16122,11 @@ var BooksDataCollectorService = class {
         data: t.data_abertura
       }))
     });
-    const { data: ticketsFechados, error: errorFechados } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, cod_tipo, data_fechamento").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lte("data_fechamento", dataFim.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    const { data: ticketsFechados, error: errorFechados } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, cod_tipo, data_fechamento").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lte("data_fechamento", dataFim.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
     if (errorFechados) {
       console.error("\u274C Erro ao buscar tickets fechados do semestre:", errorFechados);
     }
@@ -16358,7 +16398,11 @@ var BooksDataCollectorService = class {
       dataInicio: dataInicio.toISOString(),
       dataFim: dataFim.toISOString()
     });
-    const { data: ticketsFechados, error: errorFechados } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    const { data: ticketsFechados, error: errorFechados } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
     if (errorFechados) {
       console.error("\u274C Erro ao buscar tickets fechados:", errorFechados);
     }
@@ -16417,7 +16461,9 @@ var BooksDataCollectorService = class {
         elegivel: codResolucaoElegiveis.includes(t.cod_resolucao)
       }))
     });
-    const incidentesFechadosArray = (ticketsFechados || []).filter((t) => t.cod_tipo === "Incidente");
+    const incidentesFechadosArray = (ticketsFechados || []).filter(
+      (t) => t.cod_tipo === "Incidente"
+    );
     const violados = incidentesFechadosArray.filter((t) => t.tds_cumprido === "TDS Vencido").length;
     const violadosElegiveis = incidentesFechadosArray.filter(
       (t) => t.tds_cumprido === "TDS Vencido" && codResolucaoElegiveis.includes(t.cod_resolucao)
@@ -16490,7 +16536,9 @@ var BooksDataCollectorService = class {
       metaSLA,
       quantidadeMinimaIncidentes
     );
-    const chamadosViolados = incidentesFechadosArray.filter((t) => t.tds_cumprido === "TDS Vencido" && codResolucaoElegiveis.includes(t.cod_resolucao)).slice(0, 10).map((t) => ({
+    const chamadosViolados = incidentesFechadosArray.filter(
+      (t) => t.tds_cumprido === "TDS Vencido" && codResolucaoElegiveis.includes(t.cod_resolucao)
+    ).slice(0, 10).map((t) => ({
       id_chamado: t.nro_solicitacao,
       ticket_externo: t.ticket_externo || "N/A",
       tipo: t.cod_tipo === "Incidente" ? "Incidente" : "Requisi\xE7\xE3o",
@@ -16553,7 +16601,11 @@ var BooksDataCollectorService = class {
         nome_grupo: "NOT IN (AMS APL - T\xC9CNICO, CA SDM, PROJETOS APL - PLSQL)"
       }
     });
-    const { data: ticketsBacklog, error } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).lte("data_abertura", dataLimite).not("status", "in", '("Closed","Resolved","Canceled","Cancelled")').neq("cod_tipo", "Problema").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+    const { data: ticketsBacklog, error } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).lte("data_abertura", dataLimite).not("status", "in", '("Closed","Resolved","Canceled","Cancelled")').neq("cod_tipo", "Problema").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+      "nome_grupo",
+      "in",
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
     if (error) {
       console.error("\u274C Erro ao buscar backlog:", error);
     }
@@ -16621,9 +16673,14 @@ var BooksDataCollectorService = class {
     const dataInicio = new Date(ano, mes - 1, 1);
     const proximoMesInicio = new Date(ano, mes, 1);
     if (tipoContrato === "horas") {
-      console.log("\u{1F50D} Buscando apontamentos_aranda com nome_completo (match exato):", empresaNomeCompleto);
+      console.log(
+        "\u{1F50D} Buscando apontamentos_aranda com nome_completo (match exato):",
+        empresaNomeCompleto
+      );
       console.log("\u{1F4C5} Per\xEDodo:", { dataInicio, proximoMesInicio });
-      const { data: apontamentosHoras, error: errorApontamentos } = await supabase.from("apontamentos_aranda").select("*").ilike("org_us_final", empresaNomeCompleto).eq("ativi_interna", "N\xE3o").in("tipo_chamado", ["IM", "RF", "PM"]).neq("item_configuracao", "000000 - PROJETOS APL").or("caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%").in("cod_resolucao", [
+      const { data: apontamentosHoras, error: errorApontamentos } = await supabase.from("apontamentos_aranda").select("*").ilike("org_us_final", empresaNomeCompleto).eq("ativi_interna", "N\xE3o").in("tipo_chamado", ["IM", "RF", "PM"]).neq("item_configuracao", "000000 - PROJETOS APL").or(
+        "caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%"
+      ).in("cod_resolucao", [
         "Aloca\xE7\xE3o",
         "Aloca\xE7\xE3o (Banco=S |SLA=N)",
         "Aloca\xE7\xE3o (Banco=S| SLA=N)",
@@ -16700,7 +16757,7 @@ var BooksDataCollectorService = class {
       });
       if (apontamentosHoras && apontamentosHoras.length > 0) {
         const apontamentosFiltrados = apontamentosHoras;
-        let detalhesConversao = [];
+        const detalhesConversao = [];
         let horasApontadasIncidente = 0;
         let horasApontadasSolicitacao = 0;
         const horasApontadas = apontamentosFiltrados.reduce((sum, a) => {
@@ -16770,10 +16827,15 @@ var BooksDataCollectorService = class {
           horasTotal: horasApontadas.toFixed(4) + " horas",
           registrosIncidente: detalhesConversao.filter((d) => d.tipo_chamado === "IM").length,
           registrosSolicitacao: detalhesConversao.filter((d) => d.tipo_chamado === "RF").length,
-          registrosOutros: detalhesConversao.filter((d) => d.tipo_chamado !== "IM" && d.tipo_chamado !== "RF").length
+          registrosOutros: detalhesConversao.filter(
+            (d) => d.tipo_chamado !== "IM" && d.tipo_chamado !== "RF"
+          ).length
         });
       } else {
-        console.log("\u26A0\uFE0F Nenhum apontamento encontrado em apontamentos_aranda para:", empresaNomeCompleto);
+        console.log(
+          "\u26A0\uFE0F Nenhum apontamento encontrado em apontamentos_aranda para:",
+          empresaNomeCompleto
+        );
       }
     }
     if (tipoContrato === "tickets" || tipoContrato === "ambos") {
@@ -16833,7 +16895,9 @@ var BooksDataCollectorService = class {
         "Valida\xE7\xE3o de Arquivo",
         "Valida\xE7\xE3o de Arquivo (Banco=S |SLA=N)",
         "Valida\xE7\xE3o de Arquivo (Banco=S| SLA=N)"
-      ]).or("nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%");
+      ]).or(
+        "nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%"
+      );
       console.log("\u{1F3AB} [gerarDadosConsumo] Tickets encontrados:", {
         quantidade: ticketsFechados?.length || 0,
         filtros: {
@@ -16941,11 +17005,7 @@ var BooksDataCollectorService = class {
       empresa: empresaNomeCompleto,
       periodo: `${mes}/${ano}`
     });
-    const requerimentosDescontados = await this.buscarRequerimentosDescontados(
-      empresaId,
-      mes,
-      ano
-    );
+    const requerimentosDescontados = await this.buscarRequerimentosDescontados(empresaId, mes, ano);
     const bancoHorasTrimestre = await this.buscarBancoHorasCiclo(empresaId, mes, ano);
     const taxaHoraExcedente = await this.buscarTaxaHoraExcedente(empresaId, mes, ano);
     return {
@@ -16957,9 +17017,7 @@ var BooksDataCollectorService = class {
       percentual_incidente: percentualIncidente,
       percentual_solicitacao: percentualSolicitacao,
       historico_consumo: historicoCompleto,
-      distribuicao_causa: distribuicaoCausa.length > 0 ? distribuicaoCausa : [
-        { causa: "SEM DADOS", quantidade: 0, percentual: 0 }
-      ],
+      distribuicao_causa: distribuicaoCausa.length > 0 ? distribuicaoCausa : [{ causa: "SEM DADOS", quantidade: 0, percentual: 0 }],
       requerimentos_descontados: requerimentosDescontados,
       total_geral: totalRegistros,
       banco_horas_trimestre: bancoHorasTrimestre,
@@ -16980,7 +17038,7 @@ var BooksDataCollectorService = class {
       }
       const periodoApuracao = empresa.periodo_apuracao || 3;
       const inicioVigencia = empresa.inicio_vigencia;
-      let mesesCiclo = [];
+      const mesesCiclo = [];
       if (inicioVigencia) {
         const [anoVigencia, mesVigencia] = inicioVigencia.split("-").map(Number);
         const mesesDesdeInicio = (ano - anoVigencia) * 12 + (mes - mesVigencia);
@@ -17026,11 +17084,14 @@ var BooksDataCollectorService = class {
           };
         })
       );
-      console.log("\u2705 [buscarBancoHorasCiclo] Dados carregados:", resultados.map((r) => ({
-        mes: r.mes,
-        ano: r.ano,
-        temDados: !!r.dados
-      })));
+      console.log(
+        "\u2705 [buscarBancoHorasCiclo] Dados carregados:",
+        resultados.map((r) => ({
+          mes: r.mes,
+          ano: r.ano,
+          temDados: !!r.dados
+        }))
+      );
       return resultados;
     } catch (error) {
       console.error("\u274C [buscarBancoHorasCiclo] Erro:", error);
@@ -17066,8 +17127,14 @@ var BooksDataCollectorService = class {
       } else if (taxaMaisRecente.tipo_calculo_adicional === "normal") {
         taxaHoraAdicional = Math.round((valorFuncional.valor_base + valorFuncional.valor_base * 0.15) * 100) / 100;
       } else {
-        const funcoesPrincipais = ["Funcional", "T\xE9cnico (Instala\xE7\xE3o / Atualiza\xE7\xE3o)", "ABAP - PL/SQL"];
-        const valoresPrincipais = valores.filter((v) => funcoesPrincipais.includes(v.funcao)).map((v) => v.valor_adicional && v.valor_adicional > 0 ? v.valor_adicional : Math.round((v.valor_base + v.valor_base * 0.15) * 100) / 100);
+        const funcoesPrincipais = [
+          "Funcional",
+          "T\xE9cnico (Instala\xE7\xE3o / Atualiza\xE7\xE3o)",
+          "ABAP - PL/SQL"
+        ];
+        const valoresPrincipais = valores.filter((v) => funcoesPrincipais.includes(v.funcao)).map(
+          (v) => v.valor_adicional && v.valor_adicional > 0 ? v.valor_adicional : Math.round((v.valor_base + v.valor_base * 0.15) * 100) / 100
+        );
         if (valoresPrincipais.length === 0) return 0;
         taxaHoraAdicional = valoresPrincipais.reduce((a, b) => a + b, 0) / valoresPrincipais.length;
       }
@@ -17099,7 +17166,7 @@ var BooksDataCollectorService = class {
       }
       console.log("\u2705 Requerimentos encontrados:", requerimentos?.length || 0);
       const chamadosNumeros = (requerimentos || []).map((req) => (req.chamado || "").replace("RF-", "")).filter(Boolean);
-      let ticketExternoReqMap = {};
+      const ticketExternoReqMap = {};
       if (chamadosNumeros.length > 0) {
         const { data: ticketsData } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, ticket_externo").in("nro_solicitacao", chamadosNumeros);
         if (ticketsData) {
@@ -17125,10 +17192,14 @@ var BooksDataCollectorService = class {
           if (typeof horasFuncionalValue === "string" && horasFuncionalValue.includes(":")) {
             const [h, m] = horasFuncionalValue.split(":").map(Number);
             horasFuncional = h + m / 60;
-            console.log(`  \u2705 horas_funcional (HH:MM): ${horasFuncionalValue} \u2192 ${horasFuncional.toFixed(2)}h`);
+            console.log(
+              `  \u2705 horas_funcional (HH:MM): ${horasFuncionalValue} \u2192 ${horasFuncional.toFixed(2)}h`
+            );
           } else {
             horasFuncional = Number(horasFuncionalValue) || 0;
-            console.log(`  \u2705 horas_funcional (decimal): ${horasFuncionalValue} \u2192 ${horasFuncional.toFixed(2)}h`);
+            console.log(
+              `  \u2705 horas_funcional (decimal): ${horasFuncionalValue} \u2192 ${horasFuncional.toFixed(2)}h`
+            );
           }
         } else {
           console.log(`  \u26A0\uFE0F horas_funcional: null/undefined`);
@@ -17138,10 +17209,14 @@ var BooksDataCollectorService = class {
           if (typeof horasTecnicoValue === "string" && horasTecnicoValue.includes(":")) {
             const [h, m] = horasTecnicoValue.split(":").map(Number);
             horasTecnico = h + m / 60;
-            console.log(`  \u2705 horas_tecnico (HH:MM): ${horasTecnicoValue} \u2192 ${horasTecnico.toFixed(2)}h`);
+            console.log(
+              `  \u2705 horas_tecnico (HH:MM): ${horasTecnicoValue} \u2192 ${horasTecnico.toFixed(2)}h`
+            );
           } else {
             horasTecnico = Number(horasTecnicoValue) || 0;
-            console.log(`  \u2705 horas_tecnico (decimal): ${horasTecnicoValue} \u2192 ${horasTecnico.toFixed(2)}h`);
+            console.log(
+              `  \u2705 horas_tecnico (decimal): ${horasTecnicoValue} \u2192 ${horasTecnico.toFixed(2)}h`
+            );
           }
         } else {
           console.log(`  \u26A0\uFE0F horas_tecnico: null/undefined`);
@@ -17176,7 +17251,7 @@ var BooksDataCollectorService = class {
    * Busca requerimentos em desenvolvimento para a aba do Book
    * Requerimentos com status = 'lancado', tipo_cobranca = 'Banco de Horas'
    * e data_envio <= último dia do mês do book
-   * 
+   *
    * REGRA: Book de Fevereiro mostra TODOS os requerimentos em desenvolvimento
    * com data_envio até 28/02 (não mostra os que foram enviados depois).
    */
@@ -17206,7 +17281,7 @@ var BooksDataCollectorService = class {
         return [];
       }
       const chamadosNumeros = requerimentosFiltrados.map((req) => (req.chamado || "").replace("RF-", "")).filter(Boolean);
-      let ticketExternoMap = {};
+      const ticketExternoMap = {};
       if (chamadosNumeros.length > 0) {
         const { data: ticketsData } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, ticket_externo").in("nro_solicitacao", chamadosNumeros);
         if (ticketsData) {
@@ -17280,13 +17355,16 @@ var BooksDataCollectorService = class {
     try {
       return await buscarRequerimentosFaturadosParaBook(empresaId, mes, ano);
     } catch (error) {
-      console.error("\u274C Erro ao buscar requerimentos faturados para book:", error instanceof Error ? error.message : error?.message);
+      console.error(
+        "\u274C Erro ao buscar requerimentos faturados para book:",
+        error instanceof Error ? error.message : error?.message
+      );
       return void 0;
     }
   }
   /**
    * Gera dados de pesquisa
-   * 
+   *
    * REGRA DE NEGÓCIO:
    * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
    * - Pesquisas com data_resposta preenchido = RESPONDIDAS
@@ -17312,7 +17390,11 @@ var BooksDataCollectorService = class {
       });
       console.log('\u{1F6AB} Grupos exclu\xEDdos: "AMS APL - T\xC9CNICO", "CA SDM", "PROJETOS APL - PLSQL"');
       console.log('\u{1F6AB} Tipo de caso exclu\xEDdo: "PM"');
-      const { data: pesquisas, error: pesquisasError } = await supabase.from("pesquisas_satisfacao").select("*").eq("empresa", nomeCompletoEmpresa).gte("data_fechamento", dataInicio.toISOString()).lte("data_fechamento", dataFim.toISOString()).not("grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("grupo", "like", "AMS DX %").not("grupo", "like", "AMS PRJ %").not("grupo", "like", "AMS SAP %").not("grupo", "like", "BPO %").not("grupo", "like", "PROJETOS APL %").neq("tipo_caso", "PM");
+      const { data: pesquisas, error: pesquisasError } = await supabase.from("pesquisas_satisfacao").select("*").eq("empresa", nomeCompletoEmpresa).gte("data_fechamento", dataInicio.toISOString()).lte("data_fechamento", dataFim.toISOString()).not(
+        "grupo",
+        "in",
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      ).not("grupo", "like", "AMS DX %").not("grupo", "like", "AMS PRJ %").not("grupo", "like", "AMS SAP %").not("grupo", "like", "BPO %").not("grupo", "like", "PROJETOS APL %").neq("tipo_caso", "PM");
       if (pesquisasError) {
         console.error("\u274C Erro ao buscar pesquisas:", pesquisasError);
         return this.retornarDadosPesquisaVazios();
@@ -17323,8 +17405,14 @@ var BooksDataCollectorService = class {
       }
       const pesquisasRespondidas = pesquisas.filter((p) => p.data_resposta !== null);
       const pesquisasNaoRespondidas = pesquisas.filter((p) => p.data_resposta === null);
-      console.log("\u2705 Pesquisas respondidas (data_resposta preenchido):", pesquisasRespondidas.length);
-      console.log("\u23F3 Pesquisas n\xE3o respondidas (data_resposta NULL):", pesquisasNaoRespondidas.length);
+      console.log(
+        "\u2705 Pesquisas respondidas (data_resposta preenchido):",
+        pesquisasRespondidas.length
+      );
+      console.log(
+        "\u23F3 Pesquisas n\xE3o respondidas (data_resposta NULL):",
+        pesquisasNaoRespondidas.length
+      );
       const percentualAderencia = pesquisas.length > 0 ? pesquisasRespondidas.length / pesquisas.length * 100 : 0;
       const nivelSatisfacao = {
         insatisfeito: 0,
@@ -17342,7 +17430,7 @@ var BooksDataCollectorService = class {
         }
       });
       const nroCasosRespondidos = pesquisasRespondidas.map((p) => p.nro_caso).filter(Boolean);
-      let ticketExternoMap = {};
+      const ticketExternoMap = {};
       if (nroCasosRespondidos.length > 0) {
         const { data: ticketsData } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, ticket_externo").in("nro_solicitacao", nroCasosRespondidos);
         if (ticketsData) {
@@ -17499,7 +17587,9 @@ var BooksDataCollectorService = class {
         return;
       }
       const dataAbertura = new Date(r.data_abertura);
-      const diasAberto = Math.floor((hoje.getTime() - dataAbertura.getTime()) / (1e3 * 60 * 60 * 24));
+      const diasAberto = Math.floor(
+        (hoje.getTime() - dataAbertura.getTime()) / (1e3 * 60 * 60 * 24)
+      );
       const isIncidente = r.cod_tipo === "Incidente";
       for (const faixa of resultado) {
         const faixaOriginal = faixas.find((f) => f.faixa === faixa.faixa);
@@ -17595,7 +17685,11 @@ var BooksDataCollectorService = class {
       console.log(`\u{1F504} ${MESES_NOMES[mes - 1]}/${ano}: Calculando em TEMPO REAL`);
       const dataInicio = new Date(ano, mes - 1, 1);
       const proximoMesInicio = new Date(ano, mes, 1);
-      const { data: ticketsFechados } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not("nome_grupo", "in", '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")').not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
+      const { data: ticketsFechados } = await supabase.from("apontamentos_tickets_aranda").select("*").ilike("organizacao", empresaNomeCompleto).gte("data_fechamento", dataInicio.toISOString()).lt("data_fechamento", proximoMesInicio.toISOString()).neq("cod_tipo", "Problema").eq("status", "Closed").or("item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL").eq("caso_pai", "SIM").not(
+        "nome_grupo",
+        "in",
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - T\xC9CNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      ).not("nome_grupo", "like", "AMS DX %").not("nome_grupo", "like", "AMS PRJ %").not("nome_grupo", "like", "AMS SAP %").not("nome_grupo", "like", "BPO %").not("nome_grupo", "like", "PROJETOS APL %");
       const incidentesFechados = (ticketsFechados || []).filter((t) => t.cod_tipo === "Incidente");
       const totalIncidentes = incidentesFechados.length;
       const codResolucaoElegiveis = [
@@ -17713,8 +17807,13 @@ var BooksDataCollectorService = class {
       const proximoMesInicio = new Date(ano, mes, 1);
       let horasMes = 0;
       if (tipoContrato === "horas") {
-        console.log(`\u{1F50D} Buscando hist\xF3rico apontamentos_aranda (${MESES_NOMES[mes - 1]}/${ano}) com nome_completo:`, empresaNomeCompleto);
-        const { data: apontamentosHoras } = await supabase.from("apontamentos_aranda").select("tempo_gasto_horas, data_atividade, data_sistema, nro_chamado").ilike("org_us_final", empresaNomeCompleto).eq("ativi_interna", "N\xE3o").in("tipo_chamado", ["IM", "RF", "PM"]).neq("item_configuracao", "000000 - PROJETOS APL").or("caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%").in("cod_resolucao", [
+        console.log(
+          `\u{1F50D} Buscando hist\xF3rico apontamentos_aranda (${MESES_NOMES[mes - 1]}/${ano}) com nome_completo:`,
+          empresaNomeCompleto
+        );
+        const { data: apontamentosHoras } = await supabase.from("apontamentos_aranda").select("tempo_gasto_horas, data_atividade, data_sistema, nro_chamado").ilike("org_us_final", empresaNomeCompleto).eq("ativi_interna", "N\xE3o").in("tipo_chamado", ["IM", "RF", "PM"]).neq("item_configuracao", "000000 - PROJETOS APL").or(
+          "caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%"
+        ).in("cod_resolucao", [
           "Aloca\xE7\xE3o",
           "Aloca\xE7\xE3o (Banco=S |SLA=N)",
           "Aloca\xE7\xE3o (Banco=S| SLA=N)",
@@ -17774,7 +17873,9 @@ var BooksDataCollectorService = class {
             return sum + h + m / 60;
           }, 0);
           horasMes += horasApontadas;
-          console.log(`\u2705 ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros, ${horasApontadas.toFixed(2)}h`);
+          console.log(
+            `\u2705 ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros, ${horasApontadas.toFixed(2)}h`
+          );
         }
       }
       if (tipoContrato === "tickets" || tipoContrato === "ambos") {
@@ -17825,7 +17926,9 @@ var BooksDataCollectorService = class {
           "Valida\xE7\xE3o de Arquivo",
           "Valida\xE7\xE3o de Arquivo (Banco=S |SLA=N)",
           "Valida\xE7\xE3o de Arquivo (Banco=S| SLA=N)"
-        ]).or("nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%");
+        ]).or(
+          "nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%"
+        );
         if (ticketsFechados) {
           if (tipoContrato === "tickets" || tipoContrato === "ambos") {
             horasMes += ticketsFechados.length;
@@ -17884,7 +17987,10 @@ var BooksDataCollectorService = class {
         ano -= 1;
       }
       const mesCobranca = `${String(mes).padStart(2, "0")}/${ano}`;
-      console.log(`\u{1F50D} Buscando hist\xF3rico requerimentos para ${MESES_NOMES[mes - 1]}/${ano} (mes_cobranca: ${mesCobranca}) - empresaId:`, empresaId);
+      console.log(
+        `\u{1F50D} Buscando hist\xF3rico requerimentos para ${MESES_NOMES[mes - 1]}/${ano} (mes_cobranca: ${mesCobranca}) - empresaId:`,
+        empresaId
+      );
       const { data: requerimentos } = await supabase.from("requerimentos").select("horas_funcional, horas_tecnico, quantidade_tickets").eq("cliente_id", empresaId).eq("mes_cobranca", mesCobranca).eq("tipo_cobranca", "Banco de Horas").in("status", ["enviado_faturamento", "faturado", "concluido"]);
       let valorMes = 0;
       if (requerimentos && requerimentos.length > 0) {
@@ -17892,17 +17998,23 @@ var BooksDataCollectorService = class {
           valorMes = requerimentos.reduce((sum, req) => {
             return sum + (Number(req.quantidade_tickets) || 0);
           }, 0);
-          console.log(`\u2705 ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes} tickets`);
+          console.log(
+            `\u2705 ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes} tickets`
+          );
         } else {
           valorMes = requerimentos.reduce((sum, req) => {
             const horasFuncional = Number(req.horas_funcional) || 0;
             const horasTecnico = Number(req.horas_tecnico) || 0;
             return sum + horasFuncional + horasTecnico;
           }, 0);
-          console.log(`\u2705 ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes.toFixed(2)}h`);
+          console.log(
+            `\u2705 ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes.toFixed(2)}h`
+          );
         }
       } else {
-        console.log(`\u26A0\uFE0F ${MESES_NOMES[mes - 1]}/${ano}: Nenhum requerimento encontrado (buscou ${mesCobranca})`);
+        console.log(
+          `\u26A0\uFE0F ${MESES_NOMES[mes - 1]}/${ano}: Nenhum requerimento encontrado (buscou ${mesCobranca})`
+        );
       }
       resultado.push({
         mes: MESES_NOMES[mes - 1],
@@ -17978,11 +18090,11 @@ var BooksDataCollectorService = class {
   /**
    * Busca mapeamento de categorias da tabela de_para_categoria
    * Mapeia tanto nome_grupo quanto cod_resolucao para grupo_book
-   * 
+   *
    * REGRAS DE MAPEAMENTO:
    * 1. nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo (retornado)
    * 2. cod_resolucao (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo (retornado)
-   * 
+   *
    * Cache de 5 minutos para otimizar performance
    */
   async buscarMapeamentoGrupos() {
@@ -18024,14 +18136,20 @@ var BooksDataCollectorService = class {
    */
   async gerarDadosConsumoSegmentado(empresaId, mes, ano) {
     try {
-      const { data: empresa } = await supabase.from("empresas_clientes").select("baseline_segmentado, segmentacao_config, periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, baseline_horas_mensal").eq("id", empresaId).single();
+      const { data: empresa } = await supabase.from("empresas_clientes").select(
+        "baseline_segmentado, segmentacao_config, periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, baseline_horas_mensal"
+      ).eq("id", empresaId).single();
       if (!empresa?.baseline_segmentado || !empresa?.segmentacao_config) {
         return void 0;
       }
       const config = empresa.segmentacao_config;
       const empresas = config?.empresas || [];
       if (empresas.length === 0) return void 0;
-      console.log("\u{1F4CA} [gerarDadosConsumoSegmentado] Iniciando coleta para", empresas.length, "segmentos");
+      console.log(
+        "\u{1F4CA} [gerarDadosConsumoSegmentado] Iniciando coleta para",
+        empresas.length,
+        "segmentos"
+      );
       const percentualRepasse = empresa.percentual_repasse_mensal || 50;
       let baselineTotalStr = "00:00";
       const dataRef = `${ano}-${String(mes).padStart(2, "0")}-01`;
@@ -18055,7 +18173,7 @@ var BooksDataCollectorService = class {
       const baselineTotalMin = parseInt(partes[0] || "0") * 60 + parseInt(partes[1] || "0");
       const periodoApuracao = empresa.periodo_apuracao || 3;
       const inicioVigencia = empresa.inicio_vigencia;
-      let mesesCiclo = [];
+      const mesesCiclo = [];
       if (inicioVigencia) {
         const [anoV, mesV] = inicioVigencia.split("-").map(Number);
         const mesesDesde = (ano - anoV) * 12 + (mes - mesV);
@@ -18165,7 +18283,11 @@ var BooksDataCollectorService = class {
           valorTotalExcedentes
         });
       }
-      console.log("\u2705 [gerarDadosConsumoSegmentado] Snapshot gerado:", resultado.length, "segmentos");
+      console.log(
+        "\u2705 [gerarDadosConsumoSegmentado] Snapshot gerado:",
+        resultado.length,
+        "segmentos"
+      );
       return resultado;
     } catch (error) {
       console.error("\u274C [gerarDadosConsumoSegmentado] Erro:", error);
@@ -21255,13 +21377,17 @@ var BooksService = class {
    */
   async listarBooks(filtros, opcoes) {
     try {
-      const { data: empresas, error: empresasError } = await supabase.from("empresas_clientes").select("id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao, inicio_vigencia").eq("status", "ativo").eq("tem_ams", true).eq("tipo_book", "qualidade").order("nome_abreviado");
+      const { data: empresas, error: empresasError } = await supabase.from("empresas_clientes").select(
+        "id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao, inicio_vigencia"
+      ).eq("status", "ativo").eq("tem_ams", true).eq("tipo_book", "qualidade").order("nome_abreviado");
       if (empresasError) {
         console.error("Erro ao buscar empresas:", empresasError);
         throw empresasError;
       }
       if (!empresas || empresas.length === 0) {
-        console.log("Nenhuma empresa encontrada com os crit\xE9rios: ativo + tem_ams + tipo_book qualidade");
+        console.log(
+          "Nenhuma empresa encontrada com os crit\xE9rios: ativo + tem_ams + tipo_book qualidade"
+        );
         return [];
       }
       const empresasFiltradas = empresas.filter((empresa) => {
@@ -21271,8 +21397,12 @@ var BooksService = class {
         if (filtros.ano === anoVigencia && filtros.mes >= mesVigencia) return true;
         return false;
       });
-      console.log(`\u{1F4CA} Empresas encontradas: ${empresas.length} total, ${empresasFiltradas.length} com vig\xEAncia v\xE1lida para ${String(filtros.mes).padStart(2, "0")}/${filtros.ano}`);
-      const { data: booksExistentes, error: booksError } = await supabase.from("books").select("id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url, versao_atual, enviado_em, enviado_por, destinatarios_envio").eq("mes", filtros.mes).eq("ano", filtros.ano);
+      console.log(
+        `\u{1F4CA} Empresas encontradas: ${empresas.length} total, ${empresasFiltradas.length} com vig\xEAncia v\xE1lida para ${String(filtros.mes).padStart(2, "0")}/${filtros.ano}`
+      );
+      const { data: booksExistentes, error: booksError } = await supabase.from("books").select(
+        "id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url, versao_atual, enviado_em, enviado_por, destinatarios_envio"
+      ).eq("mes", filtros.mes).eq("ano", filtros.ano);
       if (booksError) {
         console.error("Erro ao buscar books:", booksError);
       }
@@ -21315,7 +21445,9 @@ var BooksService = class {
       if (filtros.apenas_com_dados) {
         books = books.filter((b) => b.tem_dados);
       }
-      console.log(`\u{1F4CA} Books listados: ${books.length} empresas (${booksExistentes?.length || 0} com books gerados)`);
+      console.log(
+        `\u{1F4CA} Books listados: ${books.length} empresas (${booksExistentes?.length || 0} com books gerados)`
+      );
       return books;
     } catch (error) {
       console.error("Erro ao listar books:", error);
@@ -21363,7 +21495,8 @@ var BooksService = class {
     console.log("\u{1F50D} booksService.buscarBookPorId - Iniciando busca:", bookId);
     try {
       console.log("\u{1F4E1} booksService - Fazendo query no Supabase...");
-      const { data, error } = await supabase.from("books").select(`
+      const { data, error } = await supabase.from("books").select(
+        `
           id,
           empresa_id,
           mes,
@@ -21387,7 +21520,8 @@ var BooksService = class {
             nome_completo,
             nome_abreviado
           )
-        `).eq("id", bookId).single();
+        `
+      ).eq("id", bookId).single();
       if (error) {
         console.error("\u274C booksService - Erro do Supabase:", error);
         throw error;
@@ -21496,7 +21630,11 @@ var BooksService = class {
         return false;
       });
       const totalEmpresas = empresasFiltradas.length;
-      console.log("\u{1F4CA} [buscarEstatisticas] Total de empresas:", totalEmpresas, `(filtradas por vig\xEAncia <= ${String(mes).padStart(2, "0")}/${ano})`);
+      console.log(
+        "\u{1F4CA} [buscarEstatisticas] Total de empresas:",
+        totalEmpresas,
+        `(filtradas por vig\xEAncia <= ${String(mes).padStart(2, "0")}/${ano})`
+      );
       const { data: books, error: booksError } = await supabase.from("books").select("id, status, created_at, updated_at, empresa_id").eq("mes", mes).eq("ano", ano);
       if (booksError) {
         console.error("\u274C [buscarEstatisticas] Erro ao buscar books:", booksError);
@@ -21595,20 +21733,23 @@ var BooksService = class {
           }
           if (config.forcar_atualizacao) {
             try {
-              await bancoHorasQuarentenaService.reabrirPeriodo(
-                empresaId,
-                config.mes,
-                config.ano
+              await bancoHorasQuarentenaService.reabrirPeriodo(empresaId, config.mes, config.ano);
+              console.log(
+                `\u{1F513} Per\xEDodo ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retifica\xE7\xE3o)`
               );
-              console.log(`\u{1F513} Per\xEDodo ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retifica\xE7\xE3o)`);
             } catch (reabrirError) {
               console.warn("\u26A0\uFE0F Erro ao reabrir per\xEDodo (n\xE3o cr\xEDtico, continuando):", reabrirError);
             }
             try {
               await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
-              console.log(`\u{1F504} Banco de horas recalculado para empresa ${empresaId} - ${config.mes}/${config.ano}`);
+              console.log(
+                `\u{1F504} Banco de horas recalculado para empresa ${empresaId} - ${config.mes}/${config.ano}`
+              );
             } catch (calcError) {
-              console.error(`\u274C Erro ao recalcular banco de horas na retifica\xE7\xE3o para ${empresa.nome_abreviado}:`, calcError);
+              console.error(
+                `\u274C Erro ao recalcular banco de horas na retifica\xE7\xE3o para ${empresa.nome_abreviado}:`,
+                calcError
+              );
               resultados.push({
                 sucesso: false,
                 empresa_id: empresaId,
@@ -21620,9 +21761,14 @@ var BooksService = class {
           } else {
             try {
               await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
-              console.log(`\u{1F504} Banco de horas recalculado para empresa ${empresa.nome_abreviado} - ${config.mes}/${config.ano}`);
+              console.log(
+                `\u{1F504} Banco de horas recalculado para empresa ${empresa.nome_abreviado} - ${config.mes}/${config.ano}`
+              );
             } catch (calcError) {
-              console.error(`\u274C Erro ao calcular banco de horas para ${empresa.nome_abreviado}:`, calcError);
+              console.error(
+                `\u274C Erro ao calcular banco de horas para ${empresa.nome_abreviado}:`,
+                calcError
+              );
               resultados.push({
                 sucesso: false,
                 empresa_id: empresaId,
@@ -21681,7 +21827,9 @@ var BooksService = class {
             empresa_nome: empresa.nome_completo
           });
           try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+              data: { user }
+            } = await supabase.auth.getUser();
             await bancoHorasQuarentenaService.fecharPeriodo(
               empresaId,
               config.mes,
@@ -21690,7 +21838,10 @@ var BooksService = class {
             );
             console.log(`\u{1F512} Per\xEDodo ${config.mes}/${config.ano} fechado para empresa ${empresaId}`);
           } catch (fechamentoError) {
-            console.warn("\u26A0\uFE0F Erro ao fechar per\xEDodo do banco de horas (n\xE3o cr\xEDtico):", fechamentoError);
+            console.warn(
+              "\u26A0\uFE0F Erro ao fechar per\xEDodo do banco de horas (n\xE3o cr\xEDtico):",
+              fechamentoError
+            );
           }
         } catch (error) {
           console.error(`Erro ao gerar book para empresa ${empresaId}:`, error);
@@ -21718,11 +21869,7 @@ var BooksService = class {
    */
   async coletarDadosBook(empresaId, mes, ano) {
     try {
-      const dados = await booksDataCollectorService.coletarDadosCompletos(
-        empresaId,
-        mes,
-        ano
-      );
+      const dados = await booksDataCollectorService.coletarDadosCompletos(empresaId, mes, ano);
       return dados;
     } catch (error) {
       console.error("\u274C Erro CR\xCDTICO ao coletar dados reais do book:", error);
@@ -21824,10 +21971,38 @@ var BooksService = class {
       ],
       taxa_resolucao: 50,
       backlog_por_causa: [
-        { origem: "Parametriza\xE7\xE3o", incidente: 0, solicitacao: 8, total: 8, abertos: 5, fechados: 3 },
-        { origem: "Desenvolvimento Standard (Produto)", incidente: 0, solicitacao: 3, total: 3, abertos: 2, fechados: 1 },
-        { origem: "Desenvolvimento Espec\xEDfico", incidente: 0, solicitacao: 1, total: 1, abertos: 1, fechados: 0 },
-        { origem: "Corre\xE7\xE3o Standard", incidente: 2, solicitacao: 0, total: 2, abertos: 0, fechados: 2 }
+        {
+          origem: "Parametriza\xE7\xE3o",
+          incidente: 0,
+          solicitacao: 8,
+          total: 8,
+          abertos: 5,
+          fechados: 3
+        },
+        {
+          origem: "Desenvolvimento Standard (Produto)",
+          incidente: 0,
+          solicitacao: 3,
+          total: 3,
+          abertos: 2,
+          fechados: 1
+        },
+        {
+          origem: "Desenvolvimento Espec\xEDfico",
+          incidente: 0,
+          solicitacao: 1,
+          total: 1,
+          abertos: 1,
+          fechados: 0
+        },
+        {
+          origem: "Corre\xE7\xE3o Standard",
+          incidente: 2,
+          solicitacao: 0,
+          total: 2,
+          abertos: 0,
+          fechados: 2
+        }
       ]
     };
   }
@@ -21882,9 +22057,7 @@ var BooksService = class {
         { faixa: "15 A 30 DIAS", solicitacao: 2, incidente: 0, total: 2 },
         { faixa: "30 A 60 DIAS", solicitacao: 1, incidente: 0, total: 1 }
       ],
-      distribuicao_por_grupo: [
-        { grupo: "IMPORTA\xC7\xC3O", total: 15, percentual: 100 }
-      ],
+      distribuicao_por_grupo: [{ grupo: "IMPORTA\xC7\xC3O", total: 15, percentual: 100 }],
       backlog_por_causa: [
         { origem: "Parametriza\xE7\xE3o", incidente: 0, solicitacao: 8, total: 8 },
         { origem: "Desenvolvimento Standard (Produto)", incidente: 0, solicitacao: 3, total: 3 },
