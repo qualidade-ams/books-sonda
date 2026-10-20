@@ -20,7 +20,7 @@ Responsável pelo sistema de identidade, sessão e controle de acesso do Books S
 ```
 Login Form → supabase.auth.signInWithPassword()
   → onAuthStateChange('SIGNED_IN') → Session em sessionStorage (PKCE)
-  → loadPermissions(userId) → getUserPermissions() + getUserGroup()
+  → loadPermissions(userId) → getUserPermissions() + getUserGroups()
   → PermissionsContext populado
   → ProtectedRoute.hasPermission(screenKey, 'view')
   → Render page ou redirect /access-denied
@@ -36,6 +36,8 @@ user_groups (id, name, description, is_default_admin)
 ```
 
 Hierarquia: `edit > view > none`.
+
+Um usuário pode estar em **vários grupos** (`UNIQUE (user_id, group_id)`). A permissão efetiva por tela é o maior nível entre os grupos — um grupo nunca tira acesso dado por outro. Grupos de um usuário são gravados só pela RPC `set_user_groups(p_user_id, p_group_ids)` (substitui a lista; exige edição em `usuarios-grupos`). No frontend, `userGroups` traz todos; `userGroup` é só o primeiro, por compatibilidade.
 
 ## Restrições
 

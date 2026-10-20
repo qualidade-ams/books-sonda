@@ -49,7 +49,9 @@ export type UserPermissions = Record<string, PermissionLevel>;
 // Permissions context type for React context
 export interface PermissionsContextType {
   userPermissions: UserPermissions;
+  /** Primeiro grupo do usuário (compatibilidade); use userGroups para todos */
   userGroup: UserGroup | null;
+  userGroups: UserGroup[];
   loading: boolean;
   error: Error | null;
   retryCount: number;
@@ -61,6 +63,7 @@ export interface PermissionsContextType {
 export interface UsePermissionsReturn {
   userPermissions: UserPermissions;
   userGroup: UserGroup | null;
+  userGroups: UserGroup[];
   loading: boolean;
   error: Error | null;
   retryCount: number;
@@ -101,22 +104,21 @@ export interface UserWithGroup {
   id: string;
   email: string;
   full_name: string;
-  group_id: string | null;
-  group_name: string | null;
+  group_ids: string[];
+  group_names: string[];
 }
 
 export interface PermissionsServiceMethods {
   getUserPermissions: (userId: string) => Promise<UserPermissions>;
-  getUserGroup: (userId: string) => Promise<UserGroup | null>;
+  getUserGroups: (userId: string) => Promise<UserGroup[]>;
   updateGroupPermissions: (groupId: string, permissions: ScreenPermission[]) => Promise<void>;
-  assignUserToGroup: (userId: string, groupId: string, assignedBy: string) => Promise<void>;
+  setUserGroups: (userId: string, groupIds: string[]) => Promise<void>;
   createGroup: (group: CreateUserGroupInput) => Promise<UserGroup>;
   updateGroup: (groupId: string, updates: UpdateUserGroupInput) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
   getAllGroups: () => Promise<UserGroup[]>;
   getGroupPermissions: (groupId: string) => Promise<ScreenPermission[]>;
   getAllUsersWithGroups: () => Promise<UserWithGroup[]>;
-  removeUserFromGroup: (userId: string) => Promise<void>;
 }
 
 export interface ScreenServiceMethods {

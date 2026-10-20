@@ -15,7 +15,7 @@ export const PermissionsContext = createContext<PermissionsContextType | undefin
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isReady } = useAuth();
   const [userPermissions, setUserPermissions] = useState<UserPermissions>({});
-  const [userGroup, setUserGroup] = useState<UserGroup | null>(null);
+  const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -28,20 +28,20 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setLoading(true);
       setError(null);
       
-      // Load permissions and group in parallel with retry logic
-      const [permissions, group] = await Promise.all([
+      // Load permissions and groups in parallel with retry logic
+      const [permissions, groups] = await Promise.all([
         retryWithBackoff(
           () => permissionsService.getUserPermissions(userId),
           RETRY_CONFIGS.permissions
         ),
         retryWithBackoff(
-          () => permissionsService.getUserGroup(userId),
+          () => permissionsService.getUserGroups(userId),
           RETRY_CONFIGS.permissions
         )
       ]);
 
       setUserPermissions(permissions);
-      setUserGroup(group);
+      setUserGroups(groups);
       setRetryCount(0); // Reset retry count on success
     } catch (error) {
       console.error('Error loading user permissions:', error);
@@ -54,7 +54,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         // For permission errors, set empty permissions but don't retry
         setUserPermissions({});
-        setUserGroup(null);
+        setUserGroups([]);
       } else if (isRetryableError(error) && attempt < 2) {
         // For retryable errors, increment retry count and try again
         setRetryCount(attempt + 1);
@@ -69,7 +69,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       } else {
         // For non-retryable errors or max retries reached, set empty permissions
         setUserPermissions({});
-        setUserGroup(null);
+        setUserGroups([]);
       }
     } finally {
       setLoading(false);
@@ -129,7 +129,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       } else {
         // Clear permissions when user logs out
         setUserPermissions({});
-        setUserGroup(null);
+        setUserGroups([]);
         setLoading(false);
       }
     }
@@ -137,7 +137,8 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const contextValue: PermissionsContextType = {
     userPermissions,
-    userGroup,
+    userGroup: userGroups[0] ?? null,
+    userGroups,
     loading,
     error,
     retryCount,

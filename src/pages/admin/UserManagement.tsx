@@ -12,7 +12,11 @@ import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { Save, RefreshCw, User, Edit, Plus, Filter, Search, FileX } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { userManagementService, type UserData, type CreateUserData } from '@/services/userManagementService';
+import { permissionsService } from '@/services/permissionsService';
+import { usePermissions } from '@/hooks/usePermissions';
+import type { UserGroup } from '@/types/permissions';
 import { FilterBar, FilterGrid, FilterField } from '@/components/ui/filter-bar';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -26,6 +30,7 @@ interface UserFormData {
   fullName: string;
   active: boolean;
   sendWelcomeEmail: boolean;
+  groupIds: string[];
 }
 
 interface EditUserFormData {
@@ -35,10 +40,18 @@ interface EditUserFormData {
   resetPassword: boolean;
   newPassword: string;
   confirmNewPassword: string;
+  groupIds: string[];
 }
+
+const mesmosGrupos = (a: string[], b: string[]) =>
+  a.length === b.length && a.every(id => b.includes(id));
 
 const UserManagement = () => {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  // Alterar grupos concede permissões: exige a mesma permissão da tela de Grupos (e da RLS)
+  const canEditGroups = hasPermission('usuarios-grupos', 'edit');
+  const [groups, setGroups] = useState<UserGroup[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateLoading, setIsCreateLoading] = useState(false);
@@ -54,7 +67,8 @@ const UserManagement = () => {
     confirmPassword: '',
     fullName: '',
     active: true,
-    sendWelcomeEmail: true
+    sendWelcomeEmail: true,
+    groupIds: []
   });
 
   const [errors, setErrors] = useState<Partial<UserFormData>>({});
@@ -69,7 +83,8 @@ const UserManagement = () => {
     active: true,
     resetPassword: false,
     newPassword: '',
-    confirmNewPassword: ''
+    confirmNewPassword: '',
+    groupIds: []
   });
   const [editErrors, setEditErrors] = useState<Partial<EditUserFormData>>({});
 
@@ -110,6 +125,16 @@ const UserManagement = () => {
     loadUsers();
   }, []);
 
+  // Grupos disponíveis para os campos de cadastro/edição
+  useEffect(() => {
+    if (!canEditGroups) return;
+    permissionsService.getAllGroups()
+      .then(setGroups)
+      .catch((error) => console.error('Erro ao carregar grupos:', error instanceof Error ? error.message : error));
+  }, [canEditGroups]);
+
+  const groupOptions = groups.map(group => ({ label: group.name, value: group.id }));
+
   // Validar formulário
   const validateForm = (): boolean => {
     const newErrors: Partial<UserFormData> = {};
@@ -142,7 +167,7 @@ const UserManagement = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof UserFormData, value: string | boolean) => {
+  const handleInputChange = (field: keyof UserFormData, value: string | boolean | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -177,7 +202,8 @@ const UserManagement = () => {
         password: formData.password,
         fullName: formData.fullName,
         active: formData.active,
-        sendWelcomeEmail: formData.sendWelcomeEmail
+        sendWelcomeEmail: formData.sendWelcomeEmail,
+        groupIds: canEditGroups ? formData.groupIds : undefined
       };
 
       const result = await userManagementService.createUser(createUserData);
@@ -187,6 +213,13 @@ const UserManagement = () => {
           title: "Usuário criado com sucesso",
           description: `O usuário ${formData.fullName} foi cadastrado com sucesso.`,
         });
+        if (result.warning) {
+          toast({
+            title: "Grupos não atribuídos",
+            description: result.warning,
+            variant: "destructive",
+          });
+        }
 
         // Limpar formulário e fechar modal
         setFormData({
@@ -195,7 +228,8 @@ const UserManagement = () => {
           confirmPassword: '',
           fullName: '',
           active: true,
-          sendWelcomeEmail: true
+          sendWelcomeEmail: true,
+          groupIds: []
         });
         setIsCreateDialogOpen(false);
 
@@ -241,7 +275,8 @@ const UserManagement = () => {
       active: user.active ?? true,
       resetPassword: false,
       newPassword: '',
-      confirmNewPassword: ''
+      confirmNewPassword: '',
+      groupIds: user.group_ids
     });
     setEditErrors({});
     setIsEditDialogOpen(true);
@@ -281,7 +316,7 @@ const UserManagement = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleEditInputChange = (field: keyof EditUserFormData, value: string | boolean) => {
+  const handleEditInputChange = (field: keyof EditUserFormData, value: string | boolean | string[]) => {
     setEditFormData(prev => ({
       ...prev,
       [field]: value
@@ -317,7 +352,11 @@ const UserManagement = () => {
         email: editFormData.email,
         active: editFormData.active,
         resetPassword: editFormData.resetPassword,
-        newPassword: editFormData.resetPassword ? editFormData.newPassword : undefined
+        newPassword: editFormData.resetPassword ? editFormData.newPassword : undefined,
+        // Só envia grupos se mudaram (evita gravar sem necessidade)
+        groupIds: canEditGroups && !mesmosGrupos(editFormData.groupIds, editingUser.group_ids)
+          ? editFormData.groupIds
+          : undefined
       };
 
       const result = await userManagementService.updateUser(updateData);
@@ -361,10 +400,10 @@ const UserManagement = () => {
   // Filtrar usuários
   const filteredUsers = users.filter(user => {
     // Filtro de busca
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.group_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.group_names.some(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     // Filtro de status
     const matchesStatus = statusFilter === 'todos' || 
@@ -372,8 +411,8 @@ const UserManagement = () => {
       (statusFilter === 'inativo' && !user.active);
 
     // Filtro de grupo
-    const matchesGroup = groupFilter === 'todos' || 
-      user.group_name === groupFilter;
+    const matchesGroup = groupFilter === 'todos' ||
+      user.group_names.includes(groupFilter);
 
     return matchesSearch && matchesStatus && matchesGroup;
   });
@@ -389,7 +428,7 @@ const UserManagement = () => {
   };
 
   // Obter lista única de grupos para o filtro
-  const uniqueGroups = [...new Set(users.map(user => user.group_name).filter(Boolean))].sort();
+  const uniqueGroups = [...new Set(users.flatMap(user => user.group_names).filter(Boolean))].sort();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -468,6 +507,24 @@ const UserManagement = () => {
                           <p className="text-sm text-red-500">{errors.email}</p>
                         )}
                       </div>
+
+                      {canEditGroups && (
+                        <div className="space-y-2">
+                          <Label>Grupos</Label>
+                          <MultiSelect
+                            options={groupOptions}
+                            selected={formData.groupIds}
+                            onChange={(groupIds) => handleInputChange('groupIds', groupIds)}
+                            placeholder="Grupo padrão"
+                            maxCount={groupOptions.length}
+                            showSelectAll={false}
+                            modalPopover
+                          />
+                          <p className="text-sm text-gray-500">
+                            As permissões somam as de todos os grupos; em cada tela vale o maior nível.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -611,6 +668,24 @@ const UserManagement = () => {
                       <p className="text-sm text-red-500">{editErrors.email}</p>
                     )}
                   </div>
+
+                  {canEditGroups && (
+                    <div className="space-y-2">
+                      <Label>Grupos</Label>
+                      <MultiSelect
+                        options={groupOptions}
+                        selected={editFormData.groupIds}
+                        onChange={(groupIds) => handleEditInputChange('groupIds', groupIds)}
+                        placeholder="Sem grupo"
+                        maxCount={groupOptions.length}
+                        showSelectAll={false}
+                        modalPopover
+                      />
+                      <p className="text-sm text-gray-500">
+                        As permissões somam as de todos os grupos; em cada tela vale o maior nível.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -812,10 +887,18 @@ const UserManagement = () => {
                       </TableCell>
                       <TableCell className="text-gray-700">{user.email}</TableCell>
                       <TableCell>
-                        {user.group_name ? (
-                          <Badge variant="outline" className="text-sonda-blue border-sonda-blue">
-                            {user.group_name}
-                          </Badge>
+                        {user.group_names.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {user.group_names.map((groupName, index) => (
+                              <Badge
+                                key={user.group_ids[index] ?? groupName}
+                                variant="outline"
+                                className="text-sonda-blue border-sonda-blue"
+                              >
+                                {groupName}
+                              </Badge>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-gray-500">Sem grupo</span>
                         )}

@@ -18,6 +18,7 @@ export const usePermissions = (): UsePermissionsReturn => {
   return {
     userPermissions: context.userPermissions,
     userGroup: context.userGroup,
+    userGroups: context.userGroups,
     loading: context.loading,
     error: context.error,
     retryCount: context.retryCount,

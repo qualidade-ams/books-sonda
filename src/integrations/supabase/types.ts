@@ -3136,6 +3136,10 @@ export type Database = {
             }
             Returns: string
           }
+      set_user_groups: {
+        Args: { p_group_ids: string[]; p_user_id: string }
+        Returns: undefined
+      }
       test_especialistas_security: {
         Args: never
         Returns: {

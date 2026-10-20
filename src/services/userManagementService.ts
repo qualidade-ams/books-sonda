@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { permissionsService } from '@/services/permissionsService';
 
 export interface UserData {
   id: string;
@@ -7,7 +8,8 @@ export interface UserData {
   active?: boolean;
   created_at: string;
   last_sign_in_at?: string;
-  group_name?: string;
+  group_ids: string[];
+  group_names: string[];
 }
 
 export interface CreateUserData {
@@ -16,6 +18,8 @@ export interface CreateUserData {
   fullName: string;
   active: boolean;
   sendWelcomeEmail: boolean;
+  /** Grupos do novo usuário; vazio/omitido mantém o grupo padrão do banco */
+  groupIds?: string[];
 }
 
 export interface UpdateUserData {
@@ -25,6 +29,8 @@ export interface UpdateUserData {
   active: boolean;
   resetPassword: boolean;
   newPassword?: string;
+  /** Substitui os grupos do usuário; omitido não mexe nos grupos */
+  groupIds?: string[];
 }
 
 class UserManagementService {
@@ -61,7 +67,8 @@ class UserManagementService {
         active: user.user_active ?? true,
         created_at: user.user_created_at,
         last_sign_in_at: user.user_last_sign_in_at,
-        group_name: user.group_name
+        group_ids: user.group_ids ?? [],
+        group_names: user.group_names ?? []
       }));
 
       console.log('✅ Usuários carregados com sucesso:', users.length);
@@ -73,7 +80,7 @@ class UserManagementService {
   }
 
   // Criar novo usuário (requer permissões de admin)
-  async createUser(userData: CreateUserData): Promise<{ success: boolean; userId?: string; error?: string }> {
+  async createUser(userData: CreateUserData): Promise<{ success: boolean; userId?: string; error?: string; warning?: string }> {
     try {
       console.log('🔄 Criando usuário via Edge Function...');
       
@@ -126,10 +133,23 @@ class UserManagementService {
         throw new Error(result.error || 'Erro ao criar usuário');
       }
 
-      console.log('✅ Usuário criado com sucesso:', result.userId);
-      return { 
-        success: true, 
-        userId: result.userId 
+      console.log('✅ Usuário criado com sucesso');
+
+      if (userData.groupIds?.length) {
+        try {
+          await permissionsService.setUserGroups(result.userId, userData.groupIds);
+        } catch (groupError: any) {
+          return {
+            success: true,
+            userId: result.userId,
+            warning: `Usuário criado, mas não foi possível atribuir os grupos: ${groupError.message}`
+          };
+        }
+      }
+
+      return {
+        success: true,
+        userId: result.userId
       };
 
     } catch (error: any) {
@@ -178,6 +198,16 @@ class UserManagementService {
       }
 
       console.log('✅ Usuário atualizado com sucesso:', data);
+
+      // Erro nos grupos não interrompe status/senha: é devolvido no fim
+      let groupsError: string | null = null;
+      if (userData.groupIds) {
+        try {
+          await permissionsService.setUserGroups(userData.userId, userData.groupIds);
+        } catch (groupError: any) {
+          groupsError = `Dados salvos, mas não foi possível atualizar os grupos: ${groupError.message}`;
+        }
+      }
 
       // Sincronizar status ativo com auth.users (ban/unban via Edge Function)
       try {
@@ -228,6 +258,10 @@ class UserManagementService {
             error: 'Perfil atualizado, mas não foi possível resetar a senha. A Edge Function pode não estar deployada. Execute: supabase functions deploy admin-reset-password'
           };
         }
+      }
+
+      if (groupsError) {
+        return { success: false, error: groupsError };
       }
 
       return { success: true };
