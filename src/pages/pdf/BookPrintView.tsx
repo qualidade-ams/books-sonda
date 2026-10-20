@@ -1,7 +1,7 @@
 /**
  * BookPrintView - Página dedicada para impressão/PDF
  * Rota: /pdf/book/:id
- * 
+ *
  * Esta página é otimizada para geração de PDF via Puppeteer:
  * - Sem modal overlay
  * - Sem scroll interno
@@ -30,14 +30,18 @@ import BookOrganograma from '@/components/admin/books/BookOrganograma';
 import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganogramaComercialCS';
 import BookContraCapa from '@/components/admin/books/BookContraCapa';
 import BookConsumoSegmentado from '@/components/admin/books/BookConsumoSegmentado';
+import BookRequerimentos from '@/components/admin/books/BookRequerimentos';
 import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
+import { useRequerimentosEmDesenvolvimentoBook } from '@/hooks/useRequerimentosEmDesenvolvimentoBook';
+import { useRequerimentosFaturadosBook } from '@/hooks/useRequerimentosFaturadosBook';
+import { paginarRequerimentosBook } from '@/services/requerimentosBookService';
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
-  
+
   // Remover prefixo "book-" se existir
   const id = rawId?.startsWith('book-') ? rawId.substring(5) : rawId;
 
@@ -50,26 +54,48 @@ export default function BookPrintView() {
       i18n.changeLanguage(lang);
     }
   }, [searchParams, i18n]);
-  
+
   // Debug: Log do ID recebido
   useEffect(() => {
     console.log('🔍 BookPrintView - ID recebido:', {
       rawId,
       id,
-      removeuPrefixo: rawId !== id
+      removeuPrefixo: rawId !== id,
     });
     console.log('🔍 URL completa:', window.location.href);
     console.log('🌐 Idioma atual:', i18n.language);
   }, [rawId, id, i18n.language]);
-  
+
   const { bookData, isLoading, error, refetch } = useBookData(id || null);
-  const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(bookData?.empresa_id || null);
-  const { baselineSegmentado: baselineSegmentadoHook, paginasSegmentos: paginasSegmentosHook } = useEmpresaSegmentacao(bookData?.empresa_id || null);
+  const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(
+    bookData?.empresa_id || null
+  );
+  const { baselineSegmentado: baselineSegmentadoHook, paginasSegmentos: paginasSegmentosHook } =
+    useEmpresaSegmentacao(bookData?.empresa_id || null);
   const [isReady, setIsReady] = useState(false);
   const [consumoDataLoaded, setConsumoDataLoaded] = useState(false);
 
+  // Abas de requerimentos: mesma origem de dados do BookViewer (snapshot ou tempo real)
+  const { requerimentosEmDesenvolvimento, isLoading: isLoadingReqAndamento } =
+    useRequerimentosEmDesenvolvimentoBook({
+      empresaId: bookData?.empresa_id,
+      mes: bookData?.mes,
+      ano: bookData?.ano,
+      snapshot: bookData?.requerimentos_em_desenvolvimento,
+    });
+  const { requerimentosFaturados, isLoading: isLoadingReqCompensados } =
+    useRequerimentosFaturadosBook({
+      empresaId: bookData?.empresa_id,
+      mes: bookData?.mes,
+      ano: bookData?.ano,
+      snapshot: bookData?.requerimentos_faturados,
+    });
+  const requerimentosCarregados = !isLoadingReqAndamento && !isLoadingReqCompensados;
+
   // Consumo Segmentado: priorizar snapshot do bookData
-  const hasSnapshotSegmentado = !!(bookData?.consumo_segmentado && bookData.consumo_segmentado.length > 0);
+  const hasSnapshotSegmentado = !!(
+    bookData?.consumo_segmentado && bookData.consumo_segmentado.length > 0
+  );
   const baselineSegmentado = hasSnapshotSegmentado || baselineSegmentadoHook;
   const paginasSegmentos = hasSnapshotSegmentado
     ? (() => {
@@ -88,10 +114,10 @@ export default function BookPrintView() {
   useEffect(() => {
     if (id) {
       console.log('🔄 BookPrintView - Limpando cache e recarregando dados para book:', id);
-      
+
       // Limpar cache ESPECÍFICO deste book (não todos os books!)
       queryClient.removeQueries({ queryKey: ['book-data', id] });
-      
+
       // Forçar refetch imediato com staleTime: 0 para garantir dados frescos
       refetch();
     }
@@ -106,22 +132,30 @@ export default function BookPrintView() {
       isLoadingProdutos,
       hasBookData: !!bookData,
       hasProdutos: !!produtos,
-      error: error ? {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
-      } : null
+      error: error
+        ? {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+          }
+        : null,
     });
   }, [id, isLoading, isLoadingProdutos, bookData, produtos, error]);
 
   useEffect(() => {
-    if (!isLoading && !isLoadingProdutos && bookData && consumoDataLoaded) {
+    if (
+      !isLoading &&
+      !isLoadingProdutos &&
+      bookData &&
+      consumoDataLoaded &&
+      requerimentosCarregados
+    ) {
       console.log('✅ Dados carregados (incluindo banco de horas), aguardando fontes...');
-      
+
       // Aguardar carregamento de fontes
       document.fonts.ready.then(() => {
         console.log('✅ Fontes carregadas, aguardando renderização completa...');
-        
+
         // Aguardar renderização completa (aumentado para 8 segundos para organogramas)
         setTimeout(() => {
           setIsReady(true);
@@ -129,7 +163,7 @@ export default function BookPrintView() {
         }, 8000); // Aumentado de 5s para 8s para dar tempo dos organogramas renderizarem
       });
     }
-  }, [isLoading, isLoadingProdutos, bookData, consumoDataLoaded]);
+  }, [isLoading, isLoadingProdutos, bookData, consumoDataLoaded, requerimentosCarregados]);
 
   // Loading state
   if (isLoading || isLoadingProdutos) {
@@ -162,7 +196,9 @@ export default function BookPrintView() {
     console.warn('⚠️ Book não encontrado');
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
-        <p className="text-gray-500">{t('books.bookNotFound')} (ID: {id})</p>
+        <p className="text-gray-500">
+          {t('books.bookNotFound')} (ID: {id})
+        </p>
       </div>
     );
   }
@@ -180,19 +216,19 @@ export default function BookPrintView() {
       abertos_mes: bookData.volumetria.abertos_mes,
       fechados_mes: bookData.volumetria.fechados_mes,
       sla_medio: bookData.volumetria.sla_medio,
-      total_backlog: bookData.volumetria.total_backlog
+      total_backlog: bookData.volumetria.total_backlog,
     },
     sla: {
       sla_percentual: bookData.sla.sla_percentual,
       fechados: bookData.sla.fechados,
       incidentes: bookData.sla.incidentes,
-      violados: bookData.sla.violados
+      violados: bookData.sla.violados,
     },
     backlog: {
       total: bookData.backlog.total,
       incidente: bookData.backlog.incidente,
-      solicitacao: bookData.backlog.solicitacao
-    }
+      solicitacao: bookData.backlog.solicitacao,
+    },
   });
 
   return (
@@ -214,7 +250,11 @@ export default function BookPrintView() {
         produtos.map((produto) => {
           console.log(`📄 Renderizando organograma para produto: ${produto}`);
           return (
-            <div key={`org-${produto}`} className="page-section page-break" data-section={`organograma-${produto}`}>
+            <div
+              key={`org-${produto}`}
+              className="page-section page-break"
+              data-section={`organograma-${produto}`}
+            >
               <BookOrganograma
                 empresaId={bookData.empresa_id}
                 produto={produto}
@@ -242,8 +282,8 @@ export default function BookPrintView() {
 
       {/* Volumetria */}
       <div className="page-section page-break" data-section="volumetria">
-        <BookVolumetria 
-          data={bookData.volumetria} 
+        <BookVolumetria
+          data={bookData.volumetria}
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
           mes={bookData.mes}
           ano={bookData.ano}
@@ -252,7 +292,7 @@ export default function BookPrintView() {
 
       {/* SLA */}
       <div className="page-section page-break" data-section="sla">
-        <BookSLA 
+        <BookSLA
           data={bookData.sla}
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
         />
@@ -260,7 +300,7 @@ export default function BookPrintView() {
 
       {/* Backlog */}
       <div className="page-section page-break" data-section="backlog">
-        <BookBacklog 
+        <BookBacklog
           data={bookData.backlog}
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
         />
@@ -268,7 +308,7 @@ export default function BookPrintView() {
 
       {/* Consumo */}
       <div className="page-section page-break" data-section="consumo">
-        <BookConsumo 
+        <BookConsumo
           data={bookData.consumo}
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
           empresaId={bookData.empresa_id}
@@ -279,22 +319,63 @@ export default function BookPrintView() {
       </div>
 
       {/* Consumo Segmentado (condicional) */}
-      {baselineSegmentado && paginasSegmentos.length > 0 && paginasSegmentos.map((indices, pageIdx) => (
-        <div key={`consumo-seg-${pageIdx}`} className="page-section page-break" data-section={`consumo-segmentado-${pageIdx}`}>
-          <BookConsumoSegmentado
-            empresaId={bookData.empresa_id}
+      {baselineSegmentado &&
+        paginasSegmentos.length > 0 &&
+        paginasSegmentos.map((indices, pageIdx) => (
+          <div
+            key={`consumo-seg-${pageIdx}`}
+            className="page-section page-break"
+            data-section={`consumo-segmentado-${pageIdx}`}
+          >
+            <BookConsumoSegmentado
+              empresaId={bookData.empresa_id}
+              empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+              mes={bookData.mes}
+              ano={bookData.ano}
+              segmentosIndices={indices}
+              snapshotData={bookData.consumo_segmentado}
+            />
+          </div>
+        ))}
+
+      {/* Requerimentos em Andamento (condicional, paginado) */}
+      {paginarRequerimentosBook(requerimentosEmDesenvolvimento).map((pagina, pageIdx, paginas) => (
+        <div
+          key={`req-andamento-${pageIdx}`}
+          className="page-section page-break"
+          data-section={`requerimentos-em-andamento-${pageIdx}`}
+        >
+          <BookRequerimentos
+            data={pagina}
+            allData={requerimentosEmDesenvolvimento}
             empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-            mes={bookData.mes}
-            ano={bookData.ano}
-            segmentosIndices={indices}
-            snapshotData={bookData.consumo_segmentado}
+            pageIndex={pageIdx}
+            totalPages={paginas.length}
+          />
+        </div>
+      ))}
+
+      {/* Requerimentos Compensados (condicional, paginado) */}
+      {paginarRequerimentosBook(requerimentosFaturados).map((pagina, pageIdx, paginas) => (
+        <div
+          key={`req-compensados-${pageIdx}`}
+          className="page-section page-break"
+          data-section={`requerimentos-compensados-${pageIdx}`}
+        >
+          <BookRequerimentos
+            variante="faturado"
+            data={pagina}
+            allData={requerimentosFaturados}
+            empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+            pageIndex={pageIdx}
+            totalPages={paginas.length}
           />
         </div>
       ))}
 
       {/* Pesquisa */}
       <div className="page-section page-break" data-section="pesquisa">
-        <BookPesquisa 
+        <BookPesquisa
           data={bookData.pesquisa}
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
         />
@@ -302,7 +383,7 @@ export default function BookPrintView() {
 
       {/* Portfólio */}
       <div className="page-section page-break" data-section="portfolio">
-        <BookPortfolio 
+        <BookPortfolio
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
         />
       </div>

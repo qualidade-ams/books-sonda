@@ -68,7 +68,8 @@ export class InconsistenciasChamadosService {
 
   /**
    * Enriquece inconsistências com o status atual do ticket (busca direto na tabela de tickets).
-   * Substitui o campo status_chamado pelo status mais recente da tabela apontamentos_tickets_aranda.
+   * Substitui o campo status_chamado pelo status mais recente da tabela apontamentos_tickets_aranda
+   * e preenche data_ultima_nota_publica com a do chamado.
    */
   private async enriquecerComStatusTicket(inconsistencias: InconsistenciaChamado[]): Promise<InconsistenciaChamado[]> {
     if (inconsistencias.length === 0) return inconsistencias;
@@ -88,31 +89,35 @@ export class InconsistenciasChamadosService {
       // Buscar status dos tickets em lotes
       const nrosArray = Array.from(nrosUnicos);
       const statusMap = new Map<string, string>();
+      const notaPublicaMap = new Map<string, string | null>();
       const batchSize = 200;
 
       for (let i = 0; i < nrosArray.length; i += batchSize) {
         const batch = nrosArray.slice(i, i + batchSize);
         const { data, error } = await supabase
           .from('apontamentos_tickets_aranda' as any)
-          .select('nro_solicitacao, status')
+          .select('nro_solicitacao, status, data_ultima_nota_publica')
           .in('nro_solicitacao', batch);
 
         if (error || !data) continue;
 
         for (const ticket of data as any[]) {
-          if (ticket.nro_solicitacao && ticket.status) {
+          if (!ticket.nro_solicitacao) continue;
+          if (ticket.status) {
             statusMap.set(ticket.nro_solicitacao, ticket.status);
           }
+          notaPublicaMap.set(ticket.nro_solicitacao, ticket.data_ultima_nota_publica || null);
         }
       }
 
-      // Aplicar status aos registros
+      // Aplicar status e nota pública aos registros
       for (const inc of inconsistencias) {
         const nroLimpo = (inc.nro_chamado || '').replace(/^(RF|IM|PM)\s*/, '').trim();
         const status = statusMap.get(nroLimpo);
         if (status) {
           inc.status_chamado = status;
         }
+        inc.data_ultima_nota_publica = notaPublicaMap.get(nroLimpo) ?? null;
       }
 
       return inconsistencias;
@@ -126,9 +131,10 @@ export class InconsistenciasChamadosService {
   private resolucaoSemAtualizacaoEmAndamento: Promise<number> | null = null;
 
   /**
-   * Resolve as inconsistências "sem_atualizacao" ativas cujo chamado voltou a ser
-   * comentado (data_ultimo_comentario de apontamentos_tickets_aranda) há menos de
-   * 16 dias, movendo-as para o Histórico sem esperar a próxima detecção do sync-api.
+   * Resolve as inconsistências "sem_atualizacao" ativas cujo chamado recebeu nota
+   * pública (data_ultima_nota_publica de apontamentos_tickets_aranda) há menos de 16 dias,
+   * movendo-as para o Histórico sem esperar a próxima detecção do sync-api.
+   * Comentário não conta como atualização; só a nota pública.
    * Mesmo corte de detectar_inconsistencias(): 16 dias ou mais continua ativa.
    * Não marca arquivado_manualmente: se o chamado parar de novo, a detecção o reativa.
    * Retorna quantas foram resolvidas; em erro, retorna 0 para não impedir a tela de carregar.
@@ -156,18 +162,19 @@ export class InconsistenciasChamadosService {
       const nroLimpo = (nro: string) => (nro || '').replace(/^(RF|IM|PM)\s*/, '').trim();
       const nros = Array.from(new Set(ativas.map(inc => nroLimpo(inc.nro_chamado)).filter(Boolean)));
 
-      const ultimoComentario = new Map<string, string>();
+      // Última nota pública do chamado (em ms)
+      const ultimaNotaPublica = new Map<string, number>();
       const batchSize = 200;
       for (let i = 0; i < nros.length; i += batchSize) {
         const batch = nros.slice(i, i + batchSize);
         const { data, error } = await supabase
           .from('apontamentos_tickets_aranda' as any)
-          .select('nro_solicitacao, data_ultimo_comentario')
+          .select('nro_solicitacao, data_ultima_nota_publica')
           .in('nro_solicitacao', batch);
         if (error) throw error;
         for (const ticket of (data as any[]) || []) {
-          if (ticket.nro_solicitacao && ticket.data_ultimo_comentario) {
-            ultimoComentario.set(ticket.nro_solicitacao, ticket.data_ultimo_comentario);
+          if (ticket.nro_solicitacao && ticket.data_ultima_nota_publica) {
+            ultimaNotaPublica.set(ticket.nro_solicitacao, new Date(ticket.data_ultima_nota_publica).getTime());
           }
         }
       }
@@ -175,8 +182,8 @@ export class InconsistenciasChamadosService {
       const limite = Date.now() - 16 * 24 * 60 * 60 * 1000;
       const ids = ativas
         .filter(inc => {
-          const comentario = ultimoComentario.get(nroLimpo(inc.nro_chamado));
-          return comentario && new Date(comentario).getTime() > limite;
+          const notaPublica = ultimaNotaPublica.get(nroLimpo(inc.nro_chamado));
+          return notaPublica !== undefined && notaPublica > limite;
         })
         .map(inc => inc.id);
       if (ids.length === 0) return 0;
@@ -208,7 +215,7 @@ export class InconsistenciasChamadosService {
     try {
       console.log('🔍 Buscando inconsistências ativas:', filtros);
 
-      // Chamados comentados de novo saem da lista antes da consulta
+      // Chamados com nota pública recente saem da lista antes da consulta
       await this.resolverSemAtualizacaoComComentarioRecente();
 
       const buildQuery = () => {
@@ -438,7 +445,8 @@ export class InconsistenciasChamadosService {
           tempo_excessivo: 0,
           ic_999999: 0,
           sem_atualizacao: 0,
-          troca_codigo_resolucao: 0
+          troca_codigo_resolucao: 0,
+          validacao_solucao: 0
         },
         por_origem: {
           apontamentos: 0,
@@ -590,6 +598,31 @@ export class InconsistenciasChamadosService {
       console.log('✅', ids.length, 'inconsistências arquivadas manualmente com sucesso');
     } catch (error) {
       console.error('❌ Erro ao arquivar múltiplas inconsistências:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Descarta inconsistências ativas (falso positivo, sem ação a registrar).
+   * Diferente de arquivar, não vai para o Histórico: status 'descartada' some das duas abas.
+   * A linha não é apagada de propósito: com arquivado_manualmente = true a detecção do
+   * sync-api ignora a chave_unica; apagada, a mesma inconsistência voltaria na próxima sync.
+   */
+  async descartarInconsistencias(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+
+    const { error } = await supabase
+      .from('inconsistencias_chamados' as any)
+      .update({
+        status: 'descartada',
+        data_resolucao: new Date().toISOString(),
+        arquivado_manualmente: true
+      })
+      .in('id', ids)
+      .eq('status', 'ativa');
+
+    if (error) {
+      console.error('❌ Erro ao descartar inconsistências:', error.message);
       throw error;
     }
   }

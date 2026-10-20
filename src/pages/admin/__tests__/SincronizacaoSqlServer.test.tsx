@@ -1,12 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (chave: string) => chave, i18n: { language: 'pt-BR' } }),
 }));
-vi.mock('@/components/admin/LayoutAdmin', () => ({ default: ({ children }: { children: ReactNode }) => <>{children}</> }));
-vi.mock('@/components/auth', () => ({ ProtectedAction: ({ children }: { children: ReactNode }) => <>{children}</> }));
+vi.mock('@/components/admin/LayoutAdmin', () => ({
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+vi.mock('@/components/auth', () => ({
+  ProtectedAction: ({ children, screenKey }: { children: ReactNode; screenKey: string }) => (
+    <div data-screen={screenKey}>{children}</div>
+  ),
+}));
+
+// Telas com permissão de visualização
+const permissoes = { telas: ['sincronizacao_sql_server', 'envio_saldo_parcial'] };
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({ hasPermission: (tela: string) => permissoes.telas.includes(tela) }),
+}));
+
+vi.mock('@/components/admin/sincronizacao/AbaSaldoParcial', () => ({
+  SCREEN_KEY_SALDO_PARCIAL: 'envio_saldo_parcial',
+  AbaSaldoParcial: ({ novoAberto }: any) => (
+    <div data-novo-aberto={String(novoAberto)}>aba-saldo-parcial</div>
+  ),
+}));
 
 const toastMock = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: toastMock }) }));
@@ -17,13 +37,25 @@ vi.mock('@/hooks/useApiStatus', () => ({ useApiStatus: () => apiStatus }));
 vi.mock('@/components/admin/pesquisas-satisfacao/SyncSelectionModal', () => ({
   SyncSelectionModal: ({ open, onConfirm }: any) =>
     open ? (
-      <button onClick={() => onConfirm({ pesquisas: true, especialistas: false, apontamentos: false, tickets: false, codigoResolucao: false, detectarInconsistencias: true })}>
+      <button
+        onClick={() =>
+          onConfirm({
+            pesquisas: true,
+            especialistas: false,
+            apontamentos: false,
+            tickets: false,
+            codigoResolucao: false,
+            detectarInconsistencias: true,
+          })
+        }
+      >
         confirmar-sync
       </button>
     ) : null,
 }));
 vi.mock('@/components/admin/sincronizacao/AgendamentoFormModal', () => ({
-  AgendamentoFormModal: ({ open }: any) => (open ? <div>modal-agendamento</div> : null),
+  AgendamentoFormModal: ({ open, tipo }: any) =>
+    open ? <div data-tipo={tipo ?? 'sincronizacao'}>modal-agendamento</div> : null,
 }));
 
 const estado = {
@@ -32,6 +64,7 @@ const estado = {
   agendadorAtivo: true as boolean | undefined,
 };
 const executarMock = vi.fn();
+const gerarBooksMock = vi.fn();
 const alternarMock = vi.fn();
 
 vi.mock('@/hooks/useSyncAgendamentos', () => ({
@@ -41,10 +74,26 @@ vi.mock('@/hooks/useSyncAgendamentos', () => ({
   useAlternarAgendamento: () => ({ mutateAsync: alternarMock, isPending: false }),
   useExcluirAgendamento: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExecutarSyncAgora: () => ({ mutateAsync: executarMock, isPending: false }),
+  useGerarBooksAgora: () => ({ mutateAsync: gerarBooksMock, isPending: false }),
   useStatusSyncJobs: () => ({ agendadorAtivo: estado.agendadorAtivo }),
+  useEmpresasBook: () => ({
+    empresas: [
+      { id: 'e1', nome: 'VOTORANTIM' },
+      { id: 'e2', nome: 'HYPERA PHARMA' },
+    ],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 import SincronizacaoSqlServer from '../SincronizacaoSqlServer';
+
+const renderTela = (rota = '/admin/rotinas-automaticas') =>
+  render(
+    <MemoryRouter initialEntries={[rota]}>
+      <SincronizacaoSqlServer />
+    </MemoryRouter>
+  );
 
 const agendamento = {
   id: 'a1',
@@ -72,16 +121,17 @@ describe('SincronizacaoSqlServer', () => {
     estado.execucoes = [];
     estado.agendadorAtivo = true;
     apiStatus.data = true;
+    permissoes.telas = ['sincronizacao_sql_server', 'envio_saldo_parcial'];
   });
 
   it('mostra estado vazio sem agendamentos', () => {
-    render(<SincronizacaoSqlServer />);
+    renderTela();
     expect(screen.getByText('sincronizacaoSql.agendamentos.vazio')).toBeInTheDocument();
   });
 
   it('lista os agendamentos com tabelas e status', () => {
     estado.agendamentos = [agendamento];
-    render(<SincronizacaoSqlServer />);
+    renderTela();
     expect(screen.getByText('Pesquisas 2h')).toBeInTheDocument();
     expect(screen.getByText('sincronizacaoSql.tabelas.pesquisas')).toBeInTheDocument();
     expect(screen.getByText('sincronizacaoSql.agendamentos.nunca')).toBeInTheDocument();
@@ -89,40 +139,57 @@ describe('SincronizacaoSqlServer', () => {
 
   it('executar agora dispara a sincronização no sync-api', async () => {
     executarMock.mockResolvedValue({ execucaoId: 'e1' });
-    render(<SincronizacaoSqlServer />);
+    renderTela();
 
     fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.executarAgora/ }));
     fireEvent.click(screen.getByText('confirmar-sync'));
 
     await waitFor(() => expect(executarMock).toHaveBeenCalled());
-    expect(executarMock.mock.calls[0][0]).toMatchObject({ pesquisas: true, detectarInconsistencias: true });
-    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'sincronizacaoSql.toasts.execucaoIniciada' }));
+    expect(executarMock.mock.calls[0][0]).toMatchObject({
+      pesquisas: true,
+      detectarInconsistencias: true,
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'sincronizacaoSql.toasts.execucaoIniciada' })
+    );
   });
 
   it('mostra erro quando o sync-api recusa (execução em andamento)', async () => {
     executarMock.mockRejectedValue(new Error('Já existe uma sincronização em andamento'));
-    render(<SincronizacaoSqlServer />);
+    renderTela();
 
     fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.executarAgora/ }));
     fireEvent.click(screen.getByText('confirmar-sync'));
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'destructive', description: 'Já existe uma sincronização em andamento' })
+        expect.objectContaining({
+          variant: 'destructive',
+          description: 'Já existe uma sincronização em andamento',
+        })
       )
     );
   });
 
   it('bloqueia executar agora com a API fora do ar', () => {
     apiStatus.data = false;
-    render(<SincronizacaoSqlServer />);
+    renderTela();
     expect(screen.getByRole('button', { name: /sincronizacaoSql.executarAgora/ })).toBeDisabled();
     expect(screen.getByText('sincronizacaoSql.apiOffline')).toBeInTheDocument();
   });
 
   it('bloqueia executar agora enquanto há execução em andamento', () => {
-    estado.execucoes = [{ id: 'e1', status: 'executando', origem: 'manual', iniciado_em: '2026-09-24T10:00:00Z', logs: [], resultado: null }];
-    render(<SincronizacaoSqlServer />);
+    estado.execucoes = [
+      {
+        id: 'e1',
+        status: 'executando',
+        origem: 'manual',
+        iniciado_em: '2026-09-24T10:00:00Z',
+        logs: [],
+        resultado: null,
+      },
+    ];
+    renderTela();
     expect(screen.getByRole('button', { name: /sincronizacaoSql.executarAgora/ })).toBeDisabled();
     expect(screen.getByText('sincronizacaoSql.emExecucao')).toBeInTheDocument();
   });
@@ -130,7 +197,7 @@ describe('SincronizacaoSqlServer', () => {
   it('liga/desliga agendamento pelo switch', async () => {
     estado.agendamentos = [agendamento];
     alternarMock.mockResolvedValue(undefined);
-    render(<SincronizacaoSqlServer />);
+    renderTela();
 
     fireEvent.click(screen.getByRole('switch'));
     await waitFor(() => expect(alternarMock).toHaveBeenCalledWith({ id: 'a1', ativo: false }));
@@ -139,23 +206,279 @@ describe('SincronizacaoSqlServer', () => {
   it('avisa quando o agendador está desligado no sync-api', () => {
     estado.agendamentos = [{ ...agendamento, proxima_execucao: null }];
     estado.agendadorAtivo = false;
-    render(<SincronizacaoSqlServer />);
+    renderTela();
     expect(screen.getByText('sincronizacaoSql.agendadorDesligado')).toBeInTheDocument();
-    expect(screen.getByText('sincronizacaoSql.agendamentos.aguardandoAgendador')).toBeInTheDocument();
+    expect(
+      screen.getByText('sincronizacaoSql.agendamentos.aguardandoAgendador')
+    ).toBeInTheDocument();
     expect(screen.queryByText('sincronizacaoSql.agendamentos.calculando')).not.toBeInTheDocument();
   });
 
   it('não avisa enquanto o status do agendador é desconhecido', () => {
     estado.agendamentos = [{ ...agendamento, proxima_execucao: null }];
     estado.agendadorAtivo = undefined;
-    render(<SincronizacaoSqlServer />);
+    renderTela();
     expect(screen.queryByText('sincronizacaoSql.agendadorDesligado')).not.toBeInTheDocument();
     expect(screen.getByText('sincronizacaoSql.agendamentos.calculando')).toBeInTheDocument();
   });
 
   it('abre o modal de novo agendamento', () => {
-    render(<SincronizacaoSqlServer />);
+    renderTela();
     fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.novoAgendamento/ }));
     expect(screen.getByText('modal-agendamento')).toBeInTheDocument();
+  });
+
+  describe('geração de books', () => {
+    const agendamentoBooks = {
+      ...agendamento,
+      id: 'b1',
+      tipo: 'books',
+      nome: 'Books mensais',
+      tabelas: {},
+    };
+
+    const abrirAbaBooks = () =>
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.books' }));
+
+    it('botões do topo acompanham a aba ativa e somem no histórico', () => {
+      renderTela();
+      const botao = (nome: RegExp) => screen.queryByRole('button', { name: nome });
+
+      // Agendamentos (sincronização)
+      expect(botao(/sincronizacaoSql.executarAgora/)).toBeInTheDocument();
+      expect(botao(/^sincronizacaoSql.novoAgendamento$/)).toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.gerarAgora/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.novoAgendamento/)).not.toBeInTheDocument();
+
+      // Geração de Books: só os botões de books
+      abrirAbaBooks();
+      expect(botao(/sincronizacaoSql.books.gerarAgora/)).toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.novoAgendamento/)).toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.executarAgora/)).not.toBeInTheDocument();
+      expect(botao(/^sincronizacaoSql.novoAgendamento$/)).not.toBeInTheDocument();
+
+      // Histórico: nenhum botão de ação
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.historico' }));
+      expect(botao(/sincronizacaoSql.executarAgora/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.novoAgendamento/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.gerarAgora/)).not.toBeInTheDocument();
+      expect(botao(/sincronizacaoSql.books.novoAgendamento/)).not.toBeInTheDocument();
+    });
+
+    it('agendamentos de books ficam só na aba própria', () => {
+      estado.agendamentos = [{ ...agendamento, tipo: 'sincronizacao' }, agendamentoBooks];
+      renderTela();
+
+      expect(screen.getByText('Pesquisas 2h')).toBeInTheDocument();
+      expect(screen.queryByText('Books mensais')).not.toBeInTheDocument();
+
+      abrirAbaBooks();
+
+      expect(screen.getByText('Books mensais')).toBeInTheDocument();
+      expect(screen.queryByText('Pesquisas 2h')).not.toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.books.descricao')).toBeInTheDocument();
+    });
+
+    it('gerar books agora só para as empresas escolhidas', async () => {
+      gerarBooksMock.mockResolvedValue({ execucaoId: 'e2' });
+      renderTela();
+      abrirAbaBooks();
+
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ }));
+      fireEvent.click(screen.getByLabelText('sincronizacaoSql.empresas.selecionadas'));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'VOTORANTIM' }));
+      fireEvent.click(
+        screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' })
+      );
+
+      await waitFor(() => expect(gerarBooksMock).toHaveBeenCalledWith(['e1']));
+    });
+
+    it('tabela de books mostra as empresas do agendamento', () => {
+      estado.agendamentos = [
+        { ...agendamentoBooks, id: 'b1', nome: 'Todas', empresa_ids: [] },
+        { ...agendamentoBooks, id: 'b2', nome: 'Só Votorantim', empresa_ids: ['e1'] },
+      ];
+      renderTela();
+      abrirAbaBooks();
+
+      expect(screen.getByText('sincronizacaoSql.agendamentos.empresas')).toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.empresas.todasCurto')).toBeInTheDocument();
+      expect(screen.getByText('VOTORANTIM')).toBeInTheDocument();
+    });
+
+    it('estado vazio da aba de books', () => {
+      estado.agendamentos = [agendamento];
+      renderTela();
+      abrirAbaBooks();
+      expect(screen.getByText('sincronizacaoSql.books.vazio')).toBeInTheDocument();
+    });
+
+    it('gerar books agora pede confirmação e dispara no sync-api', async () => {
+      gerarBooksMock.mockResolvedValue({ execucaoId: 'e2' });
+      renderTela();
+      abrirAbaBooks();
+
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ }));
+      expect(gerarBooksMock).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' })
+      );
+
+      await waitFor(() => expect(gerarBooksMock).toHaveBeenCalledWith([]));
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'sincronizacaoSql.toasts.booksIniciado' })
+      );
+    });
+
+    it('gerar books agora mostra o motivo quando o sync-api recusa', async () => {
+      gerarBooksMock.mockRejectedValue(
+        new Error('Já existe uma sincronização ou geração de books em andamento')
+      );
+      renderTela();
+      abrirAbaBooks();
+
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ }));
+      fireEvent.click(
+        screen.getByRole('button', { name: 'sincronizacaoSql.books.confirmarGerar' })
+      );
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: 'destructive',
+            description: 'Já existe uma sincronização ou geração de books em andamento',
+          })
+        )
+      );
+    });
+
+    it('gerar books agora fica bloqueado durante qualquer execução', () => {
+      estado.execucoes = [
+        {
+          id: 'e1',
+          tipo: 'sincronizacao',
+          status: 'executando',
+          origem: 'agendado',
+          iniciado_em: '2026-09-24T10:00:00Z',
+          logs: [],
+          resultado: null,
+        },
+      ];
+      renderTela();
+      abrirAbaBooks();
+      expect(
+        screen.getByRole('button', { name: /sincronizacaoSql.books.gerarAgora/ })
+      ).toBeDisabled();
+    });
+
+    it('novo agendamento na aba de books abre o modal do tipo books', () => {
+      renderTela();
+      abrirAbaBooks();
+      fireEvent.click(
+        screen.getByRole('button', { name: /sincronizacaoSql.books.novoAgendamento/ })
+      );
+      expect(screen.getByText('modal-agendamento')).toHaveAttribute('data-tipo', 'books');
+    });
+
+    it('novo agendamento do topo continua sendo de sincronização', () => {
+      renderTela();
+      fireEvent.click(screen.getByRole('button', { name: /sincronizacaoSql.novoAgendamento/ }));
+      expect(screen.getByText('modal-agendamento')).toHaveAttribute('data-tipo', 'sincronizacao');
+    });
+
+    it('histórico mostra o resumo da geração de books e as empresas com erro', () => {
+      estado.execucoes = [
+        {
+          id: 'e9',
+          tipo: 'books',
+          status: 'parcial',
+          origem: 'agendado',
+          iniciado_em: '2026-10-01T09:00:00Z',
+          finalizado_em: '2026-10-01T10:00:00Z',
+          logs: [],
+          agendamento: { nome: 'Books mensais' },
+          resultado: {
+            gerarBooks: {
+              sucesso: false,
+              mes: 9,
+              ano: 2026,
+              total: 2,
+              gerados: 1,
+              erros: 1,
+              pulados: 128,
+              selecionadas: 2,
+              empresas: [
+                { empresa: 'ABBOTT', sucesso: true },
+                { empresa: 'AGFA', sucesso: false, erro: 'Falha ao gerar book: sem dados' },
+              ],
+            },
+          },
+        },
+      ];
+      renderTela();
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.historico' }));
+
+      expect(screen.getByText('sincronizacaoSql.tabelas.gerarBooks')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Books mensais'));
+      expect(screen.getByText('sincronizacaoSql.historico.booksResumo')).toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.historico.booksSelecionadas')).toBeInTheDocument();
+      expect(screen.getByText('AGFA')).toBeInTheDocument();
+      expect(screen.getByText('Falha ao gerar book: sem dados')).toBeInTheDocument();
+    });
+  });
+
+  describe('saldo parcial', () => {
+    const abaSaldoParcial = () =>
+      screen.queryByRole('tab', { name: 'sincronizacaoSql.tabs.saldoParcial' });
+
+    it('mostra a aba de Saldo Parcial com o conteúdo do envio automático', () => {
+      renderTela();
+      fireEvent.mouseDown(abaSaldoParcial()!);
+      expect(screen.getByText('aba-saldo-parcial')).toBeInTheDocument();
+    });
+
+    it('esconde a aba sem permissão de visualização do Envio de Saldo Parcial', () => {
+      permissoes.telas = ['sincronizacao_sql_server'];
+      renderTela();
+      expect(abaSaldoParcial()).not.toBeInTheDocument();
+    });
+
+    it('no topo mostra só o novo agendamento de saldo parcial, com a permissão da tela de saldo parcial', () => {
+      renderTela();
+      fireEvent.mouseDown(abaSaldoParcial()!);
+
+      const botao = screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ });
+      expect(botao.closest('[data-screen]')).toHaveAttribute('data-screen', 'envio_saldo_parcial');
+      expect(
+        screen.queryByRole('button', { name: /sincronizacaoSql.executarAgora/ })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /sincronizacaoSql.novoAgendamento/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it('novo agendamento do topo abre o formulário da aba', () => {
+      renderTela();
+      fireEvent.mouseDown(abaSaldoParcial()!);
+
+      expect(screen.getByText('aba-saldo-parcial')).toHaveAttribute('data-novo-aberto', 'false');
+      fireEvent.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
+      expect(screen.getByText('aba-saldo-parcial')).toHaveAttribute('data-novo-aberto', 'true');
+    });
+
+    it('abre direto na aba pelo link ?aba=saldo-parcial (menu antigo e notificações)', () => {
+      renderTela('/admin/rotinas-automaticas?aba=saldo-parcial');
+      expect(abaSaldoParcial()).toHaveAttribute('data-state', 'active');
+      expect(screen.getByText('aba-saldo-parcial')).toBeInTheDocument();
+    });
+
+    it('ignora ?aba=saldo-parcial sem permissão e abre os agendamentos de sincronização', () => {
+      permissoes.telas = ['sincronizacao_sql_server'];
+      renderTela('/admin/rotinas-automaticas?aba=saldo-parcial');
+      expect(
+        screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.agendamentos' })
+      ).toHaveAttribute('data-state', 'active');
+    });
   });
 });

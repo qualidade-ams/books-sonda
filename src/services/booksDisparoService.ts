@@ -21,6 +21,7 @@ import type {
   AnexosSummaryWebhook,
   DisparoComAnexos
 } from '@/types/clientBooks';
+import { FINALIDADES_BOOK } from '@/types/clientBooksTypes';
 import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
@@ -138,6 +139,7 @@ class BooksDisparoService {
           .select('id')
           .eq('empresa_id', empresa.id)
           .eq('status', 'ativo')
+          .in('finalidade_envio', FINALIDADES_BOOK)
           .limit(1);
 
         if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
@@ -180,7 +182,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', empresa.id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
             await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
@@ -346,6 +349,7 @@ class BooksDisparoService {
           .select('id')
           .eq('empresa_id', empresa.id)
           .eq('status', 'ativo')
+          .in('finalidade_envio', FINALIDADES_BOOK)
           .limit(1);
 
         if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
@@ -382,7 +386,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', empresa.id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
             await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
@@ -598,7 +603,8 @@ class BooksDisparoService {
         .from('clientes')
         .select('id, empresa_id')
         .in('empresa_id', empresasIds)
-        .eq('status', 'ativo');
+        .eq('status', 'ativo')
+        .in('finalidade_envio', FINALIDADES_BOOK);
 
       // Buscar histórico de disparos no período
       const { data: historicosData } = await supabase
@@ -756,6 +762,7 @@ class BooksDisparoService {
           .select('id')
           .eq('empresa_id', empresa.id)
           .eq('status', 'ativo')
+          .in('finalidade_envio', FINALIDADES_BOOK)
           .limit(1);
 
         if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
@@ -798,7 +805,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', empresa.id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
             await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
@@ -963,6 +971,7 @@ class BooksDisparoService {
           .select('id')
           .eq('empresa_id', empresa.id)
           .eq('status', 'ativo')
+          .in('finalidade_envio', FINALIDADES_BOOK)
           .limit(1);
 
         if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
@@ -999,7 +1008,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', empresa.id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
             await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
@@ -1269,7 +1279,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', controle.empresa_id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           clientes = clientesData || [];
 
@@ -1459,7 +1470,8 @@ class BooksDisparoService {
         .from('clientes')
         .select('id, empresa_id')
         .in('empresa_id', empresasIds)
-        .eq('status', 'ativo');
+        .eq('status', 'ativo')
+        .in('finalidade_envio', FINALIDADES_BOOK);
 
       // Buscar histórico de disparos no período
       const { data: historicosData } = await supabase
@@ -1612,7 +1624,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', controle.empresa_id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (!clientes || clientes.length === 0) {
             continue;
@@ -1716,7 +1729,8 @@ class BooksDisparoService {
             .from('clientes')
             .select('*')
             .eq('empresa_id', controle.empresa_id)
-            .eq('status', 'ativo');
+            .eq('status', 'ativo')
+            .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientes) {
             clientes.forEach(cliente => {
@@ -1903,7 +1917,8 @@ class BooksDisparoService {
       .from('clientes')
       .select('*')
       .eq('empresa_id', empresaId)
-      .eq('status', 'ativo');
+      .eq('status', 'ativo')
+      .in('finalidade_envio', FINALIDADES_BOOK);
 
     if (clientesError || !clientes || clientes.length === 0) {
       throw new Error('Nenhum cliente ativo encontrado para a empresa');

@@ -9,8 +9,9 @@ export type TipoInconsistencia =
   | 'mes_diferente'      // data_atividade e data_sistema em meses diferentes
   | 'tempo_excessivo'    // tempo_gasto_horas > 10:00
   | 'ic_999999'          // item_configuracao começa com 999999
-  | 'sem_atualizacao'    // chamado sem atualização há 16+ dias (status Open/Hold/In Progress/Acknowledged)
-  | 'troca_codigo_resolucao'; // última troca de código de resolução mudou o desconto do banco de horas (Banco=S ↔ Banco=N)
+  | 'sem_atualizacao'    // chamado sem nota pública há 16+ dias (sem nota: aberto há 16+ dias) (status Open/Hold/In Progress/Acknowledged)
+  | 'troca_codigo_resolucao' // última troca de código de resolução mudou o desconto do banco de horas (Banco=S ↔ Banco=N)
+  | 'validacao_solucao';     // campo solução sem CENÁRIO, CAUSA, SOLUÇÃO PALIATIVA, SOLUÇÃO DEFINITIVA ou PREVENÇÃO
 
 export interface InconsistenciaChamado {
   // Identificação
@@ -42,8 +43,11 @@ export interface InconsistenciaChamado {
   descricao_inconsistencia: string;
   
   // Status e resolução (nova abordagem persistida)
-  status?: 'ativa' | 'resolvida';
+  /** descartada: removida pelo usuário sem ir para o Histórico */
+  status?: 'ativa' | 'resolvida' | 'descartada';
   status_chamado?: string | null;
+  /** Última nota pública do chamado (vem de apontamentos_tickets_aranda, não é persistida aqui) */
+  data_ultima_nota_publica?: string | null;
   data_deteccao?: string;
   data_resolucao?: string | null;
   
@@ -73,6 +77,7 @@ export interface InconsistenciasChamadosEstatisticas {
     ic_999999: number;
     sem_atualizacao: number;
     troca_codigo_resolucao: number;
+    validacao_solucao: number;
   };
   por_origem: {
     apontamentos: number;
@@ -134,7 +139,8 @@ export const TIPO_INCONSISTENCIA_LABELS: Record<TipoInconsistencia, string> = {
   tempo_excessivo: 'Tempo Excessivo',
   ic_999999: 'IC 999999',
   sem_atualizacao: 'Sem Atualização 16+ dias',
-  troca_codigo_resolucao: 'Troca de código de resolução'
+  troca_codigo_resolucao: 'Troca de código de resolução',
+  validacao_solucao: 'Validação campo Solução'
 };
 
 export const ORIGEM_LABELS: Record<OrigemInconsistencia, string> = {
@@ -148,12 +154,13 @@ export const TIPO_INCONSISTENCIA_COLORS: Record<TipoInconsistencia, string> = {
   tempo_excessivo: 'bg-orange-100 text-orange-800',
   ic_999999: 'bg-purple-100 text-purple-800',
   sem_atualizacao: 'bg-sky-100 text-sky-800',
-  troca_codigo_resolucao: 'bg-rose-100 text-rose-800'
+  troca_codigo_resolucao: 'bg-rose-100 text-rose-800',
+  validacao_solucao: 'bg-teal-100 text-teal-800'
 };
 
 // Ordem fixa de exibição dos tipos de inconsistência (usada para agrupar itens por tipo dentro de um envelope de email)
 export const TIPO_INCONSISTENCIA_ORDEM: TipoInconsistencia[] = [
-  'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao', 'troca_codigo_resolucao'
+  'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao', 'troca_codigo_resolucao', 'validacao_solucao'
 ];
 
 // Tipos exibidos em cada tela: a troca de código de resolução tem tela própria
@@ -169,6 +176,7 @@ export const TIPO_INCONSISTENCIA_COR_EMAIL_HEX: Record<TipoInconsistencia, { bg:
   ic_999999:        { bg: '#F3E8FF', text: '#6B21A8' },
   sem_atualizacao:  { bg: '#E0F2FE', text: '#075985' },
   troca_codigo_resolucao: { bg: '#FFE4E6', text: '#9F1239' },
+  validacao_solucao: { bg: '#CCFBF1', text: '#115E59' },
 };
 
 // Texto da ação de correção recomendada para cada tipo de inconsistência (exceto ic_999999, que é dinâmico)
@@ -177,6 +185,7 @@ export const ACAO_CORRECAO_TEXTO: Record<Exclude<TipoInconsistencia, 'ic_999999'
   tempo_excessivo: 'Validar o tempo apontado e, caso esteja incorreto, excluir a tarefa indicada e incluir uma nova tarefa com o período correto.',
   sem_atualizacao: 'Atualizar o chamado e verificar se o status está adequado à situação atual.',
   troca_codigo_resolucao: 'Validar se a troca do código de resolução está correta, pois ela alterou o desconto do chamado no banco de horas. Caso esteja incorreta, voltar o código de resolução adequado.',
+  validacao_solucao: 'Completar o campo Solução do chamado com as palavras faltantes, seguindo o padrão: CENÁRIO, CAUSA, SOLUÇÃO PALIATIVA, SOLUÇÃO DEFINITIVA e PREVENÇÃO.',
 };
 
 export const ORIGEM_COLORS: Record<OrigemInconsistencia, string> = {

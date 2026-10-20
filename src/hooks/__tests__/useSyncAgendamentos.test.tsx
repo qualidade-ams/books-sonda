@@ -4,6 +4,10 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { SyncAgendamentoInput, SyncExecucao } from '@/types/syncAgendamentos';
 
+vi.mock('@/services/booksService', () => ({
+  booksService: { listarEmpresasBook: vi.fn() },
+}));
+
 vi.mock('@/services/syncAgendamentosService', () => ({
   syncAgendamentosService: {
     listarAgendamentos: vi.fn(),
@@ -13,20 +17,25 @@ vi.mock('@/services/syncAgendamentosService', () => ({
     excluirAgendamento: vi.fn(),
     listarExecucoes: vi.fn(),
     executarAgora: vi.fn(),
+    gerarBooksAgora: vi.fn(),
     preverExecucoes: vi.fn(),
     statusSyncApi: vi.fn(),
   },
 }));
 
 import { syncAgendamentosService } from '@/services/syncAgendamentosService';
+import { booksService } from '@/services/booksService';
 import {
   useSyncAgendamentos,
   useSyncExecucoes,
   useSalvarAgendamento,
   useExecutarSyncAgora,
+  useGerarBooksAgora,
+  useEmpresasBook,
   usePreverExecucoes,
   useStatusSyncJobs,
   intervaloPollingExecucoes,
+  intervaloPollingAgendamentos,
 } from '../useSyncAgendamentos';
 
 const servico = syncAgendamentosService as any;
@@ -157,5 +166,48 @@ describe('usePreverExecucoes', () => {
       expect.objectContaining({ frequencia: 'diario', horarios: ['07:00'] }),
       48
     );
+  });
+});
+
+describe('useGerarBooksAgora', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('dispara a geração de books no sync-api e atualiza o histórico', async () => {
+    servico.gerarBooksAgora.mockResolvedValue({ execucaoId: 'e2' });
+    const { wrapper, invalidar } = criarWrapper();
+    const { result } = renderHook(() => useGerarBooksAgora(), { wrapper });
+
+    await act(() => result.current.mutateAsync(['emp-1']));
+
+    expect(servico.gerarBooksAgora).toHaveBeenCalledWith(['emp-1']);
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['sync-execucoes'] });
+  });
+});
+
+describe('useEmpresasBook', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('lista as empresas que recebem book quando habilitado', async () => {
+    (booksService.listarEmpresasBook as any).mockResolvedValue([{ id: 'e1', nome: 'ABBOTT' }]);
+    const { result } = renderHook(() => useEmpresasBook(true), { wrapper: criarWrapper().wrapper });
+    await waitFor(() => expect(result.current.empresas).toEqual([{ id: 'e1', nome: 'ABBOTT' }]));
+  });
+
+  it('não consulta quando desabilitado', () => {
+    renderHook(() => useEmpresasBook(false), { wrapper: criarWrapper().wrapper });
+    expect(booksService.listarEmpresasBook).not.toHaveBeenCalled();
+  });
+});
+
+describe('intervaloPollingAgendamentos', () => {
+  const ag = (extra: any) => ({ ativo: true, proxima_execucao: '2026-10-16T10:00:00Z', ...extra }) as any;
+
+  it('recarrega a cada 5s enquanto um agendamento ativo aguarda o cálculo da próxima execução', () => {
+    expect(intervaloPollingAgendamentos([ag({}), ag({ proxima_execucao: null })])).toBe(5000);
+  });
+
+  it('volta para 60s quando todos já têm próxima execução (inativos não contam)', () => {
+    expect(intervaloPollingAgendamentos([ag({}), ag({ ativo: false, proxima_execucao: null })])).toBe(60000);
+    expect(intervaloPollingAgendamentos(undefined)).toBe(60000);
   });
 });

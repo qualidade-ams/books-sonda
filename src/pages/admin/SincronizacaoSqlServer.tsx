@@ -1,11 +1,22 @@
 /**
- * Tela "Sincronização SQL Server": agendamentos, execução manual e histórico.
+ * Tela "Rotinas Automáticas" (/admin/rotinas-automaticas, antiga "Sincronização SQL Server"):
+ * agendamentos, execução manual e histórico das rotinas automáticas.
+ * A chave de permissão continua `sincronizacao_sql_server` (RLS e sync-api dependem dela).
  *
  * A sincronização roda no sync-api (em background); esta tela só configura os
  * agendamentos, dispara execuções manuais e acompanha o histórico.
+ *
+ * Aba "Geração de Books": agendamentos próprios (tipo books) que geram e enviam
+ * para a Qualidade os books liberados e ainda não enviados. Sincronização e
+ * geração de books dividem a trava do sync-api: uma espera a outra terminar.
+ *
+ * Aba "Saldo Parcial": envio automático do Saldo Parcial do banco de horas
+ * (antiga tela /admin/envio-saldo-parcial, que hoje redireciona para ?aba=saldo-parcial).
+ * Visível só com permissão na tela `envio_saldo_parcial`.
  */
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -14,6 +25,7 @@ import {
   ChevronRight,
   Database,
   Edit,
+  FileText,
   Loader2,
   Plus,
   Trash2,
@@ -25,7 +37,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,14 +55,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { SyncSelectionModal, type TabelasSincronizacao } from '@/components/admin/pesquisas-satisfacao/SyncSelectionModal';
+import {
+  SyncSelectionModal,
+  type TabelasSincronizacao,
+} from '@/components/admin/pesquisas-satisfacao/SyncSelectionModal';
 import { AgendamentoFormModal } from '@/components/admin/sincronizacao/AgendamentoFormModal';
+import { GerarBooksAgoraModal } from '@/components/admin/sincronizacao/GerarBooksAgoraModal';
+import {
+  AbaSaldoParcial,
+  SCREEN_KEY_SALDO_PARCIAL,
+} from '@/components/admin/sincronizacao/AbaSaldoParcial';
 import { useToast } from '@/hooks/use-toast';
 import { useApiStatus } from '@/hooks/useApiStatus';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   useAlternarAgendamento,
+  useEmpresasBook,
   useExcluirAgendamento,
   useExecutarSyncAgora,
+  useGerarBooksAgora,
   useSalvarAgendamento,
   useSyncAgendamentos,
   useSyncExecucoes,
@@ -51,9 +81,19 @@ import {
 } from '@/hooks/useSyncAgendamentos';
 import { descreverRecorrencia } from '@/utils/descreverRecorrencia';
 import { TABELAS_SYNC } from '@/schemas/syncAgendamentoSchemas';
-import type { StatusExecucaoSync, SyncAgendamento, SyncAgendamentoInput, SyncExecucao } from '@/types/syncAgendamentos';
+import type {
+  StatusExecucaoSync,
+  SyncAgendamento,
+  SyncAgendamentoInput,
+  SyncExecucao,
+  TipoAgendamentoSync,
+} from '@/types/syncAgendamentos';
 
 const SCREEN_KEY = 'sincronizacao_sql_server';
+
+type AbaSincronizacao = 'agendamentos' | 'books' | 'saldo-parcial' | 'historico';
+
+const ABAS: AbaSincronizacao[] = ['agendamentos', 'books', 'saldo-parcial', 'historico'];
 
 const TAB_TRIGGER =
   'data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium';
@@ -68,14 +108,26 @@ const COR_STATUS: Record<StatusExecucaoSync, string> = {
 };
 
 // Ordem de exibição das etapas no resumo da execução
-const ETAPAS_RESUMO = [...TABELAS_SYNC, 'validacao', 'inconsistencias', 'ajustesRetroativos'];
+const ETAPAS_RESUMO = [
+  ...TABELAS_SYNC,
+  'validacao',
+  'inconsistencias',
+  'ajustesRetroativos',
+  'gerarBooks',
+];
 
 function SincronizacaoSqlServer() {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { data: apiOnline = false } = useApiStatus();
+  const { hasPermission } = usePermissions();
+  const podeVerSaldoParcial = hasPermission(SCREEN_KEY_SALDO_PARCIAL, 'view');
 
-  const { agendamentos, isLoading: carregandoAgendamentos, error: erroAgendamentos } = useSyncAgendamentos();
+  const {
+    agendamentos,
+    isLoading: carregandoAgendamentos,
+    error: erroAgendamentos,
+  } = useSyncAgendamentos();
   const { execucoes, isLoading: carregandoExecucoes, error: erroExecucoes } = useSyncExecucoes();
   // undefined = ainda sem resposta do sync-api; só avisamos com false confirmado
   const { agendadorAtivo } = useStatusSyncJobs();
@@ -84,9 +136,38 @@ function SincronizacaoSqlServer() {
   const alternar = useAlternarAgendamento();
   const excluir = useExcluirAgendamento();
   const executar = useExecutarSyncAgora();
+  const gerarBooks = useGerarBooksAgora();
 
+  const agendamentosSync = agendamentos.filter((ag) => ag.tipo !== 'books');
+  const agendamentosBooks = agendamentos.filter((ag) => ag.tipo === 'books');
+
+  // Aba pelo link (?aba=saldo-parcial), ignorando a que não existe ou está sem permissão
+  const [searchParams] = useSearchParams();
+  const abaDoLink = searchParams.get('aba') as AbaSincronizacao | null;
+  const abaPermitida = (a: AbaSincronizacao | null): a is AbaSincronizacao =>
+    !!a && ABAS.includes(a) && (a !== 'saldo-parcial' || podeVerSaldoParcial);
+
+  // Os botões do topo dependem da aba ativa
+  const [aba, setAba] = useState<AbaSincronizacao>(
+    abaPermitida(abaDoLink) ? abaDoLink : 'agendamentos'
+  );
+
+  // Link aberto com a tela já montada (ex.: clique numa notificação)
+  useEffect(() => {
+    if (abaPermitida(abaDoLink)) setAba(abaDoLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abaDoLink, podeVerSaldoParcial]);
+
+  const [novoSaldoParcialAberto, setNovoSaldoParcialAberto] = useState(false);
+  // Nomes das empresas escolhidas nos agendamentos de books
+  const { empresas: empresasBook } = useEmpresasBook(
+    aba === 'books' && agendamentosBooks.some((ag) => ag.empresa_ids?.length)
+  );
   const [modalExecutarAberto, setModalExecutarAberto] = useState(false);
+  const [confirmarBooksAberto, setConfirmarBooksAberto] = useState(false);
   const [modalAgendamentoAberto, setModalAgendamentoAberto] = useState(false);
+  const [tipoNovoAgendamento, setTipoNovoAgendamento] =
+    useState<TipoAgendamentoSync>('sincronizacao');
   const [agendamentoEditando, setAgendamentoEditando] = useState<SyncAgendamento | null>(null);
   const [agendamentoExcluindo, setAgendamentoExcluindo] = useState<SyncAgendamento | null>(null);
   const [execucaoAberta, setExecucaoAberta] = useState<string | null>(null);
@@ -107,7 +188,10 @@ function SincronizacaoSqlServer() {
 
   const formatarDuracao = (inicio: string, fim: string | null) => {
     if (!fim) return '—';
-    const segundos = Math.max(0, Math.round((new Date(fim).getTime() - new Date(inicio).getTime()) / 1000));
+    const segundos = Math.max(
+      0,
+      Math.round((new Date(fim).getTime() - new Date(inicio).getTime()) / 1000)
+    );
     const m = Math.floor(segundos / 60);
     return m > 0 ? `${m}m ${segundos % 60}s` : `${segundos}s`;
   };
@@ -131,12 +215,31 @@ function SincronizacaoSqlServer() {
       });
       toast({ title: t('sincronizacaoSql.toasts.execucaoIniciada') });
     } catch (e) {
-      toast({ title: t('sincronizacaoSql.toasts.execucaoErro'), description: mensagemErro(e), variant: 'destructive' });
+      toast({
+        title: t('sincronizacaoSql.toasts.execucaoErro'),
+        description: mensagemErro(e),
+        variant: 'destructive',
+      });
     }
   };
 
-  const abrirNovo = () => {
+  const handleGerarBooks = async (empresaIds: string[]) => {
+    setConfirmarBooksAberto(false);
+    try {
+      await gerarBooks.mutateAsync(empresaIds);
+      toast({ title: t('sincronizacaoSql.toasts.booksIniciado') });
+    } catch (e) {
+      toast({
+        title: t('sincronizacaoSql.toasts.booksErro'),
+        description: mensagemErro(e),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const abrirNovo = (tipo: TipoAgendamentoSync = 'sincronizacao') => {
     setAgendamentoEditando(null);
+    setTipoNovoAgendamento(tipo);
     setModalAgendamentoAberto(true);
   };
 
@@ -151,16 +254,28 @@ function SincronizacaoSqlServer() {
       toast({ title: t('sincronizacaoSql.toasts.salvo') });
       setModalAgendamentoAberto(false);
     } catch (e) {
-      toast({ title: t('sincronizacaoSql.toasts.erroSalvar'), description: mensagemErro(e), variant: 'destructive' });
+      toast({
+        title: t('sincronizacaoSql.toasts.erroSalvar'),
+        description: mensagemErro(e),
+        variant: 'destructive',
+      });
     }
   };
 
   const handleAlternar = async (ag: SyncAgendamento, ativo: boolean) => {
     try {
       await alternar.mutateAsync({ id: ag.id, ativo });
-      toast({ title: ativo ? t('sincronizacaoSql.toasts.ativado') : t('sincronizacaoSql.toasts.desativado') });
+      toast({
+        title: ativo
+          ? t('sincronizacaoSql.toasts.ativado')
+          : t('sincronizacaoSql.toasts.desativado'),
+      });
     } catch (e) {
-      toast({ title: t('sincronizacaoSql.toasts.erroAlternar'), description: mensagemErro(e), variant: 'destructive' });
+      toast({
+        title: t('sincronizacaoSql.toasts.erroAlternar'),
+        description: mensagemErro(e),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -170,7 +285,11 @@ function SincronizacaoSqlServer() {
       await excluir.mutateAsync(agendamentoExcluindo.id);
       toast({ title: t('sincronizacaoSql.toasts.excluido') });
     } catch (e) {
-      toast({ title: t('sincronizacaoSql.toasts.erroExcluir'), description: mensagemErro(e), variant: 'destructive' });
+      toast({
+        title: t('sincronizacaoSql.toasts.erroExcluir'),
+        description: mensagemErro(e),
+        variant: 'destructive',
+      });
     } finally {
       setAgendamentoExcluindo(null);
     }
@@ -199,6 +318,40 @@ function SincronizacaoSqlServer() {
     </div>
   );
 
+  const badgesEmpresas = (empresaIds: string[] | undefined) => {
+    if (!empresaIds?.length) {
+      return (
+        <Badge className="bg-gray-100 text-gray-700 text-xs">
+          {t('sincronizacaoSql.empresas.todasCurto')}
+        </Badge>
+      );
+    }
+    const nomes = empresaIds
+      .map((id) => empresasBook.find((e) => e.id === id)?.nome)
+      .filter(Boolean) as string[];
+    if (nomes.length === 0) {
+      return (
+        <span className="text-sm text-gray-600">
+          {t('sincronizacaoSql.empresas.contagem', { count: empresaIds.length })}
+        </span>
+      );
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {nomes.slice(0, 3).map((nome) => (
+          <Badge key={nome} className="bg-blue-100 text-blue-800 text-xs">
+            {nome}
+          </Badge>
+        ))}
+        {empresaIds.length > 3 && (
+          <Badge className="bg-gray-100 text-gray-700 text-xs" title={nomes.slice(3).join(', ')}>
+            +{empresaIds.length - 3}
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
   const textoEtapa = (etapa: any): string =>
     t('sincronizacaoSql.historico.etapaResumo', {
       processados: etapa.processados ?? 0,
@@ -207,10 +360,35 @@ function SincronizacaoSqlServer() {
       erros: etapa.erros ?? 0,
     });
 
+  const textoBooks = (r: any): string =>
+    t('sincronizacaoSql.historico.booksResumo', {
+      gerados: r.gerados ?? 0,
+      erros: r.erros ?? 0,
+      pulados: r.pulados ?? 0,
+      mes: String(r.mes ?? '').padStart(2, '0'),
+      ano: r.ano ?? '',
+    });
+
+  const tituloEtapa = (k: string, etapa: any): string | undefined => {
+    if (etapa.erro) return t('sincronizacaoSql.historico.falhou', { erro: etapa.erro });
+    if (k === 'gerarBooks') return textoBooks(etapa);
+    return etapa.processados !== undefined ? textoEtapa(etapa) : undefined;
+  };
+
   const resumoExecucao = (ex: SyncExecucao) => {
     const r = ex.resultado || {};
-    if (ex.status === 'ignorada') return <span className="text-sm text-gray-500">{t('sincronizacaoSql.historico.motivoIgnorada')}</span>;
-    if (r.erro) return <span className="text-sm text-red-600">{t('sincronizacaoSql.historico.erroGeral', { erro: r.erro })}</span>;
+    if (ex.status === 'ignorada')
+      return (
+        <span className="text-sm text-gray-500">
+          {t('sincronizacaoSql.historico.motivoIgnorada')}
+        </span>
+      );
+    if (r.erro)
+      return (
+        <span className="text-sm text-red-600">
+          {t('sincronizacaoSql.historico.erroGeral', { erro: r.erro })}
+        </span>
+      );
 
     const etapas = ETAPAS_RESUMO.filter((k) => r[k]);
     if (etapas.length === 0) return <span className="text-gray-400">—</span>;
@@ -221,13 +399,7 @@ function SincronizacaoSqlServer() {
           <Badge
             key={k}
             className={`text-xs ${r[k].sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-            title={
-              r[k].erro
-                ? t('sincronizacaoSql.historico.falhou', { erro: r[k].erro })
-                : r[k].processados !== undefined
-                  ? textoEtapa(r[k])
-                  : undefined
-            }
+            title={tituloEtapa(k, r[k])}
           >
             {t(`sincronizacaoSql.tabelas.${k}`)}
           </Badge>
@@ -236,10 +408,41 @@ function SincronizacaoSqlServer() {
     );
   };
 
+  const detalhesBooks = (r: any) => {
+    const comErro = (r.empresas || []).filter((e: any) => !e.sucesso);
+    return (
+      <div className="space-y-2 text-sm">
+        <p className={r.sucesso ? 'text-gray-600' : 'text-red-600'}>
+          <span className="font-medium">{t('sincronizacaoSql.tabelas.gerarBooks')}: </span>
+          {r.erro && r.gerados === undefined
+            ? t('sincronizacaoSql.historico.falhou', { erro: r.erro })
+            : textoBooks(r)}
+        </p>
+        {r.selecionadas > 0 && (
+          <p className="text-gray-600">
+            {t('sincronizacaoSql.historico.booksSelecionadas', { count: r.selecionadas })}
+          </p>
+        )}
+        {comErro.length > 0 && (
+          <ul className="space-y-1">
+            {comErro.map((e: any) => (
+              <li key={e.empresa} className="text-red-600">
+                <span className="font-medium">{e.empresa}</span>
+                {' — '}
+                <span>{e.erro}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
+
   const detalhesExecucao = (ex: SyncExecucao) => {
     const r = ex.resultado || {};
     return (
       <div className="space-y-3 py-2">
+        {r.gerarBooks && detalhesBooks(r.gerarBooks)}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {TABELAS_SYNC.filter((k) => r[k]).map((k) => (
             <div key={k} className="text-sm">
@@ -253,13 +456,17 @@ function SincronizacaoSqlServer() {
           ))}
         </div>
         <div>
-          <p className="text-xs font-semibold text-gray-700 mb-1">{t('sincronizacaoSql.historico.logs')}</p>
+          <p className="text-xs font-semibold text-gray-700 mb-1">
+            {t('sincronizacaoSql.historico.logs')}
+          </p>
           {ex.logs?.length ? (
             <div className="max-h-64 overflow-y-auto rounded border border-gray-200 bg-white p-2 font-mono text-xs space-y-0.5">
               {ex.logs.map((l, i) => (
                 <div key={i} className={l.nivel === 'erro' ? 'text-red-600' : 'text-gray-700'}>
                   <span className="text-gray-400">
-                    {new Date(l.em).toLocaleTimeString(i18n.language || 'pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                    {new Date(l.em).toLocaleTimeString(i18n.language || 'pt-BR', {
+                      timeZone: 'America/Sao_Paulo',
+                    })}
                   </span>{' '}
                   {l.mensagem}
                 </div>
@@ -286,6 +493,126 @@ function SincronizacaoSqlServer() {
     </div>
   );
 
+  const tabelaAgendamentos = (lista: SyncAgendamento[], coluna: 'tabelas' | 'empresas') => (
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-gray-50">
+          <TableHead className="font-semibold text-gray-700">
+            {t('sincronizacaoSql.agendamentos.nome')}
+          </TableHead>
+          <TableHead className="font-semibold text-gray-700">
+            {coluna === 'tabelas'
+              ? t('sincronizacaoSql.agendamentos.tabelas')
+              : t('sincronizacaoSql.agendamentos.empresas')}
+          </TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">
+            {t('sincronizacaoSql.agendamentos.proxima')}
+          </TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">
+            {t('sincronizacaoSql.agendamentos.ultima')}
+          </TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">
+            {t('sincronizacaoSql.agendamentos.status')}
+          </TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">
+            {t('sincronizacaoSql.agendamentos.ativo')}
+          </TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center w-24">
+            {t('sincronizacaoSql.agendamentos.acoes')}
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {lista.map((ag) => (
+          <TableRow key={ag.id} className="hover:bg-gray-50">
+            <TableCell>
+              <span className="font-medium">{ag.nome}</span>
+              <div className="text-xs text-gray-500 mt-1">{descreverRecorrencia(ag, t)}</div>
+            </TableCell>
+            <TableCell>
+              {coluna === 'tabelas' ? badgesTabelas(ag.tabelas) : badgesEmpresas(ag.empresa_ids)}
+            </TableCell>
+            <TableCell className="text-center text-sm">
+              {!ag.ativo ? (
+                <span className="text-gray-400">—</span>
+              ) : (
+                formatarData(ag.proxima_execucao) || (
+                  <span className="text-gray-400">
+                    {agendadorDesligado
+                      ? t('sincronizacaoSql.agendamentos.aguardandoAgendador')
+                      : t('sincronizacaoSql.agendamentos.calculando')}
+                  </span>
+                )
+              )}
+            </TableCell>
+            <TableCell className="text-center text-sm">
+              {formatarData(ag.ultima_execucao) || (
+                <span className="text-gray-400">{t('sincronizacaoSql.agendamentos.nunca')}</span>
+              )}
+            </TableCell>
+            <TableCell className="text-center">{badgeStatus(ag.ultimo_status)}</TableCell>
+            <TableCell className="text-center">
+              <ProtectedAction
+                screenKey={SCREEN_KEY}
+                requiredLevel="edit"
+                fallback={<Switch checked={ag.ativo} disabled />}
+              >
+                <Switch
+                  checked={ag.ativo}
+                  disabled={alternar.isPending}
+                  onCheckedChange={(v) => handleAlternar(ag, v)}
+                  aria-label={t('sincronizacaoSql.agendamentos.ativo')}
+                />
+              </ProtectedAction>
+            </TableCell>
+            <TableCell className="text-center">
+              <ProtectedAction screenKey={SCREEN_KEY} requiredLevel="edit">
+                <div className="flex justify-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    title={t('sincronizacaoSql.agendamentos.editar')}
+                    onClick={() => abrirEdicao(ag)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                    title={t('sincronizacaoSql.agendamentos.excluir')}
+                    onClick={() => setAgendamentoExcluindo(ag)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </ProtectedAction>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  const conteudoAgendamentos = (
+    lista: SyncAgendamento[],
+    coluna: 'tabelas' | 'empresas',
+    chaveVazio: string
+  ) =>
+    carregandoAgendamentos ? (
+      carregando
+    ) : erroAgendamentos ? (
+      erroCarregamento(erroAgendamentos)
+    ) : lista.length === 0 ? (
+      <div className="flex flex-col items-center gap-2 py-12 text-gray-500">
+        <CalendarClock className="h-8 w-8 text-gray-400" />
+        <p className="text-sm">{t(chaveVazio)}</p>
+      </div>
+    ) : (
+      tabelaAgendamentos(lista, coluna)
+    );
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -299,27 +626,72 @@ function SincronizacaoSqlServer() {
               <p className="text-muted-foreground mt-1">{t('sincronizacaoSql.subtitle')}</p>
             </div>
             <div className="flex flex-col items-start sm:items-end gap-2">
-              <ProtectedAction screenKey={SCREEN_KEY} requiredLevel="edit">
-                <div className="flex space-x-2">
+              {/* Ações da aba ativa; o histórico não tem ações */}
+              {aba === 'saldo-parcial' && (
+                <ProtectedAction screenKey={SCREEN_KEY_SALDO_PARCIAL} requiredLevel="edit">
                   <Button
-                    variant="outline"
                     size="sm"
-                    onClick={() => setModalExecutarAberto(true)}
-                    disabled={!apiOnline || emExecucao || executar.isPending}
+                    className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                    onClick={() => setNovoSaldoParcialAberto(true)}
                   >
-                    {emExecucao || executar.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Database className="h-4 w-4 mr-2" />
-                    )}
-                    {t('sincronizacaoSql.executarAgora')}
-                  </Button>
-                  <Button size="sm" className="bg-sonda-blue hover:bg-sonda-dark-blue" onClick={abrirNovo}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {t('sincronizacaoSql.novoAgendamento')}
+                    {t('envioSaldoParcial.novoAgendamento')}
                   </Button>
-                </div>
-              </ProtectedAction>
+                </ProtectedAction>
+              )}
+              {(aba === 'agendamentos' || aba === 'books') && (
+                <ProtectedAction screenKey={SCREEN_KEY} requiredLevel="edit">
+                  {aba === 'books' ? (
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmarBooksAberto(true)}
+                        disabled={!apiOnline || emExecucao || gerarBooks.isPending}
+                      >
+                        {gerarBooks.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4 mr-2" />
+                        )}
+                        {t('sincronizacaoSql.books.gerarAgora')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                        onClick={() => abrirNovo('books')}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t('sincronizacaoSql.books.novoAgendamento')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setModalExecutarAberto(true)}
+                        disabled={!apiOnline || emExecucao || executar.isPending}
+                      >
+                        {emExecucao || executar.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Database className="h-4 w-4 mr-2" />
+                        )}
+                        {t('sincronizacaoSql.executarAgora')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                        onClick={() => abrirNovo()}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t('sincronizacaoSql.novoAgendamento')}
+                      </Button>
+                    </div>
+                  )}
+                </ProtectedAction>
+              )}
               {!apiOnline && (
                 <span className="flex items-center gap-1 text-xs text-red-600">
                   <AlertTriangle className="h-3 w-3" />
@@ -342,126 +714,78 @@ function SincronizacaoSqlServer() {
             </div>
           )}
 
-          <Tabs defaultValue="agendamentos" className="w-full">
+          <Tabs value={aba} onValueChange={(v) => setAba(v as AbaSincronizacao)} className="w-full">
             <TabsList className="bg-gray-100 p-1 rounded-lg">
               <TabsTrigger value="agendamentos" className={TAB_TRIGGER}>
                 {t('sincronizacaoSql.tabs.agendamentos')}
               </TabsTrigger>
+              <TabsTrigger value="books" className={TAB_TRIGGER}>
+                {t('sincronizacaoSql.tabs.books')}
+              </TabsTrigger>
+              {podeVerSaldoParcial && (
+                <TabsTrigger value="saldo-parcial" className={TAB_TRIGGER}>
+                  {t('sincronizacaoSql.tabs.saldoParcial')}
+                </TabsTrigger>
+              )}
               <TabsTrigger value="historico" className={TAB_TRIGGER}>
                 {t('sincronizacaoSql.tabs.historico')}
               </TabsTrigger>
             </TabsList>
 
-            {/* Agendamentos */}
+            {/* Agendamentos de sincronização */}
             <TabsContent value="agendamentos" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
-                    {t('sincronizacaoSql.agendamentos.titulo', { count: agendamentos.length })}
+                    {t('sincronizacaoSql.agendamentos.titulo', { count: agendamentosSync.length })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  {carregandoAgendamentos ? (
-                    carregando
-                  ) : erroAgendamentos ? (
-                    erroCarregamento(erroAgendamentos)
-                  ) : agendamentos.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-12 text-gray-500">
-                      <CalendarClock className="h-8 w-8 text-gray-400" />
-                      <p className="text-sm">{t('sincronizacaoSql.agendamentos.vazio')}</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="font-semibold text-gray-700">{t('sincronizacaoSql.agendamentos.nome')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700">{t('sincronizacaoSql.agendamentos.tabelas')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center">{t('sincronizacaoSql.agendamentos.proxima')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center">{t('sincronizacaoSql.agendamentos.ultima')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center">{t('sincronizacaoSql.agendamentos.status')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center">{t('sincronizacaoSql.agendamentos.ativo')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center w-24">{t('sincronizacaoSql.agendamentos.acoes')}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {agendamentos.map((ag) => (
-                          <TableRow key={ag.id} className="hover:bg-gray-50">
-                            <TableCell>
-                              <span className="font-medium">{ag.nome}</span>
-                              <div className="text-xs text-gray-500 mt-1">{descreverRecorrencia(ag, t)}</div>
-                            </TableCell>
-                            <TableCell>{badgesTabelas(ag.tabelas)}</TableCell>
-                            <TableCell className="text-center text-sm">
-                              {!ag.ativo ? (
-                                <span className="text-gray-400">—</span>
-                              ) : (
-                                formatarData(ag.proxima_execucao) || (
-                                  <span className="text-gray-400">
-                                    {agendadorDesligado
-                                      ? t('sincronizacaoSql.agendamentos.aguardandoAgendador')
-                                      : t('sincronizacaoSql.agendamentos.calculando')}
-                                  </span>
-                                )
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center text-sm">
-                              {formatarData(ag.ultima_execucao) || (
-                                <span className="text-gray-400">{t('sincronizacaoSql.agendamentos.nunca')}</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">{badgeStatus(ag.ultimo_status)}</TableCell>
-                            <TableCell className="text-center">
-                              <ProtectedAction
-                                screenKey={SCREEN_KEY}
-                                requiredLevel="edit"
-                                fallback={<Switch checked={ag.ativo} disabled />}
-                              >
-                                <Switch
-                                  checked={ag.ativo}
-                                  disabled={alternar.isPending}
-                                  onCheckedChange={(v) => handleAlternar(ag, v)}
-                                  aria-label={t('sincronizacaoSql.agendamentos.ativo')}
-                                />
-                              </ProtectedAction>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <ProtectedAction screenKey={SCREEN_KEY} requiredLevel="edit">
-                                <div className="flex justify-center gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 w-8 p-0"
-                                    title={t('sincronizacaoSql.agendamentos.editar')}
-                                    onClick={() => abrirEdicao(ag)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                    title={t('sincronizacaoSql.agendamentos.excluir')}
-                                    onClick={() => setAgendamentoExcluindo(ag)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </ProtectedAction>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  {conteudoAgendamentos(
+                    agendamentosSync,
+                    'tabelas',
+                    'sincronizacaoSql.agendamentos.vazio'
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* Geração de Books */}
+            <TabsContent value="books" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    {t('sincronizacaoSql.books.titulo', { count: agendamentosBooks.length })}
+                  </CardTitle>
+                  <p className="text-sm text-gray-500">{t('sincronizacaoSql.books.descricao')}</p>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  {conteudoAgendamentos(
+                    agendamentosBooks,
+                    'empresas',
+                    'sincronizacaoSql.books.vazio'
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Envio automático de Saldo Parcial */}
+            {podeVerSaldoParcial && (
+              <TabsContent value="saldo-parcial" className="mt-4">
+                <AbaSaldoParcial
+                  novoAberto={novoSaldoParcialAberto}
+                  onNovoAbertoChange={setNovoSaldoParcialAberto}
+                />
+              </TabsContent>
+            )}
+
             {/* Histórico */}
             <TabsContent value="historico" className="mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold">{t('sincronizacaoSql.historico.titulo')}</CardTitle>
+                  <CardTitle className="text-lg font-semibold">
+                    {t('sincronizacaoSql.historico.titulo')}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                   {carregandoExecucoes ? (
@@ -469,17 +793,29 @@ function SincronizacaoSqlServer() {
                   ) : erroExecucoes ? (
                     erroCarregamento(erroExecucoes)
                   ) : execucoes.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-gray-500">{t('sincronizacaoSql.historico.vazio')}</p>
+                    <p className="py-12 text-center text-sm text-gray-500">
+                      {t('sincronizacaoSql.historico.vazio')}
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-gray-50">
                           <TableHead className="w-8" />
-                          <TableHead className="font-semibold text-gray-700">{t('sincronizacaoSql.historico.inicio')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center">{t('sincronizacaoSql.historico.duracao')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700">{t('sincronizacaoSql.historico.origem')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700 text-center">{t('sincronizacaoSql.historico.status')}</TableHead>
-                          <TableHead className="font-semibold text-gray-700">{t('sincronizacaoSql.historico.resumo')}</TableHead>
+                          <TableHead className="font-semibold text-gray-700">
+                            {t('sincronizacaoSql.historico.inicio')}
+                          </TableHead>
+                          <TableHead className="font-semibold text-gray-700 text-center">
+                            {t('sincronizacaoSql.historico.duracao')}
+                          </TableHead>
+                          <TableHead className="font-semibold text-gray-700">
+                            {t('sincronizacaoSql.historico.origem')}
+                          </TableHead>
+                          <TableHead className="font-semibold text-gray-700 text-center">
+                            {t('sincronizacaoSql.historico.status')}
+                          </TableHead>
+                          <TableHead className="font-semibold text-gray-700">
+                            {t('sincronizacaoSql.historico.resumo')}
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -492,9 +828,15 @@ function SincronizacaoSqlServer() {
                                 onClick={() => setExecucaoAberta(aberta ? null : ex.id)}
                               >
                                 <TableCell>
-                                  {aberta ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                  {aberta ? (
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-gray-500" />
+                                  )}
                                 </TableCell>
-                                <TableCell className="text-sm">{formatarData(ex.iniciado_em)}</TableCell>
+                                <TableCell className="text-sm">
+                                  {formatarData(ex.iniciado_em)}
+                                </TableCell>
                                 <TableCell className="text-center font-mono text-sm">
                                   {formatarDuracao(ex.iniciado_em, ex.finalizado_em)}
                                 </TableCell>
@@ -502,9 +844,15 @@ function SincronizacaoSqlServer() {
                                   {ex.origem === 'agendado'
                                     ? t('sincronizacaoSql.historico.agendado')
                                     : t('sincronizacaoSql.historico.manual')}
-                                  {ex.agendamento?.nome && <div className="text-xs text-gray-500 mt-1">{ex.agendamento.nome}</div>}
+                                  {ex.agendamento?.nome && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {ex.agendamento.nome}
+                                    </div>
+                                  )}
                                 </TableCell>
-                                <TableCell className="text-center">{badgeStatus(ex.status)}</TableCell>
+                                <TableCell className="text-center">
+                                  {badgeStatus(ex.status)}
+                                </TableCell>
                                 <TableCell>{resumoExecucao(ex)}</TableCell>
                               </TableRow>
                               {aberta && (
@@ -537,18 +885,30 @@ function SincronizacaoSqlServer() {
         open={modalAgendamentoAberto}
         onOpenChange={setModalAgendamentoAberto}
         agendamento={agendamentoEditando}
+        tipo={tipoNovoAgendamento}
         onSalvar={handleSalvar}
         salvando={salvar.isPending}
       />
 
-      <AlertDialog open={!!agendamentoExcluindo} onOpenChange={(v) => !v && setAgendamentoExcluindo(null)}>
+      <GerarBooksAgoraModal
+        open={confirmarBooksAberto}
+        onOpenChange={setConfirmarBooksAberto}
+        onConfirmar={handleGerarBooks}
+      />
+
+      <AlertDialog
+        open={!!agendamentoExcluindo}
+        onOpenChange={(v) => !v && setAgendamentoExcluindo(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-semibold text-sonda-blue">
               {t('sincronizacaoSql.agendamentos.excluirTitulo')}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-gray-500">
-              {t('sincronizacaoSql.agendamentos.excluirDescricao', { nome: agendamentoExcluindo?.nome })}
+              {t('sincronizacaoSql.agendamentos.excluirDescricao', {
+                nome: agendamentoExcluindo?.nome,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

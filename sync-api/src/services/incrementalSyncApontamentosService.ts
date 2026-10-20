@@ -192,56 +192,6 @@ async function buscarRegistrosModificados(
 ): Promise<DadosApontamentoSqlServer[]> {
   console.log(`📊 [SYNC] Buscando TODOS os registros modificados após ${dataInicio.toISOString()}...`);
   
-  // ✅ DEBUG: Verificar tipo e valor do parâmetro
-  console.log('🔍 [DEBUG] Tipo de dataInicio:', typeof dataInicio);
-  console.log('🔍 [DEBUG] Valor de dataInicio:', dataInicio);
-  console.log('🔍 [DEBUG] dataInicio.toISOString():', dataInicio.toISOString());
-  
-  // ✅ TESTE: Verificar tipo de dado do campo Data_Ult_Modificacao_Geral
-  const queryTipoDado = `
-    SELECT TOP 1
-      Data_Ult_Modificacao_Geral,
-      SQL_VARIANT_PROPERTY(Data_Ult_Modificacao_Geral, 'BaseType') as tipo_dado
-    FROM AMSapontamento
-    WHERE Data_Ult_Modificacao_Geral IS NOT NULL
-  `;
-  
-  const tipoDadoResult = await pool.request().query(queryTipoDado);
-  if (tipoDadoResult.recordset.length > 0) {
-    console.log(`🔍 [DEBUG] Tipo de dado do campo Data_Ult_Modificacao_Geral: ${tipoDadoResult.recordset[0].tipo_dado}`);
-    console.log(`🔍 [DEBUG] Exemplo de valor: ${tipoDadoResult.recordset[0].Data_Ult_Modificacao_Geral}`);
-  }
-  
-  // ✅ TESTE: Primeiro vamos contar quantos registros existem com data >= dataInicio
-  const queryCount = `
-    SELECT COUNT(*) as total
-    FROM AMSapontamento
-    WHERE CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= @dataInicio
-      AND Data_Ult_Modificacao_Geral IS NOT NULL
-      AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
-  `;
-  
-  const countResult = await pool.request()
-    .input('dataInicio', sql.DateTime, dataInicio)
-    .query(queryCount);
-  
-  const totalRegistros = countResult.recordset[0].total;
-  console.log(`🔍 [DEBUG] Total de registros com Data_Ult_Modificacao_Geral >= ${dataInicio.toISOString()}: ${totalRegistros}`);
-  
-  // ✅ TESTE: Buscar o menor e maior valor de Data_Ult_Modificacao_Geral
-  const queryMinMax = `
-    SELECT 
-      MIN(CAST(Data_Ult_Modificacao_Geral AS DATETIME)) as menor_data,
-      MAX(CAST(Data_Ult_Modificacao_Geral AS DATETIME)) as maior_data
-    FROM AMSapontamento
-    WHERE Data_Ult_Modificacao_Geral IS NOT NULL
-  `;
-  
-  const minMaxResult = await pool.request().query(queryMinMax);
-  console.log(`🔍 [DEBUG] Menor data no SQL Server: ${minMaxResult.recordset[0].menor_data}`);
-  console.log(`🔍 [DEBUG] Maior data no SQL Server: ${minMaxResult.recordset[0].maior_data}`);
-  console.log(`🔍 [DEBUG] Data de filtro (dataInicio): ${dataInicio.toISOString()}`);
-  
   // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os registros (sem TOP/limite)
   // Se limite = 0, busca todos; caso contrário, usa o limite especificado
   const topClause = limite > 0 ? `TOP ${limite}` : '';
@@ -292,7 +242,7 @@ async function buscarRegistrosModificados(
     .input('dataInicio', sql.DateTime, dataInicio)
     .query(query);
 
-  console.log(`✅ [SYNC] ${result.recordset.length} registros encontrados no SQL Server (de ${totalRegistros} total)`);
+  console.log(`✅ [SYNC] ${result.recordset.length} registros encontrados no SQL Server`);
   console.log(`📅 [SYNC] Filtro aplicado: CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= ${dataInicio.toISOString()}`);
   
   // Log dos primeiros 3 e últimos 3 registros para debug

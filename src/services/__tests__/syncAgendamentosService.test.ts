@@ -32,6 +32,8 @@ function mockBuilder(resultado: { data: any; error: any }) {
 }
 
 const input: SyncAgendamentoInput = {
+  tipo: 'sincronizacao',
+  empresa_ids: [],
   nome: 'Diário',
   ativo: true,
   tabelas: { pesquisas: true },
@@ -147,6 +149,33 @@ describe('syncAgendamentosService — sync-api', () => {
     await expect(syncAgendamentosService.executarAgora({ pesquisas: true })).rejects.toThrow(
       'Já existe uma sincronização em andamento'
     );
+  });
+
+  it('gerarBooksAgora dispara a geração de books no sync-api com o token da sessão', async () => {
+    fetchMock.mockResolvedValue(resposta(202, { execucaoId: 'e2' }));
+
+    const r = await syncAgendamentosService.gerarBooksAgora();
+
+    const [url, opcoes] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/sync-jobs\/executar-books$/);
+    expect(opcoes.method).toBe('POST');
+    expect(opcoes.headers.Authorization).toBe('Bearer tok');
+    expect(r).toEqual({ execucaoId: 'e2' });
+  });
+
+  it('gerarBooksAgora envia as empresas escolhidas (vazio = todas)', async () => {
+    fetchMock.mockResolvedValue(resposta(202, { execucaoId: 'e3' }));
+
+    await syncAgendamentosService.gerarBooksAgora(['emp-1']);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ empresaIds: ['emp-1'] });
+
+    await syncAgendamentosService.gerarBooksAgora();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ empresaIds: [] });
+  });
+
+  it('gerarBooksAgora explica quando há execução em andamento', async () => {
+    fetchMock.mockResolvedValue(resposta(409, { erro: 'Já existe uma sincronização ou geração de books em andamento' }));
+    await expect(syncAgendamentosService.gerarBooksAgora()).rejects.toThrow(/em andamento/);
   });
 
   it('executarAgora falha sem sessão', async () => {

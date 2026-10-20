@@ -22,7 +22,7 @@ const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://sync-api.sondalyze
 const db = supabase as any;
 
 /** Chama o sync-api com o token da sessão; sem `corpo` a chamada é GET */
-async function chamarSyncApi<T>(caminho: string, corpo?: unknown): Promise<{ status: number; dados: T }> {
+export async function chamarSyncApi<T>(caminho: string, corpo?: unknown): Promise<{ status: number; dados: T }> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -103,6 +103,16 @@ class SyncAgendamentosService {
   /** Dispara a sincronização no sync-api; ela continua mesmo se a tela for fechada */
   async executarAgora(tabelas: TabelasSync): Promise<{ execucaoId: string }> {
     const { dados } = await chamarSyncApi<{ execucaoId: string }>('/api/sync-jobs/executar', { tabelas });
+    return dados;
+  }
+
+  /**
+   * Gera e envia para a Qualidade os books liberados e ainda não enviados, no sync-api
+   * (só das empresas informadas; vazio = todas).
+   * Divide a trava com a sincronização: recusa (409) se uma delas estiver em andamento.
+   */
+  async gerarBooksAgora(empresaIds: string[] = []): Promise<{ execucaoId: string }> {
+    const { dados } = await chamarSyncApi<{ execucaoId: string }>('/api/sync-jobs/executar-books', { empresaIds });
     return dados;
   }
 

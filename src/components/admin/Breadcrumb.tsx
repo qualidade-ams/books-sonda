@@ -14,17 +14,17 @@ const Breadcrumb = () => {
     dashboard: 'nav.dashboard',
     'email-config': 'nav.emailConfig',
     'user-config': 'nav.userConfig',
-    'grupos': 'nav.groups',
+    grupos: 'nav.groups',
     'usuarios-grupos': 'nav.userGroups',
     'audit-logs': 'nav.auditLogs',
     'empresas-clientes': 'nav.companies',
-    'clientes': 'nav.clients',
+    clientes: 'nav.clients',
     'grupos-responsaveis': 'nav.responsibleGroups',
     'controle-disparos': 'nav.controlShoots',
     'historico-books': 'nav.historyBooks',
     'disparos-personalizados': 'nav.customShoots',
     'monitoramento-vigencias': 'nav.monitoringTerms',
-    'sincronizacao-sql-server': 'nav.sqlServerSync',
+    'rotinas-automaticas': 'nav.automatedRoutines',
     'lancar-requerimentos': 'nav.registerRequirements',
     'faturar-requerimentos': 'nav.billingRequirements',
     'lancar-pesquisas': 'nav.registerSurveys',
@@ -38,10 +38,10 @@ const Breadcrumb = () => {
     'geracao-books': 'nav.generateBooks',
     'inconsistencia-chamados': 'nav.inconsistencies',
     'monitoramento-chamados': 'nav.ticketMonitoring',
-    'organograma': 'nav.orgChart',
+    organograma: 'nav.orgChart',
     'pesquisa-mensal-ams': 'nav.monthlySurveyAMS',
     'ajustes-retroativos': 'nav.retroactiveAdjustments',
-    'auditoria': 'nav.auditLogs',
+    auditoria: 'nav.auditLogs',
   };
 
   return (
@@ -65,10 +65,7 @@ const Breadcrumb = () => {
             {isLast ? (
               <span className="font-medium text-blue-600">{displayName}</span>
             ) : (
-              <Link
-                to={routeTo}
-                className="hover:text-blue-600 transition-colors"
-              >
+              <Link to={routeTo} className="hover:text-blue-600 transition-colors">
                 {displayName}
               </Link>
             )}

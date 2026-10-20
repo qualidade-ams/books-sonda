@@ -7,11 +7,12 @@ import type { InconsistenciaChamado } from '@/types/inconsistenciasChamados';
 vi.mock('@/services/inconsistenciasChamadosService', () => ({
   inconsistenciasChamadosService: {
     buscarTarefasAntesDaTroca: vi.fn(),
+    descartarInconsistencias: vi.fn(),
   },
 }));
 
 import { inconsistenciasChamadosService } from '@/services/inconsistenciasChamadosService';
-import { useTarefasAntesDaTroca } from '../useInconsistenciasChamados';
+import { useTarefasAntesDaTroca, useDescartarInconsistencias } from '../useInconsistenciasChamados';
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -46,5 +47,29 @@ describe('useTarefasAntesDaTroca', () => {
     renderHook(() => useTarefasAntesDaTroca(null), { wrapper });
 
     expect(inconsistenciasChamadosService.buscarTarefasAntesDaTroca).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDescartarInconsistencias', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('descarta pelo service e recarrega a lista e as estatísticas', async () => {
+    (inconsistenciasChamadosService.descartarInconsistencias as any).mockResolvedValue(undefined);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const comCliente = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useDescartarInconsistencias(), { wrapper: comCliente });
+    await result.current.descartarAsync(['inc-1', 'inc-2']);
+
+    expect(inconsistenciasChamadosService.descartarInconsistencias).toHaveBeenCalledWith(['inc-1', 'inc-2']);
+    await waitFor(() => {
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: ['inconsistencias-chamados'] });
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: ['inconsistencias-estatisticas'] });
+    });
   });
 });

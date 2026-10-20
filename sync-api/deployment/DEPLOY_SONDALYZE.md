@@ -68,7 +68,7 @@ No `.env`, ajustar:
 - `SQL_PASSWORD` → **senha real** do `amsconsulta` (substituir o placeholder)
 - `SUPABASE_SERVICE_KEY` → **service key real** do Supabase (substituir o placeholder)
 - `HOST=127.0.0.1` → a API só aceita conexões da própria máquina (é o padrão se a variável faltar). O acesso de fora é exclusivamente pelo túnel.
-- `SCHEDULER_ENABLED=true` → liga os agendamentos da tela "Sincronização SQL Server". **Só neste servidor** — em qualquer outra máquina deixe `false`, senão ela também dispara as sincronizações agendadas.
+- `SCHEDULER_ENABLED=true` → liga os agendamentos da tela "Rotinas Automáticas" (antiga "Sincronização SQL Server"). **Só neste servidor** — em qualquer outra máquina deixe `false`, senão ela também dispara as sincronizações agendadas.
 
 > A `SUPABASE_SERVICE_KEY` é secreta e dá acesso administrativo ao banco. Nunca a exponha no frontend nem a comite.
 
@@ -199,7 +199,7 @@ Após publicar, valide na tela de diagnóstico da aplicação (componente `Diagn
 
 ## 10. Validar a sincronização ponta a ponta
 
-Na tela **Administração → Sincronização SQL Server** do Books SND:
+Na tela **Administração → Rotinas Automáticas** do Books SND:
 
 1. Clique em **Executar agora** e acompanhe a execução na aba **Histórico** — todas as etapas devem ficar verdes.
 2. Na aba **Agendamentos**, a coluna "Próxima execução" deve mostrar data/hora. Se aparecer o aviso "agendador desligado", falta `SCHEDULER_ENABLED=true` no `.env` (e reiniciar o serviço).

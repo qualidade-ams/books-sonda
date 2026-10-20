@@ -59,6 +59,11 @@ import { useEmpresas } from '@/hooks/useEmpresas';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { usePercentualRepasseVigentePorPeriodo } from '@/hooks/usePercentualRepasseHistorico';
 import { useToast } from '@/hooks/use-toast';
+import {
+  calcularMesesDoPeriodo,
+  filtrarRequerimentosDoPeriodo,
+  filtrarRequerimentosEmDesenvolvimento
+} from '@/services/saldoParcial/periodoSaldoParcial';
 import { converterHorasParaMinutos } from '@/utils/horasUtils';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 
@@ -153,69 +158,10 @@ export default function ControleBancoHoras() {
   }, [percentualRepasseVigente, empresaAtual]);
   
   // Calcular os meses do período baseado na vigência
-  const mesesDoPeriodo = useMemo(() => {
-    console.log('🔄 [mesesDoPeriodo] Recalculando meses do período:', {
-      mesAno,
-      empresaId: empresaAtual?.id,
-      periodo_apuracao: empresaAtual?.periodo_apuracao
-    });
-    
-    if (!empresaAtual?.inicio_vigencia || !empresaAtual?.periodo_apuracao) {
-      // Fallback: usar meses sequenciais
-      const meses = [];
-      for (let i = 0; i < 3; i++) {
-        let mes = mesAno.mes + i;
-        let ano = mesAno.ano;
-        
-        while (mes > 12) {
-          mes -= 12;
-          ano += 1;
-        }
-        
-        meses.push({ mes, ano });
-      }
-      console.log('📅 [mesesDoPeriodo] Meses calculados (fallback):', meses);
-      return meses;
-    }
-
-    const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
-    const mesInicio = inicioVigencia.getUTCMonth() + 1;
-    const anoInicio = inicioVigencia.getUTCFullYear();
-    const periodoApuracao = empresaAtual.periodo_apuracao;
-
-    // Calcular quantos meses se passaram desde o início da vigência até o mês atual
-    const mesesPassados = ((mesAno.ano - anoInicio) * 12) + (mesAno.mes - mesInicio);
-    
-    // Calcular o início do período atual (múltiplo do período de apuração)
-    const periodosCompletos = Math.floor(mesesPassados / periodoApuracao);
-    const mesesAteInicioPeriodo = periodosCompletos * periodoApuracao;
-    
-    // Calcular o primeiro mês do período atual
-    let mesInicioPeriodo = mesInicio + mesesAteInicioPeriodo;
-    let anoInicioPeriodo = anoInicio;
-    
-    while (mesInicioPeriodo > 12) {
-      mesInicioPeriodo -= 12;
-      anoInicioPeriodo += 1;
-    }
-    
-    // Gerar array com todos os meses do período
-    const meses = [];
-    for (let i = 0; i < periodoApuracao; i++) {
-      let mes = mesInicioPeriodo + i;
-      let ano = anoInicioPeriodo;
-      
-      while (mes > 12) {
-        mes -= 12;
-        ano += 1;
-      }
-      
-      meses.push({ mes, ano });
-    }
-    
-    console.log('📅 [mesesDoPeriodo] Meses calculados:', meses);
-    return meses;
-  }, [mesAno, empresaAtual]);
+  const mesesDoPeriodo = useMemo(
+    () => calcularMesesDoPeriodo(empresaAtual, mesAno),
+    [mesAno, empresaAtual]
+  );
 
   // Buscar cálculo do primeiro mês (sempre necessário)
   const {
@@ -421,39 +367,12 @@ export default function ControleBancoHoras() {
     } : undefined
   );
   
-  // Filtrar requerimentos CONCLUÍDOS do período atual (enviados para faturamento)
-  // ✅ LÓGICA CORRETA: enviado_faturamento = true E status IN ('enviado_faturamento', 'faturado')
-  const requerimentosConcluidos = useMemo(() => {
-    if (!requerimentosTodos || !mesesDoPeriodo) return [];
-    
-    const mesesPeriodoStr = mesesDoPeriodo.map(m => 
-      `${String(m.mes).padStart(2, '0')}/${m.ano}`
-    );
-    
-    const concluidos = requerimentosTodos.filter(req => 
-      req.mes_cobranca && 
-      mesesPeriodoStr.includes(req.mes_cobranca) &&
-      req.enviado_faturamento === true && // ✅ CRÍTICO: Enviado para faturamento
-      (req.status === 'enviado_faturamento' || req.status === 'faturado') && // ✅ CRÍTICO: Status correto
-      req.tipo_cobranca === 'Banco de Horas' // ✅ Apenas Banco de Horas
-    );
-    
-    console.log('🔍 [DEBUG] Requerimentos Concluídos (Tabela "Requerimentos do Período"):', {
-      total: requerimentosTodos.length,
-      mesesPeriodo: mesesPeriodoStr,
-      concluidos: concluidos.length,
-      detalhes: concluidos.map(r => ({
-        chamado: r.chamado,
-        mes_cobranca: r.mes_cobranca,
-        enviado_faturamento: r.enviado_faturamento,
-        status: r.status,
-        tipo_cobranca: r.tipo_cobranca
-      }))
-    });
-    
-    return concluidos;
-  }, [requerimentosTodos, mesesDoPeriodo]);
-  
+  // Requerimentos CONCLUÍDOS do período atual (tabela "Requerimentos do Período")
+  const requerimentosConcluidos = useMemo(
+    () => (requerimentosTodos ? filtrarRequerimentosDoPeriodo(requerimentosTodos, mesesDoPeriodo) : []),
+    [requerimentosTodos, mesesDoPeriodo]
+  );
+
   // ✅ REMOVIDO: Tabela "Requerimentos Não Concluídos" foi removida
   // Agora temos apenas:
   // 1. "Requerimentos do Período" (enviado_faturamento = true, status IN ('enviado_faturamento', 'faturado'))
@@ -462,54 +381,11 @@ export default function ControleBancoHoras() {
     return []; // ✅ Sempre vazio - tabela removida
   }, []);
   
-  // ✅ NOVO: Filtrar requerimentos EM DESENVOLVIMENTO (não enviados para faturamento)
-  // Estes requerimentos ainda estão sendo trabalhados
-  // REGRA: status = 'lancado' E enviado_faturamento = false
-  // ✅ CORRIGIDO: Requerimentos em desenvolvimento aparecem apenas no trimestre
-  // que contém sua data de envio, ou em trimestres posteriores.
-  // Regra: data_envio <= fim do período atual (último dia do último mês do trimestre)
-  const requerimentosEmDesenvolvimento = useMemo(() => {
-    if (!requerimentosTodos || !mesesDoPeriodo || mesesDoPeriodo.length === 0) return [];
-
-    // Calcular o último dia do período atual (ex: 31/12/2025 para o 4º Trimestre 2025)
-    const ultimoMesDoPeriodo = mesesDoPeriodo[mesesDoPeriodo.length - 1];
-    const fimPeriodo = new Date(ultimoMesDoPeriodo.ano, ultimoMesDoPeriodo.mes, 0); // dia 0 do mês seguinte = último dia do mês atual
-    fimPeriodo.setHours(23, 59, 59, 999);
-
-    const emDesenvolvimento = requerimentosTodos.filter(req => {
-      // Filtro base: status lancado e não enviado para faturamento
-      if (req.status !== 'lancado' || req.enviado_faturamento === true) {
-        return false;
-      }
-
-      // ✅ Filtro de data: só exibir se data_envio está dentro ou antes deste período
-      // Requerimentos sem data_envio aparecem em todos os períodos
-      if (req.data_envio) {
-        const dataEnvio = new Date(req.data_envio);
-        if (dataEnvio > fimPeriodo) {
-          return false; // data_envio está além deste período — não mostrar
-        }
-      }
-
-      return true;
-    });
-
-    console.log('🔍 [DEBUG] Requerimentos Em Desenvolvimento:', {
-      total: requerimentosTodos.length,
-      fimPeriodo: fimPeriodo.toISOString(),
-      emDesenvolvimento: emDesenvolvimento.length,
-      detalhes: emDesenvolvimento.map(r => ({
-        chamado: r.chamado,
-        data_envio: r.data_envio,
-        mes_cobranca: r.mes_cobranca,
-        enviado_faturamento: r.enviado_faturamento,
-        status: r.status,
-        tipo_cobranca: r.tipo_cobranca
-      }))
-    });
-
-    return emDesenvolvimento;
-  }, [requerimentosTodos, mesesDoPeriodo]);
+  // Requerimentos EM DESENVOLVIMENTO (lançados, ainda não enviados para faturamento)
+  const requerimentosEmDesenvolvimento = useMemo(
+    () => (requerimentosTodos ? filtrarRequerimentosEmDesenvolvimento(requerimentosTodos, mesesDoPeriodo) : []),
+    [requerimentosTodos, mesesDoPeriodo]
+  );
   // ✅ REMOVIDO: Não selecionar empresa automaticamente
   // Usuário deve escolher manualmente no dropdown
   

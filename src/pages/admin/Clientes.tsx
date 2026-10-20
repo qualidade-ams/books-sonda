@@ -33,6 +33,7 @@ import type {
   ClienteFormData, 
   ClienteFiltros, 
   ClienteStatus,
+  FinalidadeEnvio,
   EmpresaClienteCompleta 
 } from '@/types/clientBooksTypes';
 
@@ -194,6 +195,7 @@ const Clientes: React.FC = () => {
       status: (clienteEditando.status as ClienteStatus) || 'ativo',
       descricaoStatus: clienteEditando.descricao_status || '',
       principalContato: clienteEditando.principal_contato || false,
+      finalidadeEnvio: (clienteEditando.finalidade_envio as FinalidadeEnvio) || 'book',
     }
     : undefined;
 

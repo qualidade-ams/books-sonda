@@ -6,6 +6,7 @@ import {
   useRequerimentos,
   useRequerimentosNaoEnviados,
   useRequerimentosFaturamento,
+  useMesesPendentesAnteriores,
   useRequerimento,
   useClientesRequerimentos,
   useEstatisticasRequerimentos,
@@ -34,6 +35,7 @@ vi.mock('@/services/requerimentosService', () => ({
     listarRequerimentos: vi.fn(),
     buscarRequerimentosNaoEnviados: vi.fn(),
     gerarDadosFaturamento: vi.fn(),
+    listarMesesPendentesAnteriores: vi.fn(),
     obterRequerimentoPorId: vi.fn(),
     buscarClientes: vi.fn(),
     obterEstatisticas: vi.fn(),
@@ -502,6 +504,29 @@ describe('useRequerimentos hooks', () => {
       });
 
       expect(toast.error).toHaveBeenCalledWith('Erro ao enviar requerimentos para faturamento: Erro no envio');
+    });
+  });
+
+  describe('useMesesPendentesAnteriores', () => {
+    it('deve buscar meses pendentes anteriores ao mês/ano informado', async () => {
+      const meses = [{ mes_cobranca: '09/2026', quantidade: 3 }];
+      vi.mocked(requerimentosService.listarMesesPendentesAnteriores).mockResolvedValue(meses);
+
+      const { result } = renderHook(() => useMesesPendentesAnteriores(10, 2026), { wrapper });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(requerimentosService.listarMesesPendentesAnteriores).toHaveBeenCalledWith(10, 2026);
+      expect(result.current.data).toEqual(meses);
+    });
+
+    it('deve usar query key sob o prefixo de requerimentos para ser invalidada pelas mutations', () => {
+      expect(REQUERIMENTOS_QUERY_KEYS.pendentesAnteriores(10, 2026)).toEqual([
+        'requerimentos',
+        'pendentes-anteriores',
+        10,
+        2026
+      ]);
     });
   });
 

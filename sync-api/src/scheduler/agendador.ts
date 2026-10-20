@@ -6,7 +6,8 @@
  *
  * - Execução perdida (serviço desligado): roda uma vez ao voltar e o próximo
  *   horário é calculado a partir de agora (não acumula atrasos).
- * - Sincronização em andamento: o vencido espera o próximo ciclo.
+ * - Sincronização ou geração de books em andamento: o vencido espera o próximo
+ *   ciclo (as duas dividem a trava do orquestrador, uma espera a outra).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -82,10 +83,14 @@ export function criarAgendador(deps: DependenciasAgendador) {
     console.log(`[AGENDADOR] Disparando agendamento ${ag.id}`);
 
     try {
+      const tipo = ag.tipo === 'books' ? 'books' : 'sincronizacao';
       const inicio = await deps.orquestrador.iniciar({
+        tipo,
         tabelas: ag.tabelas || {},
         origem: 'agendado',
         agendamentoId: ag.id,
+        // Books agendados ficam como "enviado por" quem criou o agendamento
+        ...(tipo === 'books' ? { responsavelId: ag.created_by ?? null, empresaIds: ag.empresa_ids ?? [] } : {}),
       });
 
       if (inicio.status === 'iniciada') {

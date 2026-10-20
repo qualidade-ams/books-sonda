@@ -21,6 +21,45 @@ describe('rotas sync-jobs', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
+  describe('executarBooks', () => {
+    it('202 com o id da geração manual de books', async () => {
+      const res = criarRes();
+      await criarHandlersSyncJobs({ orquestrador }).executarBooks({ body: {}, usuarioId: 'u1' } as any, res);
+
+      expect(orquestrador.iniciar).toHaveBeenCalledWith({ tipo: 'books', tabelas: {}, origem: 'manual', usuarioId: 'u1', empresaIds: [] });
+      expect(res.status).toHaveBeenCalledWith(202);
+      expect(res.json).toHaveBeenCalledWith({ execucaoId: 'exec-1' });
+    });
+
+    it('aceita só ids de empresa válidos (uuid), sem repetição', async () => {
+      const uuid = '0b9c1f9e-6d1a-4c4e-9a65-2f3c1d2e4b5a';
+      const res = criarRes();
+      await criarHandlersSyncJobs({ orquestrador }).executarBooks(
+        { body: { empresaIds: [uuid, uuid, '1; DROP', 42] }, usuarioId: 'u1' } as any,
+        res
+      );
+
+      expect(orquestrador.iniciar).toHaveBeenCalledWith(expect.objectContaining({ empresaIds: [uuid] }));
+    });
+
+    it('409 quando há sincronização ou geração em andamento', async () => {
+      orquestrador.iniciar.mockResolvedValue({ status: 'ocupado' });
+      const res = criarRes();
+      await criarHandlersSyncJobs({ orquestrador }).executarBooks({ body: {} } as any, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json.mock.calls[0][0].erro).toMatch(/em andamento/);
+    });
+
+    it('500 quando o orquestrador falha ao iniciar', async () => {
+      orquestrador.iniciar.mockRejectedValue(new Error('db fora'));
+      const res = criarRes();
+      await criarHandlersSyncJobs({ orquestrador }).executarBooks({ body: {} } as any, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
   describe('executar', () => {
     it('202 com o id da execução manual', async () => {
       const res = criarRes();

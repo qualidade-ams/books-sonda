@@ -6,7 +6,9 @@ import {
   ClienteCompleto,
   ClienteFormData,
   ClienteFiltros,
-  Cliente_STATUS
+  Cliente_STATUS,
+  FINALIDADE_ENVIO,
+  FinalidadeEnvio
 } from '@/types/clientBooksTypes';
 
 /**
@@ -48,7 +50,8 @@ export class ClientesService {
         status: data.status,
         data_status: new Date().toISOString(),
         descricao_status: data.descricaoStatus || null,
-        principal_contato: data.principalContato
+        principal_contato: data.principalContato,
+        finalidade_envio: data.finalidadeEnvio || FINALIDADE_ENVIO.BOOK
       };
 
       // Inserir cliente
@@ -105,6 +108,10 @@ export class ClientesService {
       //   // Por padrão, mostrar apenas clientes ativos
       //   query = query.eq('status', Cliente_STATUS.ATIVO as any);
       // }
+
+      if (filtros?.finalidadeEnvio && filtros.finalidadeEnvio.length > 0) {
+        query = query.in('finalidade_envio', filtros.finalidadeEnvio);
+      }
 
       if (filtros?.busca) {
         query = query.or(`nome_completo.ilike.%${filtros.busca}%,email.ilike.%${filtros.busca}%,funcao.ilike.%${filtros.busca}%`);
@@ -180,7 +187,7 @@ export class ClientesService {
       }
 
       // Validar dados se fornecidos
-      if (data.nomeCompleto || data.email || data.empresaId) {
+      if (data.nomeCompleto || data.email || data.empresaId || data.finalidadeEnvio) {
         await this.validarDadosCliente({
           ...clienteAtual,
           ...data
@@ -205,6 +212,7 @@ export class ClientesService {
       if (data.funcao !== undefined) updateData.funcao = data.funcao?.trim() || null;
       if (data.empresaId) updateData.empresa_id = data.empresaId;
       if (data.principalContato !== undefined) updateData.principal_contato = data.principalContato;
+      if (data.finalidadeEnvio !== undefined) updateData.finalidade_envio = data.finalidadeEnvio;
 
       // Se status mudou, atualizar data e descrição
       if (data.status) {
@@ -363,6 +371,25 @@ export class ClientesService {
   }
 
   /**
+   * Listar e-mails dos contatos ativos da empresa com as finalidades de envio informadas
+   * (ex.: destinatários do Saldo Parcial = 'saldo_parcial' ou 'ambos')
+   */
+  async listarEmailsPorFinalidade(empresaId: string, finalidades: FinalidadeEnvio[]): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('email')
+      .eq('empresa_id', empresaId)
+      .eq('status', Cliente_STATUS.ATIVO)
+      .in('finalidade_envio', finalidades);
+
+    if (error) {
+      throw new ClienteError(`Erro ao listar e-mails dos contatos: ${error.message}`, 'LIST_ERROR');
+    }
+
+    return (data || []).map(c => c.email).filter(Boolean);
+  }
+
+  /**
    * Listar clientes ativos de uma empresa
    */
   async listarAtivos(empresaId: string): Promise<ClienteCompleto[]> {
@@ -456,6 +483,10 @@ export class ClientesService {
 
     if (data.status && !Object.values(Cliente_STATUS).includes(data.status as any)) {
       throw new ClienteError('Status inválido', 'INVALID_STATUS');
+    }
+
+    if (data.finalidadeEnvio && !Object.values(FINALIDADE_ENVIO).includes(data.finalidadeEnvio as any)) {
+      throw new ClienteError('Finalidade de envio inválida', 'INVALID_FINALIDADE');
     }
 
     if (data.status === Cliente_STATUS.INATIVO && !data.descricaoStatus) {

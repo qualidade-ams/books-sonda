@@ -145,6 +145,27 @@ export function useArquivarInconsistencia() {
 }
 
 /**
+ * Hook para descartar inconsistências (some da lista sem ir para o histórico)
+ */
+export function useDescartarInconsistencias() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (ids: string[]) => inconsistenciasChamadosService.descartarInconsistencias(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inconsistencias-chamados'] });
+      queryClient.invalidateQueries({ queryKey: ['inconsistencias-estatisticas'] });
+    }
+  });
+
+  return {
+    descartar: mutation.mutate,
+    descartarAsync: mutation.mutateAsync,
+    isDescartando: mutation.isPending
+  };
+}
+
+/**
  * Hook para enviar notificações por email
  */
 export function useEnviarNotificacao() {

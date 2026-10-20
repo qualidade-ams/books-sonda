@@ -7,7 +7,8 @@
 export type BookStatus = 'pendente' | 'gerando' | 'gerado' | 'erro' | 'desatualizado' | 'enviado';
 
 // Tipos de abas do book
-export type BookTab = 'capa' | 'volumetria' | 'sla' | 'backlog' | 'consumo' | 'pesquisa' | 'portfolio';
+export type BookTab =
+  'capa' | 'volumetria' | 'sla' | 'backlog' | 'consumo' | 'pesquisa' | 'portfolio';
 
 // ============================================================================
 // INTERFACES PRINCIPAIS
@@ -25,7 +26,7 @@ export interface BookData {
   status: BookStatus;
   data_geracao?: string;
   data_atualizacao?: string;
-  
+
   // Dados congelados (snapshot)
   capa: BookCapaData;
   volumetria: BookVolumetriaData;
@@ -33,16 +34,20 @@ export interface BookData {
   backlog: BookBacklogData;
   consumo: BookConsumoData;
   pesquisa: BookPesquisaData;
-  
+
   // Requerimentos em desenvolvimento (snapshot - visível apenas quando existirem)
   requerimentos_em_desenvolvimento?: RequerimentoEmDesenvolvimentoData[];
 
+  // Requerimentos faturados no mês (snapshot - visível apenas quando existirem;
+  // ausente em books gerados antes da aba existir)
+  requerimentos_faturados?: RequerimentoEmDesenvolvimentoData[];
+
   // Consumo segmentado (snapshot - apenas se empresa tem baseline_segmentado)
   consumo_segmentado?: BookConsumoSegmentadoData[];
-  
+
   // Organogramas (screenshots em base64)
   organogramas?: BookOrganogramaData[];
-  
+
   // Metadados
   pdf_url?: string;
   pdf_gerado_em?: string;
@@ -86,14 +91,14 @@ export interface BookVolumetriaData {
   sla_medio: number; // Percentual médio dos últimos 5 meses
   sla_medio_variacao?: number; // Variação vs mês anterior (pode ser positiva ou negativa)
   total_backlog: number;
-  
+
   // Gráfico: Chamados por Semestre
   chamados_semestre: ChamadosSemestreData[];
-  
+
   // Card lateral: Chamados por Grupo
   chamados_por_grupo: ChamadosPorGrupoData[];
   taxa_resolucao: number; // Percentual
-  
+
   // Tabela: Backlog Atualizado por Causa
   backlog_por_causa: BacklogPorCausaData[];
 }
@@ -130,19 +135,19 @@ export interface BookSLAData {
   sla_percentual: number;
   meta_percentual: number;
   status: 'no_prazo' | 'vencido'; // Se está acima ou abaixo da meta
-  
+
   // Cards de métricas
   fechados: number;
   incidentes: number;
   consultorias_fechadas: number; // Incidentes com cod_resolucao do tipo Consultoria
   violados: number;
-  
+
   // Gráfico: SLA Histórico Mensal
   sla_historico: SLAHistoricoData[];
-  
+
   // Tabela: Chamados Violados
   chamados_violados: ChamadoVioladoData[];
-  
+
   // Elegibilidade do SLA
   sla_elegivel?: boolean; // Se o volume de incidentes é >= quantidade mínima
   mensagem_nao_elegivel?: string; // Mensagem quando não é elegível
@@ -173,13 +178,13 @@ export interface BookBacklogData {
   total: number;
   incidente: number;
   solicitacao: number;
-  
+
   // Gráfico: Aging dos Chamados
   aging_chamados: AgingChamadosData[];
-  
+
   // Card lateral: Distribuição por Grupo
   distribuicao_por_grupo: DistribuicaoPorGrupoData[];
-  
+
   // Tabela: Backlog por Causa
   backlog_por_causa: BacklogPorCausaData[];
 }
@@ -209,16 +214,16 @@ export interface BookConsumoData {
   percentual_consumido: number; // Ex: 100 (percentual total em relação ao baseline)
   percentual_incidente: number; // Ex: 35 (percentual de incidente em relação ao total)
   percentual_solicitacao: number; // Ex: 65 (percentual de solicitação em relação ao total)
-  
+
   // Gráfico: Histórico de Consumo Mensal
   historico_consumo: HistoricoConsumoData[];
-  
+
   // Gráfico: Distribuição de Causa
   distribuicao_causa: DistribuicaoCausaData[];
-  
+
   // Lista de Requerimentos Descontados
   requerimentos_descontados?: RequerimentoDescontadoData[];
-  
+
   // Total geral
   total_geral: number;
 
@@ -266,8 +271,8 @@ export interface RequerimentoDescontadoData {
 }
 
 /**
- * Requerimentos em desenvolvimento (status = 'lancado')
- * Exibidos em aba própria quando existirem
+ * Linha das abas de requerimentos do book: em desenvolvimento (status = 'lancado')
+ * e faturados no mês. Cada aba é exibida quando existirem requerimentos.
  */
 export interface RequerimentoEmDesenvolvimentoData {
   id: string;
@@ -275,6 +280,7 @@ export interface RequerimentoEmDesenvolvimentoData {
   ticket_externo?: string;
   cliente: string;
   modulo: string;
+  descricao?: string;
   tipo_cobranca: string;
   horas_funcional: string;
   horas_tecnica: string;
@@ -301,7 +307,7 @@ export interface DistribuicaoCausaData {
 
 /**
  * Dados de pesquisa (satisfação do cliente)
- * 
+ *
  * REGRA DE NEGÓCIO:
  * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
  * - Pesquisas com data_resposta preenchido = RESPONDIDAS
@@ -314,20 +320,20 @@ export interface BookPesquisaData {
   pesquisas_respondidas: number;
   pesquisas_nao_respondidas: number;
   pesquisas_enviadas: number;
-  
+
   // Tabela: Resumo de Pesquisas
   resumo_pesquisas: ResumoPesquisaData[];
-  
+
   // Gráfico: % Pesquisa Aderência
   percentual_aderencia: number;
-  
+
   // Nível de Satisfação
   nivel_satisfacao: {
     insatisfeito: number;
     neutro: number;
     satisfeito: number;
   };
-  
+
   // Mensagem quando não há dados
   sem_avaliacoes: boolean;
 }
@@ -367,7 +373,7 @@ export interface BookListItem {
   destinatarios_envio?: string[];
   // Periodicidade customizada de apuração
   dia_inicio_apuracao?: number; // Default 1 = período padrão
-  dia_fim_apuracao?: number;    // Default 0 = último dia do mês
+  dia_fim_apuracao?: number; // Default 0 = último dia do mês
 }
 
 /**
@@ -471,7 +477,7 @@ export const BOOK_STATUS_LABELS: Record<BookStatus, string> = {
   gerado: 'Gerado',
   erro: 'Erro',
   desatualizado: 'Aguardando nova geração',
-  enviado: 'Enviado'
+  enviado: 'Enviado',
 };
 
 export const BOOK_STATUS_COLORS: Record<BookStatus, string> = {
@@ -480,7 +486,7 @@ export const BOOK_STATUS_COLORS: Record<BookStatus, string> = {
   gerado: 'bg-green-100 text-green-800',
   erro: 'bg-red-100 text-red-800',
   desatualizado: 'bg-yellow-100 text-yellow-800',
-  enviado: 'bg-purple-100 text-purple-800'
+  enviado: 'bg-purple-100 text-purple-800',
 };
 
 export const BOOK_TABS_LABELS: Record<BookTab, string> = {
@@ -490,7 +496,7 @@ export const BOOK_TABS_LABELS: Record<BookTab, string> = {
   backlog: 'Backlog',
   consumo: 'Consumo',
   pesquisa: 'Pesquisa',
-  portfolio: 'Portfólio'
+  portfolio: 'Portfólio',
 };
 
 export const MESES_LABELS: Record<number, string> = {
@@ -505,7 +511,7 @@ export const MESES_LABELS: Record<number, string> = {
   9: 'Setembro',
   10: 'Outubro',
   11: 'Novembro',
-  12: 'Dezembro'
+  12: 'Dezembro',
 };
 
 export const MESES_ABREVIADOS: Record<number, string> = {
@@ -520,7 +526,7 @@ export const MESES_ABREVIADOS: Record<number, string> = {
   9: 'SET',
   10: 'OUT',
   11: 'NOV',
-  12: 'DEZ'
+  12: 'DEZ',
 };
 
 // ============================================================================

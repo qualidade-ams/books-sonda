@@ -24,6 +24,7 @@ export const REQUERIMENTOS_QUERY_KEYS = {
   naoEnviados: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'nao-enviados'] as const,
   enviados: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'enviados', filtros] as const,
   faturamento: (mes?: number, ano?: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento', mes, ano] as const,
+  pendentesAnteriores: (mes: number, ano: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'pendentes-anteriores', mes, ano] as const,
   clientes: () => ['clientes-requerimentos'] as const,
   estatisticas: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'estatisticas', filtros] as const
 };
@@ -86,6 +87,18 @@ export function useRequerimentosFaturamento(mes?: number, ano?: number) {
   return useQuery({
     queryKey: REQUERIMENTOS_QUERY_KEYS.faturamento(mes, ano),
     queryFn: () => requerimentosService.gerarDadosFaturamento(mesCobranca),
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    gcTime: 1000 * 60 * 10, // 10 minutos
+  });
+}
+
+/**
+ * Hook para listar meses anteriores ao informado com requerimentos pendentes de envio
+ */
+export function useMesesPendentesAnteriores(mes: number, ano: number) {
+  return useQuery({
+    queryKey: REQUERIMENTOS_QUERY_KEYS.pendentesAnteriores(mes, ano),
+    queryFn: () => requerimentosService.listarMesesPendentesAnteriores(mes, ano),
     staleTime: 1000 * 60 * 5, // 5 minutos
     gcTime: 1000 * 60 * 10, // 10 minutos
   });

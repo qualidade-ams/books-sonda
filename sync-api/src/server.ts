@@ -18,48 +18,26 @@ import { sincronizarPesquisasIncremental, sincronizarPesquisaPorNroCaso } from '
 import { executarDeteccaoInconsistencias } from './services/inconsistenciasDeteccaoService';
 import { sincronizarCodigoResolucaoIncremental } from './services/incrementalSyncCodigoResolucaoService';
 import { corrigirCamposNull } from './services/fixNullFieldsService';
+import { COLUNA_DATA_ULTIMA_NOTA_PUBLICA, dataUltimaAtualizacaoTicket } from './utils/atualizacaoTicket';
 import { criarDeteccaoAjustesRetroativos } from './services/deteccaoAjustesRetroativosService';
 import { criarOrquestradorSync } from './scheduler/orquestradorSync';
 import { criarAgendador } from './scheduler/agendador';
 import { criarRotasSyncJobs } from './scheduler/rotas';
+import { criarAgendadorSaldoParcial } from './scheduler/agendadorSaldoParcial';
+import { criarRotasSaldoParcial } from './scheduler/rotasSaldoParcial';
+import { criarExecutorSaldoParcial } from './services/envioSaldoParcialService';
+import { criarExecutorGeracaoBooks, criarGeradorPdfBook } from './services/geracaoBooksService';
+import { criarRenderizadorImagem } from './services/renderImagemService';
+import { criarEnviadorWebhook } from './services/webhookEmailService';
 import { hostDeEscuta } from './utils/rede';
+import { criarSqlConfig } from './config/sqlConfig';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // Credenciais vêm exclusivamente do ambiente — nunca hardcode valor real aqui.
-const requireEnv = (name: string): string => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(
-      `Variável de ambiente obrigatória ausente: ${name}. Configure-a antes de iniciar o serviço.`
-    );
-  }
-  return value;
-};
-
-// Configuração SQL Server
-const sqlConfig: sql.config = {
-  server: requireEnv('SQL_SERVER'),
-  port: parseInt(process.env.SQL_PORT || '10443'),
-  database: requireEnv('SQL_DATABASE'),
-  user: requireEnv('SQL_USER'),
-  password: requireEnv('SQL_PASSWORD'),
-  options: {
-    encrypt: false, // Para SQL Server local
-    trustServerCertificate: true,
-    enableArithAbort: true,
-    connectTimeout: 30000, // 30 segundos
-    requestTimeout: 30000,
-    useUTC: false // IMPORTANTE: Não converter datas para UTC
-  },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000
-  }
-};
+const sqlConfig = criarSqlConfig();
 
 // Cliente Supabase
 const supabase = createClient(
@@ -3367,6 +3345,7 @@ app.post('/api/sync-tickets-by-ids', async (req, res) => {
         [Data da aprovação (somente se aprovado)] as Data_Aprovacao,
         [Data Real da Entrega] as Data_Real_Entrega,
         [data_ultima_nota (Date-Hour-Minute-Second)] as Data_Ultima_Nota,
+        ${COLUNA_DATA_ULTIMA_NOTA_PUBLICA} as Data_Ultima_Nota_Publica,
         [data_ultimo_comentario (Date-Hour-Minute-Second)] as Data_Ultimo_Comentario,
         Status,
         Prioridade,
@@ -3452,6 +3431,7 @@ app.post('/api/sync-tickets-by-ids', async (req, res) => {
           data_aprovacao: formatarDataSemTimezone(registro.Data_Aprovacao),
           data_real_entrega: formatarDataSemTimezone(registro.Data_Real_Entrega),
           data_ultima_nota: formatarDataSemTimezone(registro.Data_Ultima_Nota),
+          data_ultima_nota_publica: formatarDataSemTimezone(registro.Data_Ultima_Nota_Publica),
           data_ultimo_comentario: formatarDataSemTimezone(registro.Data_Ultimo_Comentario),
           status: registro.Status || null,
           prioridade: registro.Prioridade || null,
@@ -3479,7 +3459,9 @@ app.post('/api/sync-tickets-by-ids', async (req, res) => {
           tempo_restante_tds_em_minutos: registro.Tempo_Restante_TDS_em_Minutos || null,
           tempo_real_tda: registro.Tempo_Real_TDA || null,
           total_orcamento: registro.Total_Orcamento || null,
-          source_updated_at: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+          source_updated_at: formatarDataSemTimezone(
+            dataUltimaAtualizacaoTicket(registro.Data_Ultima_Modificacao, registro.Data_Ultima_Nota_Publica)
+          ),
           synced_at: new Date().toISOString()
         };
 
@@ -4077,8 +4059,22 @@ app.post('/api/detectar-inconsistencias', async (req, res) => {
 // ============================================================
 const deteccaoRetroativos = criarDeteccaoAjustesRetroativos(supabase);
 
+// Geração automática de books (agendamentos do tipo "books" na tela "Sincronização SQL Server").
+// Divide a trava do orquestrador com a sincronização: uma espera a outra terminar.
+let gerarBooks: ReturnType<typeof criarExecutorGeracaoBooks> | undefined;
+try {
+  gerarBooks = criarExecutorGeracaoBooks({
+    supabase,
+    geradorPdf: criarGeradorPdfBook({ appUrl: process.env.APP_URL || '', fetch }),
+    enviador: criarEnviadorWebhook({ supabase, fetch }),
+  });
+} catch (e) {
+  console.error('[BOOKS] Pacote vendor/geracaoBooks.cjs não carregou:', e instanceof Error ? e.message : e);
+}
+
 const orquestradorSync = criarOrquestradorSync({
   supabase,
+  gerarBooks,
   // Pool próprio: os handlers antigos fecham o pool global do mssql
   abrirPool: async () => {
     const pool = await new sql.ConnectionPool(sqlConfig).connect();
@@ -4088,7 +4084,7 @@ const orquestradorSync = criarOrquestradorSync({
     pesquisas: (pool, dataInicial) => sincronizarPesquisasIncremental(pool, dataInicial),
     especialistas: async (pool) => (await executarSyncEspecialistas(pool)).resultado,
     apontamentos: (pool) => sincronizarApontamentosIncremental(pool),
-    tickets: (pool) => sincronizarTicketsIncremental(pool),
+    tickets: (pool, dataInicial) => sincronizarTicketsIncremental(pool, dataInicial),
     codigoResolucao: (pool) => sincronizarCodigoResolucaoIncremental(pool, supabase),
     validacao: (pool) => executarValidacaoSync(pool),
     inconsistencias: () => executarDeteccaoInconsistencias(supabase),
@@ -4100,6 +4096,20 @@ const orquestradorSync = criarOrquestradorSync({
 const agendadorSync = criarAgendador({ supabase, orquestrador: orquestradorSync });
 
 app.use('/api/sync-jobs', criarRotasSyncJobs(supabase, orquestradorSync, () => agendadorSync.ativo()));
+
+// ============================================================
+// ENVIO AUTOMÁTICO DE SALDO PARCIAL (tela "Envio Automático de Saldo Parcial")
+// ============================================================
+const agendadorSaldoParcial = criarAgendadorSaldoParcial({
+  supabase,
+  executarEnvio: criarExecutorSaldoParcial({
+    supabase,
+    renderizador: criarRenderizadorImagem({ url: process.env.RENDER_IMAGE_URL || '', fetch }),
+    enviador: criarEnviadorWebhook({ supabase, fetch }),
+  }),
+});
+
+app.use('/api/saldo-parcial', criarRotasSaldoParcial(supabase, agendadorSaldoParcial, !!process.env.RENDER_IMAGE_URL));
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = hostDeEscuta(process.env);
@@ -4113,6 +4123,24 @@ app.listen(PORT, HOST, () => {
     );
   } else {
     console.log('[AGENDADOR] Desligado (defina SCHEDULER_ENABLED=true para ativar)');
+  }
+
+  if (!process.env.APP_URL) {
+    console.error('[BOOKS] APP_URL não configurada: a geração automática de books vai falhar ao gerar o PDF');
+  }
+
+  if (!process.env.RENDER_IMAGE_URL) {
+    console.error('[SALDO PARCIAL] RENDER_IMAGE_URL não configurada: nenhum Saldo Parcial será enviado (a imagem das tabelas é obrigatória)');
+  }
+
+  // Envio automático de Saldo Parcial: chave própria para ligar só depois de validar
+  // o "Executar agora" da tela (e nunca em máquina de desenvolvimento).
+  if (process.env.SALDO_PARCIAL_SCHEDULER_ENABLED === 'true') {
+    agendadorSaldoParcial.iniciar().catch((e) =>
+      console.error('[SALDO PARCIAL] Falha ao iniciar o agendador:', e instanceof Error ? e.message : e)
+    );
+  } else {
+    console.log('[SALDO PARCIAL] Agendador desligado (defina SALDO_PARCIAL_SCHEDULER_ENABLED=true para ativar)');
   }
 
   console.log(`

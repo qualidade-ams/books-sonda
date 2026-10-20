@@ -33,19 +33,27 @@ class BooksVersioningService {
    */
   async registrarEnvio(
     bookId: string,
-    destinatarios: string[]
+    destinatarios: string[],
+    /** Geração automática (sync-api, sem sessão): quem fica como "enviado por" */
+    opcoes?: { usuarioId: string | null }
   ): Promise<{ success: boolean; versaoId?: string; error?: string }> {
     try {
-      // Obter usuário atual
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'Usuário não autenticado' };
+      let usuarioId: string | null;
+      if (opcoes) {
+        usuarioId = opcoes.usuarioId;
+      } else {
+        // Obter usuário atual
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          return { success: false, error: 'Usuário não autenticado' };
+        }
+        usuarioId = user.id;
       }
 
       // Chamar função RPC do banco
       const { data, error } = await supabase.rpc('registrar_envio_book', {
         p_book_id: bookId,
-        p_usuario_id: user.id,
+        p_usuario_id: usuarioId,
         p_destinatarios: destinatarios
       });
 

@@ -107,8 +107,7 @@ export default async function handler(
       });
     } else {
       console.log('🔧 Usando @sparticuz/chromium (Vercel)...');
-      const chromiumModule = await import('@sparticuz/chromium');
-      const chromium = chromiumModule.default || chromiumModule;
+      const { default: chromium } = await import('@sparticuz/chromium');
       const executablePath = await chromium.executablePath();
       console.log('📍 Chromium path:', executablePath);
       browser = await puppeteer.launch({

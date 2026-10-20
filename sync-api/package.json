@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "build": "tsc",
+    "build:saldo-parcial": "node scripts/build-saldo-parcial.mjs",
+    "build:geracao-books": "node scripts/build-geracao-books.mjs",
     "start": "node dist/server.js",
     "test:sync": "ts-node scripts/test-sync-validation.ts"
   },

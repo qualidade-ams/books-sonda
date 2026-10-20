@@ -10,7 +10,7 @@ import type {
   BooksStats,
   BookGeracaoConfig,
   BooksGeracaoLoteResult,
-  BookGeracaoResult
+  BookGeracaoResult,
 } from '@/types/books';
 import { supabase } from '@/integrations/supabase/client';
 import { MESES_LABELS } from '@/types/books';
@@ -26,12 +26,38 @@ class BooksService {
    * - tem_ams: true
    * - tipo_book: 'qualidade'
    */
-  async listarBooks(filtros: BooksFiltros): Promise<BookListItem[]> {
+  /**
+   * Empresas que recebem book (mesmo critério de listarBooks: ativas, com AMS e book de qualidade).
+   * Usada para escolher empresas na geração automática de books.
+   */
+  async listarEmpresasBook(): Promise<{ id: string; nome: string }[]> {
+    const { data, error } = await supabase
+      .from('empresas_clientes')
+      .select('id, nome_abreviado, nome_completo')
+      .eq('status', 'ativo')
+      .eq('tem_ams', true)
+      .eq('tipo_book', 'qualidade')
+      .order('nome_abreviado');
+
+    if (error) throw error;
+    return (data || []).map((e) => ({ id: e.id, nome: e.nome_abreviado || e.nome_completo }));
+  }
+
+  /**
+   * @param opcoes.propagarErro lança o erro em vez de devolver a lista de exemplo
+   *   (a geração automática de books não pode processar empresas fictícias)
+   */
+  async listarBooks(
+    filtros: BooksFiltros,
+    opcoes?: { propagarErro?: boolean }
+  ): Promise<BookListItem[]> {
     try {
       // PASSO 1: Buscar empresas que atendem aos critérios
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select('id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao, inicio_vigencia')
+        .select(
+          'id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao, inicio_vigencia'
+        )
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
@@ -43,31 +69,37 @@ class BooksService {
       }
 
       if (!empresas || empresas.length === 0) {
-        console.log('Nenhuma empresa encontrada com os critérios: ativo + tem_ams + tipo_book qualidade');
+        console.log(
+          'Nenhuma empresa encontrada com os critérios: ativo + tem_ams + tipo_book qualidade'
+        );
         return [];
       }
 
       // PASSO 1.5: Filtrar empresas cuja vigência já havia iniciado no mês de referência
       // O mês de referência é filtros.mes/filtros.ano (o book de Maio/2026 tem referência Abril/2026)
       // A empresa só aparece se inicio_vigencia <= último dia do mês de referência
-      const empresasFiltradas = empresas.filter(empresa => {
+      const empresasFiltradas = empresas.filter((empresa) => {
         if (!empresa.inicio_vigencia) return true; // Sem vigência definida = sempre visível
-        
+
         const [anoVigencia, mesVigencia] = empresa.inicio_vigencia.split('-').map(Number);
-        
+
         // Empresa aparece se o mês de referência >= mês de início da vigência
         if (filtros.ano > anoVigencia) return true;
         if (filtros.ano === anoVigencia && filtros.mes >= mesVigencia) return true;
-        
+
         return false;
       });
 
-      console.log(`📊 Empresas encontradas: ${empresas.length} total, ${empresasFiltradas.length} com vigência válida para ${String(filtros.mes).padStart(2, '0')}/${filtros.ano}`);
+      console.log(
+        `📊 Empresas encontradas: ${empresas.length} total, ${empresasFiltradas.length} com vigência válida para ${String(filtros.mes).padStart(2, '0')}/${filtros.ano}`
+      );
 
       // PASSO 2: Buscar books existentes para o período
       const { data: booksExistentes, error: booksError } = await (supabase as any)
         .from('books')
-        .select('id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url, versao_atual, enviado_em, enviado_por, destinatarios_envio')
+        .select(
+          'id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url, versao_atual, enviado_em, enviado_por, destinatarios_envio'
+        )
         .eq('mes', filtros.mes)
         .eq('ano', filtros.ano);
 
@@ -78,14 +110,14 @@ class BooksService {
 
       // PASSO 3: Criar mapa de books por empresa_id
       const booksMap = new Map<string, any>();
-      (booksExistentes || []).forEach(book => {
+      (booksExistentes || []).forEach((book) => {
         booksMap.set(book.empresa_id, book);
       });
 
       // PASSO 4: Montar lista combinando empresas com books (se existirem)
-      let books: BookListItem[] = empresasFiltradas.map(empresa => {
+      let books: BookListItem[] = empresasFiltradas.map((empresa) => {
         const book = booksMap.get(empresa.id);
-        
+
         return {
           id: book?.id || `temp-${empresa.id}`, // ID temporário se não tem book
           empresa_id: empresa.id,
@@ -97,39 +129,47 @@ class BooksService {
           data_geracao: book?.created_at,
           data_atualizacao: book?.updated_at,
           pdf_url: book?.pdf_url,
-          tem_dados: book?.status === 'gerado' || book?.status === 'enviado' || book?.status === 'desatualizado',
+          tem_dados:
+            book?.status === 'gerado' ||
+            book?.status === 'enviado' ||
+            book?.status === 'desatualizado',
           versao_atual: book?.versao_atual || 1,
           enviado_em: book?.enviado_em,
           enviado_por: book?.enviado_por,
           destinatarios_envio: book?.destinatarios_envio,
           dia_inicio_apuracao: (empresa as any).dia_inicio_apuracao ?? 1,
-          dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0
+          dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0,
         };
       });
 
       // PASSO 5: Aplicar filtros adicionais
       if (filtros.status && filtros.status.length > 0) {
-        books = books.filter(b => filtros.status!.includes(b.status));
+        books = books.filter((b) => filtros.status!.includes(b.status));
       }
 
       if (filtros.busca) {
         const busca = filtros.busca.toLowerCase();
-        books = books.filter(b => 
-          b.empresa_nome.toLowerCase().includes(busca) ||
-          (b.empresa_nome_abreviado && b.empresa_nome_abreviado.toLowerCase().includes(busca))
+        books = books.filter(
+          (b) =>
+            b.empresa_nome.toLowerCase().includes(busca) ||
+            (b.empresa_nome_abreviado && b.empresa_nome_abreviado.toLowerCase().includes(busca))
         );
       }
 
       if (filtros.apenas_com_dados) {
-        books = books.filter(b => b.tem_dados);
+        books = books.filter((b) => b.tem_dados);
       }
 
-      console.log(`📊 Books listados: ${books.length} empresas (${booksExistentes?.length || 0} com books gerados)`);
-      
+      console.log(
+        `📊 Books listados: ${books.length} empresas (${booksExistentes?.length || 0} com books gerados)`
+      );
+
       return books;
     } catch (error) {
       console.error('Erro ao listar books:', error);
-      
+
+      if (opcoes?.propagarErro) throw error;
+
       // Fallback para dados mockados em caso de erro
       const mockBooks: BookListItem[] = [
         {
@@ -141,7 +181,7 @@ class BooksService {
           status: 'gerado',
           data_geracao: '2026-02-10T10:00:00Z',
           tem_dados: true,
-          pdf_url: '/books/abbott_02_2026.pdf'
+          pdf_url: '/books/abbott_02_2026.pdf',
         },
         {
           id: '2',
@@ -152,7 +192,7 @@ class BooksService {
           status: 'gerado',
           data_geracao: '2026-02-10T10:05:00Z',
           tem_dados: true,
-          pdf_url: '/books/abbvie_02_2026.pdf'
+          pdf_url: '/books/abbvie_02_2026.pdf',
         },
         {
           id: '3',
@@ -161,8 +201,8 @@ class BooksService {
           mes: filtros.mes,
           ano: filtros.ano,
           status: 'pendente',
-          tem_dados: false
-        }
+          tem_dados: false,
+        },
       ];
 
       return mockBooks;
@@ -174,12 +214,13 @@ class BooksService {
    */
   async buscarBookPorId(bookId: string): Promise<BookData | null> {
     console.log('🔍 booksService.buscarBookPorId - Iniciando busca:', bookId);
-    
+
     try {
       console.log('📡 booksService - Fazendo query no Supabase...');
       const { data, error } = await (supabase as any)
         .from('books')
-        .select(`
+        .select(
+          `
           id,
           empresa_id,
           mes,
@@ -198,11 +239,13 @@ class BooksService {
           dados_pesquisa,
           dados_consumo_segmentado,
           dados_requerimentos_em_desenvolvimento,
+          dados_requerimentos_faturados,
           empresas_clientes (
             nome_completo,
             nome_abreviado
           )
-        `)
+        `
+        )
         .eq('id', bookId)
         .single();
 
@@ -220,13 +263,13 @@ class BooksService {
         id: data.id,
         empresa: data.empresas_clientes?.nome_completo,
         mes: data.mes,
-        ano: data.ano
+        ano: data.ano,
       });
 
       // Log para debug
       console.log('📊 Dados da empresa:', {
         nome_completo: data.empresas_clientes?.nome_completo,
-        nome_abreviado: data.empresas_clientes?.nome_abreviado
+        nome_abreviado: data.empresas_clientes?.nome_abreviado,
       });
 
       // Transformar dados do Supabase para o formato esperado
@@ -236,7 +279,7 @@ class BooksService {
       console.log('📊 Dados do backlog do banco:', {
         dados_backlog: data.dados_backlog,
         tem_backlog_por_causa: !!data.dados_backlog?.backlog_por_causa,
-        backlog_por_causa_length: data.dados_backlog?.backlog_por_causa?.length || 0
+        backlog_por_causa_length: data.dados_backlog?.backlog_por_causa?.length || 0,
       });
 
       const bookData: BookData = {
@@ -251,7 +294,7 @@ class BooksService {
         pdf_url: data.pdf_url,
         pdf_gerado_em: data.pdf_gerado_em,
         erro_detalhes: data.erro_detalhes,
-        
+
         // Dados congelados (snapshot)
         // SEMPRE usar nome_abreviado da empresa, mesmo se já existe no snapshot
         capa: {
@@ -261,28 +304,31 @@ class BooksService {
           periodo,
           mes: data.mes,
           ano: data.ano,
-          data_geracao: data.dados_capa?.data_geracao || new Date(data.created_at).toLocaleDateString('pt-BR')
+          data_geracao:
+            data.dados_capa?.data_geracao || new Date(data.created_at).toLocaleDateString('pt-BR'),
         },
         volumetria: data.dados_volumetria || this.getVolumetriaVazia(),
         sla: data.dados_sla || this.getSLAVazio(),
         backlog: {
           ...(data.dados_backlog || this.getBacklogVazio()),
           // Garantir que backlog_por_causa sempre seja um array
-          backlog_por_causa: data.dados_backlog?.backlog_por_causa || this.getBacklogVazio().backlog_por_causa
+          backlog_por_causa:
+            data.dados_backlog?.backlog_por_causa || this.getBacklogVazio().backlog_por_causa,
         },
         consumo: data.dados_consumo || this.getConsumoVazio(),
         pesquisa: data.dados_pesquisa || this.getPesquisaVazia(),
         consumo_segmentado: data.dados_consumo_segmentado || undefined,
-        requerimentos_em_desenvolvimento: data.dados_requerimentos_em_desenvolvimento || undefined
+        requerimentos_em_desenvolvimento: data.dados_requerimentos_em_desenvolvimento || undefined,
+        requerimentos_faturados: data.dados_requerimentos_faturados || undefined,
       };
 
       return bookData;
     } catch (error) {
       console.error('Erro ao buscar book:', error);
-      
+
       // Fallback para dados mockados
       // Fallback para dados mockados
-      
+
       const mockBook: BookData = {
         id: bookId,
         empresa_id: 'emp1',
@@ -291,20 +337,20 @@ class BooksService {
         ano: 2026,
         status: 'gerado',
         data_geracao: '2026-02-10T10:00:00Z',
-        
+
         capa: {
           empresa_nome: 'ABBOTT',
           periodo: 'Fevereiro 2026',
           mes: 2,
           ano: 2026,
-          data_geracao: '10/02/2026'
+          data_geracao: '10/02/2026',
         },
-        
+
         volumetria: this.getVolumetriaVazia(),
         sla: this.getSLAVazio(),
         backlog: this.getBacklogVazio(),
         consumo: this.getConsumoVazio(),
-        pesquisa: this.getPesquisaVazia()
+        pesquisa: this.getPesquisaVazia(),
       };
 
       return mockBook;
@@ -335,7 +381,7 @@ class BooksService {
       }
 
       // Filtrar empresas cuja vigência já havia iniciado no mês de referência
-      const empresasFiltradas = (empresas || []).filter(empresa => {
+      const empresasFiltradas = (empresas || []).filter((empresa) => {
         if (!empresa.inicio_vigencia) return true;
         const [anoVigencia, mesVigencia] = empresa.inicio_vigencia.split('-').map(Number);
         if (ano > anoVigencia) return true;
@@ -344,7 +390,11 @@ class BooksService {
       });
 
       const totalEmpresas = empresasFiltradas.length;
-      console.log('📊 [buscarEstatisticas] Total de empresas:', totalEmpresas, `(filtradas por vigência <= ${String(mes).padStart(2, '0')}/${ano})`);
+      console.log(
+        '📊 [buscarEstatisticas] Total de empresas:',
+        totalEmpresas,
+        `(filtradas por vigência <= ${String(mes).padStart(2, '0')}/${ano})`
+      );
 
       // PASSO 2: Buscar books existentes para o período
       const { data: books, error: booksError } = await (supabase as any)
@@ -363,32 +413,34 @@ class BooksService {
       // PASSO 3: Calcular estatísticas
       // Status que indicam que o book já foi gerado/enviado com sucesso
       const statusConcluidos: string[] = ['gerado', 'enviado'];
-      
+
       // Criar set de IDs de empresas válidas para filtrar books relevantes
-      const empresasValidas = new Set(empresasFiltradas.map(e => e.id));
-      
+      const empresasValidas = new Set(empresasFiltradas.map((e) => e.id));
+
       // Filtrar apenas books de empresas que estão no universo válido
-      const booksRelevantes = books?.filter(b => empresasValidas.has(b.empresa_id)) || [];
-      
+      const booksRelevantes = books?.filter((b) => empresasValidas.has(b.empresa_id)) || [];
+
       // Empresas únicas que têm books gerados/enviados (dentro do universo válido)
       const empresasComBooksGerados = new Set(
-        booksRelevantes.filter(b => statusConcluidos.includes(b.status)).map(b => b.empresa_id)
+        booksRelevantes.filter((b) => statusConcluidos.includes(b.status)).map((b) => b.empresa_id)
       );
-      
+
       const booksGerados = empresasComBooksGerados.size;
-      
+
       // Books pendentes = empresas válidas que NÃO têm books gerados/enviados
       const booksPendentes = totalEmpresas - booksGerados;
-      
+
       // Books atualizados = empresas únicas com books que têm updated_at diferente de created_at
       const empresasAtualizadas = new Set(
-        booksRelevantes.filter(b => {
-          if (!b.created_at || !b.updated_at) return false;
-          return new Date(b.updated_at).getTime() - new Date(b.created_at).getTime() > 1000;
-        }).map(b => b.empresa_id)
+        booksRelevantes
+          .filter((b) => {
+            if (!b.created_at || !b.updated_at) return false;
+            return new Date(b.updated_at).getTime() - new Date(b.created_at).getTime() > 1000;
+          })
+          .map((b) => b.empresa_id)
       );
       const booksAtualizados = empresasAtualizadas.size;
-      
+
       const resultado = {
         total_empresas: totalEmpresas,
         books_gerados: booksGerados,
@@ -396,15 +448,15 @@ class BooksService {
         books_atualizados: booksAtualizados,
         total_horas: '0h00min', // Deprecated - manter por compatibilidade
         valor_total: 0, // Deprecated - manter por compatibilidade
-        valores_selecionados: 0 // Deprecated - manter por compatibilidade
+        valores_selecionados: 0, // Deprecated - manter por compatibilidade
       };
 
       console.log('✅ [buscarEstatisticas] Estatísticas calculadas:', resultado);
-      
+
       return resultado;
     } catch (error) {
       console.error('❌ [buscarEstatisticas] Erro geral:', error);
-      
+
       return {
         total_empresas: 0,
         books_gerados: 0,
@@ -412,7 +464,7 @@ class BooksService {
         books_atualizados: 0,
         total_horas: '0h00min',
         valor_total: 0,
-        valores_selecionados: 0
+        valores_selecionados: 0,
       };
     }
   }
@@ -421,8 +473,8 @@ class BooksService {
    * Calcula estatísticas de empresas selecionadas
    */
   async calcularEstatisticasSelecao(
-    empresaIds: string[], 
-    mes: number, 
+    empresaIds: string[],
+    mes: number,
     ano: number
   ): Promise<{ total_horas: string; valor_total: number }> {
     try {
@@ -432,17 +484,17 @@ class BooksService {
 
       // TODO: Implementar cálculo real baseado em dados de chamados/horas
       // Por enquanto, retorna valores proporcionais mockados
-      
+
       const { count: totalEmpresas } = await supabase
         .from('empresas_clientes')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'ativo');
 
       const proporcao = empresaIds.length / (totalEmpresas || 1);
-      
+
       return {
         total_horas: `${Math.round(455 * proporcao)}h20min`,
-        valor_total: Math.round(26554.92 * proporcao)
+        valor_total: Math.round(26554.92 * proporcao),
       };
     } catch (error) {
       console.error('Erro ao calcular estatísticas de seleção:', error);
@@ -456,7 +508,7 @@ class BooksService {
   async gerarBooksLote(config: BookGeracaoConfig): Promise<BooksGeracaoLoteResult> {
     try {
       const resultados: BookGeracaoResult[] = [];
-      
+
       for (const empresaId of config.empresa_ids) {
         try {
           // Buscar empresa
@@ -471,7 +523,7 @@ class BooksService {
               sucesso: false,
               empresa_id: empresaId,
               empresa_nome: 'Empresa não encontrada',
-              erro: 'Empresa não encontrada'
+              erro: 'Empresa não encontrada',
             });
             continue;
           }
@@ -495,7 +547,7 @@ class BooksService {
               sucesso: true,
               book_id: bookExistente.id,
               empresa_id: empresaId,
-              empresa_nome: empresa.nome_completo
+              empresa_nome: empresa.nome_completo,
             });
             continue;
           }
@@ -506,12 +558,10 @@ class BooksService {
             // 1. Reabrir período (deleta o fechamento/snapshot antigo)
             // Não-crítico: se falhar, calcularMes() usará dados em tempo real de qualquer forma
             try {
-              await bancoHorasQuarentenaService.reabrirPeriodo(
-                empresaId,
-                config.mes,
-                config.ano
+              await bancoHorasQuarentenaService.reabrirPeriodo(empresaId, config.mes, config.ano);
+              console.log(
+                `🔓 Período ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retificação)`
               );
-              console.log(`🔓 Período ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retificação)`);
             } catch (reabrirError) {
               console.warn('⚠️ Erro ao reabrir período (não crítico, continuando):', reabrirError);
             }
@@ -520,14 +570,19 @@ class BooksService {
             // CRÍTICO: Se falhar, o book seria gerado com valores antigos (requerimentos extemporâneos não refletidos)
             try {
               await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
-              console.log(`🔄 Banco de horas recalculado para empresa ${empresaId} - ${config.mes}/${config.ano}`);
+              console.log(
+                `🔄 Banco de horas recalculado para empresa ${empresaId} - ${config.mes}/${config.ano}`
+              );
             } catch (calcError: any) {
-              console.error(`❌ Erro ao recalcular banco de horas na retificação para ${empresa.nome_abreviado}:`, calcError);
+              console.error(
+                `❌ Erro ao recalcular banco de horas na retificação para ${empresa.nome_abreviado}:`,
+                calcError
+              );
               resultados.push({
                 sucesso: false,
                 empresa_id: empresaId,
                 empresa_nome: empresa.nome_completo,
-                erro: `Banco de horas não pôde ser recalculado na retificação: ${calcError.message || 'Erro desconhecido'}`
+                erro: `Banco de horas não pôde ser recalculado na retificação: ${calcError.message || 'Erro desconhecido'}`,
               });
               continue;
             }
@@ -537,14 +592,19 @@ class BooksService {
             // reajustes e requerimentos — mesmo que já exista um cálculo anterior.
             try {
               await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
-              console.log(`🔄 Banco de horas recalculado para empresa ${empresa.nome_abreviado} - ${config.mes}/${config.ano}`);
+              console.log(
+                `🔄 Banco de horas recalculado para empresa ${empresa.nome_abreviado} - ${config.mes}/${config.ano}`
+              );
             } catch (calcError: any) {
-              console.error(`❌ Erro ao calcular banco de horas para ${empresa.nome_abreviado}:`, calcError);
+              console.error(
+                `❌ Erro ao calcular banco de horas para ${empresa.nome_abreviado}:`,
+                calcError
+              );
               resultados.push({
                 sucesso: false,
                 empresa_id: empresaId,
                 empresa_nome: empresa.nome_completo,
-                erro: `Banco de horas não pôde ser calculado: ${calcError.message || 'Erro desconhecido'}`
+                erro: `Banco de horas não pôde ser calculado: ${calcError.message || 'Erro desconhecido'}`,
               });
               continue;
             }
@@ -562,7 +622,7 @@ class BooksService {
                 .from('books')
                 .update({ status: 'desatualizado', updated_at: new Date().toISOString() })
                 .eq('id', bookExistente.id);
-              
+
               if (statusError) {
                 console.warn('⚠️ Erro ao desbloquear book para atualização:', statusError.message);
               }
@@ -580,8 +640,10 @@ class BooksService {
                 dados_consumo: dadosBook.consumo,
                 dados_pesquisa: dadosBook.pesquisa,
                 dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
-                dados_requerimentos_em_desenvolvimento: dadosBook.requerimentos_em_desenvolvimento || null,
-                updated_at: new Date().toISOString()
+                dados_requerimentos_em_desenvolvimento:
+                  dadosBook.requerimentos_em_desenvolvimento || null,
+                dados_requerimentos_faturados: dadosBook.requerimentos_faturados || null,
+                updated_at: new Date().toISOString(),
               })
               .eq('id', bookExistente.id)
               .select()
@@ -605,7 +667,9 @@ class BooksService {
                 dados_consumo: dadosBook.consumo,
                 dados_pesquisa: dadosBook.pesquisa,
                 dados_consumo_segmentado: dadosBook.consumo_segmentado || null,
-                dados_requerimentos_em_desenvolvimento: dadosBook.requerimentos_em_desenvolvimento || null
+                dados_requerimentos_em_desenvolvimento:
+                  dadosBook.requerimentos_em_desenvolvimento || null,
+                dados_requerimentos_faturados: dadosBook.requerimentos_faturados || null,
               })
               .select()
               .single();
@@ -618,12 +682,14 @@ class BooksService {
             sucesso: true,
             book_id: bookId,
             empresa_id: empresaId,
-            empresa_nome: empresa.nome_completo
+            empresa_nome: empresa.nome_completo,
           });
 
           // Fechar período do banco de horas (snapshot para proteção contra extemporâneos)
           try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
             await bancoHorasQuarentenaService.fecharPeriodo(
               empresaId,
               config.mes,
@@ -633,25 +699,27 @@ class BooksService {
             console.log(`🔒 Período ${config.mes}/${config.ano} fechado para empresa ${empresaId}`);
           } catch (fechamentoError) {
             // Não falhar a geração do book se o fechamento falhar
-            console.warn('⚠️ Erro ao fechar período do banco de horas (não crítico):', fechamentoError);
+            console.warn(
+              '⚠️ Erro ao fechar período do banco de horas (não crítico):',
+              fechamentoError
+            );
           }
-
         } catch (error: any) {
           console.error(`Erro ao gerar book para empresa ${empresaId}:`, error);
           resultados.push({
             sucesso: false,
             empresa_id: empresaId,
             empresa_nome: 'Erro ao processar',
-            erro: error.message
+            erro: error.message,
           });
         }
       }
 
       return {
         total: resultados.length,
-        sucesso: resultados.filter(r => r.sucesso).length,
-        falhas: resultados.filter(r => !r.sucesso).length,
-        resultados
+        sucesso: resultados.filter((r) => r.sucesso).length,
+        falhas: resultados.filter((r) => !r.sucesso).length,
+        resultados,
       };
     } catch (error) {
       console.error('Erro ao gerar books:', error);
@@ -665,11 +733,7 @@ class BooksService {
   private async coletarDadosBook(empresaId: string, mes: number, ano: number) {
     try {
       // Usar serviço de coleta de dados reais
-      const dados = await booksDataCollectorService.coletarDadosCompletos(
-        empresaId,
-        mes,
-        ano
-      );
+      const dados = await booksDataCollectorService.coletarDadosCompletos(empresaId, mes, ano);
 
       return dados;
     } catch (error) {
@@ -679,9 +743,9 @@ class BooksService {
         mes,
         ano,
         errorMessage: error instanceof Error ? error.message : String(error),
-        errorStack: error instanceof Error ? error.stack : undefined
+        errorStack: error instanceof Error ? error.stack : undefined,
       });
-      
+
       // Propagar o erro em vez de usar fallback silencioso
       // O fallback mascarava bugs e gerava books com dados zerados
       throw error;
@@ -693,10 +757,7 @@ class BooksService {
    */
   async deletarBook(bookId: string): Promise<void> {
     try {
-      const { error } = await (supabase as any)
-        .from('books')
-        .delete()
-        .eq('id', bookId);
+      const { error } = await (supabase as any).from('books').delete().eq('id', bookId);
 
       if (error) throw error;
     } catch (error) {
@@ -715,15 +776,13 @@ class BooksService {
         .from('books-pdfs')
         .upload(nomeArquivo, pdfBlob, {
           contentType: 'application/pdf',
-          upsert: true // Sobrescreve se já existir
+          upsert: true, // Sobrescreve se já existir
         });
 
       if (error) throw error;
 
       // Obter URL pública do arquivo
-      const { data: urlData } = supabase.storage
-        .from('books-pdfs')
-        .getPublicUrl(nomeArquivo);
+      const { data: urlData } = supabase.storage.from('books-pdfs').getPublicUrl(nomeArquivo);
 
       const pdfUrl = urlData.publicUrl;
 
@@ -732,7 +791,7 @@ class BooksService {
         .from('books')
         .update({
           pdf_url: pdfUrl,
-          pdf_gerado_em: new Date().toISOString()
+          pdf_gerado_em: new Date().toISOString(),
         })
         .eq('id', bookId);
 
@@ -803,28 +862,68 @@ class BooksService {
         { mes: 'JUNHO', abertos: 7, fechados: 5 },
         { mes: 'JULHO', abertos: 2, fechados: 2 },
         { mes: 'AGOSTO', abertos: 4, fechados: 1 },
-        { mes: 'SETEMBRO', abertos: 7, fechados: 8 }
+        { mes: 'SETEMBRO', abertos: 7, fechados: 8 },
       ],
       chamados_por_grupo: [
-        { grupo: 'IMPORTAÇÃO', total: 14, abertos: 7, fechados: 7, percentual: 50 }
+        { grupo: 'IMPORTAÇÃO', total: 14, abertos: 7, fechados: 7, percentual: 50 },
       ],
       taxa_resolucao: 50,
       backlog_por_causa: [
-        { origem: 'Parametrização', incidente: 0, solicitacao: 8, total: 8, abertos: 5, fechados: 3 },
-        { origem: 'Desenvolvimento Standard (Produto)', incidente: 0, solicitacao: 3, total: 3, abertos: 2, fechados: 1 },
-        { origem: 'Desenvolvimento Específico', incidente: 0, solicitacao: 1, total: 1, abertos: 1, fechados: 0 },
-        { origem: 'Correção Standard', incidente: 2, solicitacao: 0, total: 2, abertos: 0, fechados: 2 }
-      ]
+        {
+          origem: 'Parametrização',
+          incidente: 0,
+          solicitacao: 8,
+          total: 8,
+          abertos: 5,
+          fechados: 3,
+        },
+        {
+          origem: 'Desenvolvimento Standard (Produto)',
+          incidente: 0,
+          solicitacao: 3,
+          total: 3,
+          abertos: 2,
+          fechados: 1,
+        },
+        {
+          origem: 'Desenvolvimento Específico',
+          incidente: 0,
+          solicitacao: 1,
+          total: 1,
+          abertos: 1,
+          fechados: 0,
+        },
+        {
+          origem: 'Correção Standard',
+          incidente: 2,
+          solicitacao: 0,
+          total: 2,
+          abertos: 0,
+          fechados: 2,
+        },
+      ],
     };
   }
 
   private getSLAVazio() {
     // Gerar últimos 6 meses dinamicamente baseado na data atual
-    const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
-                         'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    const MESES_NOMES = [
+      'JANEIRO',
+      'FEVEREIRO',
+      'MARÇO',
+      'ABRIL',
+      'MAIO',
+      'JUNHO',
+      'JULHO',
+      'AGOSTO',
+      'SETEMBRO',
+      'OUTUBRO',
+      'NOVEMBRO',
+      'DEZEMBRO',
+    ];
     const agora = new Date();
     const mesAtual = agora.getMonth() + 1; // 1-12
-    
+
     const historico: { mes: string; percentual: number; status: 'no_prazo' | 'vencido' }[] = [];
     for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
@@ -834,7 +933,7 @@ class BooksService {
       historico.push({
         mes: MESES_NOMES[mes - 1],
         percentual: 0,
-        status: 'no_prazo' as const
+        status: 'no_prazo' as const,
       });
     }
 
@@ -846,7 +945,7 @@ class BooksService {
       incidentes: 0,
       violados: 0,
       sla_historico: historico,
-      chamados_violados: []
+      chamados_violados: [],
     };
   }
 
@@ -859,18 +958,16 @@ class BooksService {
         { faixa: 'ACIMA DE 60 DIAS', solicitacao: 8, incidente: 0, total: 8 },
         { faixa: '05 A 15 DIAS', solicitacao: 3, incidente: 0, total: 3 },
         { faixa: '15 A 30 DIAS', solicitacao: 2, incidente: 0, total: 2 },
-        { faixa: '30 A 60 DIAS', solicitacao: 1, incidente: 0, total: 1 }
+        { faixa: '30 A 60 DIAS', solicitacao: 1, incidente: 0, total: 1 },
       ],
-      distribuicao_por_grupo: [
-        { grupo: 'IMPORTAÇÃO', total: 15, percentual: 100 }
-      ],
+      distribuicao_por_grupo: [{ grupo: 'IMPORTAÇÃO', total: 15, percentual: 100 }],
       backlog_por_causa: [
         { origem: 'Parametrização', incidente: 0, solicitacao: 8, total: 8 },
         { origem: 'Desenvolvimento Standard (Produto)', incidente: 0, solicitacao: 3, total: 3 },
         { origem: 'Correção Standard', incidente: 2, solicitacao: 0, total: 2 },
         { origem: 'Desenvolvimento Específico', incidente: 0, solicitacao: 1, total: 1 },
-        { origem: 'Dúvida / Consultoria', incidente: 0, solicitacao: 1, total: 1 }
-      ]
+        { origem: 'Dúvida / Consultoria', incidente: 0, solicitacao: 1, total: 1 },
+      ],
     };
   }
 
@@ -889,16 +986,16 @@ class BooksService {
         { mes: 'JUN', horas: '14:10', valor_numerico: 14.17 },
         { mes: 'JUL', horas: '03:00', valor_numerico: 3.0 },
         { mes: 'AGO', horas: '16:30', valor_numerico: 16.5 },
-        { mes: 'SET', horas: '26:10', valor_numerico: 26.17 }
+        { mes: 'SET', horas: '26:10', valor_numerico: 26.17 },
       ],
       distribuicao_causa: [
         { causa: 'Parametrização', quantidade: 8, percentual: 53 },
         { causa: 'Desenvolvimento Standard', quantidade: 3, percentual: 20 },
         { causa: 'Correção Standard', quantidade: 2, percentual: 13 },
-        { causa: 'Outros', quantidade: 2, percentual: 13 }
+        { causa: 'Outros', quantidade: 2, percentual: 13 },
       ],
       requerimentos_descontados: [],
-      total_geral: 15
+      total_geral: 15,
     };
   }
 
@@ -912,9 +1009,9 @@ class BooksService {
       nivel_satisfacao: {
         insatisfeito: 0,
         neutro: 0,
-        satisfeito: 0
+        satisfeito: 0,
       },
-      sem_avaliacoes: true
+      sem_avaliacoes: true,
     };
   }
 }
