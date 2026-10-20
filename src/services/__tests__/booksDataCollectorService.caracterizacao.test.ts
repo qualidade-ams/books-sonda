@@ -51,7 +51,11 @@ vi.mock('@/integrations/supabase/client', () => {
         get(_alvo, prop: string) {
           if (prop === 'then') {
             const resposta = estado.respostas.find((r) => r.quando(consulta));
-            const linhas = resposta ? resposta.linhas : tabela === 'empresas_clientes' ? [estado.empresa] : [];
+            const linhas = resposta
+              ? resposta.linhas
+              : tabela === 'empresas_clientes'
+                ? [estado.empresa]
+                : [];
             const resultado =
               modo === 'single'
                 ? linhas.length
@@ -106,29 +110,42 @@ const GRUPOS_AMS_APONTAMENTOS =
 const GRUPOS_AMS_TICKETS =
   'nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%';
 const SELECT_HISTORICO_HORAS = 'tempo_gasto_horas, data_atividade, data_sistema, nro_chamado';
-const SELECT_HISTORICO_TICKETS = 'tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos, cod_tipo';
+const SELECT_HISTORICO_TICKETS =
+  'tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos, cod_tipo';
 const SELECT_HISTORICO_REQUERIMENTOS = 'horas_funcional, horas_tecnico, quantidade_tickets';
 const TRES_ALOCACAO = ['Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocação (Banco=S| SLA=N)'];
 
 // ---------- leitura das consultas registradas ----------
 
 const selectDe = (c: Consulta) => c.chamadas.find(([m]) => m === 'select')?.[1][0];
-const tem = (c: Consulta, metodo: string, coluna: string) => c.chamadas.some(([m, a]) => m === metodo && a[0] === coluna);
-const valorDe = (c: Consulta, metodo: string, coluna: string) => c.chamadas.find(([m, a]) => m === metodo && a[0] === coluna)?.[1][1];
+const tem = (c: Consulta, metodo: string, coluna: string) =>
+  c.chamadas.some(([m, a]) => m === metodo && a[0] === coluna);
+const valorDe = (c: Consulta, metodo: string, coluna: string) =>
+  c.chamadas.find(([m, a]) => m === metodo && a[0] === coluna)?.[1][1];
 const filtrosDe = (c: Consulta) => c.chamadas.filter(([m]) => m !== 'select');
 const codigosDe = (c: Consulta): string[] => valorDe(c, 'in', 'cod_resolucao');
 
 const ehH = (c: Consulta) => c.tabela === 'apontamentos_aranda' && selectDe(c) === '*';
-const ehI = (c: Consulta) => c.tabela === 'apontamentos_aranda' && selectDe(c) === SELECT_HISTORICO_HORAS;
-const ehTH = (c: Consulta) => c.tabela === 'apontamentos_tickets_aranda' && tem(c, 'in', 'cod_resolucao') && selectDe(c) === '*';
+const ehI = (c: Consulta) =>
+  c.tabela === 'apontamentos_aranda' && selectDe(c) === SELECT_HISTORICO_HORAS;
+const ehTH = (c: Consulta) =>
+  c.tabela === 'apontamentos_tickets_aranda' &&
+  tem(c, 'in', 'cod_resolucao') &&
+  selectDe(c) === '*';
 const ehTI = (c: Consulta) =>
-  c.tabela === 'apontamentos_tickets_aranda' && tem(c, 'in', 'cod_resolucao') && selectDe(c) === SELECT_HISTORICO_TICKETS;
-const ehDescontados = (c: Consulta) => c.tabela === 'requerimentos' && tem(c, 'order', 'data_envio_faturamento');
-const ehHistoricoRequerimentos = (c: Consulta) => c.tabela === 'requerimentos' && selectDe(c) === SELECT_HISTORICO_REQUERIMENTOS;
-const ehRequerimentosSegmentados = (c: Consulta) => c.tabela === 'requerimentos' && tem(c, 'eq', 'empresa_segmentacao_nome');
+  c.tabela === 'apontamentos_tickets_aranda' &&
+  tem(c, 'in', 'cod_resolucao') &&
+  selectDe(c) === SELECT_HISTORICO_TICKETS;
+const ehDescontados = (c: Consulta) =>
+  c.tabela === 'requerimentos' && tem(c, 'order', 'data_envio_faturamento');
+const ehHistoricoRequerimentos = (c: Consulta) =>
+  c.tabela === 'requerimentos' && selectDe(c) === SELECT_HISTORICO_REQUERIMENTOS;
+const ehRequerimentosSegmentados = (c: Consulta) =>
+  c.tabela === 'requerimentos' && tem(c, 'eq', 'empresa_segmentacao_nome');
 /** Restringe um predicado de consulta ao mês cuja janela (gte na coluna) começa no dia 1 */
-const doMesEm = (pred: (c: Consulta) => boolean, coluna: string, ano: number, mes: number) => (c: Consulta) =>
-  pred(c) && valorDe(c, 'gte', coluna) === new Date(ano, mes - 1, 1).toISOString();
+const doMesEm =
+  (pred: (c: Consulta) => boolean, coluna: string, ano: number, mes: number) => (c: Consulta) =>
+    pred(c) && valorDe(c, 'gte', coluna) === new Date(ano, mes - 1, 1).toISOString();
 
 const consultasOnde = (pred: (c: Consulta) => boolean): Consulta[] => estado.consultas.filter(pred);
 function unica(pred: (c: Consulta) => boolean): Consulta {
@@ -214,9 +231,12 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
       expect(valorDe(h, 'lt', 'data_atividade')).toBe(new Date(2026, 1, 1).toISOString());
 
       const volumetriaAbertos = estado.consultas.find(
-        (c: Consulta) => c.tabela === 'apontamentos_tickets_aranda' && tem(c, 'gte', 'data_abertura')
+        (c: Consulta) =>
+          c.tabela === 'apontamentos_tickets_aranda' && tem(c, 'gte', 'data_abertura')
       );
-      expect(valorDe(volumetriaAbertos, 'gte', 'data_abertura')).toBe(new Date(2026, 0, 16).toISOString());
+      expect(valorDe(volumetriaAbertos, 'gte', 'data_abertura')).toBe(
+        new Date(2026, 0, 16).toISOString()
+      );
     });
 
     it('soma só tempo_gasto_horas (ignora segundos e NÃO cai para tempo_gasto_minutos, como o motor faz); PM vai para solicitação; formato "HH:MM:00"', async () => {
@@ -260,7 +280,10 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     it('6 consultas, do 5º mês anterior ao mês do book, virando o ano; cada uma [dia 1, próximo mês)', async () => {
       await coletar({}, 2, 2026);
 
-      const janelas = consultasOnde(ehI).map((c) => [valorDe(c, 'gte', 'data_atividade'), valorDe(c, 'lt', 'data_atividade')]);
+      const janelas = consultasOnde(ehI).map((c) => [
+        valorDe(c, 'gte', 'data_atividade'),
+        valorDe(c, 'lt', 'data_atividade'),
+      ]);
       const meses: [number, number][] = [
         [2025, 9],
         [2025, 10],
@@ -269,7 +292,12 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
         [2026, 1],
         [2026, 2],
       ];
-      expect(janelas).toEqual(meses.map(([a, m]) => [new Date(a, m - 1, 1).toISOString(), new Date(a, m, 1).toISOString()]));
+      expect(janelas).toEqual(
+        meses.map(([a, m]) => [
+          new Date(a, m - 1, 1).toISOString(),
+          new Date(a, m, 1).toISOString(),
+        ])
+      );
     });
 
     it('= H: mesmos filtros e mesma lista de 47 códigos, mudando só o select', async () => {
@@ -296,9 +324,24 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
 
       const { consumo } = await coletar();
 
-      expect(consumo.historico_consumo.map((h) => h.mes)).toEqual(['AGO', 'SET', 'OUT', 'NOV', 'DEZ', 'JAN']);
-      expect(consumo.historico_consumo[5]).toMatchObject({ mes: 'JAN', horas: '01:50:00', valor_numerico: 1.83 });
-      expect(consumo.historico_consumo[0]).toMatchObject({ mes: 'AGO', horas: '00:00:00', valor_numerico: 0 });
+      expect(consumo.historico_consumo.map((h) => h.mes)).toEqual([
+        'AGO',
+        'SET',
+        'OUT',
+        'NOV',
+        'DEZ',
+        'JAN',
+      ]);
+      expect(consumo.historico_consumo[5]).toMatchObject({
+        mes: 'JAN',
+        horas: '01:50:00',
+        valor_numerico: 1.83,
+      });
+      expect(consumo.historico_consumo[0]).toMatchObject({
+        mes: 'AGO',
+        horas: '00:00:00',
+        valor_numerico: 0,
+      });
     });
   });
 
@@ -337,7 +380,9 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
 
       const th = unica(ehTH);
       expect(valorDe(th, 'gte', 'data_fechamento')).toBe(new Date(2026, 0, 1).toISOString());
-      expect(valorDe(th, 'lte', 'data_fechamento')).toBe(new Date(2026, 0, 31, 23, 59, 59, 999).toISOString());
+      expect(valorDe(th, 'lte', 'data_fechamento')).toBe(
+        new Date(2026, 0, 31, 23, 59, 59, 999).toISOString()
+      );
     });
 
     it('cada ticket conta 1; incidente = cod_tipo "Incidente"; valores como inteiros em texto; distribuição por cod_resolucao', async () => {
@@ -379,7 +424,9 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
       await coletar({ tipo_contrato: 'tickets', nome_abreviado: null });
 
       expect(consultasOnde(ehTI)).toHaveLength(6);
-      consultasOnde(ehTI).forEach((c) => expect(valorDe(c, 'ilike', 'organizacao')).toBe('ACME INDÚSTRIA S.A.'));
+      consultasOnde(ehTI).forEach((c) =>
+        expect(valorDe(c, 'ilike', 'organizacao')).toBe('ACME INDÚSTRIA S.A.')
+      );
     });
 
     it('filtros exatos do mês, só mês civil mesmo com dia_inicio_apuracao 16', async () => {
@@ -407,12 +454,23 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     });
 
     it('conta tickets do mês e exibe como inteiro em texto', async () => {
-      responder(doMesEm(ehTI, 'data_fechamento', 2025, 12), [{ cod_tipo: 'Incidente' }, { cod_tipo: 'Requisição' }]);
+      responder(doMesEm(ehTI, 'data_fechamento', 2025, 12), [
+        { cod_tipo: 'Incidente' },
+        { cod_tipo: 'Requisição' },
+      ]);
 
       const { consumo } = await coletar({ tipo_contrato: 'ambos' });
 
-      expect(consumo.historico_consumo[4]).toMatchObject({ mes: 'DEZ', horas: '2', valor_numerico: 2 });
-      expect(consumo.historico_consumo[5]).toMatchObject({ mes: 'JAN', horas: '0', valor_numerico: 0 });
+      expect(consumo.historico_consumo[4]).toMatchObject({
+        mes: 'DEZ',
+        horas: '2',
+        valor_numerico: 2,
+      });
+      expect(consumo.historico_consumo[5]).toMatchObject({
+        mes: 'JAN',
+        horas: '0',
+        valor_numerico: 0,
+      });
     });
   });
 
@@ -426,14 +484,17 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
       expect(consultasOnde(ehTI)).toHaveLength(0);
     });
 
-    it.each(['tickets', 'ambos'])('contrato "%s": só a visão de tickets (T-H e T-I); horas não são consultadas', async (tipo) => {
-      await coletar({ tipo_contrato: tipo });
+    it.each(['tickets', 'ambos'])(
+      'contrato "%s": só a visão de tickets (T-H e T-I); horas não são consultadas',
+      async (tipo) => {
+        await coletar({ tipo_contrato: tipo });
 
-      expect(consultasOnde(ehH)).toHaveLength(0);
-      expect(consultasOnde(ehI)).toHaveLength(0);
-      expect(consultasOnde(ehTH)).toHaveLength(1);
-      expect(consultasOnde(ehTI)).toHaveLength(6);
-    });
+        expect(consultasOnde(ehH)).toHaveLength(0);
+        expect(consultasOnde(ehI)).toHaveLength(0);
+        expect(consultasOnde(ehTH)).toHaveLength(1);
+        expect(consultasOnde(ehTI)).toHaveLength(6);
+      }
+    );
 
     it('"ambos" produz exatamente a mesma saída que "tickets"', async () => {
       responder(ehTH, [{ cod_tipo: 'Incidente', cod_resolucao: 'Dúvida' }]);
@@ -467,7 +528,10 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
         ['order', ['data_envio_faturamento', { ascending: false }]],
       ]);
       expect(motor.filtrosRequerimentos).toContainEqual(['eq', ['enviado_faturamento', true]]);
-      expect(motor.filtrosRequerimentos).toContainEqual(['in', ['status', ['enviado_faturamento', 'faturado']]]);
+      expect(motor.filtrosRequerimentos).toContainEqual([
+        'in',
+        ['status', ['enviado_faturamento', 'faturado']],
+      ]);
     });
 
     it('[RC-146] histórico de requerimentos (6 meses): mesmos status, também sem filtro enviado_faturamento', async () => {
@@ -509,7 +573,9 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
         },
       ]);
       responder(
-        (c) => c.tabela === 'apontamentos_tickets_aranda' && selectDe(c) === 'nro_solicitacao, ticket_externo',
+        (c) =>
+          c.tabela === 'apontamentos_tickets_aranda' &&
+          selectDe(c) === 'nro_solicitacao, ticket_externo',
         [{ nro_solicitacao: '123', ticket_externo: ' EXT-9 ' }]
       );
 
@@ -540,20 +606,33 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
         { horas_funcional: 1.5, horas_tecnico: 0.5, horas_gestor: 10, quantidade_tickets: 2 },
         { horas_funcional: 0.25, horas_tecnico: null, horas_gestor: 3, quantidade_tickets: null },
       ];
-      responder((c) => ehHistoricoRequerimentos(c) && valorDe(c, 'eq', 'mes_cobranca') === '01/2026', linhas);
+      responder(
+        (c) => ehHistoricoRequerimentos(c) && valorDe(c, 'eq', 'mes_cobranca') === '01/2026',
+        linhas
+      );
 
       const horas = (await coletar({ tipo_contrato: 'horas' })).consumo.historico_consumo[5];
       const tickets = (await coletar({ tipo_contrato: 'tickets' })).consumo.historico_consumo[5];
 
-      expect(horas).toMatchObject({ mes: 'JAN', requerimentos_horas: '02:15:00', requerimentos_valor_numerico: 2.25 });
-      expect(tickets).toMatchObject({ mes: 'JAN', requerimentos_horas: '2', requerimentos_valor_numerico: 2 });
+      expect(horas).toMatchObject({
+        mes: 'JAN',
+        requerimentos_horas: '02:15:00',
+        requerimentos_valor_numerico: 2.25,
+      });
+      expect(tickets).toMatchObject({
+        mes: 'JAN',
+        requerimentos_horas: '2',
+        requerimentos_valor_numerico: 2,
+      });
     });
   });
 
   describe('[RC-148] consumo segmentado — percentual de repasse', () => {
     const SEGMENTADA = {
       baseline_segmentado: true,
-      segmentacao_config: { empresas: [{ nome: 'SEG A', percentual: 100, filtro_tipo: 'x', filtro_valor: 'y' }] },
+      segmentacao_config: {
+        empresas: [{ nome: 'SEG A', percentual: 100, filtro_tipo: 'x', filtro_valor: 'y' }],
+      },
     };
 
     beforeEach(() => {
@@ -561,7 +640,10 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     });
 
     it('[RC-148] sem percentual cadastrado, o repasse é 50% (o motor usa 100%)', async () => {
-      const { consumo_segmentado } = await coletar({ ...SEGMENTADA, percentual_repasse_mensal: null });
+      const { consumo_segmentado } = await coletar({
+        ...SEGMENTADA,
+        percentual_repasse_mensal: null,
+      });
 
       const [jan, fev] = consumo_segmentado![0].dadosPorMes;
       expect(jan).toMatchObject({ baseline: 600, saldo: 600, repasse: 300 });
@@ -575,7 +657,10 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     });
 
     it('percentual cadastrado é respeitado (80%)', async () => {
-      const { consumo_segmentado } = await coletar({ ...SEGMENTADA, percentual_repasse_mensal: 80 });
+      const { consumo_segmentado } = await coletar({
+        ...SEGMENTADA,
+        percentual_repasse_mensal: 80,
+      });
 
       expect(consumo_segmentado![0].dadosPorMes[0].repasse).toBe(480);
     });
@@ -583,7 +668,10 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     it('baseline decimal do histórico (10,5 h) vira 10 h: a fração é descartada ao ler o número como "HH:MM"', async () => {
       estado.rpc.get_baseline_vigente = [{ baseline_horas: 10.5, baseline_tickets: null }];
 
-      const { consumo_segmentado } = await coletar({ ...SEGMENTADA, percentual_repasse_mensal: 100 });
+      const { consumo_segmentado } = await coletar({
+        ...SEGMENTADA,
+        percentual_repasse_mensal: 100,
+      });
 
       expect(consumo_segmentado![0].baseline).toBe(600);
     });
@@ -591,7 +679,9 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
     it('requerimentos do segmento: status inclui "concluido" e "em_desenvolvimento", sem filtro de tipo_cobranca nem enviado_faturamento', async () => {
       await coletar({ ...SEGMENTADA, percentual_repasse_mensal: 100 });
 
-      const jan = consultasOnde(ehRequerimentosSegmentados).find((c) => valorDe(c, 'eq', 'mes_cobranca') === '01/2026')!;
+      const jan = consultasOnde(ehRequerimentosSegmentados).find(
+        (c) => valorDe(c, 'eq', 'mes_cobranca') === '01/2026'
+      )!;
       expect(filtrosDe(jan)).toEqual([
         ['eq', ['cliente_id', EMPRESA_ID]],
         ['eq', ['mes_cobranca', '01/2026']],

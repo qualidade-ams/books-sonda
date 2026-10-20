@@ -13,7 +13,7 @@ import type {
   BookPesquisaData,
   BookConsumoSegmentadoData,
   RequerimentoEmDesenvolvimentoData,
-  ChamadosSemestreData
+  ChamadosSemestreData,
 } from '@/types/books';
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
 import type { Requerimento } from '@/types/requerimentos';
@@ -68,12 +68,14 @@ class BooksDataCollectorService {
     requerimentos_em_desenvolvimento?: RequerimentoEmDesenvolvimentoData[];
   }> {
     console.log('🚀 INICIANDO COLETA DE DADOS DO BOOK:', { empresaId, mes, ano });
-    
+
     try {
       // Buscar informações da empresa
       const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, baseline_tickets_mensal, dia_inicio_apuracao, dia_fim_apuracao')
+        .select(
+          'nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, baseline_tickets_mensal, dia_inicio_apuracao, dia_fim_apuracao'
+        )
         .eq('id', empresaId)
         .single();
 
@@ -90,23 +92,24 @@ class BooksDataCollectorService {
       // ✅ Buscar baseline do histórico (baseline_historico) usando RPC get_baseline_vigente
       // Isso garante que o baseline correto da época seja usado, não o campo legado da tabela empresas_clientes
       let baselineHoras = 0;
-      
+
       // Determinar tipo de contrato antes de buscar baseline
-      const tipoContrato = (empresa.tipo_contrato === 'horas' || 
-                            empresa.tipo_contrato === 'tickets' || 
-                            empresa.tipo_contrato === 'ambos') 
-        ? empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos'
-        : null;
+      const tipoContrato =
+        empresa.tipo_contrato === 'horas' ||
+        empresa.tipo_contrato === 'tickets' ||
+        empresa.tipo_contrato === 'ambos'
+          ? (empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos')
+          : null;
 
       try {
         const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
-        
+
         console.log('🔍 [booksDataCollector] Buscando baseline vigente:', {
           empresaId,
           mes,
           ano,
           dataReferencia,
-          tipoContrato
+          tipoContrato,
         });
 
         // Para tipo tickets ou ambos: usar baseline de TICKETS (contagem)
@@ -114,11 +117,13 @@ class BooksDataCollectorService {
         if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
           // Buscar baseline de tickets
           // @ts-ignore
-          const { data: baselineVigente, error: baselineError } = await (supabase as any)
-            .rpc('get_baseline_vigente', {
+          const { data: baselineVigente, error: baselineError } = await (supabase as any).rpc(
+            'get_baseline_vigente',
+            {
               p_empresa_id: empresaId,
-              p_data: dataReferencia
-            });
+              p_data: dataReferencia,
+            }
+          );
 
           if (!baselineError && baselineVigente && baselineVigente.length > 0) {
             const baseline = baselineVigente[0];
@@ -126,21 +131,25 @@ class BooksDataCollectorService {
               baselineHoras = Number(baseline.baseline_tickets);
             }
           }
-          
+
           // Fallback: usar campo legado baseline_tickets_mensal
           if (baselineHoras === 0 && empresa.baseline_tickets_mensal) {
             baselineHoras = Number(empresa.baseline_tickets_mensal) || 0;
           }
 
-          console.log('📊 [booksDataCollector] Baseline TICKETS para cálculo:', { baselineTickets: baselineHoras });
+          console.log('📊 [booksDataCollector] Baseline TICKETS para cálculo:', {
+            baselineTickets: baselineHoras,
+          });
         } else {
           // Buscar baseline de horas
           // @ts-ignore
-          const { data: baselineVigente, error: baselineError } = await (supabase as any)
-            .rpc('get_baseline_vigente', {
+          const { data: baselineVigente, error: baselineError } = await (supabase as any).rpc(
+            'get_baseline_vigente',
+            {
               p_empresa_id: empresaId,
-              p_data: dataReferencia
-            });
+              p_data: dataReferencia,
+            }
+          );
 
           if (!baselineError && baselineVigente && baselineVigente.length > 0) {
             const baseline = baselineVigente[0];
@@ -148,7 +157,7 @@ class BooksDataCollectorService {
               baselineHoras = Number(baseline.baseline_horas);
             }
           }
-          
+
           // Fallback: usar campo legado baseline_horas_mensal
           if (baselineHoras === 0 && empresa.baseline_horas_mensal) {
             if (typeof empresa.baseline_horas_mensal === 'string') {
@@ -156,7 +165,7 @@ class BooksDataCollectorService {
               if (parts.length >= 2) {
                 const hours = parseInt(parts[0]) || 0;
                 const minutes = parseInt(parts[1]) || 0;
-                baselineHoras = hours + (minutes / 60);
+                baselineHoras = hours + minutes / 60;
               }
             } else if (typeof empresa.baseline_horas_mensal === 'object') {
               baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
@@ -167,7 +176,7 @@ class BooksDataCollectorService {
         }
       } catch (error) {
         console.error('❌ [booksDataCollector] Erro ao buscar baseline vigente:', error);
-        
+
         // Fallback baseado no tipo de contrato
         if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
           baselineHoras = Number(empresa.baseline_tickets_mensal) || 0;
@@ -177,7 +186,7 @@ class BooksDataCollectorService {
             if (parts.length >= 2) {
               const hours = parseInt(parts[0]) || 0;
               const minutes = parseInt(parts[1]) || 0;
-              baselineHoras = hours + (minutes / 60);
+              baselineHoras = hours + minutes / 60;
             }
           } else if (typeof empresa.baseline_horas_mensal === 'object') {
             baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
@@ -188,7 +197,7 @@ class BooksDataCollectorService {
       console.log('✅ Empresa encontrada:', {
         nome: empresa.nome_completo,
         abreviado: empresa.nome_abreviado,
-        tipo_contrato: empresa.tipo_contrato
+        tipo_contrato: empresa.tipo_contrato,
       });
 
       // Buscar requerimentos do período
@@ -216,33 +225,23 @@ class BooksDataCollectorService {
       const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
       const diaFimApuracao = (empresa as any).dia_fim_apuracao ?? 0;
 
-      const { 
-        apontamentosHoras, 
-        apontamentosTickets,
-        ticketsAbertos,
-        ticketsFechados
-      } = await this.buscarApontamentosPorTipoContrato(
-        empresa.nome_completo,
-        empresa.nome_abreviado,
-        mes,
-        ano,
-        tipoContrato,
-        diaInicioApuracao,
-        diaFimApuracao
-      );
+      const { apontamentosHoras, apontamentosTickets, ticketsAbertos, ticketsFechados } =
+        await this.buscarApontamentosPorTipoContrato(
+          empresa.nome_completo,
+          empresa.nome_abreviado,
+          mes,
+          ano,
+          tipoContrato,
+          diaInicioApuracao,
+          diaFimApuracao
+        );
 
       // Gerar dados de cada seção
       const mesNome = MESES_LABELS[mes];
       const periodo = `${mesNome} ${ano}`;
 
       const dadosGerados = {
-        capa: this.gerarDadosCapa(
-          empresa.nome_completo,
-          empresa.nome_abreviado,
-          mes,
-          ano,
-          periodo
-        ),
+        capa: this.gerarDadosCapa(empresa.nome_completo, empresa.nome_abreviado, mes, ano, periodo),
         volumetria: await this.gerarDadosVolumetria(
           apontamentosHoras,
           apontamentosTickets,
@@ -276,7 +275,11 @@ class BooksDataCollectorService {
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano),
         consumo_segmentado: await this.gerarDadosConsumoSegmentado(empresaId, mes, ano),
-        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(empresaId, mes, ano)
+        requerimentos_em_desenvolvimento: await this.buscarRequerimentosEmDesenvolvimentoParaBook(
+          empresaId,
+          mes,
+          ano
+        ),
       };
 
       console.log('✅ DADOS DO BOOK GERADOS COM SUCESSO:', {
@@ -285,8 +288,8 @@ class BooksDataCollectorService {
           abertos: dadosGerados.volumetria.abertos_mes,
           fechados: dadosGerados.volumetria.fechados_mes,
           sla: dadosGerados.volumetria.sla_medio,
-          backlog: dadosGerados.volumetria.total_backlog
-        }
+          backlog: dadosGerados.volumetria.total_backlog,
+        },
       });
 
       return dadosGerados;
@@ -312,7 +315,7 @@ class BooksDataCollectorService {
       periodo,
       mes,
       ano,
-      data_geracao: new Date().toLocaleDateString('pt-BR')
+      data_geracao: new Date().toLocaleDateString('pt-BR'),
     };
   }
 
@@ -335,12 +338,11 @@ class BooksDataCollectorService {
     ticketsFechados: any[];
   }> {
     // Calcular datas de início e fim baseado na periodicidade
-    const { dataInicio, dataFim, proximoPeriodoInicio: proximoMesInicio } = calcularPeriodoApuracao(
-      mes,
-      ano,
-      diaInicioApuracao,
-      diaFimApuracao
-    );
+    const {
+      dataInicio,
+      dataFim,
+      proximoPeriodoInicio: proximoMesInicio,
+    } = calcularPeriodoApuracao(mes, ano, diaInicioApuracao, diaFimApuracao);
 
     if (diaInicioApuracao > 1) {
       console.log('📅 Periodicidade CUSTOMIZADA:', {
@@ -348,7 +350,7 @@ class BooksDataCollectorService {
         diaInicioApuracao,
         diaFimApuracao: diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1,
         dataInicio: dataInicio.toISOString(),
-        dataFim: dataFim.toISOString()
+        dataFim: dataFim.toISOString(),
       });
     }
 
@@ -360,10 +362,10 @@ class BooksDataCollectorService {
       tipoContrato,
       periodicidade: diaInicioApuracao > 1 ? 'customizada' : 'padrão',
       dataInicio: dataInicio.toISOString(),
-      dataFim: dataFim.toISOString()
+      dataFim: dataFim.toISOString(),
     });
 
-    let apontamentosHoras: any[] = [];
+    const apontamentosHoras: any[] = [];
     let apontamentosTickets: any[] = [];
 
     // SEMPRE buscar tickets para os cards de volumetria (independente do tipo_contrato)
@@ -378,7 +380,11 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
@@ -396,7 +402,11 @@ class BooksDataCollectorService {
       .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
@@ -404,10 +414,16 @@ class BooksDataCollectorService {
       .not('nome_grupo', 'like', 'PROJETOS APL %');
 
     if (ticketsAbertosError) {
-      console.error('❌ Erro ao buscar apontamentos_tickets_aranda (abertos):', ticketsAbertosError);
+      console.error(
+        '❌ Erro ao buscar apontamentos_tickets_aranda (abertos):',
+        ticketsAbertosError
+      );
     }
     if (ticketsFechadosError) {
-      console.error('❌ Erro ao buscar apontamentos_tickets_aranda (fechados):', ticketsFechadosError);
+      console.error(
+        '❌ Erro ao buscar apontamentos_tickets_aranda (fechados):',
+        ticketsFechadosError
+      );
     }
 
     // Tickets já vêm filtrados do banco de dados
@@ -417,27 +433,27 @@ class BooksDataCollectorService {
     console.log('🔍 DEBUG ABERTOS:', {
       totalTickets: ticketsAbertosFiltrados.length,
       empresaBuscada: empresaNomeCompleto,
-      amostra: ticketsAbertosFiltrados.slice(0, 5).map(t => ({
+      amostra: ticketsAbertosFiltrados.slice(0, 5).map((t) => ({
         nro: t.nro_solicitacao,
         organizacao: t.organizacao,
         cod_tipo: t.cod_tipo,
         data_abertura: t.data_abertura,
-        nome_grupo: t.nome_grupo
-      }))
+        nome_grupo: t.nome_grupo,
+      })),
     });
 
     console.log('🔍 DEBUG FECHADOS:', {
       totalTickets: ticketsFechadosFiltrados.length,
       empresaBuscada: empresaNomeCompleto,
-      amostra: ticketsFechadosFiltrados.slice(0, 5).map(t => ({
+      amostra: ticketsFechadosFiltrados.slice(0, 5).map((t) => ({
         nro: t.nro_solicitacao,
         organizacao: t.organizacao,
         cod_tipo: t.cod_tipo,
         data_solucao: t.data_solucao,
-        nome_grupo: t.nome_grupo
-      }))
+        nome_grupo: t.nome_grupo,
+      })),
     });
-    
+
     console.log('✅ Apontamentos tickets encontrados:', {
       abertos: ticketsAbertosFiltrados.length,
       fechados: ticketsFechadosFiltrados.length,
@@ -445,13 +461,13 @@ class BooksDataCollectorService {
       totalFechadosAntesFiltro: (ticketsFechados || []).length,
       esperado: {
         abertos: 13,
-        fechados: 17
-      }
+        fechados: 17,
+      },
     });
 
     // Combinar todos os tickets únicos para outras métricas (gráficos, etc)
     const ticketsMap = new Map();
-    [...ticketsAbertosFiltrados, ...ticketsFechadosFiltrados].forEach(a => {
+    [...ticketsAbertosFiltrados, ...ticketsFechadosFiltrados].forEach((a) => {
       const chave = a.nro_solicitacao;
       if (!ticketsMap.has(chave)) {
         ticketsMap.set(chave, a);
@@ -459,14 +475,14 @@ class BooksDataCollectorService {
     });
 
     const ticketsData = Array.from(ticketsMap.values());
-    
+
     apontamentosTickets = ticketsData;
 
     return {
       apontamentosHoras,
       apontamentosTickets,
       ticketsAbertos: ticketsAbertosFiltrados,
-      ticketsFechados: ticketsFechadosFiltrados
+      ticketsFechados: ticketsFechadosFiltrados,
     };
   }
 
@@ -490,16 +506,14 @@ class BooksDataCollectorService {
       tipoContrato,
       ticketsAbertos: ticketsAbertos.length,
       ticketsFechados: ticketsFechados.length,
-      totalTicketsUnicos: apontamentosTickets.length
+      totalTicketsUnicos: apontamentosTickets.length,
     });
 
     // ABERTOS | MÊS: Usar tickets já filtrados por data_abertura
-    const abertosIncidente = ticketsAbertos.filter(a => 
-      a.cod_tipo === 'Incidente'
-    ).length;
-    
-    const abertosSolicitacao = ticketsAbertos.filter(a => 
-      a.cod_tipo && a.cod_tipo !== 'Incidente'
+    const abertosIncidente = ticketsAbertos.filter((a) => a.cod_tipo === 'Incidente').length;
+
+    const abertosSolicitacao = ticketsAbertos.filter(
+      (a) => a.cod_tipo && a.cod_tipo !== 'Incidente'
     ).length;
 
     // Debug: Verificar tipos de chamados abertos
@@ -514,62 +528,60 @@ class BooksDataCollectorService {
       tiposEncontrados: tiposAbertos,
       incidenteContado: abertosIncidente,
       solicitacaoContado: abertosSolicitacao,
-      amostra: ticketsAbertos.slice(0, 5).map(t => ({
+      amostra: ticketsAbertos.slice(0, 5).map((t) => ({
         nro: t.nro_solicitacao,
         cod_tipo: t.cod_tipo,
-        data_abertura: t.data_abertura
-      }))
+        data_abertura: t.data_abertura,
+      })),
     });
 
     // FECHADOS | MÊS: Usar tickets já filtrados por data_fechamento
-    const fechadosIncidente = ticketsFechados.filter(a => 
-      a.cod_tipo === 'Incidente'
-    ).length;
-    
-    const fechadosSolicitacao = ticketsFechados.filter(a => 
-      a.cod_tipo && a.cod_tipo !== 'Incidente'
+    const fechadosIncidente = ticketsFechados.filter((a) => a.cod_tipo === 'Incidente').length;
+
+    const fechadosSolicitacao = ticketsFechados.filter(
+      (a) => a.cod_tipo && a.cod_tipo !== 'Incidente'
     ).length;
 
     console.log('📈 Dados calculados (CARDS - sempre de tickets):', {
-      abertos: { 
-        solicitacao: abertosSolicitacao, 
+      abertos: {
+        solicitacao: abertosSolicitacao,
         incidente: abertosIncidente,
-        total: abertosSolicitacao + abertosIncidente
+        total: abertosSolicitacao + abertosIncidente,
       },
-      fechados: { 
-        solicitacao: fechadosSolicitacao, 
+      fechados: {
+        solicitacao: fechadosSolicitacao,
         incidente: fechadosIncidente,
-        total: fechadosSolicitacao + fechadosIncidente
-      }
+        total: fechadosSolicitacao + fechadosIncidente,
+      },
     });
 
     // Calcular SLA médio (simplificado - % de chamados fechados vs abertos)
     const totalAbertos = abertosSolicitacao + abertosIncidente;
     const totalFechados = fechadosSolicitacao + fechadosIncidente;
-    const slaMedio = totalAbertos > 0
-      ? (totalFechados / totalAbertos) * 100
-      : 0;
+    const slaMedio = totalAbertos > 0 ? (totalFechados / totalAbertos) * 100 : 0;
 
     console.log('✅ VOLUMETRIA FINAL (100% TICKETS):', {
       fonte: 'apontamentos_tickets_aranda',
       abertos: totalAbertos,
       fechados: totalFechados,
-      backlog: apontamentosTickets.filter(a => !a.data_solucao).length,
+      backlog: apontamentosTickets.filter((a) => !a.data_solucao).length,
       slaMedio: Math.round(slaMedio * 10) / 10,
       esperado: {
         abertos: 13,
-        fechados: 17
+        fechados: 17,
       },
       diferenca: {
         abertos: totalAbertos - 13,
-        fechados: totalFechados - 17
-      }
+        fechados: totalFechados - 17,
+      },
     });
 
     // Backlog = Chamados em aberto da empresa ATÉ o período do book (mesmo critério da aba Backlog)
     // IMPORTANTE: Filtra por data_abertura <= último dia do mês para alinhar com aba Backlog
     const ultimoDiaMes = new Date(ano, mes, 0).toISOString();
-    console.log('📊 Buscando backlog total (chamados em aberto até o período)...', { dataLimite: ultimoDiaMes });
+    console.log('📊 Buscando backlog total (chamados em aberto até o período)...', {
+      dataLimite: ultimoDiaMes,
+    });
     const { data: ticketsBacklogTotal, error: errorBacklog } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao')
@@ -579,7 +591,11 @@ class BooksDataCollectorService {
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
@@ -591,12 +607,13 @@ class BooksDataCollectorService {
     }
 
     const totalBacklog = (ticketsBacklogTotal || []).length;
-    
+
     console.log('✅ Backlog total calculado:', {
       total: totalBacklog,
-      criterio: 'status NOT IN (Closed, Resolved, Canceled, Cancelled) AND data_abertura <= último dia do mês',
+      criterio:
+        'status NOT IN (Closed, Resolved, Canceled, Cancelled) AND data_abertura <= último dia do mês',
       dataLimite: ultimoDiaMes,
-      alinhado_com: 'aba Backlog'
+      alinhado_com: 'aba Backlog',
     });
 
     // Gerar dados do semestre (últimos 6 meses) - buscar dados reais
@@ -612,28 +629,25 @@ class BooksDataCollectorService {
     const chamadosPorGrupo = await this.agruparPorGrupo(ticketsAbertos, ticketsFechados);
 
     // Taxa de resolução - baseada apenas em tickets
-    const taxaResolucao = apontamentosTickets.length > 0
-      ? Math.round((totalFechados / apontamentosTickets.length) * 100)
-      : 0;
+    const taxaResolucao =
+      apontamentosTickets.length > 0
+        ? Math.round((totalFechados / apontamentosTickets.length) * 100)
+        : 0;
 
     // Chamados por causa - passar abertos e fechados separadamente
     const chamadosPorCausa = await this.agruparChamadosPorCausa(ticketsAbertos, ticketsFechados);
 
     // Calcular SLA médio dos últimos 5 meses e variação vs mês anterior
-    const slaMedioData = await this.calcularSLAMedioUltimos5Meses(
-      empresaNomeCompleto,
-      mes,
-      ano
-    );
+    const slaMedioData = await this.calcularSLAMedioUltimos5Meses(empresaNomeCompleto, mes, ano);
 
     return {
       abertos_mes: {
         solicitacao: abertosSolicitacao,
-        incidente: abertosIncidente
+        incidente: abertosIncidente,
       },
       fechados_mes: {
         solicitacao: fechadosSolicitacao,
-        incidente: fechadosIncidente
+        incidente: fechadosIncidente,
       },
       sla_medio: slaMedioData.sla_medio,
       sla_medio_variacao: slaMedioData.variacao_mes_anterior,
@@ -641,7 +655,7 @@ class BooksDataCollectorService {
       chamados_semestre: chamadosSemestre,
       chamados_por_grupo: chamadosPorGrupo,
       taxa_resolucao: taxaResolucao,
-      backlog_por_causa: chamadosPorCausa
+      backlog_por_causa: chamadosPorCausa,
     };
   }
 
@@ -662,7 +676,7 @@ class BooksDataCollectorService {
     for (let i = 4; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
-      
+
       while (mes <= 0) {
         mes += 12;
         ano -= 1;
@@ -682,42 +696,65 @@ class BooksDataCollectorService {
         .eq('status', 'Closed')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
-      .not('nome_grupo', 'like', 'AMS DX %')
-      .not('nome_grupo', 'like', 'AMS PRJ %')
-      .not('nome_grupo', 'like', 'AMS SAP %')
-      .not('nome_grupo', 'like', 'BPO %')
-      .not('nome_grupo', 'like', 'PROJETOS APL %');
+        .not(
+          'nome_grupo',
+          'in',
+          '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+        )
+        .not('nome_grupo', 'like', 'AMS DX %')
+        .not('nome_grupo', 'like', 'AMS PRJ %')
+        .not('nome_grupo', 'like', 'AMS SAP %')
+        .not('nome_grupo', 'like', 'BPO %')
+        .not('nome_grupo', 'like', 'PROJETOS APL %');
 
       const totalIncidentes = (ticketsFechados || []).length;
 
       // Contar violados APENAS com cod_resolucao elegível
       const codResolucaoElegiveisMedia = [
-        'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
-        'Consultoria', 'Consultoria (Banco=S |SLA=S)', 'Consultoria (Banco=S| SLA=S)',
-        'Consultoria - Banco de Dados', 'Consultoria - Banco de Dados (Banco=S |SLA=S)', 'Consultoria - Banco de Dados (Banco=S| SLA=S)',
-        'Consultoria – Banco de Dados', 'Consultoria – Banco de Dados (Banco=S |SLA=S)', 'Consultoria – Banco de Dados (Banco=S| SLA=S)',
-        'Consultoria - Nota Publicada', 'Consultoria - Nota Publicada (Banco=S |SLA=S)', 'Consultoria - Nota Publicada (Banco=S| SLA=S)',
-        'Consultoria – Nota Publicada', 'Consultoria – Nota Publicada (Banco=S |SLA=S)', 'Consultoria – Nota Publicada (Banco=S| SLA=S)',
-        'Consultoria - Solução Paliativa', 'Consultoria - Solução Paliativa (Banco=S |SLA=S)', 'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
-        'Consultoria – Solução Paliativa', 'Consultoria – Solução Paliativa (Banco=S |SLA=S)', 'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
+        'AMS SAP',
+        'AMS SAP (Banco=S |SLA=S)',
+        'AMS SAP (Banco=S| SLA=S)',
+        'Consultoria',
+        'Consultoria (Banco=S |SLA=S)',
+        'Consultoria (Banco=S| SLA=S)',
+        'Consultoria - Banco de Dados',
+        'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+        'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria – Banco de Dados',
+        'Consultoria – Banco de Dados (Banco=S |SLA=S)',
+        'Consultoria – Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria - Nota Publicada',
+        'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+        'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria – Nota Publicada',
+        'Consultoria – Nota Publicada (Banco=S |SLA=S)',
+        'Consultoria – Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria - Solução Paliativa',
+        'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+        'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+        'Consultoria – Solução Paliativa',
+        'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
+        'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
       ];
-      const totalViolados = (ticketsFechados || []).filter(t => 
-        t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveisMedia.includes(t.cod_resolucao)
+      const totalViolados = (ticketsFechados || []).filter(
+        (t) =>
+          t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveisMedia.includes(t.cod_resolucao)
       ).length;
 
       // Calcular SLA do mês
-      const slaMes = totalIncidentes > 0
-        ? Math.round(((totalIncidentes - totalViolados) / totalIncidentes) * 100)
-        : 100;
+      const slaMes =
+        totalIncidentes > 0
+          ? Math.round(((totalIncidentes - totalViolados) / totalIncidentes) * 100)
+          : 100;
 
       slasPorMes.push(slaMes);
     }
 
     // Calcular média dos 5 meses
-    const slaMedio = slasPorMes.length > 0
-      ? Math.round((slasPorMes.reduce((sum, sla) => sum + sla, 0) / slasPorMes.length) * 10) / 10
-      : 0;
+    const slaMedio =
+      slasPorMes.length > 0
+        ? Math.round((slasPorMes.reduce((sum, sla) => sum + sla, 0) / slasPorMes.length) * 10) / 10
+        : 0;
 
     // Calcular variação vs mês anterior (penúltimo mês vs último mês)
     let variacaoMesAnterior = 0;
@@ -730,12 +767,12 @@ class BooksDataCollectorService {
     console.log('✅ SLA médio calculado:', {
       slasPorMes,
       slaMedio,
-      variacaoMesAnterior
+      variacaoMesAnterior,
     });
 
     return {
       sla_medio: slaMedio,
-      variacao_mes_anterior: variacaoMesAnterior
+      variacao_mes_anterior: variacaoMesAnterior,
     };
   }
 
@@ -751,20 +788,42 @@ class BooksDataCollectorService {
     diaInicioApuracao: number = 1,
     diaFimApuracao: number = 0
   ): Promise<ChamadosSemestreData[]> {
-    const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
-                         'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
-    
+    const MESES_NOMES = [
+      'JANEIRO',
+      'FEVEREIRO',
+      'MARÇO',
+      'ABRIL',
+      'MAIO',
+      'JUNHO',
+      'JULHO',
+      'AGOSTO',
+      'SETEMBRO',
+      'OUTUBRO',
+      'NOVEMBRO',
+      'DEZEMBRO',
+    ];
+
     // Calcular data inicial (6 meses atrás) e data final (fim do mês atual)
     let mesInicial = mesAtual - 5;
     let anoInicial = anoAtual;
-    
+
     while (mesInicial <= 0) {
       mesInicial += 12;
       anoInicial -= 1;
     }
-    
-    const { dataInicio } = calcularPeriodoApuracao(mesInicial, anoInicial, diaInicioApuracao, diaFimApuracao);
-    const { dataFim } = calcularPeriodoApuracao(mesAtual, anoAtual, diaInicioApuracao, diaFimApuracao);
+
+    const { dataInicio } = calcularPeriodoApuracao(
+      mesInicial,
+      anoInicial,
+      diaInicioApuracao,
+      diaFimApuracao
+    );
+    const { dataFim } = calcularPeriodoApuracao(
+      mesAtual,
+      anoAtual,
+      diaInicioApuracao,
+      diaFimApuracao
+    );
 
     console.log('📅 Buscando dados do semestre:', {
       empresa: empresaNomeCompleto,
@@ -774,9 +833,9 @@ class BooksDataCollectorService {
       mesInicial,
       anoInicial,
       mesAtual,
-      anoAtual
+      anoAtual,
     });
-    
+
     // Buscar TODOS os tickets ABERTOS dos últimos 6 meses (1 query) — exclui Cancelled
     const { data: ticketsAbertos, error: errorAbertos } = await supabase
       .from('apontamentos_tickets_aranda')
@@ -788,26 +847,30 @@ class BooksDataCollectorService {
       .neq('status', 'Cancelled')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
       .not('nome_grupo', 'like', 'BPO %')
       .not('nome_grupo', 'like', 'PROJETOS APL %');
-    
+
     if (errorAbertos) {
       console.error('❌ Erro ao buscar tickets abertos do semestre:', errorAbertos);
     }
 
     console.log('🔍 DEBUG TICKETS ABERTOS:', {
       total: ticketsAbertos?.length || 0,
-      amostra: ticketsAbertos?.slice(0, 3).map(t => ({
+      amostra: ticketsAbertos?.slice(0, 3).map((t) => ({
         nro: t.nro_solicitacao,
         tipo: t.cod_tipo,
-        data: t.data_abertura
-      }))
+        data: t.data_abertura,
+      })),
     });
-    
+
     // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query) — apenas status Closed
     const { data: ticketsFechados, error: errorFechados } = await supabase
       .from('apontamentos_tickets_aranda')
@@ -819,79 +882,83 @@ class BooksDataCollectorService {
       .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
       .not('nome_grupo', 'like', 'BPO %')
       .not('nome_grupo', 'like', 'PROJETOS APL %');
-    
+
     if (errorFechados) {
       console.error('❌ Erro ao buscar tickets fechados do semestre:', errorFechados);
     }
 
     console.log('🔍 DEBUG TICKETS FECHADOS:', {
       total: ticketsFechados?.length || 0,
-      amostra: ticketsFechados?.slice(0, 3).map(t => ({
+      amostra: ticketsFechados?.slice(0, 3).map((t) => ({
         nro: t.nro_solicitacao,
         tipo: t.cod_tipo,
-        data: t.data_fechamento
-      }))
+        data: t.data_fechamento,
+      })),
     });
-    
+
     // Agrupar tickets por mês
     const resultado: ChamadosSemestreData[] = [];
-    
+
     for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
-      
+
       while (mes <= 0) {
         mes += 12;
         ano -= 1;
       }
-      
+
       const { dataInicio: mesInicio, dataFim: mesFim } = calcularPeriodoApuracao(
         mes,
         ano,
         diaInicioApuracao,
         diaFimApuracao
       );
-      
+
       // Contar abertos deste mês
-      const abertosDoMes = (ticketsAbertos || []).filter(t => {
+      const abertosDoMes = (ticketsAbertos || []).filter((t) => {
         const dataAbertura = new Date(t.data_abertura);
         return dataAbertura >= mesInicio && dataAbertura <= mesFim;
       }).length;
-      
+
       // Contar fechados deste mês
-      const fechadosDoMes = (ticketsFechados || []).filter(t => {
+      const fechadosDoMes = (ticketsFechados || []).filter((t) => {
         const dataFechamento = new Date(t.data_fechamento);
         return dataFechamento >= mesInicio && dataFechamento <= mesFim;
       }).length;
-      
+
       console.log(`📊 ${MESES_NOMES[mes - 1]}/${ano}:`, {
         abertos: abertosDoMes,
         fechados: fechadosDoMes,
-        periodo: `${mesInicio.toLocaleDateString()} - ${mesFim.toLocaleDateString()}`
+        periodo: `${mesInicio.toLocaleDateString()} - ${mesFim.toLocaleDateString()}`,
       });
-      
+
       resultado.push({
         mes: MESES_NOMES[mes - 1],
         abertos: abertosDoMes,
-        fechados: fechadosDoMes
+        fechados: fechadosDoMes,
       });
     }
-    
+
     console.log('📈 Dados do semestre gerados:', {
       empresa: empresaNomeCompleto,
       totalAbertos: (ticketsAbertos || []).length,
       totalFechados: (ticketsFechados || []).length,
       dados: resultado,
       somaAbertos: resultado.reduce((sum, d) => sum + d.abertos, 0),
-      somaFechados: resultado.reduce((sum, d) => sum + d.fechados, 0)
+      somaFechados: resultado.reduce((sum, d) => sum + d.fechados, 0),
     });
-    
+
     return resultado;
   }
 
@@ -900,10 +967,10 @@ class BooksDataCollectorService {
    */
   private gerarChamadosSemestreVazio() {
     const meses = ['ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO'];
-    return meses.map(mes => ({
+    return meses.map((mes) => ({
       mes,
       abertos: 0,
-      fechados: 0
+      fechados: 0,
     }));
   }
 
@@ -914,26 +981,26 @@ class BooksDataCollectorService {
   private async agruparPorGrupo(ticketsAbertos: any[], ticketsFechados: any[]) {
     // Buscar mapeamento de nome_grupo → grupo_book
     const mapeamento = await this.buscarMapeamentoGrupos();
-    
+
     const grupos = new Map<string, { total: number; abertos: number; fechados: number }>();
 
     // Log de debug: Mostrar amostra de tickets e mapeamento
     console.log('🔍 DEBUG MAPEAMENTO - Amostra de tickets abertos:', {
       total: ticketsAbertos.length,
-      amostra: ticketsAbertos.slice(0, 3).map(t => ({
+      amostra: ticketsAbertos.slice(0, 3).map((t) => ({
         nro_solicitacao: t.nro_solicitacao,
         nome_grupo: t.nome_grupo,
-        grupo_mapeado: mapeamento.get(t.nome_grupo) || t.nome_grupo
-      }))
+        grupo_mapeado: mapeamento.get(t.nome_grupo) || t.nome_grupo,
+      })),
     });
 
     // Processar tickets abertos
-    ticketsAbertos.forEach(a => {
+    ticketsAbertos.forEach((a) => {
       // Usar campo 'nome_grupo' do ticket para mapear → grupo_book via de_para_categoria
       const grupoTicket = a.nome_grupo || 'SEM CATEGORIA';
       // Mapear nome_grupo → grupo_book usando de_para_categoria
       const grupoMapeado = mapeamento.get(grupoTicket) || grupoTicket;
-      
+
       if (!grupos.has(grupoMapeado)) {
         grupos.set(grupoMapeado, { total: 0, abertos: 0, fechados: 0 });
       }
@@ -942,12 +1009,12 @@ class BooksDataCollectorService {
     });
 
     // Processar tickets fechados
-    ticketsFechados.forEach(a => {
+    ticketsFechados.forEach((a) => {
       // Usar campo 'nome_grupo' do ticket para mapear → grupo_book via de_para_categoria
       const grupoTicket = a.nome_grupo || 'SEM CATEGORIA';
       // Mapear nome_grupo → grupo_book usando de_para_categoria
       const grupoMapeado = mapeamento.get(grupoTicket) || grupoTicket;
-      
+
       if (!grupos.has(grupoMapeado)) {
         grupos.set(grupoMapeado, { total: 0, abertos: 0, fechados: 0 });
       }
@@ -969,9 +1036,7 @@ class BooksDataCollectorService {
           total: stats.total,
           abertos: stats.abertos,
           fechados: stats.fechados,
-          percentual: totalGeral > 0 
-            ? Math.round((stats.total / totalGeral) * 100)
-            : 0
+          percentual: totalGeral > 0 ? Math.round((stats.total / totalGeral) * 100) : 0,
         };
       })
       .sort((a, b) => b.total - a.total);
@@ -981,12 +1046,12 @@ class BooksDataCollectorService {
       totalAbertos: ticketsAbertos.length,
       totalFechados: ticketsFechados.length,
       mapeamentosAplicados: mapeamento.size,
-      grupos: gruposArray.map(g => ({
+      grupos: gruposArray.map((g) => ({
         nome: g.grupo,
         total: g.total,
         abertos: g.abertos,
-        fechados: g.fechados
-      }))
+        fechados: g.fechados,
+      })),
     });
 
     return gruposArray;
@@ -1004,26 +1069,29 @@ class BooksDataCollectorService {
   private async agruparChamadosPorCausa(ticketsAbertos: any[], ticketsFechados: any[]) {
     // Buscar mapeamento de categorias
     const mapeamento = await this.buscarMapeamentoGrupos();
-    
-    const causas = new Map<string, { 
-      incidente: number; 
-      solicitacao: number;
-      abertos: number;
-      fechados: number;
-    }>();
+
+    const causas = new Map<
+      string,
+      {
+        incidente: number;
+        solicitacao: number;
+        abertos: number;
+        fechados: number;
+      }
+    >();
 
     // Processar tickets ABERTOS
-    ticketsAbertos.forEach(a => {
+    ticketsAbertos.forEach((a) => {
       const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução - Ainda não classificado';
       // Mapear cod_resolucao para grupo_book usando de_para_categoria
       const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
-      
+
       if (!causas.has(causaMapeada)) {
         causas.set(causaMapeada, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
       const stats = causas.get(causaMapeada)!;
       stats.abertos++;
-      
+
       // Contar por tipo
       if (a.cod_tipo === 'Incidente') {
         stats.incidente++;
@@ -1033,17 +1101,17 @@ class BooksDataCollectorService {
     });
 
     // Processar tickets FECHADOS
-    ticketsFechados.forEach(a => {
+    ticketsFechados.forEach((a) => {
       const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução - Ainda não classificado';
       // Mapear cod_resolucao para grupo_book usando de_para_categoria
       const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
-      
+
       if (!causas.has(causaMapeada)) {
         causas.set(causaMapeada, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
       const stats = causas.get(causaMapeada)!;
       stats.fechados++;
-      
+
       // Contar por tipo (apenas se não foi contado nos abertos)
       // Na verdade, precisamos recontar porque um ticket pode estar em ambos
       if (a.cod_tipo === 'Incidente') {
@@ -1060,21 +1128,21 @@ class BooksDataCollectorService {
         solicitacao: stats.solicitacao,
         total: stats.incidente + stats.solicitacao,
         abertos: stats.abertos,
-        fechados: stats.fechados
+        fechados: stats.fechados,
       }))
       .sort((a, b) => b.total - a.total);
 
     console.log('📊 Chamados agrupados por causa (cod_resolucao) - COM MAPEAMENTO:', {
       totalCausas: resultado.length,
       mapeamentosAplicados: mapeamento.size,
-      causas: resultado.map(c => ({
+      causas: resultado.map((c) => ({
         causa: c.origem,
         incidente: c.incidente,
         solicitacao: c.solicitacao,
         total: c.total,
         abertos: c.abertos,
-        fechados: c.fechados
-      }))
+        fechados: c.fechados,
+      })),
     });
 
     return resultado;
@@ -1088,20 +1156,20 @@ class BooksDataCollectorService {
   private async agruparBacklogPorCausa(backlog: any[]) {
     // Buscar mapeamento de categorias
     const mapeamento = await this.buscarMapeamentoGrupos();
-    
+
     const causas = new Map<string, { incidente: number; solicitacao: number }>();
 
-    backlog.forEach(a => {
+    backlog.forEach((a) => {
       // Usar cod_resolucao como causa
       const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução - Ainda não classificado';
       // Mapear cod_resolucao para grupo_book usando de_para_categoria
       const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
-      
+
       if (!causas.has(causaMapeada)) {
         causas.set(causaMapeada, { incidente: 0, solicitacao: 0 });
       }
       const stats = causas.get(causaMapeada)!;
-      
+
       // Usar cod_tipo para determinar se é Incidente ou Solicitação
       if (a.cod_tipo === 'Incidente') {
         stats.incidente++;
@@ -1115,19 +1183,19 @@ class BooksDataCollectorService {
         origem,
         incidente: stats.incidente,
         solicitacao: stats.solicitacao,
-        total: stats.incidente + stats.solicitacao
+        total: stats.incidente + stats.solicitacao,
       }))
       .sort((a, b) => b.total - a.total);
 
     console.log('📊 Backlog agrupado por causa (cod_resolucao) - COM MAPEAMENTO:', {
       totalCausas: resultado.length,
       mapeamentosAplicados: mapeamento.size,
-      causas: resultado.map(c => ({
+      causas: resultado.map((c) => ({
         causa: c.origem,
         incidente: c.incidente,
         solicitacao: c.solicitacao,
-        total: c.total
-      }))
+        total: c.total,
+      })),
     });
 
     return resultado;
@@ -1140,10 +1208,10 @@ class BooksDataCollectorService {
   private async agruparPorGrupoBacklog(backlog: any[]) {
     // Buscar mapeamento de categorias → grupo_book
     const mapeamento = await this.buscarMapeamentoGrupos();
-    
+
     const grupos = new Map<string, number>();
 
-    backlog.forEach(a => {
+    backlog.forEach((a) => {
       // Usar campo 'nome_grupo' do ticket para mapear → grupo_book via de_para_categoria
       const grupoTicket = a.nome_grupo || 'SEM CATEGORIA';
       // Mapear nome_grupo → grupo_book usando de_para_categoria
@@ -1158,7 +1226,7 @@ class BooksDataCollectorService {
     console.log('📊 Backlog agrupado por grupo (MAPEAMENTO: categoria → grupo_book):', {
       totalGrupos: resultado.length,
       mapeamentosAplicados: mapeamento.size,
-      grupos: resultado
+      grupos: resultado,
     });
 
     return resultado;
@@ -1185,9 +1253,9 @@ class BooksDataCollectorService {
       ano,
       periodo: `${String(mes).padStart(2, '0')}/${ano}`,
       metaSLA,
-      quantidadeMinimaIncidentes
+      quantidadeMinimaIncidentes,
     });
-    
+
     const dataInicio = new Date(ano, mes - 1, 1);
     const dataFim = new Date(ano, mes, 0, 23, 59, 59);
     const proximoMesInicio = new Date(ano, mes, 1);
@@ -1197,7 +1265,7 @@ class BooksDataCollectorService {
       mes,
       ano,
       dataInicio: dataInicio.toISOString(),
-      dataFim: dataFim.toISOString()
+      dataFim: dataFim.toISOString(),
     });
 
     // FECHADOS: Todos os chamados fechados no mês (com data_fechamento) — apenas status Closed
@@ -1211,7 +1279,11 @@ class BooksDataCollectorService {
       .eq('status', 'Closed')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
@@ -1226,7 +1298,7 @@ class BooksDataCollectorService {
 
     // INCIDENTES: Incidentes fechados no mês (base para cálculo do SLA)
     // O card "FECHADOS" exibe apenas Incidentes (IM), não Solicitações
-    const incidentes = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente').length;
+    const incidentes = (ticketsFechados || []).filter((t) => t.cod_tipo === 'Incidente').length;
 
     // INCIDENTES ELEGÍVEIS: Incidentes com cod_resolucao específicos para elegibilidade
     const codResolucaoElegiveis = [
@@ -1270,14 +1342,12 @@ class BooksDataCollectorService {
       'Consultoria - Nota Publicada (Banco=S| SLA=S)',
     ];
 
-    const consultoriasFechadas = (ticketsFechados || []).filter(t =>
-      t.cod_tipo === 'Incidente' &&
-      codResolucaoConsultoria.includes(t.cod_resolucao)
+    const consultoriasFechadas = (ticketsFechados || []).filter(
+      (t) => t.cod_tipo === 'Incidente' && codResolucaoConsultoria.includes(t.cod_resolucao)
     ).length;
-    
-    const incidentesElegiveis = (ticketsFechados || []).filter(t => 
-      t.cod_tipo === 'Incidente' && 
-      codResolucaoElegiveis.includes(t.cod_resolucao)
+
+    const incidentesElegiveis = (ticketsFechados || []).filter(
+      (t) => t.cod_tipo === 'Incidente' && codResolucaoElegiveis.includes(t.cod_resolucao)
     ).length;
 
     console.log('📊 Incidentes para elegibilidade:', {
@@ -1285,25 +1355,26 @@ class BooksDataCollectorService {
       incidentesElegiveis,
       codResolucaoElegiveis,
       amostra: (ticketsFechados || [])
-        .filter(t => t.cod_tipo === 'Incidente')
+        .filter((t) => t.cod_tipo === 'Incidente')
         .slice(0, 5)
-        .map(t => ({
+        .map((t) => ({
           nro: t.nro_solicitacao,
           cod_resolucao: t.cod_resolucao,
-          elegivel: codResolucaoElegiveis.includes(t.cod_resolucao)
-        }))
+          elegivel: codResolucaoElegiveis.includes(t.cod_resolucao),
+        })),
     });
 
     // VIOLADOS: Incidentes fechados no mês que têm tds_cumprido = 'TDS Vencido' (mesma base de dados)
-    const incidentesFechadosArray = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente');
-    const violados = incidentesFechadosArray.filter(t => t.tds_cumprido === 'TDS Vencido').length;
-    
+    const incidentesFechadosArray = (ticketsFechados || []).filter(
+      (t) => t.cod_tipo === 'Incidente'
+    );
+    const violados = incidentesFechadosArray.filter((t) => t.tds_cumprido === 'TDS Vencido').length;
+
     // Verificar se os violados têm cod_resolucao elegível
-    const violadosElegiveis = incidentesFechadosArray.filter(t => 
-      t.tds_cumprido === 'TDS Vencido' &&
-      codResolucaoElegiveis.includes(t.cod_resolucao)
+    const violadosElegiveis = incidentesFechadosArray.filter(
+      (t) => t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao)
     ).length;
-    
+
     const violadosNaoElegiveis = violados - violadosElegiveis;
 
     console.log('📊 Violados por elegibilidade:', {
@@ -1311,13 +1382,13 @@ class BooksDataCollectorService {
       violadosElegiveis,
       violadosNaoElegiveis,
       amostra: incidentesFechadosArray
-        .filter(t => t.tds_cumprido === 'TDS Vencido')
+        .filter((t) => t.tds_cumprido === 'TDS Vencido')
         .slice(0, 5)
-        .map(t => ({
+        .map((t) => ({
           nro: t.nro_solicitacao,
           cod_resolucao: t.cod_resolucao,
-          elegivel: codResolucaoElegiveis.includes(t.cod_resolucao)
-        }))
+          elegivel: codResolucaoElegiveis.includes(t.cod_resolucao),
+        })),
     });
 
     console.log('✅ Dados SLA calculados:', {
@@ -1328,7 +1399,7 @@ class BooksDataCollectorService {
       violadosElegiveis,
       violadosNaoElegiveis,
       quantidadeMinimaIncidentes,
-      fonte: 'apontamentos_tickets_aranda'
+      fonte: 'apontamentos_tickets_aranda',
     });
 
     // NOVA LÓGICA DE CÁLCULO DO SLA
@@ -1343,17 +1414,18 @@ class BooksDataCollectorService {
     if (incidentes > 0) {
       // SLA usa apenas violados com cod_resolucao elegível
       slaPercentual = Math.round(((incidentes - violadosElegiveis) / incidentes) * 100);
-      
+
       // Verificar se é elegível para avaliação (baseado em incidentes com cod_resolucao específicos)
       if (incidentesElegiveis < quantidadeMinimaIncidentes) {
         slaElegivel = false;
-        mensagemNaoElegivel = 'A quantidade mínima de chamados fechados de Incidente/Consultoria necessária para aplicação de penalidade é 7';
+        mensagemNaoElegivel =
+          'A quantidade mínima de chamados fechados de Incidente/Consultoria necessária para aplicação de penalidade é 7';
         status = 'no_prazo'; // Não avalia como vencido se não for elegível
         console.log('⚠️ SLA NÃO ELEGÍVEL:', {
           incidentes,
           incidentesElegiveis,
           minimoRequerido: quantidadeMinimaIncidentes,
-          mensagem: mensagemNaoElegivel
+          mensagem: mensagemNaoElegivel,
         });
       } else {
         // Elegível: verificar se está no prazo ou vencido
@@ -1364,16 +1436,16 @@ class BooksDataCollectorService {
           minimoRequerido: quantidadeMinimaIncidentes,
           percentual: slaPercentual,
           meta: metaSLA,
-          status
+          status,
         });
       }
-      
+
       // Verificar se há violados não elegíveis
       if (violadosNaoElegiveis > 0) {
         mensagemVioladosNaoElegiveis = `${violadosNaoElegiveis} chamado(s) violado(s) não possui(em) código de resolução elegível para avaliação de SLA.`;
         console.log('⚠️ VIOLADOS NÃO ELEGÍVEIS:', {
           violadosNaoElegiveis,
-          mensagem: mensagemVioladosNaoElegiveis
+          mensagem: mensagemVioladosNaoElegiveis,
         });
       }
     } else {
@@ -1394,18 +1466,21 @@ class BooksDataCollectorService {
 
     // Detalhes dos chamados violados (top 10) - APENAS com cod_resolucao elegível
     const chamadosViolados = incidentesFechadosArray
-      .filter(t => t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao))
+      .filter(
+        (t) => t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao)
+      )
       .slice(0, 10)
-      .map(t => ({
-      id_chamado: t.nro_solicitacao,
-      ticket_externo: t.ticket_externo || 'N/A',
-      tipo: (t.cod_tipo === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
-      data_abertura: new Date(t.data_abertura).toLocaleDateString('pt-BR'),
-      data_solucao: t.data_solucao 
-        ? new Date(t.data_solucao).toLocaleDateString('pt-BR')
-        : 'Pendente',
-      grupo_atendedor: t.nome_grupo || 'N/A'
-    }));
+      .map((t) => ({
+        id_chamado: t.nro_solicitacao,
+        ticket_externo: t.ticket_externo || 'N/A',
+        tipo: (t.cod_tipo === 'Incidente' ? 'Incidente' : 'Requisição') as
+          'Incidente' | 'Requisição',
+        data_abertura: new Date(t.data_abertura).toLocaleDateString('pt-BR'),
+        data_solucao: t.data_solucao
+          ? new Date(t.data_solucao).toLocaleDateString('pt-BR')
+          : 'Pendente',
+        grupo_atendedor: t.nome_grupo || 'N/A',
+      }));
 
     return {
       sla_percentual: slaPercentual,
@@ -1419,7 +1494,7 @@ class BooksDataCollectorService {
       chamados_violados: chamadosViolados,
       sla_elegivel: slaElegivel,
       mensagem_nao_elegivel: mensagemNaoElegivel,
-      mensagem_violados_nao_elegiveis: mensagemVioladosNaoElegiveis
+      mensagem_violados_nao_elegiveis: mensagemVioladosNaoElegiveis,
     };
   }
 
@@ -1436,7 +1511,7 @@ class BooksDataCollectorService {
       consultorias_fechadas: 0,
       violados: 0,
       sla_historico: [],
-      chamados_violados: []
+      chamados_violados: [],
     };
   }
 
@@ -1465,8 +1540,8 @@ class BooksDataCollectorService {
         cod_tipo: '!= Problema',
         item_configuracao: 'IS NULL OR != 000000 - PROJETOS APL',
         caso_pai: 'SIM',
-        nome_grupo: 'NOT IN (AMS APL - TÉCNICO, CA SDM, PROJETOS APL - PLSQL)'
-      }
+        nome_grupo: 'NOT IN (AMS APL - TÉCNICO, CA SDM, PROJETOS APL - PLSQL)',
+      },
     });
 
     // Buscar tickets de backlog (chamados em aberto ATÉ o período selecionado)
@@ -1481,7 +1556,11 @@ class BooksDataCollectorService {
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+      .not(
+        'nome_grupo',
+        'in',
+        '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+      )
       .not('nome_grupo', 'like', 'AMS DX %')
       .not('nome_grupo', 'like', 'AMS PRJ %')
       .not('nome_grupo', 'like', 'AMS SAP %')
@@ -1493,36 +1572,34 @@ class BooksDataCollectorService {
     }
 
     const backlog = ticketsBacklog || [];
-    
+
     console.log('📊 Backlog encontrado:', {
       total: backlog.length,
-      incidentes: backlog.filter(t => t.cod_tipo === 'Incidente').length,
-      solicitacoes: backlog.filter(t => t.cod_tipo !== 'Incidente').length,
+      incidentes: backlog.filter((t) => t.cod_tipo === 'Incidente').length,
+      solicitacoes: backlog.filter((t) => t.cod_tipo !== 'Incidente').length,
       esperado: 11,
       diferenca: backlog.length - 11,
-      amostra: backlog.slice(0, 5).map(t => ({
+      amostra: backlog.slice(0, 5).map((t) => ({
         nro: t.nro_solicitacao,
         status: t.status,
         cod_tipo: t.cod_tipo,
         data_abertura: t.data_abertura,
         item_configuracao: t.item_configuracao,
-        nome_grupo: t.nome_grupo
-      }))
+        nome_grupo: t.nome_grupo,
+      })),
     });
 
-    const incidente = backlog.filter(r => r.cod_tipo === 'Incidente').length;
+    const incidente = backlog.filter((r) => r.cod_tipo === 'Incidente').length;
     const solicitacao = backlog.length - incidente;
 
     // Calcular aging (idade dos chamados baseado em data_abertura)
     const agingChamados = this.calcularAging(backlog);
 
     // Distribuição por grupo (nome_grupo)
-    const distribuicaoPorGrupo = (await this.agruparPorGrupoBacklog(backlog)).map(grupo => ({
+    const distribuicaoPorGrupo = (await this.agruparPorGrupoBacklog(backlog)).map((grupo) => ({
       grupo: grupo.grupo,
       total: grupo.total,
-      percentual: backlog.length > 0 
-        ? Math.round((grupo.total / backlog.length) * 100)
-        : 0
+      percentual: backlog.length > 0 ? Math.round((grupo.total / backlog.length) * 100) : 0,
     }));
 
     // Backlog por causa (cod_resolucao)
@@ -1534,7 +1611,7 @@ class BooksDataCollectorService {
       solicitacao,
       grupos: distribuicaoPorGrupo.length,
       causas: backlogPorCausa.length,
-      faixasAging: agingChamados.length
+      faixasAging: agingChamados.length,
     });
 
     return {
@@ -1543,7 +1620,7 @@ class BooksDataCollectorService {
       solicitacao,
       aging_chamados: agingChamados,
       distribuicao_por_grupo: distribuicaoPorGrupo,
-      backlog_por_causa: backlogPorCausa
+      backlog_por_causa: backlogPorCausa,
     };
   }
 
@@ -1567,7 +1644,7 @@ class BooksDataCollectorService {
       mes,
       ano,
       tipoContrato,
-      baselineHoras
+      baselineHoras,
     });
 
     let horasTotal = 0;
@@ -1588,9 +1665,12 @@ class BooksDataCollectorService {
       // CORREÇÃO: Usar match exato (sem wildcards %) para evitar capturar org_us_final de
       // outras organizações que contenham o nome da empresa como substring
       // Ex: "BRFONSDAGUIRRE-Sonda Procwork" não deve ser capturado para "SONDA PROCWORK INFORMATICA LTDA"
-      console.log('🔍 Buscando apontamentos_aranda com nome_completo (match exato):', empresaNomeCompleto);
+      console.log(
+        '🔍 Buscando apontamentos_aranda com nome_completo (match exato):',
+        empresaNomeCompleto
+      );
       console.log('📅 Período:', { dataInicio, proximoMesInicio });
-      
+
       const { data: apontamentosHoras, error: errorApontamentos } = await supabase
         .from('apontamentos_aranda')
         .select('*')
@@ -1598,7 +1678,9 @@ class BooksDataCollectorService {
         .eq('ativi_interna', 'Não')
         .in('tipo_chamado', ['IM', 'RF', 'PM'])
         .neq('item_configuracao', '000000 - PROJETOS APL')
-        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+        .or(
+          'caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%'
+        ) // Filtrar por grupo do caso
         .in('cod_resolucao', [
           'Alocação',
           'Alocação (Banco=S |SLA=N)',
@@ -1657,7 +1739,7 @@ class BooksDataCollectorService {
 
       console.log('📊 Resultado da busca apontamentos_aranda:', {
         total: apontamentosHoras?.length || 0,
-        primeiros10: apontamentosHoras?.slice(0, 10).map(a => ({
+        primeiros10: apontamentosHoras?.slice(0, 10).map((a) => ({
           id: a.id,
           id_externo: a.id_externo,
           nro_chamado: a.nro_chamado,
@@ -1668,15 +1750,15 @@ class BooksDataCollectorService {
           data_atividade: a.data_atividade,
           tipo_chamado: a.tipo_chamado,
           ativi_interna: a.ativi_interna,
-          item_configuracao: a.item_configuracao
+          item_configuracao: a.item_configuracao,
         })),
         filtrosAplicados: {
           org_us_final: empresaNomeCompleto,
           ativi_interna: 'Não',
           tipo_chamado: ['IM', 'RF', 'PM'],
           item_configuracao_diferente_de: '000000 - PROJETOS APL',
-          periodo: `${dataInicio.toISOString()} até ${proximoMesInicio.toISOString()}`
-        }
+          periodo: `${dataInicio.toISOString()} até ${proximoMesInicio.toISOString()}`,
+        },
       });
 
       if (apontamentosHoras && apontamentosHoras.length > 0) {
@@ -1688,33 +1770,33 @@ class BooksDataCollectorService {
         // Calcular horas baseado em tempo_gasto_horas (formato: "HH:MM:SS" ou "HH:MM")
         // IMPORTANTE: Ignorar segundos, considerar apenas horas e minutos
         // SEPARAR por tipo_chamado: IM = Incidente, RF = Solicitação
-        let detalhesConversao: any[] = [];
+        const detalhesConversao: any[] = [];
         let horasApontadasIncidente = 0;
         let horasApontadasSolicitacao = 0;
-        
+
         const horasApontadas = apontamentosFiltrados.reduce((sum, a) => {
           const tempoStr = a.tempo_gasto_horas;
-          
+
           if (!tempoStr) {
             console.log('⚠️ Registro sem tempo_gasto_horas:', {
               id: a.id,
               id_externo: a.id_externo,
               nro_chamado: a.nro_chamado,
               nro_tarefa: a.nro_tarefa,
-              tempo_gasto_minutos: a.tempo_gasto_minutos
+              tempo_gasto_minutos: a.tempo_gasto_minutos,
             });
             return sum;
           }
-          
+
           // Converter formato "HH:MM:SS" ou "HH:MM" para horas decimais
           // IGNORANDO SEGUNDOS (apenas horas e minutos)
           const partes = tempoStr.split(':');
           const horas = parseInt(partes[0]) || 0;
           const minutos = parseInt(partes[1]) || 0;
           // Segundos são ignorados propositalmente (partes[2] não é usado)
-          
-          const totalHoras = horas + (minutos / 60);
-          
+
+          const totalHoras = horas + minutos / 60;
+
           // Separar por tipo de chamado
           if (a.tipo_chamado === 'IM') {
             horasApontadasIncidente += totalHoras;
@@ -1724,7 +1806,7 @@ class BooksDataCollectorService {
             // PM (Problema) ou outros tipos vão para solicitação
             horasApontadasSolicitacao += totalHoras;
           }
-          
+
           detalhesConversao.push({
             nro_chamado: a.nro_chamado,
             nro_tarefa: a.nro_tarefa,
@@ -1735,9 +1817,9 @@ class BooksDataCollectorService {
             segundos_ignorados: partes[2] || '0',
             horas_decimal: totalHoras.toFixed(4),
             analista: a.analista_tarefa,
-            classificacao: a.tipo_chamado === 'IM' ? 'INCIDENTE' : 'SOLICITAÇÃO'
+            classificacao: a.tipo_chamado === 'IM' ? 'INCIDENTE' : 'SOLICITAÇÃO',
           });
-          
+
           return sum + totalHoras;
         }, 0);
 
@@ -1754,32 +1836,41 @@ class BooksDataCollectorService {
           horasIncidente: horasApontadasIncidente.toFixed(4),
           horasSolicitacao: horasApontadasSolicitacao.toFixed(4),
           verificacao: `${horasApontadasIncidente.toFixed(4)} + ${horasApontadasSolicitacao.toFixed(4)} = ${(horasApontadasIncidente + horasApontadasSolicitacao).toFixed(4)} (deve ser igual a ${horasApontadas.toFixed(4)})`,
-          somaManual: detalhesConversao.reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0).toFixed(4),
+          somaManual: detalhesConversao
+            .reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0)
+            .toFixed(4),
           observacao: 'Segundos são ignorados, apenas horas e minutos são considerados',
           filtros: {
             org_us_final: empresaNomeCompleto,
             ativi_interna: 'Não',
             tipo_chamado: ['IM', 'RF', 'PM'],
-            item_configuracao_excluido: '000000 - PROJETOS APL'
-          }
+            item_configuracao_excluido: '000000 - PROJETOS APL',
+          },
         });
 
         // Log detalhado de TODOS os registros para debug
         console.log('🔍 DETALHAMENTO COMPLETO DOS REGISTROS:');
         console.table(detalhesConversao);
-        
+
         console.log('📊 RESUMO DA CONVERSÃO:', {
           totalRegistros: detalhesConversao.length,
-          somaHorasDecimais: detalhesConversao.reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0).toFixed(4),
+          somaHorasDecimais: detalhesConversao
+            .reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0)
+            .toFixed(4),
           horasIncidente: horasApontadasIncidente.toFixed(4) + ' horas',
           horasSolicitacao: horasApontadasSolicitacao.toFixed(4) + ' horas',
           horasTotal: horasApontadas.toFixed(4) + ' horas',
-          registrosIncidente: detalhesConversao.filter(d => d.tipo_chamado === 'IM').length,
-          registrosSolicitacao: detalhesConversao.filter(d => d.tipo_chamado === 'RF').length,
-          registrosOutros: detalhesConversao.filter(d => d.tipo_chamado !== 'IM' && d.tipo_chamado !== 'RF').length
+          registrosIncidente: detalhesConversao.filter((d) => d.tipo_chamado === 'IM').length,
+          registrosSolicitacao: detalhesConversao.filter((d) => d.tipo_chamado === 'RF').length,
+          registrosOutros: detalhesConversao.filter(
+            (d) => d.tipo_chamado !== 'IM' && d.tipo_chamado !== 'RF'
+          ).length,
         });
       } else {
-        console.log('⚠️ Nenhum apontamento encontrado em apontamentos_aranda para:', empresaNomeCompleto);
+        console.log(
+          '⚠️ Nenhum apontamento encontrado em apontamentos_aranda para:',
+          empresaNomeCompleto
+        );
       }
     }
 
@@ -1791,12 +1882,12 @@ class BooksDataCollectorService {
       // IMPORTANTE: Usar nome_completo para match exato (sem wildcards)
       // O campo organizacao no banco contém o nome completo da empresa
       const nomeParaBuscaTickets = empresaNomeCompleto;
-      
+
       console.log('🎫 [gerarDadosConsumo] Buscando tickets com mesma lógica do banco de horas:', {
         nomeParaBusca: nomeParaBuscaTickets,
         data_fechamento_inicio: dataInicio.toISOString(),
         data_fechamento_fim: dataFimMes.toISOString(),
-        status: 'Closed'
+        status: 'Closed',
       });
 
       const { data: ticketsFechados } = await supabase
@@ -1809,24 +1900,56 @@ class BooksDataCollectorService {
         .neq('item_configuracao', '000000 - PROJETOS APL')
         .in('cod_resolucao', [
           'Alocação',
-          'Alocação (Banco=S |SLA=N)','Alocação (Banco=S| SLA=N)','Alocação - T&M','Alocação T&M','Alocação - T&M Banco de Horas (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
-          'AMS SAP','AMS SAP (Banco=S |SLA=S)','AMS SAP (Banco=S| SLA=S)',
-          'Aplicação de Nota / Licença - Contratados','Aplicação de Nota / Licença (Banco=S |SLA=N)',
-          'Consultoria','Consultoria (Banco=S |SLA=S)','Consultoria (Banco=S| SLA=S)',
-          'Consultoria - Banco de Dados','Consultoria - Banco de Dados (Banco=S |SLA=S)','Consultoria - Banco de Dados (Banco=S| SLA=S)',
-          'Consultoria - Nota Publicada','Consultoria - Nota Publicada (Banco=S |SLA=S)','Consultoria - Nota Publicada (Banco=S| SLA=S)',
-          'Consultoria - Solução Paliativa','Consultoria - Solução Paliativa (Banco=S |SLA=S)','Consultoria - Solução Paliativa (Banco=S| SLA=S)',
-          'Dúvida','Dúvida (Banco=S |SLA=N)',
-          'Erro de classificação na abertura','Erro de classificação na abertura (Banco=S |SLA=N)','Erro de classificação na abertura (Banco=S| SLA=N)',
-          'Erro de programa especifico (SEM SLA)','Erro de programa especifico (Banco=S |SLA=N)','Erro de programa especifico (Banco=S| SLA=N)',
-          'Levantamento de Versão / Orçamento','Levantamento de Versão / Orçamento (Banco=S |SLA=N)','Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
-          'Monitoramento DBA','Monitoramento DBA (Banco=S |SLA=N)',
-          'Nota Publicada','Nota Publicada (Banco=S |SLA=N)',
-          'Parametrização / Cadastro','Parametrização / Cadastro (Banco=S |SLA=N)',
-          'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=N)','Parametrização / Funcionalidade (Banco=S| SLA=N)',
-          'Validação de Arquivo','Validação de Arquivo (Banco=S |SLA=N)','Validação de Arquivo (Banco=S| SLA=N)'
+          'Alocação (Banco=S |SLA=N)',
+          'Alocação (Banco=S| SLA=N)',
+          'Alocação - T&M',
+          'Alocação T&M',
+          'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
+          'Alocação - T&M (Banco=S| SLA=N)',
+          'AMS SAP',
+          'AMS SAP (Banco=S |SLA=S)',
+          'AMS SAP (Banco=S| SLA=S)',
+          'Aplicação de Nota / Licença - Contratados',
+          'Aplicação de Nota / Licença (Banco=S |SLA=N)',
+          'Consultoria',
+          'Consultoria (Banco=S |SLA=S)',
+          'Consultoria (Banco=S| SLA=S)',
+          'Consultoria - Banco de Dados',
+          'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+          'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+          'Consultoria - Nota Publicada',
+          'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+          'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+          'Consultoria - Solução Paliativa',
+          'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+          'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+          'Dúvida',
+          'Dúvida (Banco=S |SLA=N)',
+          'Erro de classificação na abertura',
+          'Erro de classificação na abertura (Banco=S |SLA=N)',
+          'Erro de classificação na abertura (Banco=S| SLA=N)',
+          'Erro de programa especifico (SEM SLA)',
+          'Erro de programa especifico (Banco=S |SLA=N)',
+          'Erro de programa especifico (Banco=S| SLA=N)',
+          'Levantamento de Versão / Orçamento',
+          'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+          'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+          'Monitoramento DBA',
+          'Monitoramento DBA (Banco=S |SLA=N)',
+          'Nota Publicada',
+          'Nota Publicada (Banco=S |SLA=N)',
+          'Parametrização / Cadastro',
+          'Parametrização / Cadastro (Banco=S |SLA=N)',
+          'Parametrização / Funcionalidade',
+          'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+          'Parametrização / Funcionalidade (Banco=S| SLA=N)',
+          'Validação de Arquivo',
+          'Validação de Arquivo (Banco=S |SLA=N)',
+          'Validação de Arquivo (Banco=S| SLA=N)',
         ])
-        .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%');
+        .or(
+          'nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%'
+        );
 
       console.log('🎫 [gerarDadosConsumo] Tickets encontrados:', {
         quantidade: ticketsFechados?.length || 0,
@@ -1834,14 +1957,14 @@ class BooksDataCollectorService {
           organizacao: nomeParaBuscaTickets,
           data_fechamento_inicio: dataInicio.toISOString(),
           data_fechamento_fim: dataFimMes.toISOString(),
-          status: 'Closed'
-        }
+          status: 'Closed',
+        },
       });
 
       if (ticketsFechados && ticketsFechados.length > 0) {
         if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
           // Para tipo ticket ou ambos: cada chamado conta como 1 ticket
-          const ticketsIncidente = ticketsFechados.filter(t => t.cod_tipo === 'Incidente').length;
+          const ticketsIncidente = ticketsFechados.filter((t) => t.cod_tipo === 'Incidente').length;
           const ticketsSolicitacao = ticketsFechados.length - ticketsIncidente;
 
           horasTotal += ticketsFechados.length;
@@ -1854,20 +1977,20 @@ class BooksDataCollectorService {
             const dias = Number(t.tempo_gasto_dias) || 0;
             const horas = Number(t.tempo_gasto_horas) || 0;
             const minutos = Number(t.tempo_gasto_minutos) || 0;
-            
+
             // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
-            const totalHoras = (dias * 24) + horas + (minutos / 60);
+            const totalHoras = dias * 24 + horas + minutos / 60;
             return sum + totalHoras;
           }, 0);
 
           // Separar por tipo
           const horasTicketsIncidente = ticketsFechados
-            .filter(t => t.cod_tipo === 'Incidente')
+            .filter((t) => t.cod_tipo === 'Incidente')
             .reduce((sum, t) => {
               const dias = Number(t.tempo_gasto_dias) || 0;
               const horas = Number(t.tempo_gasto_horas) || 0;
               const minutos = Number(t.tempo_gasto_minutos) || 0;
-              return sum + (dias * 24) + horas + (minutos / 60);
+              return sum + dias * 24 + horas + minutos / 60;
             }, 0);
 
           const horasTicketsSolicitacao = horasTickets - horasTicketsIncidente;
@@ -1880,7 +2003,7 @@ class BooksDataCollectorService {
 
         // Distribuição por causa (cod_resolucao)
         const causasMap = new Map<string, number>();
-        ticketsFechados.forEach(t => {
+        ticketsFechados.forEach((t) => {
           const causa = t.cod_resolucao || 'SEM CAUSA';
           causasMap.set(causa, (causasMap.get(causa) || 0) + 1);
         });
@@ -1888,50 +2011,47 @@ class BooksDataCollectorService {
         distribuicaoCausa = Array.from(causasMap.entries()).map(([causa, quantidade]) => ({
           causa,
           quantidade,
-          percentual: totalRegistros > 0 ? Math.round((quantidade / totalRegistros) * 100) : 0
+          percentual: totalRegistros > 0 ? Math.round((quantidade / totalRegistros) * 100) : 0,
         }));
 
         console.log('✅ Horas de apontamentos_tickets_aranda:', {
           registros: ticketsFechados.length,
           horasTotal,
           horasIncidente,
-          horasSolicitacao
+          horasSolicitacao,
         });
       }
     }
 
     // Calcular percentual consumido
-    const percentualConsumido = baselineHoras > 0
-      ? Math.round((horasTotal / baselineHoras) * 100)
-      : 0;
+    const percentualConsumido =
+      baselineHoras > 0 ? Math.round((horasTotal / baselineHoras) * 100) : 0;
 
     // Calcular percentuais individuais de incidente e solicitação
-    const percentualIncidente = horasTotal > 0
-      ? Math.round((horasIncidente / horasTotal) * 100)
-      : 0;
-    
-    const percentualSolicitacao = horasTotal > 0
-      ? Math.round((horasSolicitacao / horasTotal) * 100)
-      : 0;
+    const percentualIncidente =
+      horasTotal > 0 ? Math.round((horasIncidente / horasTotal) * 100) : 0;
+
+    const percentualSolicitacao =
+      horasTotal > 0 ? Math.round((horasSolicitacao / horasTotal) * 100) : 0;
 
     // Verificação de consistência
     const somaVerificacao = horasIncidente + horasSolicitacao;
     const diferencaVerificacao = Math.abs(horasTotal - somaVerificacao);
-    
+
     if (diferencaVerificacao > 0.01) {
       console.warn('⚠️ INCONSISTÊNCIA DETECTADA:', {
         horasTotal: horasTotal.toFixed(4),
         horasIncidente: horasIncidente.toFixed(4),
         horasSolicitacao: horasSolicitacao.toFixed(4),
         soma: somaVerificacao.toFixed(4),
-        diferenca: diferencaVerificacao.toFixed(4)
+        diferenca: diferencaVerificacao.toFixed(4),
       });
     } else {
       console.log('✅ VERIFICAÇÃO OK: Incidente + Solicitação = Total', {
         horasIncidente: horasIncidente.toFixed(4),
         horasSolicitacao: horasSolicitacao.toFixed(4),
         soma: somaVerificacao.toFixed(4),
-        horasTotal: horasTotal.toFixed(4)
+        horasTotal: horasTotal.toFixed(4),
       });
     }
 
@@ -1956,7 +2076,8 @@ class BooksDataCollectorService {
     const historicoCompleto = historicoConsumo.map((consumo, index) => ({
       ...consumo,
       requerimentos_horas: historicoRequerimentos[index]?.requerimentos_horas || '00:00',
-      requerimentos_valor_numerico: historicoRequerimentos[index]?.requerimentos_valor_numerico || 0
+      requerimentos_valor_numerico:
+        historicoRequerimentos[index]?.requerimentos_valor_numerico || 0,
     }));
 
     console.log('✅ Dados de consumo calculados:', {
@@ -1970,15 +2091,11 @@ class BooksDataCollectorService {
       percentualConsumido,
       totalRegistros,
       empresa: empresaNomeCompleto,
-      periodo: `${mes}/${ano}`
+      periodo: `${mes}/${ano}`,
     });
 
     // Buscar requerimentos descontados do período
-    const requerimentosDescontados = await this.buscarRequerimentosDescontados(
-      empresaId,
-      mes,
-      ano
-    );
+    const requerimentosDescontados = await this.buscarRequerimentosDescontados(empresaId, mes, ano);
 
     // Buscar dados de banco de horas do ciclo para snapshot
     const bancoHorasTrimestre = await this.buscarBancoHorasCiclo(empresaId, mes, ano);
@@ -1987,21 +2104,36 @@ class BooksDataCollectorService {
     const taxaHoraExcedente = await this.buscarTaxaHoraExcedente(empresaId, mes, ano);
 
     return {
-      horas_consumo: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasTotal)) : this.formatarHoras(horasTotal),
-      baseline_apl: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(baselineHoras)) : this.formatarHoras(baselineHoras),
-      incidente: horasIncidente > 0 ? ((tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasIncidente)) : this.formatarHoras(horasIncidente)) : '--',
-      solicitacao: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasSolicitacao)) : this.formatarHoras(horasSolicitacao),
+      horas_consumo:
+        tipoContrato === 'tickets' || tipoContrato === 'ambos'
+          ? String(Math.round(horasTotal))
+          : this.formatarHoras(horasTotal),
+      baseline_apl:
+        tipoContrato === 'tickets' || tipoContrato === 'ambos'
+          ? String(Math.round(baselineHoras))
+          : this.formatarHoras(baselineHoras),
+      incidente:
+        horasIncidente > 0
+          ? tipoContrato === 'tickets' || tipoContrato === 'ambos'
+            ? String(Math.round(horasIncidente))
+            : this.formatarHoras(horasIncidente)
+          : '--',
+      solicitacao:
+        tipoContrato === 'tickets' || tipoContrato === 'ambos'
+          ? String(Math.round(horasSolicitacao))
+          : this.formatarHoras(horasSolicitacao),
       percentual_consumido: percentualConsumido,
       percentual_incidente: percentualIncidente,
       percentual_solicitacao: percentualSolicitacao,
       historico_consumo: historicoCompleto,
-      distribuicao_causa: distribuicaoCausa.length > 0 ? distribuicaoCausa : [
-        { causa: 'SEM DADOS', quantidade: 0, percentual: 0 }
-      ],
+      distribuicao_causa:
+        distribuicaoCausa.length > 0
+          ? distribuicaoCausa
+          : [{ causa: 'SEM DADOS', quantidade: 0, percentual: 0 }],
       requerimentos_descontados: requerimentosDescontados,
       total_geral: totalRegistros,
       banco_horas_trimestre: bancoHorasTrimestre,
-      taxa_hora_excedente: taxaHoraExcedente
+      taxa_hora_excedente: taxaHoraExcedente,
     };
   }
 
@@ -2010,11 +2142,7 @@ class BooksDataCollectorService {
    * Replica a lógica do componente BookConsumo.buscarBancoHorasTrimestre()
    * para que o PDF tenha os dados sem precisar buscar em tempo real.
    */
-  private async buscarBancoHorasCiclo(
-    empresaId: string,
-    mes: number,
-    ano: number
-  ): Promise<any[]> {
+  private async buscarBancoHorasCiclo(empresaId: string, mes: number, ano: number): Promise<any[]> {
     try {
       // 1. Buscar dados da empresa para pegar periodo_apuracao e inicio_vigencia
       const { data: empresa, error: empresaError } = await supabase
@@ -2032,7 +2160,7 @@ class BooksDataCollectorService {
       const inicioVigencia = empresa.inicio_vigencia;
 
       // 2. Calcular os meses do ciclo
-      let mesesCiclo: { mes: number; ano: number }[] = [];
+      const mesesCiclo: { mes: number; ano: number }[] = [];
 
       if (inicioVigencia) {
         const [anoVigencia, mesVigencia] = inicioVigencia.split('-').map(Number);
@@ -2089,16 +2217,19 @@ class BooksDataCollectorService {
           return {
             mes: m,
             ano: a,
-            dados: data || null
+            dados: data || null,
           };
         })
       );
 
-      console.log('✅ [buscarBancoHorasCiclo] Dados carregados:', resultados.map(r => ({
-        mes: r.mes,
-        ano: r.ano,
-        temDados: !!r.dados
-      })));
+      console.log(
+        '✅ [buscarBancoHorasCiclo] Dados carregados:',
+        resultados.map((r) => ({
+          mes: r.mes,
+          ano: r.ano,
+          temDados: !!r.dados,
+        }))
+      );
 
       return resultados;
     } catch (error) {
@@ -2159,16 +2290,26 @@ class BooksDataCollectorService {
         taxaHoraAdicional = valorFuncional.valor_adicional;
       } else if (taxaMaisRecente.tipo_calculo_adicional === 'normal') {
         // CORREÇÃO: Usar soma para evitar imprecisão de ponto flutuante
-        taxaHoraAdicional = Math.round((valorFuncional.valor_base + (valorFuncional.valor_base * 0.15)) * 100) / 100;
+        taxaHoraAdicional =
+          Math.round((valorFuncional.valor_base + valorFuncional.valor_base * 0.15) * 100) / 100;
       } else {
         // Média das funções principais
-        const funcoesPrincipais = ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL'];
+        const funcoesPrincipais = [
+          'Funcional',
+          'Técnico (Instalação / Atualização)',
+          'ABAP - PL/SQL',
+        ];
         const valoresPrincipais = valores
           .filter((v: any) => funcoesPrincipais.includes(v.funcao))
-          .map((v: any) => (v.valor_adicional && v.valor_adicional > 0) ? v.valor_adicional : Math.round((v.valor_base + (v.valor_base * 0.15)) * 100) / 100);
+          .map((v: any) =>
+            v.valor_adicional && v.valor_adicional > 0
+              ? v.valor_adicional
+              : Math.round((v.valor_base + v.valor_base * 0.15) * 100) / 100
+          );
 
         if (valoresPrincipais.length === 0) return 0;
-        taxaHoraAdicional = valoresPrincipais.reduce((a: number, b: number) => a + b, 0) / valoresPrincipais.length;
+        taxaHoraAdicional =
+          valoresPrincipais.reduce((a: number, b: number) => a + b, 0) / valoresPrincipais.length;
       }
 
       console.log('✅ [buscarTaxaHoraExcedente] Taxa calculada:', taxaHoraAdicional);
@@ -2184,20 +2325,16 @@ class BooksDataCollectorService {
    * IMPORTANTE: O book do mês X mostra requerimentos do mês X
    * Exemplo: Book de Janeiro/2026 mostra requerimentos de Janeiro/2026
    */
-  private async buscarRequerimentosDescontados(
-    empresaId: string,
-    mes: number,
-    ano: number
-  ) {
+  private async buscarRequerimentosDescontados(empresaId: string, mes: number, ano: number) {
     try {
       // Buscar requerimentos do MESMO mês do book
       const mesCobranca = `${String(mes).padStart(2, '0')}/${ano}`;
-      
+
       console.log('🔍 Buscando requerimentos descontados:', {
         empresaId,
         mesBook: `${String(mes).padStart(2, '0')}/${ano}`,
         mesRequerimento: mesCobranca,
-        observacao: 'Book do mês X mostra requerimentos do mês X'
+        observacao: 'Book do mês X mostra requerimentos do mês X',
       });
 
       // Buscar diretamente por cliente_id - APENAS BANCO DE HORAS
@@ -2219,10 +2356,10 @@ class BooksDataCollectorService {
 
       // Buscar ticket_externo para os chamados dos requerimentos
       const chamadosNumeros = (requerimentos || [])
-        .map(req => (req.chamado || '').replace('RF-', ''))
+        .map((req) => (req.chamado || '').replace('RF-', ''))
         .filter(Boolean);
 
-      let ticketExternoReqMap: Record<string, string> = {};
+      const ticketExternoReqMap: Record<string, string> = {};
       if (chamadosNumeros.length > 0) {
         const { data: ticketsData } = await supabase
           .from('apontamentos_tickets_aranda')
@@ -2230,7 +2367,7 @@ class BooksDataCollectorService {
           .in('nro_solicitacao', chamadosNumeros);
 
         if (ticketsData) {
-          ticketsData.forEach(t => {
+          ticketsData.forEach((t) => {
             if (t.nro_solicitacao && t.ticket_externo) {
               ticketExternoReqMap[t.nro_solicitacao] = t.ticket_externo.trim();
             }
@@ -2238,61 +2375,68 @@ class BooksDataCollectorService {
         }
       }
 
-      return (requerimentos || []).map(req => {
+      return (requerimentos || []).map((req) => {
         console.log(`\n🔍 Processando requerimento ${req.chamado}:`, {
           horas_funcional_raw: req.horas_funcional,
           horas_funcional_type: typeof req.horas_funcional,
           horas_tecnico_raw: req.horas_tecnico,
-          horas_tecnico_type: typeof req.horas_tecnico
+          horas_tecnico_type: typeof req.horas_tecnico,
         });
 
         // Converter horas para decimal (pode vir como número ou string HH:MM)
         let horasFuncional = 0;
         let horasTecnico = 0;
-        
+
         // Processar horas_funcional
         if (req.horas_funcional) {
           const horasFuncionalValue = req.horas_funcional as string | number;
           if (typeof horasFuncionalValue === 'string' && horasFuncionalValue.includes(':')) {
             // Formato HH:MM
             const [h, m] = horasFuncionalValue.split(':').map(Number);
-            horasFuncional = h + (m / 60);
-            console.log(`  ✅ horas_funcional (HH:MM): ${horasFuncionalValue} → ${horasFuncional.toFixed(2)}h`);
+            horasFuncional = h + m / 60;
+            console.log(
+              `  ✅ horas_funcional (HH:MM): ${horasFuncionalValue} → ${horasFuncional.toFixed(2)}h`
+            );
           } else {
             // Formato decimal
             horasFuncional = Number(horasFuncionalValue) || 0;
-            console.log(`  ✅ horas_funcional (decimal): ${horasFuncionalValue} → ${horasFuncional.toFixed(2)}h`);
+            console.log(
+              `  ✅ horas_funcional (decimal): ${horasFuncionalValue} → ${horasFuncional.toFixed(2)}h`
+            );
           }
         } else {
           console.log(`  ⚠️ horas_funcional: null/undefined`);
         }
-        
+
         // Processar horas_tecnico
         if (req.horas_tecnico) {
           const horasTecnicoValue = req.horas_tecnico as string | number;
           if (typeof horasTecnicoValue === 'string' && horasTecnicoValue.includes(':')) {
             // Formato HH:MM
             const [h, m] = horasTecnicoValue.split(':').map(Number);
-            horasTecnico = h + (m / 60);
-            console.log(`  ✅ horas_tecnico (HH:MM): ${horasTecnicoValue} → ${horasTecnico.toFixed(2)}h`);
+            horasTecnico = h + m / 60;
+            console.log(
+              `  ✅ horas_tecnico (HH:MM): ${horasTecnicoValue} → ${horasTecnico.toFixed(2)}h`
+            );
           } else {
             // Formato decimal
             horasTecnico = Number(horasTecnicoValue) || 0;
-            console.log(`  ✅ horas_tecnico (decimal): ${horasTecnicoValue} → ${horasTecnico.toFixed(2)}h`);
+            console.log(
+              `  ✅ horas_tecnico (decimal): ${horasTecnicoValue} → ${horasTecnico.toFixed(2)}h`
+            );
           }
         } else {
           console.log(`  ⚠️ horas_tecnico: null/undefined`);
         }
-        
+
         const totalHorasDecimal = horasFuncional + horasTecnico;
-        
+
         // Formatar total como HH:MM
-        const totalHorasFormatado = totalHorasDecimal > 0 
-          ? this.formatarHoras(totalHorasDecimal)
-          : '00:00';
-        
+        const totalHorasFormatado =
+          totalHorasDecimal > 0 ? this.formatarHoras(totalHorasDecimal) : '00:00';
+
         console.log(`  📊 TOTAL: ${totalHorasDecimal.toFixed(2)}h → ${totalHorasFormatado}\n`);
-        
+
         return {
           id: req.id,
           numero_chamado: req.chamado || '--',
@@ -2306,10 +2450,11 @@ class BooksDataCollectorService {
           tickets: 0,
           data_envio: req.data_envio_faturamento || null,
           data_aprovacao: req.data_aprovacao || null,
-          valor_total: req.valor_total_funcional && req.valor_total_tecnico
-            ? (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0)
-            : 0,
-          periodo_cobranca: req.mes_cobranca || mesCobranca
+          valor_total:
+            req.valor_total_funcional && req.valor_total_tecnico
+              ? (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0)
+              : 0,
+          periodo_cobranca: req.mes_cobranca || mesCobranca,
         };
       });
     } catch (error) {
@@ -2322,7 +2467,7 @@ class BooksDataCollectorService {
    * Busca requerimentos em desenvolvimento para a aba do Book
    * Requerimentos com status = 'lancado', tipo_cobranca = 'Banco de Horas'
    * e data_envio <= último dia do mês do book
-   * 
+   *
    * REGRA: Book de Fevereiro mostra TODOS os requerimentos em desenvolvimento
    * com data_envio até 28/02 (não mostra os que foram enviados depois).
    */
@@ -2358,7 +2503,7 @@ class BooksDataCollectorService {
 
       // Filtrar: não exibir requerimentos cuja data_envio tem mês posterior ao mês do book
       // Regra: se data_envio é do mês 8 e o book é do mês 7, não exibir
-      const requerimentosFiltrados = requerimentos.filter(req => {
+      const requerimentosFiltrados = requerimentos.filter((req) => {
         if (!req.data_envio) return true;
         const partes = req.data_envio.split('-');
         const anoEnvio = parseInt(partes[0], 10);
@@ -2375,10 +2520,10 @@ class BooksDataCollectorService {
 
       // Buscar ticket_externo para os chamados
       const chamadosNumeros = requerimentosFiltrados
-        .map(req => (req.chamado || '').replace('RF-', ''))
+        .map((req) => (req.chamado || '').replace('RF-', ''))
         .filter(Boolean);
 
-      let ticketExternoMap: Record<string, string> = {};
+      const ticketExternoMap: Record<string, string> = {};
       if (chamadosNumeros.length > 0) {
         const { data: ticketsData } = await supabase
           .from('apontamentos_tickets_aranda')
@@ -2386,7 +2531,7 @@ class BooksDataCollectorService {
           .in('nro_solicitacao', chamadosNumeros);
 
         if (ticketsData) {
-          ticketsData.forEach(t => {
+          ticketsData.forEach((t) => {
             if (t.nro_solicitacao && t.ticket_externo) {
               ticketExternoMap[t.nro_solicitacao] = t.ticket_externo.trim();
             }
@@ -2403,7 +2548,7 @@ class BooksDataCollectorService {
 
       const nomeCliente = empresaData?.nome_abreviado || '--';
 
-      return requerimentosFiltrados.map(req => {
+      return requerimentosFiltrados.map((req) => {
         // Converter horas para formato HH:MM
         let horasFuncional = 0;
         let horasTecnico = 0;
@@ -2412,7 +2557,7 @@ class BooksDataCollectorService {
           const val = req.horas_funcional as string | number;
           if (typeof val === 'string' && val.includes(':')) {
             const [h, m] = val.split(':').map(Number);
-            horasFuncional = h + (m / 60);
+            horasFuncional = h + m / 60;
           } else {
             horasFuncional = Number(val) || 0;
           }
@@ -2422,7 +2567,7 @@ class BooksDataCollectorService {
           const val = req.horas_tecnico as string | number;
           if (typeof val === 'string' && val.includes(':')) {
             const [h, m] = val.split(':').map(Number);
-            horasTecnico = h + (m / 60);
+            horasTecnico = h + m / 60;
           } else {
             horasTecnico = Number(val) || 0;
           }
@@ -2446,14 +2591,18 @@ class BooksDataCollectorService {
           horas_funcional: `${String(horasFuncH).padStart(2, '0')}:${String(horasFuncM).padStart(2, '0')}`,
           horas_tecnica: `${String(horasTecH).padStart(2, '0')}:${String(horasTecM).padStart(2, '0')}`,
           total_horas: `${String(totalH).padStart(2, '0')}:${String(totalM).padStart(2, '0')}`,
-          data_envio: req.data_envio ? (() => {
-            // Parse manual para evitar problema de timezone (+1 dia)
-            const parts = req.data_envio.split('-');
-            return `${parts[2]}/${parts[1]}/${parts[0]}`;
-          })() : '--',
+          data_envio: req.data_envio
+            ? (() => {
+                // Parse manual para evitar problema de timezone (+1 dia)
+                const parts = req.data_envio.split('-');
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+              })()
+            : '--',
           status: 'Em desenvolvimento',
-          valor_total: (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0) || undefined,
-          periodo_cobranca: req.mes_cobranca || undefined
+          valor_total:
+            (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0) ||
+            undefined,
+          periodo_cobranca: req.mes_cobranca || undefined,
         };
       });
     } catch (error) {
@@ -2464,7 +2613,7 @@ class BooksDataCollectorService {
 
   /**
    * Gera dados de pesquisa
-   * 
+   *
    * REGRA DE NEGÓCIO:
    * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
    * - Pesquisas com data_resposta preenchido = RESPONDIDAS
@@ -2501,7 +2650,7 @@ class BooksDataCollectorService {
 
       console.log('📅 Período de busca (data_fechamento):', {
         dataInicio: dataInicio.toISOString(),
-        dataFim: dataFim.toISOString()
+        dataFim: dataFim.toISOString(),
       });
       console.log('🚫 Grupos excluídos: "AMS APL - TÉCNICO", "CA SDM", "PROJETOS APL - PLSQL"');
       console.log('🚫 Tipo de caso excluído: "PM"');
@@ -2515,7 +2664,11 @@ class BooksDataCollectorService {
         .eq('empresa', nomeCompletoEmpresa)
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
-        .not('grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+        .not(
+          'grupo',
+          'in',
+          '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+        )
         .not('grupo', 'like', 'AMS DX %')
         .not('grupo', 'like', 'AMS PRJ %')
         .not('grupo', 'like', 'AMS SAP %')
@@ -2536,42 +2689,58 @@ class BooksDataCollectorService {
       }
 
       // 4. Separar pesquisas respondidas e não respondidas (baseado em data_resposta)
-      const pesquisasRespondidas = pesquisas.filter(p => p.data_resposta !== null);
-      const pesquisasNaoRespondidas = pesquisas.filter(p => p.data_resposta === null);
+      const pesquisasRespondidas = pesquisas.filter((p) => p.data_resposta !== null);
+      const pesquisasNaoRespondidas = pesquisas.filter((p) => p.data_resposta === null);
 
-      console.log('✅ Pesquisas respondidas (data_resposta preenchido):', pesquisasRespondidas.length);
-      console.log('⏳ Pesquisas não respondidas (data_resposta NULL):', pesquisasNaoRespondidas.length);
+      console.log(
+        '✅ Pesquisas respondidas (data_resposta preenchido):',
+        pesquisasRespondidas.length
+      );
+      console.log(
+        '⏳ Pesquisas não respondidas (data_resposta NULL):',
+        pesquisasNaoRespondidas.length
+      );
 
       // 5. Calcular percentual de aderência
-      const percentualAderencia = pesquisas.length > 0 
-        ? (pesquisasRespondidas.length / pesquisas.length) * 100 
-        : 0;
+      const percentualAderencia =
+        pesquisas.length > 0 ? (pesquisasRespondidas.length / pesquisas.length) * 100 : 0;
 
       // 6. Calcular nível de satisfação (apenas das respondidas)
       const nivelSatisfacao = {
         insatisfeito: 0,
         neutro: 0,
-        satisfeito: 0
+        satisfeito: 0,
       };
 
-      pesquisasRespondidas.forEach(p => {
+      pesquisasRespondidas.forEach((p) => {
         const resposta = p.resposta?.toLowerCase() || '';
-        
-        if (resposta.includes('insatisfeito') || resposta.includes('ruim') || resposta.includes('péssimo')) {
+
+        if (
+          resposta.includes('insatisfeito') ||
+          resposta.includes('ruim') ||
+          resposta.includes('péssimo')
+        ) {
           nivelSatisfacao.insatisfeito++;
-        } else if (resposta.includes('neutro') || resposta.includes('regular') || resposta.includes('médio')) {
+        } else if (
+          resposta.includes('neutro') ||
+          resposta.includes('regular') ||
+          resposta.includes('médio')
+        ) {
           nivelSatisfacao.neutro++;
-        } else if (resposta.includes('satisfeito') || resposta.includes('bom') || resposta.includes('ótimo') || resposta.includes('excelente')) {
+        } else if (
+          resposta.includes('satisfeito') ||
+          resposta.includes('bom') ||
+          resposta.includes('ótimo') ||
+          resposta.includes('excelente')
+        ) {
           nivelSatisfacao.satisfeito++;
         }
       });
 
       // 7. Buscar ticket_externo da tabela apontamentos_tickets_aranda para os chamados respondidos
-      const nroCasosRespondidos = pesquisasRespondidas
-        .map(p => p.nro_caso)
-        .filter(Boolean);
+      const nroCasosRespondidos = pesquisasRespondidas.map((p) => p.nro_caso).filter(Boolean);
 
-      let ticketExternoMap: Record<string, string> = {};
+      const ticketExternoMap: Record<string, string> = {};
       if (nroCasosRespondidos.length > 0) {
         const { data: ticketsData } = await supabase
           .from('apontamentos_tickets_aranda')
@@ -2579,7 +2748,7 @@ class BooksDataCollectorService {
           .in('nro_solicitacao', nroCasosRespondidos);
 
         if (ticketsData) {
-          ticketsData.forEach(t => {
+          ticketsData.forEach((t) => {
             if (t.nro_solicitacao && t.ticket_externo) {
               ticketExternoMap[t.nro_solicitacao] = t.ticket_externo;
             }
@@ -2591,13 +2760,14 @@ class BooksDataCollectorService {
       const mapeamentoGrupos = await this.buscarMapeamentoGrupos();
 
       // 9. Montar resumo de pesquisas (apenas as respondidas)
-      const resumoPesquisas = pesquisasRespondidas.map(p => ({
+      const resumoPesquisas = pesquisasRespondidas.map((p) => ({
         chamado: p.nro_caso || 'N/A',
         ticket_externo: ticketExternoMap[p.nro_caso] || 'N/A',
-        tipo: (p.tipo_caso === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
+        tipo: (p.tipo_caso === 'Incidente' ? 'Incidente' : 'Requisição') as
+          'Incidente' | 'Requisição',
         solicitante: p.solicitante || 'N/A',
         grupo: mapeamentoGrupos.get(p.grupo) || p.grupo || 'N/A',
-        resposta: p.resposta || null
+        resposta: p.resposta || null,
       }));
 
       console.log('📊 Estatísticas calculadas (baseado em data_fechamento):', {
@@ -2605,7 +2775,7 @@ class BooksDataCollectorService {
         respondidas: pesquisasRespondidas.length,
         naoRespondidas: pesquisasNaoRespondidas.length,
         percentualAderencia: percentualAderencia.toFixed(1) + '%',
-        nivelSatisfacao
+        nivelSatisfacao,
       });
 
       return {
@@ -2615,9 +2785,8 @@ class BooksDataCollectorService {
         resumo_pesquisas: resumoPesquisas,
         percentual_aderencia: percentualAderencia,
         nivel_satisfacao: nivelSatisfacao,
-        sem_avaliacoes: pesquisasRespondidas.length === 0
+        sem_avaliacoes: pesquisasRespondidas.length === 0,
       };
-
     } catch (error) {
       console.error('❌ Erro ao gerar dados de pesquisa:', error);
       return this.retornarDadosPesquisaVazios();
@@ -2637,9 +2806,9 @@ class BooksDataCollectorService {
       nivel_satisfacao: {
         insatisfeito: 0,
         neutro: 0,
-        satisfeito: 0
+        satisfeito: 0,
       },
-      sem_avaliacoes: true
+      sem_avaliacoes: true,
     };
   }
 
@@ -2684,7 +2853,7 @@ class BooksDataCollectorService {
   private agruparPorMes(requerimentos: any[]) {
     const mesesMap = new Map<string, { abertos: number; fechados: number }>();
 
-    requerimentos.forEach(r => {
+    requerimentos.forEach((r) => {
       const [mes, ano] = r.mes_cobranca.split('/');
       const mesNum = parseInt(mes);
       const mesNome = MESES_ABREVIADOS[mesNum];
@@ -2703,7 +2872,7 @@ class BooksDataCollectorService {
     return Array.from(mesesMap.entries()).map(([mes, dados]) => ({
       mes,
       abertos: dados.abertos,
-      fechados: dados.fechados
+      fechados: dados.fechados,
     }));
   }
 
@@ -2713,9 +2882,9 @@ class BooksDataCollectorService {
   private agruparPorModulo(requerimentos: any[]) {
     const modulosMap = new Map<string, { total: number; abertos: number; fechados: number }>();
 
-    requerimentos.forEach(r => {
+    requerimentos.forEach((r) => {
       const modulo = r.modulo || 'Outros';
-      
+
       if (!modulosMap.has(modulo)) {
         modulosMap.set(modulo, { total: 0, abertos: 0, fechados: 0 });
       }
@@ -2733,9 +2902,8 @@ class BooksDataCollectorService {
       total: dados.total,
       abertos: dados.abertos,
       fechados: dados.fechados,
-      percentual: requerimentos.length > 0
-        ? Math.round((dados.total / requerimentos.length) * 100)
-        : 0
+      percentual:
+        requerimentos.length > 0 ? Math.round((dados.total / requerimentos.length) * 100) : 0,
     }));
   }
 
@@ -2751,21 +2919,21 @@ class BooksDataCollectorService {
       { faixa: '30 A 60 DIAS', min: 30, max: 60 },
       { faixa: '15 A 30 DIAS', min: 15, max: 30 },
       { faixa: '05 A 15 DIAS', min: 5, max: 15 },
-      { faixa: 'ATÉ 5 DIAS', min: 0, max: 5 }
+      { faixa: 'ATÉ 5 DIAS', min: 0, max: 5 },
     ];
 
-    const resultado = faixas.map(f => ({
+    const resultado = faixas.map((f) => ({
       faixa: f.faixa,
       solicitacao: 0,
       incidente: 0,
-      total: 0
+      total: 0,
     }));
 
     const hoje = new Date();
 
     console.log('📊 Calculando aging de', backlog.length, 'chamados...');
 
-    backlog.forEach(r => {
+    backlog.forEach((r) => {
       // Usar data_abertura (campo correto de apontamentos_tickets_aranda)
       if (!r.data_abertura) {
         console.warn('⚠️ Chamado sem data_abertura:', r.nro_solicitacao);
@@ -2773,13 +2941,15 @@ class BooksDataCollectorService {
       }
 
       const dataAbertura = new Date(r.data_abertura);
-      const diasAberto = Math.floor((hoje.getTime() - dataAbertura.getTime()) / (1000 * 60 * 60 * 24));
-      
+      const diasAberto = Math.floor(
+        (hoje.getTime() - dataAbertura.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
       // Usar cod_tipo (campo correto de apontamentos_tickets_aranda)
       const isIncidente = r.cod_tipo === 'Incidente';
 
       for (const faixa of resultado) {
-        const faixaOriginal = faixas.find(f => f.faixa === faixa.faixa)!;
+        const faixaOriginal = faixas.find((f) => f.faixa === faixa.faixa)!;
         if (diasAberto >= faixaOriginal.min && diasAberto <= faixaOriginal.max) {
           if (isIncidente) {
             faixa.incidente++;
@@ -2819,16 +2989,28 @@ class BooksDataCollectorService {
       empresaId,
       mesAtual,
       anoAtual,
-      quantidadeMinimaIncidentes
+      quantidadeMinimaIncidentes,
     });
 
-    const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
-                         'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    const MESES_NOMES = [
+      'JANEIRO',
+      'FEVEREIRO',
+      'MARÇO',
+      'ABRIL',
+      'MAIO',
+      'JUNHO',
+      'JULHO',
+      'AGOSTO',
+      'SETEMBRO',
+      'OUTUBRO',
+      'NOVEMBRO',
+      'DEZEMBRO',
+    ];
 
     // 1. Buscar books anteriores desta empresa para usar como snapshot
     const mesesParaBuscar: string[] = [];
     const mesesInfo: { mes: number; ano: number }[] = [];
-    
+
     for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
@@ -2848,19 +3030,22 @@ class BooksDataCollectorService {
       .in('status', ['gerado', 'enviado']);
 
     // Montar mapa de snapshots: chave "mes/ano" → dados SLA
-    const snapshotMap = new Map<string, { percentual: number; status: 'no_prazo' | 'vencido'; elegivel: boolean }>();
+    const snapshotMap = new Map<
+      string,
+      { percentual: number; status: 'no_prazo' | 'vencido'; elegivel: boolean }
+    >();
     if (booksAnteriores) {
       for (const book of booksAnteriores) {
         // Não usar snapshot do mês que está sendo gerado agora
         if (book.mes === mesAtual && book.ano === anoAtual) continue;
-        
+
         const dadosSla = book.dados_sla as any;
         if (dadosSla && dadosSla.sla_percentual !== undefined) {
           const chave = `${book.mes}/${book.ano}`;
           snapshotMap.set(chave, {
             percentual: Number(dadosSla.sla_percentual) || 0,
             status: dadosSla.status || 'no_prazo',
-            elegivel: dadosSla.sla_elegivel !== false
+            elegivel: dadosSla.sla_elegivel !== false,
           });
         }
       }
@@ -2868,7 +3053,7 @@ class BooksDataCollectorService {
 
     console.log('📸 Snapshots encontrados:', {
       total: snapshotMap.size,
-      meses: Array.from(snapshotMap.keys())
+      meses: Array.from(snapshotMap.keys()),
     });
 
     const resultado = [];
@@ -2876,7 +3061,7 @@ class BooksDataCollectorService {
     // 2. Para cada mês, usar snapshot se existir, senão calcular em tempo real
     for (const { mes, ano } of mesesInfo) {
       const chave = `${mes}/${ano}`;
-      
+
       // Verificar se há snapshot para este mês
       if (snapshotMap.has(chave)) {
         const snapshot = snapshotMap.get(chave)!;
@@ -2885,14 +3070,14 @@ class BooksDataCollectorService {
           mes: MESES_NOMES[mes - 1],
           percentual: snapshot.percentual,
           status: snapshot.status,
-          elegivel: snapshot.elegivel
+          elegivel: snapshot.elegivel,
         });
         continue;
       }
 
       // Sem snapshot — calcular em tempo real
       console.log(`🔄 ${MESES_NOMES[mes - 1]}/${ano}: Calculando em TEMPO REAL`);
-      
+
       const dataInicio = new Date(ano, mes - 1, 1);
       const proximoMesInicio = new Date(ano, mes, 1);
 
@@ -2907,15 +3092,19 @@ class BooksDataCollectorService {
         .eq('status', 'Closed')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
-      .not('nome_grupo', 'like', 'AMS DX %')
-      .not('nome_grupo', 'like', 'AMS PRJ %')
-      .not('nome_grupo', 'like', 'AMS SAP %')
-      .not('nome_grupo', 'like', 'BPO %')
-      .not('nome_grupo', 'like', 'PROJETOS APL %');
+        .not(
+          'nome_grupo',
+          'in',
+          '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+        )
+        .not('nome_grupo', 'like', 'AMS DX %')
+        .not('nome_grupo', 'like', 'AMS PRJ %')
+        .not('nome_grupo', 'like', 'AMS SAP %')
+        .not('nome_grupo', 'like', 'BPO %')
+        .not('nome_grupo', 'like', 'PROJETOS APL %');
 
       // Contar incidentes fechados no mês (base para cálculo)
-      const incidentesFechados = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente');
+      const incidentesFechados = (ticketsFechados || []).filter((t) => t.cod_tipo === 'Incidente');
       const totalIncidentes = incidentesFechados.length;
 
       // Contar incidentes elegíveis (com cod_resolucao específicos)
@@ -2945,14 +3134,14 @@ class BooksDataCollectorService {
         'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
         'Consultoria – Solução Paliativa (Banco=S| SLA=S)',
       ];
-      
-      const incidentesElegiveis = incidentesFechados.filter(t => 
+
+      const incidentesElegiveis = incidentesFechados.filter((t) =>
         codResolucaoElegiveis.includes(t.cod_resolucao)
       ).length;
 
       // Contar violados a partir dos incidentes fechados no mês - APENAS com cod_resolucao elegível
-      const totalViolados = incidentesFechados.filter(t => 
-        t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao)
+      const totalViolados = incidentesFechados.filter(
+        (t) => t.tds_cumprido === 'TDS Vencido' && codResolucaoElegiveis.includes(t.cod_resolucao)
       ).length;
 
       // Calcular percentual de SLA: (Incidentes - Violados Elegíveis) / Incidentes * 100
@@ -2962,10 +3151,10 @@ class BooksDataCollectorService {
 
       if (totalIncidentes > 0) {
         percentual = Math.round(((totalIncidentes - totalViolados) / totalIncidentes) * 100);
-        
+
         // Verificar elegibilidade (baseado em incidentes com cod_resolucao específicos)
         elegivel = incidentesElegiveis >= quantidadeMinimaIncidentes;
-        
+
         // Só avalia como vencido se for elegível (>= quantidade mínima)
         if (elegivel) {
           status = percentual >= metaSLA ? 'no_prazo' : 'vencido';
@@ -2984,14 +3173,14 @@ class BooksDataCollectorService {
         violados: totalViolados,
         percentual,
         status,
-        elegivel
+        elegivel,
       });
 
       resultado.push({
         mes: MESES_NOMES[mes - 1],
         percentual,
         status,
-        elegivel
+        elegivel,
       });
     }
 
@@ -3005,11 +3194,11 @@ class BooksDataCollectorService {
   private calcularHistoricoConsumo(historico: any[], mesAtual: number, anoAtual: number) {
     const mesesMap = new Map<string, number>();
 
-    historico.forEach(r => {
+    historico.forEach((r) => {
       const [mes, ano] = r.mes_cobranca.split('/');
       const mesNum = parseInt(mes);
       const mesNome = MESES_ABREVIADOS[mesNum];
-      
+
       const horas = this.converterHorasParaDecimal(r.horas_total);
       mesesMap.set(mesNome, (mesesMap.get(mesNome) || 0) + horas);
     });
@@ -3017,7 +3206,7 @@ class BooksDataCollectorService {
     return Array.from(mesesMap.entries()).map(([mes, horas]) => ({
       mes,
       horas: this.formatarHoras(horas),
-      valor_numerico: Math.round(horas * 100) / 100
+      valor_numerico: Math.round(horas * 100) / 100,
     }));
   }
 
@@ -3032,16 +3221,28 @@ class BooksDataCollectorService {
     anoAtual: number,
     tipoContrato: 'horas' | 'tickets' | 'ambos' | null
   ) {
-    const MESES_NOMES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 
-                         'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-    
+    const MESES_NOMES = [
+      'JAN',
+      'FEV',
+      'MAR',
+      'ABR',
+      'MAI',
+      'JUN',
+      'JUL',
+      'AGO',
+      'SET',
+      'OUT',
+      'NOV',
+      'DEZ',
+    ];
+
     const resultado = [];
 
     // Calcular para os últimos 6 meses
     for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
-      
+
       while (mes <= 0) {
         mes += 12;
         ano -= 1;
@@ -3055,8 +3256,11 @@ class BooksDataCollectorService {
       // Buscar de apontamentos_aranda se necessário
       // Para tipo 'ambos', exibimos apenas a visão de tickets no Book
       if (tipoContrato === 'horas') {
-        console.log(`🔍 Buscando histórico apontamentos_aranda (${MESES_NOMES[mes - 1]}/${ano}) com nome_completo:`, empresaNomeCompleto);
-        
+        console.log(
+          `🔍 Buscando histórico apontamentos_aranda (${MESES_NOMES[mes - 1]}/${ano}) com nome_completo:`,
+          empresaNomeCompleto
+        );
+
         const { data: apontamentosHoras } = await supabase
           .from('apontamentos_aranda')
           .select('tempo_gasto_horas, data_atividade, data_sistema, nro_chamado')
@@ -3064,7 +3268,9 @@ class BooksDataCollectorService {
           .eq('ativi_interna', 'Não')
           .in('tipo_chamado', ['IM', 'RF', 'PM'])
           .neq('item_configuracao', '000000 - PROJETOS APL')
-          .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+          .or(
+            'caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%'
+          ) // Filtrar por grupo do caso
           .in('cod_resolucao', [
             'Alocação',
             'Alocação (Banco=S |SLA=N)',
@@ -3127,15 +3333,17 @@ class BooksDataCollectorService {
           const horasApontadas = apontamentosFiltrados.reduce((sum, a) => {
             const tempoStr = a.tempo_gasto_horas;
             if (!tempoStr) return sum;
-            
+
             const partes = tempoStr.split(':');
             const h = parseInt(partes[0]) || 0;
             const m = parseInt(partes[1]) || 0;
-            return sum + h + (m / 60);
+            return sum + h + m / 60;
           }, 0);
           horasMes += horasApontadas;
-          
-          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros, ${horasApontadas.toFixed(2)}h`);
+
+          console.log(
+            `✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros, ${horasApontadas.toFixed(2)}h`
+          );
         }
       }
 
@@ -3145,7 +3353,7 @@ class BooksDataCollectorService {
         // Filtrar por data_fechamento + status = 'Closed' (em vez de data_solucao + caso_pai)
         const dataFimMes = new Date(ano, mes, 0, 23, 59, 59, 999);
         const nomeParaBuscaTickets = empresaNomeAbreviado || empresaNomeCompleto;
-        
+
         const { data: ticketsFechados } = await supabase
           .from('apontamentos_tickets_aranda')
           .select('tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos, cod_tipo')
@@ -3155,24 +3363,54 @@ class BooksDataCollectorService {
           .eq('status', 'Closed')
           .neq('item_configuracao', '000000 - PROJETOS APL')
           .in('cod_resolucao', [
-            'Alocação - T&M','Alocação T&M','Alocação - T&M Banco de Horas (Banco=S |SLA=N)','Alocação - T&M (Banco=S| SLA=N)',
-            'AMS SAP','AMS SAP (Banco=S |SLA=S)','AMS SAP (Banco=S| SLA=S)',
-            'Aplicação de Nota / Licença - Contratados','Aplicação de Nota / Licença (Banco=S |SLA=N)',
-            'Consultoria','Consultoria (Banco=S |SLA=S)','Consultoria (Banco=S| SLA=S)',
-            'Consultoria - Banco de Dados','Consultoria - Banco de Dados (Banco=S |SLA=S)','Consultoria - Banco de Dados (Banco=S| SLA=S)',
-            'Consultoria - Nota Publicada','Consultoria - Nota Publicada (Banco=S |SLA=S)','Consultoria - Nota Publicada (Banco=S| SLA=S)',
-            'Consultoria - Solução Paliativa','Consultoria - Solução Paliativa (Banco=S |SLA=S)','Consultoria - Solução Paliativa (Banco=S| SLA=S)',
-            'Dúvida','Dúvida (Banco=S |SLA=N)',
-            'Erro de classificação na abertura','Erro de classificação na abertura (Banco=S |SLA=N)','Erro de classificação na abertura (Banco=S| SLA=N)',
-            'Erro de programa especifico (SEM SLA)','Erro de programa especifico (Banco=S |SLA=N)','Erro de programa especifico (Banco=S| SLA=N)',
-            'Levantamento de Versão / Orçamento','Levantamento de Versão / Orçamento (Banco=S |SLA=N)','Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
-            'Monitoramento DBA','Monitoramento DBA (Banco=S |SLA=N)',
-            'Nota Publicada','Nota Publicada (Banco=S |SLA=N)',
-            'Parametrização / Cadastro','Parametrização / Cadastro (Banco=S |SLA=N)',
-            'Parametrização / Funcionalidade','Parametrização / Funcionalidade (Banco=S |SLA=N)','Parametrização / Funcionalidade (Banco=S| SLA=N)',
-            'Validação de Arquivo','Validação de Arquivo (Banco=S |SLA=N)','Validação de Arquivo (Banco=S| SLA=N)'
+            'Alocação - T&M',
+            'Alocação T&M',
+            'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
+            'Alocação - T&M (Banco=S| SLA=N)',
+            'AMS SAP',
+            'AMS SAP (Banco=S |SLA=S)',
+            'AMS SAP (Banco=S| SLA=S)',
+            'Aplicação de Nota / Licença - Contratados',
+            'Aplicação de Nota / Licença (Banco=S |SLA=N)',
+            'Consultoria',
+            'Consultoria (Banco=S |SLA=S)',
+            'Consultoria (Banco=S| SLA=S)',
+            'Consultoria - Banco de Dados',
+            'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+            'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+            'Consultoria - Nota Publicada',
+            'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+            'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+            'Consultoria - Solução Paliativa',
+            'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+            'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+            'Dúvida',
+            'Dúvida (Banco=S |SLA=N)',
+            'Erro de classificação na abertura',
+            'Erro de classificação na abertura (Banco=S |SLA=N)',
+            'Erro de classificação na abertura (Banco=S| SLA=N)',
+            'Erro de programa especifico (SEM SLA)',
+            'Erro de programa especifico (Banco=S |SLA=N)',
+            'Erro de programa especifico (Banco=S| SLA=N)',
+            'Levantamento de Versão / Orçamento',
+            'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+            'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+            'Monitoramento DBA',
+            'Monitoramento DBA (Banco=S |SLA=N)',
+            'Nota Publicada',
+            'Nota Publicada (Banco=S |SLA=N)',
+            'Parametrização / Cadastro',
+            'Parametrização / Cadastro (Banco=S |SLA=N)',
+            'Parametrização / Funcionalidade',
+            'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+            'Parametrização / Funcionalidade (Banco=S| SLA=N)',
+            'Validação de Arquivo',
+            'Validação de Arquivo (Banco=S |SLA=N)',
+            'Validação de Arquivo (Banco=S| SLA=N)',
           ])
-          .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%');
+          .or(
+            'nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%'
+          );
 
         if (ticketsFechados) {
           if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
@@ -3184,9 +3422,9 @@ class BooksDataCollectorService {
               const dias = Number(t.tempo_gasto_dias) || 0;
               const horas = Number(t.tempo_gasto_horas) || 0;
               const minutos = Number(t.tempo_gasto_minutos) || 0;
-              
+
               // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
-              return sum + (dias * 24) + horas + (minutos / 60);
+              return sum + dias * 24 + horas + minutos / 60;
             }, 0);
             horasMes += horasTickets;
           }
@@ -3195,8 +3433,14 @@ class BooksDataCollectorService {
 
       resultado.push({
         mes: MESES_NOMES[mes - 1],
-        horas: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(horasMes)) : this.formatarHoras(horasMes),
-        valor_numerico: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? Math.round(horasMes) : Math.round(horasMes * 100) / 100
+        horas:
+          tipoContrato === 'tickets' || tipoContrato === 'ambos'
+            ? String(Math.round(horasMes))
+            : this.formatarHoras(horasMes),
+        valor_numerico:
+          tipoContrato === 'tickets' || tipoContrato === 'ambos'
+            ? Math.round(horasMes)
+            : Math.round(horasMes * 100) / 100,
       });
     }
 
@@ -3204,7 +3448,7 @@ class BooksDataCollectorService {
       empresa: empresaNomeCompleto,
       tipoContrato,
       meses: resultado.length,
-      dados: resultado
+      dados: resultado,
     });
 
     return resultado;
@@ -3222,16 +3466,28 @@ class BooksDataCollectorService {
     anoAtual: number,
     tipoContrato: 'horas' | 'tickets' | 'ambos' | null = null
   ) {
-    const MESES_NOMES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 
-                         'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-    
+    const MESES_NOMES = [
+      'JAN',
+      'FEV',
+      'MAR',
+      'ABR',
+      'MAI',
+      'JUN',
+      'JUL',
+      'AGO',
+      'SET',
+      'OUT',
+      'NOV',
+      'DEZ',
+    ];
+
     const resultado = [];
 
     // Calcular para os últimos 6 meses
     for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
-      
+
       while (mes <= 0) {
         mes += 12;
         ano -= 1;
@@ -3240,8 +3496,11 @@ class BooksDataCollectorService {
       // Buscar requerimentos do MESMO mês (não do mês anterior)
       const mesCobranca = `${String(mes).padStart(2, '0')}/${ano}`;
 
-      console.log(`🔍 Buscando histórico requerimentos para ${MESES_NOMES[mes - 1]}/${ano} (mes_cobranca: ${mesCobranca}) - empresaId:`, empresaId);
-      
+      console.log(
+        `🔍 Buscando histórico requerimentos para ${MESES_NOMES[mes - 1]}/${ano} (mes_cobranca: ${mesCobranca}) - empresaId:`,
+        empresaId
+      );
+
       // Buscar diretamente por cliente_id - APENAS BANCO DE HORAS
       const { data: requerimentos } = await supabase
         .from('requerimentos')
@@ -3259,8 +3518,10 @@ class BooksDataCollectorService {
           valorMes = requerimentos.reduce((sum, req) => {
             return sum + (Number(req.quantidade_tickets) || 0);
           }, 0);
-          
-          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes} tickets`);
+
+          console.log(
+            `✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes} tickets`
+          );
         } else {
           // Para tipo horas: somar horas normalmente
           valorMes = requerimentos.reduce((sum, req) => {
@@ -3268,17 +3529,27 @@ class BooksDataCollectorService {
             const horasTecnico = Number(req.horas_tecnico) || 0;
             return sum + horasFuncional + horasTecnico;
           }, 0);
-          
-          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes.toFixed(2)}h`);
+
+          console.log(
+            `✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${valorMes.toFixed(2)}h`
+          );
         }
       } else {
-        console.log(`⚠️ ${MESES_NOMES[mes - 1]}/${ano}: Nenhum requerimento encontrado (buscou ${mesCobranca})`);
+        console.log(
+          `⚠️ ${MESES_NOMES[mes - 1]}/${ano}: Nenhum requerimento encontrado (buscou ${mesCobranca})`
+        );
       }
 
       resultado.push({
         mes: MESES_NOMES[mes - 1],
-        requerimentos_horas: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? String(Math.round(valorMes)) : this.formatarHoras(valorMes),
-        requerimentos_valor_numerico: (tipoContrato === 'tickets' || tipoContrato === 'ambos') ? Math.round(valorMes) : Math.round(valorMes * 100) / 100
+        requerimentos_horas:
+          tipoContrato === 'tickets' || tipoContrato === 'ambos'
+            ? String(Math.round(valorMes))
+            : this.formatarHoras(valorMes),
+        requerimentos_valor_numerico:
+          tipoContrato === 'tickets' || tipoContrato === 'ambos'
+            ? Math.round(valorMes)
+            : Math.round(valorMes * 100) / 100,
       });
     }
 
@@ -3286,7 +3557,7 @@ class BooksDataCollectorService {
       empresaId,
       tipoContrato,
       meses: resultado.length,
-      dados: resultado
+      dados: resultado,
     });
 
     return resultado;
@@ -3298,17 +3569,17 @@ class BooksDataCollectorService {
   private agruparPorTipoCobranca(requerimentos: any[]) {
     const tiposMap = new Map<string, number>();
 
-    requerimentos.forEach(r => {
+    requerimentos.forEach((r) => {
       const tipo = r.tipo_cobranca || 'Outros';
       tiposMap.set(tipo, (tiposMap.get(tipo) || 0) + 1);
     });
 
     const total = requerimentos.length;
-    
+
     return Array.from(tiposMap.entries()).map(([causa, quantidade]) => ({
       causa,
       quantidade,
-      percentual: total > 0 ? Math.round((quantidade / total) * 100) : 0
+      percentual: total > 0 ? Math.round((quantidade / total) * 100) : 0,
     }));
   }
 
@@ -3324,7 +3595,7 @@ class BooksDataCollectorService {
       // Formato HH:MM
       if (horas.includes(':')) {
         const [h, m] = horas.split(':').map(Number);
-        return h + (m / 60);
+        return h + m / 60;
       }
       return parseFloat(horas) || 0;
     }
@@ -3345,7 +3616,7 @@ class BooksDataCollectorService {
       minutos = 0;
       horas += 1;
     }
-    
+
     return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`;
   }
 
@@ -3365,18 +3636,18 @@ class BooksDataCollectorService {
   /**
    * Busca mapeamento de categorias da tabela de_para_categoria
    * Mapeia tanto nome_grupo quanto cod_resolucao para grupo_book
-   * 
+   *
    * REGRAS DE MAPEAMENTO:
    * 1. nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo (retornado)
    * 2. cod_resolucao (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo (retornado)
-   * 
+   *
    * Cache de 5 minutos para otimizar performance
    */
   private async buscarMapeamentoGrupos(): Promise<Map<string, string>> {
     const agora = Date.now();
-    
+
     // Verificar se cache é válido
-    if (this.mapeamentoCache && (agora - this.mapeamentoCacheTimestamp) < this.CACHE_DURATION) {
+    if (this.mapeamentoCache && agora - this.mapeamentoCacheTimestamp < this.CACHE_DURATION) {
       console.log('✅ Usando cache de mapeamento de grupos');
       return this.mapeamentoCache;
     }
@@ -3395,7 +3666,7 @@ class BooksDataCollectorService {
       }
 
       const mapeamento = new Map<string, string>();
-      
+
       (categorias || []).forEach((cat: any) => {
         // Mapear grupo (caso_grupo do apontamento) → grupo_book
         if (cat.grupo && cat.grupo_book) {
@@ -3409,10 +3680,12 @@ class BooksDataCollectorService {
 
       console.log('✅ Mapeamento de grupos carregado (grupo → grupo_book):', {
         totalMapeamentos: mapeamento.size,
-        exemplos: Array.from(mapeamento.entries()).slice(0, 5).map(([grupo, grupo_book]) => ({
-          grupo,
-          grupo_book
-        }))
+        exemplos: Array.from(mapeamento.entries())
+          .slice(0, 5)
+          .map(([grupo, grupo_book]) => ({
+            grupo,
+            grupo_book,
+          })),
       });
 
       return mapeamento;
@@ -3426,13 +3699,17 @@ class BooksDataCollectorService {
    * Gera snapshot dos dados de consumo segmentado (se empresa tiver baseline_segmentado ativo)
    */
   private async gerarDadosConsumoSegmentado(
-    empresaId: string, mes: number, ano: number
+    empresaId: string,
+    mes: number,
+    ano: number
   ): Promise<BookConsumoSegmentadoData[] | undefined> {
     try {
       // Verificar se empresa tem baseline segmentado
       const { data: empresa } = await supabase
         .from('empresas_clientes')
-        .select('baseline_segmentado, segmentacao_config, periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, baseline_horas_mensal')
+        .select(
+          'baseline_segmentado, segmentacao_config, periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, baseline_horas_mensal'
+        )
         .eq('id', empresaId)
         .single();
 
@@ -3441,10 +3718,19 @@ class BooksDataCollectorService {
       }
 
       const config = empresa.segmentacao_config as any;
-      const empresas: Array<{ nome: string; percentual: number; filtro_tipo: string; filtro_valor: string }> = config?.empresas || [];
+      const empresas: Array<{
+        nome: string;
+        percentual: number;
+        filtro_tipo: string;
+        filtro_valor: string;
+      }> = config?.empresas || [];
       if (empresas.length === 0) return undefined;
 
-      console.log('📊 [gerarDadosConsumoSegmentado] Iniciando coleta para', empresas.length, 'segmentos');
+      console.log(
+        '📊 [gerarDadosConsumoSegmentado] Iniciando coleta para',
+        empresas.length,
+        'segmentos'
+      );
 
       const percentualRepasse = empresa.percentual_repasse_mensal || 50;
 
@@ -3452,7 +3738,8 @@ class BooksDataCollectorService {
       let baselineTotalStr = '00:00';
       const dataRef = `${ano}-${String(mes).padStart(2, '0')}-01`;
       const { data: baselineVigente } = await (supabase as any).rpc('get_baseline_vigente', {
-        p_empresa_id: empresaId, p_data: dataRef
+        p_empresa_id: empresaId,
+        p_data: dataRef,
       });
       if (baselineVigente?.[0]?.baseline_horas) {
         baselineTotalStr = String(baselineVigente[0].baseline_horas);
@@ -3469,12 +3756,12 @@ class BooksDataCollectorService {
 
       // Converter baseline para minutos
       const partes = String(baselineTotalStr).split(':');
-      const baselineTotalMin = (parseInt(partes[0] || '0') * 60) + parseInt(partes[1] || '0');
+      const baselineTotalMin = parseInt(partes[0] || '0') * 60 + parseInt(partes[1] || '0');
 
       // Calcular meses do ciclo
       const periodoApuracao = empresa.periodo_apuracao || 3;
       const inicioVigencia = empresa.inicio_vigencia;
-      let mesesCiclo: { mes: number; ano: number }[] = [];
+      const mesesCiclo: { mes: number; ano: number }[] = [];
 
       if (inicioVigencia) {
         const [anoV, mesV] = inicioVigencia.split('-').map(Number);
@@ -3483,11 +3770,17 @@ class BooksDataCollectorService {
         const mesesAteInicio = cicloAtual * periodoApuracao;
         let mesInicio = mesV + mesesAteInicio;
         let anoInicio = anoV;
-        while (mesInicio > 12) { mesInicio -= 12; anoInicio += 1; }
+        while (mesInicio > 12) {
+          mesInicio -= 12;
+          anoInicio += 1;
+        }
         for (let i = 0; i < periodoApuracao; i++) {
           let mCalc = mesInicio + i;
           let aCalc = anoInicio;
-          while (mCalc > 12) { mCalc -= 12; aCalc += 1; }
+          while (mCalc > 12) {
+            mCalc -= 12;
+            aCalc += 1;
+          }
           mesesCiclo.push({ mes: mCalc, ano: aCalc });
         }
       } else {
@@ -3516,9 +3809,10 @@ class BooksDataCollectorService {
           .eq('funcao', 'Funcional')
           .limit(1);
         if (valores?.[0]) {
-          taxaHora = (valores[0].valor_adicional && valores[0].valor_adicional > 0)
-            ? valores[0].valor_adicional
-            : Math.round((valores[0].valor_base * 1.15) * 100) / 100;
+          taxaHora =
+            valores[0].valor_adicional && valores[0].valor_adicional > 0
+              ? valores[0].valor_adicional
+              : Math.round(valores[0].valor_base * 1.15 * 100) / 100;
         }
       }
 
@@ -3551,7 +3845,7 @@ class BooksDataCollectorService {
               .maybeSingle();
             if (segCalc?.consumo_horas) {
               const p = String(segCalc.consumo_horas).split(':');
-              consumoChamados = (parseInt(p[0] || '0') * 60) + parseInt(p[1] || '0');
+              consumoChamados = parseInt(p[0] || '0') * 60 + parseInt(p[1] || '0');
             }
           }
 
@@ -3568,7 +3862,7 @@ class BooksDataCollectorService {
           if (reajustes) {
             for (const r of reajustes) {
               const p = String(r.valor_reajuste_horas || '00:00').split(':');
-              const mins = (parseInt(p[0] || '0') * 60) + parseInt(p[1] || '0');
+              const mins = parseInt(p[0] || '0') * 60 + parseInt(p[1] || '0');
               // ✅ CORREÇÃO: Saída AUMENTA consumo (positivo), Entrada DIMINUI consumo (negativo)
               // Alinhado com: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
               reajuste += r.tipo_reajuste === 'saida' ? mins : -mins;
@@ -3603,24 +3897,34 @@ class BooksDataCollectorService {
           }
 
           // Calcular valores derivados
-          const repasseMesAnterior = idx > 0 && dadosPorMes[idx - 1]
-            ? Math.round(dadosPorMes[idx - 1].saldo * (percentualRepasse / 100))
-            : 0;
+          const repasseMesAnterior =
+            idx > 0 && dadosPorMes[idx - 1]
+              ? Math.round(dadosPorMes[idx - 1].saldo * (percentualRepasse / 100))
+              : 0;
           const saldoAUtilizar = baseline + repasseMesAnterior;
           const consumoTotal = consumoChamados + requerimentos + reajuste;
           const saldo = saldoAUtilizar - consumoTotal;
           const repasse = Math.round(saldo * (percentualRepasse / 100));
 
           dadosPorMes.push({
-            mes: mA.mes, ano: mA.ano, baseline, repasseMesAnterior,
-            saldoAUtilizar, consumoChamados, requerimentos, reajuste,
-            consumoTotal, saldo, repasse
+            mes: mA.mes,
+            ano: mA.ano,
+            baseline,
+            repasseMesAnterior,
+            saldoAUtilizar,
+            consumoChamados,
+            requerimentos,
+            reajuste,
+            consumoTotal,
+            saldo,
+            repasse,
           });
         }
 
         const ultimoMes = dadosPorMes[dadosPorMes.length - 1];
         const excedentes = ultimoMes && ultimoMes.saldo < 0 ? Math.abs(ultimoMes.saldo) : 0;
-        const valorTotalExcedentes = taxaHora > 0 && excedentes > 0 ? (excedentes / 60) * taxaHora : 0;
+        const valorTotalExcedentes =
+          taxaHora > 0 && excedentes > 0 ? (excedentes / 60) * taxaHora : 0;
 
         resultado.push({
           nome: emp.nome,
@@ -3628,11 +3932,15 @@ class BooksDataCollectorService {
           baseline,
           dadosPorMes,
           excedentes,
-          valorTotalExcedentes
+          valorTotalExcedentes,
         });
       }
 
-      console.log('✅ [gerarDadosConsumoSegmentado] Snapshot gerado:', resultado.length, 'segmentos');
+      console.log(
+        '✅ [gerarDadosConsumoSegmentado] Snapshot gerado:',
+        resultado.length,
+        'segmentos'
+      );
       return resultado;
     } catch (error) {
       console.error('❌ [gerarDadosConsumoSegmentado] Erro:', error);
