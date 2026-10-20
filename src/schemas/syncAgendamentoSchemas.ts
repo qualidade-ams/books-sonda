@@ -2,10 +2,18 @@
  * Schema do formulário de agendamento de sincronização.
  * As mensagens são chaves i18n (traduzidas na hora de exibir).
  * A mesma regra é validada de novo no sync-api (validarRegra).
+ *
+ * Os campos e a validação da recorrência são compartilhados com o
+ * agendamento do Envio Automático de Saldo Parcial.
  */
 
 import { z } from 'zod';
-import type { SyncAgendamento, SyncAgendamentoInput } from '@/types/syncAgendamentos';
+import type {
+  RegraRecorrencia,
+  SyncAgendamento,
+  SyncAgendamentoInput,
+  TipoAgendamentoSync,
+} from '@/types/syncAgendamentos';
 
 const V = 'sincronizacaoSql.validacao';
 const REGEX_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -22,60 +30,71 @@ const tabelasSchema = z.object({
   ajustesRetroativos: z.boolean(),
 });
 
+/** Campos da regra de recorrência como ficam no formulário */
+export const camposRegraRecorrenciaSchema = {
+  frequencia: z.enum(['diario', 'semanal', 'mensal']),
+  dias_semana: z.array(z.number().int().min(0).max(6)),
+  dias_mes: z.array(z.number().int().min(1).max(31)),
+  ultimo_dia_mes: z.boolean(),
+  modo_horario: z.enum(['horarios', 'intervalo']),
+  horarios: z.array(z.string()),
+  intervalo_horas: z.number().nullable(),
+  hora_inicio: z.string(),
+  hora_fim: z.string(),
+};
+
+export type RegraRecorrenciaFormValues = z.infer<z.ZodObject<typeof camposRegraRecorrenciaSchema>>;
+
+/** Validação cruzada da recorrência (usada no superRefine dos formulários de agendamento) */
+export function validarRegraRecorrenciaForm(v: RegraRecorrenciaFormValues, ctx: z.RefinementCtx) {
+  const erro = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+  if (v.frequencia === 'semanal' && v.dias_semana.length === 0) erro('dias_semana', `${V}.diaSemanaObrigatorio`);
+  if (v.frequencia === 'mensal' && v.dias_mes.length === 0 && !v.ultimo_dia_mes) {
+    erro('dias_mes', `${V}.diaMesObrigatorio`);
+  }
+
+  if (v.modo_horario === 'horarios') {
+    if (v.horarios.length === 0) erro('horarios', `${V}.horarioObrigatorio`);
+    else if (v.horarios.some((h) => !REGEX_HORA.test(h))) erro('horarios', `${V}.horarioInvalido`);
+  } else {
+    const n = v.intervalo_horas;
+    if (!Number.isInteger(n) || n < 1 || n > 23) erro('intervalo_horas', `${V}.intervaloInvalido`);
+    if (!REGEX_HORA.test(v.hora_inicio)) erro('hora_inicio', `${V}.horaInicioObrigatoria`);
+    if (v.hora_fim) {
+      if (!REGEX_HORA.test(v.hora_fim)) erro('hora_fim', `${V}.horarioInvalido`);
+      else if (REGEX_HORA.test(v.hora_inicio) && v.hora_fim < v.hora_inicio) erro('hora_fim', `${V}.horaFimAntes`);
+    }
+  }
+}
+
 export const agendamentoFormSchema = z
   .object({
+    tipo: z.enum(['sincronizacao', 'books']),
     nome: z.string().trim().min(1, `${V}.nomeObrigatorio`).max(120),
     ativo: z.boolean(),
     tabelas: tabelasSchema,
-    frequencia: z.enum(['diario', 'semanal', 'mensal']),
-    dias_semana: z.array(z.number().int().min(0).max(6)),
-    dias_mes: z.array(z.number().int().min(1).max(31)),
-    ultimo_dia_mes: z.boolean(),
-    modo_horario: z.enum(['horarios', 'intervalo']),
-    horarios: z.array(z.string()),
-    intervalo_horas: z.number().nullable(),
-    hora_inicio: z.string(),
-    hora_fim: z.string(),
+    // Só para books: todas as empresas liberadas ou somente as selecionadas
+    empresas_modo: z.enum(['todas', 'selecionadas']),
+    empresa_ids: z.array(z.string()),
+    ...camposRegraRecorrenciaSchema,
   })
   .superRefine((v, ctx) => {
-    const erro = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
-
-    if (!TABELAS_SYNC.some((t) => v.tabelas[t])) erro('tabelas', `${V}.tabelaObrigatoria`);
-
-    if (v.frequencia === 'semanal' && v.dias_semana.length === 0) erro('dias_semana', `${V}.diaSemanaObrigatorio`);
-    if (v.frequencia === 'mensal' && v.dias_mes.length === 0 && !v.ultimo_dia_mes) {
-      erro('dias_mes', `${V}.diaMesObrigatorio`);
+    // Geração de books não sincroniza tabelas
+    if (v.tipo === 'sincronizacao' && !TABELAS_SYNC.some((t) => v.tabelas[t])) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tabelas'], message: `${V}.tabelaObrigatoria` });
     }
-
-    if (v.modo_horario === 'horarios') {
-      if (v.horarios.length === 0) erro('horarios', `${V}.horarioObrigatorio`);
-      else if (v.horarios.some((h) => !REGEX_HORA.test(h))) erro('horarios', `${V}.horarioInvalido`);
-    } else {
-      const n = v.intervalo_horas;
-      if (!Number.isInteger(n) || n < 1 || n > 23) erro('intervalo_horas', `${V}.intervaloInvalido`);
-      if (!REGEX_HORA.test(v.hora_inicio)) erro('hora_inicio', `${V}.horaInicioObrigatoria`);
-      if (v.hora_fim) {
-        if (!REGEX_HORA.test(v.hora_fim)) erro('hora_fim', `${V}.horarioInvalido`);
-        else if (REGEX_HORA.test(v.hora_inicio) && v.hora_fim < v.hora_inicio) erro('hora_fim', `${V}.horaFimAntes`);
-      }
+    if (v.tipo === 'books' && v.empresas_modo === 'selecionadas' && v.empresa_ids.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['empresa_ids'], message: `${V}.empresaObrigatoria` });
     }
+    validarRegraRecorrenciaForm(v, ctx);
   });
 
 export type AgendamentoFormValues = z.infer<typeof agendamentoFormSchema>;
 
-export function valoresIniciaisAgendamento(): AgendamentoFormValues {
+/** Valores iniciais da recorrência: diário às 07:00 */
+export function valoresIniciaisRegraRecorrencia(): RegraRecorrenciaFormValues {
   return {
-    nome: '',
-    ativo: true,
-    tabelas: {
-      pesquisas: true,
-      especialistas: true,
-      apontamentos: true,
-      tickets: true,
-      codigoResolucao: true,
-      detectarInconsistencias: true,
-      ajustesRetroativos: true,
-    },
     frequencia: 'diario',
     dias_semana: [1, 2, 3, 4, 5],
     dias_mes: [1],
@@ -88,15 +107,32 @@ export function valoresIniciaisAgendamento(): AgendamentoFormValues {
   };
 }
 
+export function valoresIniciaisAgendamento(tipo: TipoAgendamentoSync = 'sincronizacao'): AgendamentoFormValues {
+  return {
+    tipo,
+    empresas_modo: 'todas',
+    empresa_ids: [],
+    nome: '',
+    ativo: true,
+    tabelas: {
+      pesquisas: true,
+      especialistas: true,
+      apontamentos: true,
+      tickets: true,
+      codigoResolucao: true,
+      detectarInconsistencias: true,
+      ajustesRetroativos: true,
+    },
+    ...valoresIniciaisRegraRecorrencia(),
+  };
+}
+
 const horaCurta = (h: string | null | undefined) => (h || '').slice(0, 5);
 
-/** Converte o formulário no registro gravado, limpando o que não se aplica à regra */
-export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendamentoInput {
+/** Converte os campos de recorrência do formulário na regra gravada, limpando o que não se aplica */
+export function regraFormParaRegra(v: RegraRecorrenciaFormValues): RegraRecorrencia {
   const porIntervalo = v.modo_horario === 'intervalo';
   return {
-    nome: v.nome.trim(),
-    ativo: v.ativo,
-    tabelas: { ...v.tabelas },
     frequencia: v.frequencia,
     dias_semana: v.frequencia === 'semanal' ? [...new Set(v.dias_semana)].sort((a, b) => a - b) : [],
     dias_mes: v.frequencia === 'mensal' ? [...new Set(v.dias_mes)].sort((a, b) => a - b) : [],
@@ -109,11 +145,41 @@ export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendame
   };
 }
 
+/** Preenche os campos de recorrência do formulário a partir de uma regra salva */
+export function regraParaRegraForm(regra: RegraRecorrencia): RegraRecorrenciaFormValues {
+  const padrao = valoresIniciaisRegraRecorrencia();
+  return {
+    frequencia: regra.frequencia,
+    dias_semana: regra.dias_semana?.length ? regra.dias_semana : padrao.dias_semana,
+    dias_mes: regra.dias_mes?.length ? regra.dias_mes : regra.ultimo_dia_mes ? [] : padrao.dias_mes,
+    ultimo_dia_mes: !!regra.ultimo_dia_mes,
+    modo_horario: regra.modo_horario,
+    horarios: regra.horarios?.length ? regra.horarios.map(horaCurta) : padrao.horarios,
+    intervalo_horas: regra.intervalo_horas ?? padrao.intervalo_horas,
+    hora_inicio: horaCurta(regra.hora_inicio) || padrao.hora_inicio,
+    hora_fim: horaCurta(regra.hora_fim),
+  };
+}
+
+/** Converte o formulário no registro gravado, limpando o que não se aplica à regra */
+export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendamentoInput {
+  return {
+    tipo: v.tipo,
+    nome: v.nome.trim(),
+    ativo: v.ativo,
+    tabelas: v.tipo === 'books' ? {} : { ...v.tabelas },
+    empresa_ids: v.tipo === 'books' && v.empresas_modo === 'selecionadas' ? [...new Set(v.empresa_ids)] : [],
+    ...regraFormParaRegra(v),
+  };
+}
+
 /** Preenche o formulário a partir de um agendamento salvo (edição) */
 export function agendamentoParaForm(ag: SyncAgendamento): AgendamentoFormValues {
-  const padrao = valoresIniciaisAgendamento();
   const t = ag.tabelas || {};
   return {
+    tipo: ag.tipo === 'books' ? 'books' : 'sincronizacao',
+    empresas_modo: ag.empresa_ids?.length ? 'selecionadas' : 'todas',
+    empresa_ids: ag.empresa_ids ?? [],
     nome: ag.nome,
     ativo: ag.ativo,
     tabelas: {
@@ -125,14 +191,6 @@ export function agendamentoParaForm(ag: SyncAgendamento): AgendamentoFormValues 
       detectarInconsistencias: t.detectarInconsistencias !== false,
       ajustesRetroativos: t.ajustesRetroativos !== false,
     },
-    frequencia: ag.frequencia,
-    dias_semana: ag.dias_semana?.length ? ag.dias_semana : padrao.dias_semana,
-    dias_mes: ag.dias_mes?.length ? ag.dias_mes : ag.ultimo_dia_mes ? [] : padrao.dias_mes,
-    ultimo_dia_mes: !!ag.ultimo_dia_mes,
-    modo_horario: ag.modo_horario,
-    horarios: ag.horarios?.length ? ag.horarios.map(horaCurta) : padrao.horarios,
-    intervalo_horas: ag.intervalo_horas ?? padrao.intervalo_horas,
-    hora_inicio: horaCurta(ag.hora_inicio) || padrao.hora_inicio,
-    hora_fim: horaCurta(ag.hora_fim),
+    ...regraParaRegraForm(ag),
   };
 }

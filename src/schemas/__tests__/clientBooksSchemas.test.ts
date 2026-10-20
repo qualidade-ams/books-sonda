@@ -146,6 +146,46 @@ describe('clientBooksSchemas', () => {
       expect(result.success).toBe(false);
       expect(result.error?.issues[0].message).toContain('ID da empresa deve ser um UUID válido');
     });
+
+    it('deve assumir finalidade de envio "book" quando não informada', () => {
+      const result = clienteFormSchema.safeParse({
+        nomeCompleto: 'João Silva',
+        email: 'joao@empresa.com',
+        empresaId: '123e4567-e89b-12d3-a456-426614174000',
+        status: 'ativo' as const,
+        principalContato: false
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.finalidadeEnvio).toBe('book');
+    });
+
+    it('deve aceitar as finalidades book, saldo_parcial e ambos', () => {
+      for (const finalidadeEnvio of ['book', 'saldo_parcial', 'ambos']) {
+        const result = clienteFormSchema.safeParse({
+          nomeCompleto: 'João Silva',
+          email: 'joao@empresa.com',
+          empresaId: '123e4567-e89b-12d3-a456-426614174000',
+          status: 'ativo' as const,
+          principalContato: false,
+          finalidadeEnvio
+        });
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('deve rejeitar finalidade de envio inválida', () => {
+      const result = clienteFormSchema.safeParse({
+        nomeCompleto: 'João Silva',
+        email: 'joao@empresa.com',
+        empresaId: '123e4567-e89b-12d3-a456-426614174000',
+        status: 'ativo' as const,
+        principalContato: false,
+        finalidadeEnvio: 'outro'
+      });
+
+      expect(result.success).toBe(false);
+    });
   });
 
   describe('grupoFormSchema', () => {

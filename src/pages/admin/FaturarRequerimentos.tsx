@@ -62,13 +62,15 @@ import ProtectedAction from '@/components/auth/ProtectedAction';
 import { FaturamentoExportButtons } from '@/components/admin/requerimentos';
 import { RequerimentoViewModal } from '@/components/admin/requerimentos';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
+import { PendentesMesesAnterioresIndicador } from '@/components/admin/requerimentos/PendentesMesesAnterioresIndicador';
 import { toast } from 'sonner';
 
-import { 
-  useRequerimentosFaturamento, 
-  useRejeitarRequerimento, 
+import {
+  useRequerimentosFaturamento,
+  useRejeitarRequerimento,
   useMarcarComoFaturados,
-  useRequerimentosFaturados 
+  useRequerimentosFaturados,
+  useMesesPendentesAnteriores
 } from '@/hooks/useRequerimentos';
 import { faturamentoService } from '@/services/faturamentoService';
 import { getBadgeClasses, getCobrancaIcon, getCobrancaColors } from '@/utils/requerimentosColors';
@@ -187,7 +189,10 @@ export default function FaturarRequerimentos() {
     isLoading: isLoadingFaturados,
     error: errorFaturados
   } = useRequerimentosFaturados(`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`);
-  
+
+  // Meses anteriores ao selecionado com requerimentos ainda pendentes de envio
+  const { data: mesesPendentesAnteriores } = useMesesPendentesAnteriores(mesSelecionado, anoSelecionado);
+
   // Filtrar requerimentos faturados
   const dadosFaturadosFiltrados = useMemo(() => {
     if (!dadosFaturados) return [];
@@ -1647,15 +1652,29 @@ export default function FaturarRequerimentos() {
         <Card>
           <CardContent className="py-3 xl:py-4">
             <div className="flex items-center justify-between gap-2 xl:gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={navegarMesAnterior}
-                className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                <span className="hidden sm:inline">{t('billing.previousMonth')}</span>
-              </Button>
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={navegarMesAnterior}
+                  className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
+                  <span className="hidden sm:inline">{t('billing.previousMonth')}</span>
+                </Button>
+                <span className="absolute -top-2 -right-2 flex">
+                  <PendentesMesesAnterioresIndicador
+                    mensagem={t('billing.pendingPreviousMonths')}
+                    meses={mesesPendentesAnteriores?.map(({ mes_cobranca, quantidade }) => {
+                      const [mes, ano] = mes_cobranca.split('/');
+                      const quantidadeTexto = quantidade === 1
+                        ? t('billing.requirementCount', { count: quantidade })
+                        : t('billing.requirementCountPlural', { count: quantidade });
+                      return { rotulo: `${nomesMeses[Number(mes) - 1]}/${ano}: ${quantidadeTexto}`, quantidade };
+                    })}
+                  />
+                </span>
+              </div>
 
               <div className="text-center flex-1 min-w-0">
                 <div className="text-base xl:text-lg font-semibold text-gray-900 dark:text-white truncate">

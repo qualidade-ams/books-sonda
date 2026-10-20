@@ -58,6 +58,8 @@ Ciclo por camada testável (services → hooks → componentes com lógica relev
 
 Padrões de teste: skill `testes`.
 
+Única exceção: protótipos descartáveis em `src/pages/prototipos/` (skill `prototipo`). Ao virarem tela real, o TDD volta a valer.
+
 ## Regras obrigatórias
 
 1. **Nunca logar dados pessoais** (nome, email, ID de usuário, payload de `profiles`/`users`) em `console.log/warn/info`. `console.error` só com `error.message`/`error.code`. É regra de segurança (LGPD), não estilo — o console é visível a qualquer usuário com DevTools. → skill `seguranca`
@@ -86,6 +88,7 @@ Carregue **só** a skill da tarefa em questão; cada uma indica qual referência
 |---|---|
 | Feature nova atravessando várias camadas | `criar-feature` |
 | Tela/página administrativa nova | `criar-tela` |
+| Protótipo visual de tela (dados fictícios, antes de implementar) | `prototipo` |
 | Migration, tabela, coluna, RLS, trigger | `criar-migration` |
 | Endpoint serverless (Vercel ou Edge Function) | `criar-api` |
 | Sincronização com o SQL Server Aranda, dado que não chegou | `sync-api` |

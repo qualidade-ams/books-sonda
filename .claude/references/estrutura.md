@@ -36,6 +36,7 @@ src/
 ├── lib/                  # utilitários de biblioteca (cn, etc.)
 ├── pages/
 │   ├── admin/            # Telas administrativas (uma por rota)
+│   ├── prototipos/       # Protótipos visuais com mock, rota /prototipos/:slug só em dev (skill prototipo)
 │   └── pdf/              # Views usadas na geração de PDF
 ├── schemas/              # Schemas Zod compartilhados
 ├── services/             # Acesso ao Supabase; singletons

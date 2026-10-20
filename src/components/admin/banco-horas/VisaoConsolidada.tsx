@@ -75,6 +75,7 @@ import { calcularNomePeriodoComIdioma } from '@/utils/periodoVigenciaUtils';
 import { getLabels, getMonthName } from '@/utils/bancoHorasI18n';
 import { useTemplateLanguage } from '@/hooks/useTemplateLanguage';
 import { useTaxasEspecificasCliente, type TaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
+import { filtrarObservacoesDoPeriodo } from '@/services/saldoParcial/periodoSaldoParcial';
 
 /**
  * Props for VisaoConsolidada component
@@ -818,31 +819,15 @@ export function VisaoConsolidada({
               empresaId={calculoPrincipal?.empresa_id}
               empresaNome={empresaAtual?.nome_abreviado || empresaAtual?.nome_completo || 'Cliente'}
               tipoCobranca={tipoCobranca}
-              periodoApuracao={periodoApuracao}
               mesAno={mesAno}
               percentualRepasse={percentualRepasseMensal}
               nomePeriodo={nomePeriodoAtual}
-              taxaHoraExcedente={taxaHoraExibir || 0}
-              horasExcedentes={
-                calculoPrincipal?.excedentes_horas && calculoPrincipal.excedentes_horas !== '00:00' && calculoPrincipal.excedentes_horas !== '00:00:00'
-                  ? calculoPrincipal.excedentes_horas
-                  : calculoFimPeriodo?.saldo_horas && calculoFimPeriodo.saldo_horas.startsWith('-')
-                    ? calculoFimPeriodo.saldo_horas.replace('-', '')
-                    : '00:00'
-              }
-              valorExcedentes={calculoFimPeriodo?.valor_a_faturar || 0}
               requerimentos={requerimentos}
               requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento}
-              observacoes={observacoesUnificadas
-                .filter(obs => {
-                  if (!mesesDoPeriodo || mesesDoPeriodo.length === 0) return true;
-                  return mesesDoPeriodo.some(m => m.mes === obs.mes && m.ano === obs.ano);
-                })
-                .map(obs => ({ texto: obs.observacao, tipo: obs.tipo, tipo_ajuste: obs.tipo_ajuste, valor_horas: obs.valor_horas, valor_tickets: obs.valor_tickets, mes: obs.mes, ano: obs.ano, usuario_nome: obs.usuario_nome, created_at: obs.created_at }))}
+              observacoes={filtrarObservacoesDoPeriodo(observacoesUnificadas, mesesDoPeriodo || [])}
               disabled={disabled}
               diaInicioApuracao={(empresaAtual as any)?.dia_inicio_apuracao ?? 1}
               diaFimApuracao={(empresaAtual as any)?.dia_fim_apuracao ?? 0}
-              inicioVigencia={inicioVigencia || (empresaAtual as any)?.inicio_vigencia}
               isEnglish={isEnglish}
             />
 

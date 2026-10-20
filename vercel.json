@@ -15,6 +15,9 @@
     "api/email/render-image.ts": {
       "memory": 2048,
       "maxDuration": 15
+    },
+    "api/email/send.ts": {
+      "maxDuration": 60
     }
   }
 }

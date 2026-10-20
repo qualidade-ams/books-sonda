@@ -153,6 +153,12 @@ export interface FaturamentoData {
   };
 }
 
+// Mês anterior com requerimentos ainda pendentes de envio para faturamento
+export interface MesPendenteAnterior {
+  mes_cobranca: string; // Formato MM/YYYY
+  quantidade: number;
+}
+
 // Interface para email de faturamento
 export interface EmailFaturamento {
   destinatarios: string[];

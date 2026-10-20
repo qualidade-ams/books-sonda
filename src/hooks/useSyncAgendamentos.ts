@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncAgendamentosService } from '@/services/syncAgendamentosService';
+import { booksService } from '@/services/booksService';
 import type {
   RegraRecorrencia,
   SyncAgendamento,
@@ -16,12 +17,19 @@ export function intervaloPollingExecucoes(execucoes: SyncExecucao[] | undefined)
   return execucoes?.some((e) => e.status === 'executando') ? 3000 : false;
 }
 
+/**
+ * A próxima execução é calculada pelo sync-api (ciclo de 60s). Enquanto algum agendamento
+ * ativo está "Calculando…" (novo ou regra alterada), a lista é atualizada a cada 5s.
+ */
+export function intervaloPollingAgendamentos(agendamentos: SyncAgendamento[] | undefined): number {
+  return agendamentos?.some((ag) => ag.ativo && !ag.proxima_execucao) ? 5000 : 60_000;
+}
+
 export function useSyncAgendamentos() {
   const { data: agendamentos = [], isLoading, error, refetch } = useQuery<SyncAgendamento[]>({
     queryKey: CHAVE_AGENDAMENTOS,
     queryFn: () => syncAgendamentosService.listarAgendamentos(),
-    // próxima execução é recalculada pelo sync-api a cada minuto
-    refetchInterval: 60_000,
+    refetchInterval: (query) => intervaloPollingAgendamentos(query.state.data),
   });
 
   return { agendamentos, isLoading, error, refetch };
@@ -72,6 +80,28 @@ export function useExecutarSyncAgora() {
     mutationFn: (tabelas: TabelasSync) => syncAgendamentosService.executarAgora(tabelas),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVE_EXECUCOES }),
   });
+}
+
+/** Geração de books agora (no sync-api); o andamento aparece no histórico */
+export function useGerarBooksAgora() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (empresaIds: string[] = []) => syncAgendamentosService.gerarBooksAgora(empresaIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVE_EXECUCOES }),
+  });
+}
+
+/** Empresas que recebem book, para escolher quais a geração automática processa */
+export function useEmpresasBook(habilitado: boolean) {
+  const { data: empresas = [], isLoading, error } = useQuery({
+    queryKey: [...CHAVE_AGENDAMENTOS, 'empresas-book'],
+    queryFn: () => booksService.listarEmpresasBook(),
+    enabled: habilitado,
+    staleTime: 5 * 60_000,
+  });
+
+  return { empresas, isLoading, error: error as Error | null };
 }
 
 /** Status do sync-api; `agendadorAtivo` fica undefined enquanto não há resposta */

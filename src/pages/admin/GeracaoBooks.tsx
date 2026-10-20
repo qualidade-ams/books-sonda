@@ -54,10 +54,9 @@ import { BOOK_STATUS_LABELS, BOOK_STATUS_COLORS, MESES_LABELS } from '@/types/bo
 import type { BookListItem, BooksGeracaoLoteResult, BookData } from '@/types/books';
 import { BookViewer, BookVersoesHistorico } from '@/components/admin/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
-import { booksService } from '@/services/booksService';
-import { emailService } from '@/services/emailService';
 import { booksVersioningService } from '@/services/booksVersioningService';
-import { supabase } from '@/integrations/supabase/client';
+import { gerarEEnviarBook, ErroEnvioEmailBook } from '@/services/geracaoBooks/gerarEnviarBook';
+import { dependenciasGerarEnviarBookNavegador } from '@/services/geracaoBooks/dependenciasNavegador';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -445,157 +444,34 @@ export default function GeracaoBooks() {
   // Estado para geração unitária
   const [gerandoUnitarioId, setGerandoUnitarioId] = useState<string | null>(null);
 
-  // Handler para gerar/regenerar e enviar um único book (ciclo completo)
+  // Handler para gerar/regenerar e enviar um único book (ciclo completo, o mesmo da geração automática)
   const handleGerarUnitario = async (book: BookListItem) => {
     setGerandoUnitarioId(book.id);
     const nomeAbreviado = book.empresa_nome_abreviado || book.empresa_nome;
 
     try {
-      // 1. Gerar book no banco
-      const result = await booksService.gerarBooksLote({
-        empresa_ids: [book.empresa_id],
-        mes: mesReferencia,
-        ano: anoReferencia,
-        gerar_pdf: true,
-        forcar_atualizacao: true
+      await gerarEEnviarBook(book, mesReferencia, anoReferencia, dependenciasGerarEnviarBookNavegador);
+
+      toast({
+        title: 'Book gerado e enviado',
+        description: `Book de ${nomeAbreviado} regenerado e enviado com sucesso.`,
       });
-
-      const bookGerado = result.resultados.find(r => r.sucesso && r.book_id);
-      if (!bookGerado) {
-        const erro = result.resultados[0]?.erro || 'Erro desconhecido na geração';
-        throw new Error(`Falha ao gerar book: ${erro}`);
-      }
-
-      // 2. Gerar PDF
-      const nomeFormatado = nomeAbreviado.replace(/\s+/g, '_').toUpperCase();
-      const mesFormatado = String(mesReferencia).padStart(2, '0');
-      const mesNomeRef = MESES_NOMES[mesReferencia];
-      const assunto = `BOOK: ${nomeFormatado}_${anoReferencia}_${mesFormatado}. ${mesNomeRef}`;
-      const nomeArquivo = `Book_${nomeFormatado}_${mesNomeRef}_${anoReferencia}.pdf`;
-      const nomeArquivoStorage = sanitizarNomeArquivo(nomeArquivo);
-
-      const pdfBlob = await booksPDFServiceV2.gerarPDF(bookGerado.book_id!);
-
-      // 3. Upload temporário no Supabase Storage
-      const storagePath = `books-temp/${anoReferencia}/${mesFormatado}/${nomeArquivoStorage}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('anexos-temporarios')
-        .upload(storagePath, pdfBlob, {
-          contentType: 'application/pdf',
-          upsert: true
-        });
-
-      if (uploadError) {
-        throw new Error(`Erro no upload do PDF: ${uploadError.message}`);
-      }
-
-      // 4. Gerar URL pública
-      const { data: publicUrlData } = supabase.storage
-        .from('anexos-temporarios')
-        .getPublicUrl(storagePath);
-
-      if (!publicUrlData?.publicUrl) {
-        throw new Error('Erro ao gerar URL pública do PDF');
-      }
-
-      // 5. Gerar Excel detalhado (8 abas)
-      let excelAnexo: { url: string; nome: string; tipo: string; tamanho: number; token: string } | null = null;
-      try {
-        const excelFile = await gerarExcelDetalhadoBook({
-          empresaId: book.empresa_id,
-          empresaNome: nomeAbreviado,
-          mes: mesReferencia,
-          ano: anoReferencia,
-          diaInicioApuracao: book.dia_inicio_apuracao ?? 1,
-          diaFimApuracao: book.dia_fim_apuracao ?? 0,
-        });
-
-        if (excelFile) {
-          // Upload do Excel no Storage
-          const excelStorageName = sanitizarNomeArquivo(excelFile.name);
-          const excelStoragePath = `books-temp/${anoReferencia}/${mesFormatado}/${excelStorageName}`;
-
-          const { error: excelUploadError } = await supabase.storage
-            .from('anexos-temporarios')
-            .upload(excelStoragePath, excelFile, {
-              contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              upsert: true
-            });
-
-          if (!excelUploadError) {
-            const { data: excelUrlData } = supabase.storage
-              .from('anexos-temporarios')
-              .getPublicUrl(excelStoragePath);
-
-            if (excelUrlData?.publicUrl) {
-              excelAnexo = {
-                url: excelUrlData.publicUrl,
-                nome: excelFile.name,
-                tipo: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                tamanho: excelFile.size,
-                token: ''
-              };
-            }
-          } else {
-            console.warn('⚠️ Erro no upload do Excel:', excelUploadError);
-          }
-        }
-      } catch (excelError) {
-        console.warn('⚠️ Erro ao gerar Excel detalhado (não bloqueia envio):', excelError);
-      }
-
-      // 6. Enviar email com PDF + Excel
-      const arquivosAnexos = [
-        {
-          url: publicUrlData.publicUrl,
-          nome: nomeArquivo,
-          tipo: 'application/pdf',
-          tamanho: pdfBlob.size,
-          token: ''
-        }
-      ];
-      if (excelAnexo) {
-        arquivosAnexos.push(excelAnexo);
-      }
-
-      const emailResult = await emailService.sendEmail({
-        to: ['qualidadeams@sonda.com'],
-        subject: assunto,
-        html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
-        anexos: {
-          totalArquivos: arquivosAnexos.length,
-          tamanhoTotal: arquivosAnexos.reduce((sum, a) => sum + a.tamanho, 0),
-          arquivos: arquivosAnexos
-        }
-      });
-
-      if (emailResult.success) {
-        // 7. Registrar envio no versionamento
-        await booksVersioningService.registrarEnvio(
-          bookGerado.book_id!,
-          ['qualidadeams@sonda.com']
-        );
-
-        toast({
-          title: 'Book gerado e enviado',
-          description: `Book de ${nomeAbreviado} regenerado e enviado com sucesso.`,
-        });
-      } else {
+      refetch();
+    } catch (error) {
+      if (error instanceof ErroEnvioEmailBook) {
         toast({
           title: 'Book gerado, mas envio falhou',
           description: `O book de ${nomeAbreviado} foi regenerado mas houve erro no envio do email.`,
           variant: 'destructive',
         });
+        refetch();
+      } else {
+        toast({
+          title: 'Erro no processamento',
+          description: error instanceof Error ? error.message : 'Não foi possível gerar/enviar o book.',
+          variant: 'destructive',
+        });
       }
-
-      refetch();
-    } catch (error) {
-      toast({
-        title: 'Erro no processamento',
-        description: error instanceof Error ? error.message : 'Não foi possível gerar/enviar o book.',
-        variant: 'destructive',
-      });
     } finally {
       setGerandoUnitarioId(null);
     }

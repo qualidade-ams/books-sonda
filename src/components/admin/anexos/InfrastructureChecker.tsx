@@ -224,9 +224,9 @@ export const InfrastructureChecker: React.FC<InfrastructureCheckerProps> = ({
                   Execute os seguintes arquivos no seu banco Supabase:
                 </p>
                 <ul className="text-sm space-y-1 ml-4">
-                  <li>• <code>supabase/migration/anexos_infrastructure_migration.sql</code></li>
-                  <li>• <code>supabase/migration/anexos_rls_policies.sql</code></li>
-                  <li>• <code>supabase/migration/anexos_storage_setup.sql</code></li>
+                  <li>• <code>supabase/_legado/migration/anexos_infrastructure_migration.sql</code></li>
+                  <li>• <code>supabase/_legado/migration/anexos_rls_policies.sql</code></li>
+                  <li>• <code>supabase/_legado/migration/anexos_storage_setup.sql</code></li>
                 </ul>
               </div>
 

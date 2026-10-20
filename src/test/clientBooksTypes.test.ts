@@ -95,6 +95,7 @@ describe('Client Books Types', () => {
       data_status: '2024-01-01T00:00:00Z',
       descricao_status: null,
       principal_contato: true,
+      finalidade_envio: 'book',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z'
     };
