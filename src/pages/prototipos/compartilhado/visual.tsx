@@ -74,7 +74,6 @@ export function Sparkline({ valores, className }: { valores: number[]; className
       />
       <polyline
         points={pontos}
-        pathLength={100}
         fill="none"
         stroke="currentColor"
         strokeWidth="1.75"

@@ -693,8 +693,6 @@ function Quadro({
         />
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ds-border px-4 py-2.5 text-xs text-ds-fg-muted">
           <span>Consumo sincronizado com o Aranda em {ULTIMA_SINCRONIZACAO_MOCK}</span>
-          <span aria-hidden>·</span>
-          <span>Meses fechados só mudam na retificação do Book</span>
         </p>
       </div>
 
@@ -1663,7 +1661,6 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
                       · {BANCOS_CONTROLE_MOCK.length}
                     </span>
                   </h2>
-                  <span className="text-xs text-ds-fg-muted">por prioridade</span>
                 </div>
                 <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-1">
                   {BANCOS_CONTROLE_MOCK.map((b, i) => (
