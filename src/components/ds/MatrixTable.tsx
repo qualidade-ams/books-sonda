@@ -33,6 +33,8 @@ interface MatrixTableProps {
   modoMobile?: 'rolagem' | 'mes-a-mes';
   /** Coluna mostrada primeiro no modo mês a mês (ex.: o mês atual) */
   colunaInicial?: string;
+  /** Alinhamento das colunas dos meses: direita (números) ou centro (quando há botões nas células) */
+  alinhamento?: 'direita' | 'centro';
 }
 
 const MD_QUERY = '(min-width: 768px)';
@@ -51,7 +53,9 @@ export function MatrixTable({
   linhas,
   modoMobile = 'rolagem',
   colunaInicial,
+  alinhamento = 'direita',
 }: MatrixTableProps) {
+  const alinhar = alinhamento === 'centro' ? 'text-center' : 'text-right';
   const { t } = useTranslation();
   const isDesktop = useMediaQuery(MD_QUERY);
   const [indice, setIndice] = React.useState(() =>
@@ -113,7 +117,8 @@ export function MatrixTable({
                   scope="col"
                   aria-current={coluna.atual ? 'date' : undefined}
                   className={cn(
-                    'h-11 whitespace-nowrap border-b border-ds-border bg-ds-bg-subtle px-4 text-right text-xs uppercase tracking-[0.04em]',
+                    'h-11 whitespace-nowrap border-b border-ds-border bg-ds-bg-subtle px-4 text-xs uppercase tracking-[0.04em]',
+                    alinhar,
                     coluna.atual
                       ? 'font-semibold text-ds-fg-accent'
                       : 'font-medium text-ds-fg-muted'
@@ -150,7 +155,7 @@ export function MatrixTable({
                 {visiveis.map((coluna) => (
                   <td
                     key={coluna.id}
-                    className="h-11 whitespace-nowrap px-4 text-right tabular-nums"
+                    className={cn('h-11 whitespace-nowrap px-4 tabular-nums', alinhar)}
                   >
                     {linha.valores[coluna.id] ?? '—'}
                   </td>

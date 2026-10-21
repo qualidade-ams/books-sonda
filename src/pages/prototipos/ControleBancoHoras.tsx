@@ -502,7 +502,7 @@ function BotaoReajuste({
       onClick={onClick}
       aria-label={`Lançar reajuste em ${mes.rotulo}`}
       className={cn(
-        'ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus',
+        'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus',
         mes.reajustes
           ? 'border-[#00D4E8] bg-ds-accent-subtle text-ds-fg-accent'
           : 'border-ds-border-strong text-ds-fg-secondary hover:border-[#00D4E8] hover:text-ds-fg-accent'
@@ -689,6 +689,7 @@ function Quadro({
           }))}
           linhas={cobranca === 'horas' ? linhasHoras : linhasTickets}
           modoMobile="mes-a-mes"
+          alinhamento="centro"
           colunaInicial={mesReferencia(periodo).id}
         />
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ds-border px-4 py-2.5 text-xs text-ds-fg-muted">

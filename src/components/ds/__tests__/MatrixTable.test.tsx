@@ -94,6 +94,40 @@ describe('MatrixTable', () => {
     );
   });
 
+  describe('alinhamento das colunas dos meses', () => {
+    beforeEach(() => mockedMedia.mockReturnValue(true));
+
+    it('alinha à direita por padrão', () => {
+      render(
+        <MatrixTable
+          rotulo="Quadro mensal"
+          rotuloIndicador="Indicador"
+          colunas={colunas}
+          linhas={linhas}
+        />
+      );
+      expect(screen.getByRole('columnheader', { name: 'Nov/2026' })).toHaveClass('text-right');
+      expect(screen.getAllByRole('cell')[0]).toHaveClass('text-right');
+    });
+
+    it('centraliza cabeçalho e valores com alinhamento="centro" (ex.: botões de reajuste)', () => {
+      render(
+        <MatrixTable
+          rotulo="Quadro mensal"
+          rotuloIndicador="Indicador"
+          colunas={colunas}
+          linhas={linhas}
+          alinhamento="centro"
+        />
+      );
+      expect(screen.getByRole('columnheader', { name: 'Nov/2026' })).toHaveClass('text-center');
+      expect(screen.getByRole('columnheader', { name: 'Nov/2026' })).not.toHaveClass('text-right');
+      screen.getAllByRole('cell').forEach((c) => expect(c).toHaveClass('text-center'));
+      // A coluna dos indicadores continua à esquerda
+      expect(screen.getByRole('columnheader', { name: 'Indicador' })).toHaveClass('text-left');
+    });
+  });
+
   describe('no celular, modo mês a mês', () => {
     beforeEach(() => mockedMedia.mockReturnValue(false));
 
