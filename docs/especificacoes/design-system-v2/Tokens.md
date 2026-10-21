@@ -1,6 +1,6 @@
 # Tokens — Design System v2
 
-Aprovado em 15/10/2026 (ver a seção 6). Passo 3 do [Briefing](../Briefing_Design_System_v2.md).
+Aprovado em 15/10/2026 (ver a seção 6). Tema claro revisto em 21/10/2026 para o "claro suave" (ver a seção 7). Passo 3 do [Briefing](../Briefing_Design_System_v2.md).
 
 **Visualização:** abra [tokens-preview.html](tokens-preview.html) no navegador. Ela aplica estes tokens em amostras de componentes, nos modos claro e escuro, e calcula o contraste ao vivo.
 
@@ -36,6 +36,8 @@ Aprovado em 15/10/2026 (ver a seção 6). Passo 3 do [Briefing](../Briefing_Desi
 | `gray-900` | `#141414` | D: superfície (cartão) no escuro                                                 |
 | `black`    | `#000000` | M                                                                                |
 
+Tons frios do claro suave (21/10/2026), todos **D**: `#ECEEF1` (página), `#FAFBFC` (superfície), `#F0F2F5` (sutil), `#EEF1F4` (hover do menu), `#DDE1E6` (borda), `#8A9099` (borda de campo), `#5F6670` (texto auxiliar), `#424850` (texto secundário), `#1B1F24` (texto principal, grafite) e `#0F1D24` (faixa do topo, petróleo escuro). O motivo está na seção 7.
+
 Cores de status, todas **D**, porque o manual não as define:
 
 | Status  | Claro: texto / fundo / borda                   | Escuro: texto / fundo / borda                  |
@@ -55,10 +57,10 @@ Saturação moderada: os tons ficam abaixo do vermelho e do verde puros do Tailw
 
 | Token           | Claro              | Escuro    | Uso                                                 |
 | --------------- | ------------------ | --------- | --------------------------------------------------- |
-| `ds-bg-page`    | `#F5F5F5`          | `#121212` | Fundo da página                                     |
-| `ds-bg-surface` | `#FFFFFF`          | `#1C1C1C` | Cartão, tabela, seção                               |
+| `ds-bg-page`    | `#ECEEF1`          | `#121212` | Fundo da página                                     |
+| `ds-bg-surface` | `#FAFBFC`          | `#1C1C1C` | Cartão, tabela, seção                               |
 | `ds-bg-raised`  | `#FFFFFF` + sombra | `#262626` | Diálogo, popover, menu                              |
-| `ds-bg-subtle`  | `#F5F5F5`          | `#262626` | Cabeçalho de tabela, hover de linha, linha de total |
+| `ds-bg-subtle`  | `#F0F2F5`          | `#262626` | Cabeçalho de tabela, hover de linha, linha de total |
 
 **Ajuste (15/10/2026):** o fundo escuro deixou de ser preto puro (`#000000`), que ficava pesado demais na tela inteira. Página `#121212`, superfícies `#1C1C1C` e elevadas `#262626`. O preto puro fica reservado à faixa de topo e ao menu, que são de marca. Branco sobre `#1C1C1C` mantém contraste 16,0.
 | `ds-bg-selected` | `#E0F8FB` | `#0D2B2E` | Linha selecionada, item ativo |
@@ -68,14 +70,14 @@ No escuro, a profundidade vem da cor da superfície, não da sombra.
 
 ### 2.2 Texto
 
-| Token             | Claro     | Contraste   | Escuro    | Contraste     | Uso                                     |
-| ----------------- | --------- | ----------- | --------- | ------------- | --------------------------------------- |
-| `ds-fg`           | `#000000` | 21 / 19,3*  | `#FFFFFF` | 18,4 / 16,5** | Texto principal, títulos, números       |
-| `ds-fg-secondary` | `#3D3D3D` | 10,9 / 10,0 | `#B1B1B1` | 8,6 / 7,7     | Subtítulo, rótulo, descrição            |
-| `ds-fg-muted`     | `#6B6B6B` | 5,3 / 4,9   | `#8A8A8A` | 5,3 / 4,8     | Ajuda, placeholder, cabeçalho de tabela |
-| `ds-fg-disabled`  | `#B1B1B1` | isento      | `#5C5C5C` | isento        | Desabilitado (WCAG não exige contraste) |
-| `ds-fg-accent`    | `#006F7D` | 5,9 / 5,4   | `#00D4E8` | 10,2 / 9,1    | Link, item ativo, destaque em texto     |
-| `ds-fg-on-accent` | `#000000` | 11,6        | `#000000` | 11,6          | Texto sobre o ciano (botão primário)    |
+| Token             | Claro     | Contraste    | Escuro    | Contraste     | Uso                                     |
+| ----------------- | --------- | ------------ | --------- | ------------- | --------------------------------------- |
+| `ds-fg`           | `#1B1F24` | 16,0 / 14,3* | `#FFFFFF` | 18,4 / 16,5** | Texto principal, títulos, números       |
+| `ds-fg-secondary` | `#424850` | 8,9 / 7,9    | `#B1B1B1` | 8,6 / 7,7     | Subtítulo, rótulo, descrição            |
+| `ds-fg-muted`     | `#5F6670` | 5,6 / 5,0    | `#8A8A8A` | 5,3 / 4,8     | Ajuda, placeholder, cabeçalho de tabela |
+| `ds-fg-disabled`  | `#B1B1B1` | isento       | `#5C5C5C` | isento        | Desabilitado (WCAG não exige contraste) |
+| `ds-fg-accent`    | `#006F7D` | 5,7 / 5,1    | `#00D4E8` | 10,2 / 9,1    | Link, item ativo, destaque em texto     |
+| `ds-fg-on-accent` | `#000000` | 11,6         | `#000000` | 11,6          | Texto sobre o ciano (botão primário)    |
 
 \* sobre `ds-bg-surface` / `ds-bg-page`. \*\* sobre `ds-bg-surface` / `ds-bg-raised`.
 
@@ -83,8 +85,8 @@ No escuro, a profundidade vem da cor da superfície, não da sombra.
 
 | Token              | Claro            | Escuro           | Uso                                                               |
 | ------------------ | ---------------- | ---------------- | ----------------------------------------------------------------- |
-| `ds-border`        | `#E4E4E4`        | `#3D3D3D`        | Borda decorativa de cartão e divisor (sem exigência de contraste) |
-| `ds-border-strong` | `#8A8A8A` (3,45) | `#737373` (3,89) | Borda de input, checkbox, botão secundário                        |
+| `ds-border`        | `#DDE1E6`        | `#3D3D3D`        | Borda decorativa de cartão e divisor (sem exigência de contraste) |
+| `ds-border-strong` | `#8A9099` (3,10) | `#737373` (3,89) | Borda de input, checkbox, botão secundário                        |
 | `ds-focus`         | `#006F7D` (5,9)  | `#00D4E8` (10,2) | Anel de foco, 2 px com afastamento de 2 px                        |
 
 ### 2.4 Destaque (ciano)
@@ -112,17 +114,17 @@ Todos os textos de status passam AA sobre o próprio fundo e sobre `ds-bg-surfac
 
 ### 2.6 Shell (sidebar)
 
-**Decidido (15/10/2026): a sidebar acompanha o tema.** No claro, ela é branca; no escuro, `#141414`. A proposta de sidebar sempre preta foi recusada. A presença de marca vem do **logotipo**, numa versão de cor adequada a cada fundo (seção 2.7).
+**Decidido (15/10/2026): a sidebar acompanha o tema.** No claro, ela é quase branca (`#FAFBFC`); no escuro, `#141414`. A proposta de sidebar sempre preta foi recusada. A presença de marca vem do **logotipo**, numa versão de cor adequada a cada fundo (seção 2.7).
 
 | Token                | Claro     | Contraste | Escuro    | Contraste |
 | -------------------- | --------- | --------- | --------- | --------- |
-| `ds-shell-bg`        | `#FFFFFF` | —         | `#1C1C1C` | —         |
-| `ds-shell-fg`        | `#000000` | 21        | `#FFFFFF` | 18,4      |
-| `ds-shell-fg-muted`  | `#6B6B6B` | 5,3       | `#B1B1B1` | 8,6       |
-| `ds-shell-hover`     | `#F5F5F5` | —         | `#262626` | —         |
+| `ds-shell-bg`        | `#FAFBFC` | —         | `#1C1C1C` | —         |
+| `ds-shell-fg`        | `#1B1F24` | 16,0      | `#FFFFFF` | 18,4      |
+| `ds-shell-fg-muted`  | `#5F6670` | 5,6       | `#B1B1B1` | 8,6       |
+| `ds-shell-hover`     | `#EEF1F4` | —         | `#262626` | —         |
 | `ds-shell-active-bg` | `#E0F8FB` | —         | `#0D2B2E` | —         |
 | `ds-shell-active-fg` | `#006F7D` | 5,3       | `#00D4E8` | 8,3       |
-| `ds-shell-border`    | `#E4E4E4` | —         | `#262626` | —         |
+| `ds-shell-border`    | `#DDE1E6` | —         | `#262626` | —         |
 
 O item ativo também ganha uma barra de 2 px na cor `ds-shell-active-fg` à esquerda, para não depender só da cor de fundo.
 
@@ -210,7 +212,31 @@ No `tailwind.config.ts`, os tokens entram como cores com nome próprio (`ds-bg-s
 ## 6. Decisões (15/10/2026)
 
 1. **Paleta derivada** (seção 1): aprovada.
-2. **Texto principal preto puro no claro** (`#000000`): adotado para avaliar no protótipo. Se ficar duro, a alternativa é o `#3D3D3D` do manual no texto corrido e o preto só nos títulos. A troca é de um token só (`ds-fg`).
+2. **Texto principal preto puro no claro** (`#000000`): adotado para avaliar no protótipo. **Substituído em 21/10/2026** pelo grafite `#1B1F24` (seção 7).
 3. **Sidebar:** acompanha o tema (2.6). O logotipo para fundo claro está pendente (2.7).
 4. **Tipografia** (3): aprovada.
 5. **Densidade** (4): aprovada.
+
+---
+
+## 7. Tema claro suave (21/10/2026)
+
+O claro original ficava "estourado". O branco sobre branco, o texto preto puro e a faixa preta do topo davam um salto de contraste grande. As duas versões foram comparadas no protótipo de Empresas, e o Willian escolheu a **suave**.
+
+| O que mudou                 | Antes                  | Agora                                                                  |
+| --------------------------- | ---------------------- | ---------------------------------------------------------------------- |
+| Fundo da página             | `#F5F5F5`              | `#ECEEF1` (cinza frio)                                                 |
+| Cartão e menu               | `#FFFFFF`              | `#FAFBFC` (quase branco)                                               |
+| Texto principal             | `#000000`              | `#1B1F24` (grafite)                                                    |
+| Texto secundário / auxiliar | `#3D3D3D` / `#6B6B6B`  | `#424850` / `#5F6670`                                                  |
+| Bordas                      | `#E4E4E4` / `#8A8A8A`  | `#DDE1E6` / `#8A9099`                                                  |
+| Sombras                     | opacidade de 0,06–0,14 | opacidade de 0,04–0,08, em tom azulado                                 |
+| Faixa do topo               | `#000000`              | `#0F1D24` (petróleo escuro), token `ds-faixa-bg`; no escuro, `#000000` |
+
+O ciano, as cores de status e o tema escuro não mudaram.
+
+**Contraste (WCAG AA):** todo texto passa de 4,5 sobre `ds-bg-surface` e `ds-bg-raised`. O texto principal, o secundário, o auxiliar e o ciano passam também sobre `ds-bg-page`. Há três restrições:
+
+- `ds-border-strong` dá 3,10 sobre a superfície e 3,22 sobre o elevado, mas 2,77 sobre a página e 2,87 sobre o sutil. Por isso, **campos e checkboxes ficam sempre sobre `ds-bg-surface` ou `ds-bg-raised`**.
+- O texto de alerta (`#A15C00`) dá 4,46 direto sobre a página. Ele aparece sobre a superfície ou sobre o próprio fundo de alerta, nunca solto na página.
+- Sobre a faixa do topo, o branco dá 17,2 e o `#B1B1B1` dá 8,0.
