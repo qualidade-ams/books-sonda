@@ -80,6 +80,7 @@ import {
   CampoTexto,
   ChaveCompacta,
   ChavePrototipo,
+  ChavesPrototipo,
   Chip,
   Escolha,
   IconeComDica,
@@ -90,6 +91,7 @@ import {
   Secao,
   TelaEdicao,
   ValorCopiavel,
+  TituloFaixa,
 } from './compartilhado/formulario';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -629,11 +631,7 @@ function Lista({
       <FaixaTopo>
         <div className="pb-24 pt-3 md:pb-28 md:pt-4">
           <div className="ds-surgir max-w-2xl">
-            <h1 className="font-ds-title text-[26px] font-semibold leading-8 tracking-tight md:text-[34px] md:leading-[42px]">
-              <span className="bg-gradient-to-r from-[#00D4E8] to-[#7CEBF5] bg-clip-text text-transparent">
-                Empresas
-              </span>
-            </h1>
+            <TituloFaixa texto="Empresas" />
             <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
               Clientes, organizações do Aranda e bancos de horas.
             </p>
@@ -3397,7 +3395,7 @@ export default function Empresas({ estado }: PrototipoProps) {
         onToggleMenu={() => setMenuExpandido((v) => !v)}
       >
         {/* Só do protótipo: momento (transição = Fases 3 a 5; virada = Fase 6) e perfil de acesso */}
-        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-dashed border-ds-border-strong px-3 py-2 text-xs text-ds-fg-secondary">
+        <ChavesPrototipo>
           <ChavePrototipo<Modo>
             rotulo="Momento"
             opcoes={[
@@ -3417,7 +3415,7 @@ export default function Empresas({ estado }: PrototipoProps) {
             valor={perfil}
             onChange={setPerfil}
           />
-        </div>
+        </ChavesPrototipo>
 
         {aberta ? (
           <Detalhe

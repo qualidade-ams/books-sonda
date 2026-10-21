@@ -27,7 +27,14 @@ import { BotaoLimparFiltros, FiltroMultiplo } from './compartilhado/filtros';
 import { Paginacao } from './compartilhado/paginacao';
 import { DicasContext } from './compartilhado/dicas';
 import { campo } from './compartilhado/estilos';
-import { Indicador, Interruptor, Secao, TelaEdicao } from './compartilhado/formulario';
+import {
+  ChavesPrototipo,
+  Indicador,
+  Interruptor,
+  Secao,
+  TelaEdicao,
+  TituloFaixa,
+} from './compartilhado/formulario';
 import { MenuExportar } from './compartilhado/importacao';
 import {
   AREAS_AUDITORIA,
@@ -310,6 +317,9 @@ export default function AuditoriaBancoHoras({ estado }: PrototipoProps) {
         menuExpandido={menuExpandido}
         onToggleMenu={() => setMenuExpandido((v) => !v)}
       >
+        <ChavesPrototipo>
+          <span>Sem chaves próprias nesta tela</span>
+        </ChavesPrototipo>
         {aberto ? (
           <DetalheAlteracao
             registro={aberto}
@@ -324,12 +334,7 @@ export default function AuditoriaBancoHoras({ estado }: PrototipoProps) {
             <FaixaTopo>
               <div className="pb-24 pt-3 md:pb-28 md:pt-4">
                 <div className="ds-surgir max-w-2xl">
-                  <h1 className="font-ds-title text-[26px] font-semibold leading-8 tracking-tight md:text-[34px] md:leading-[42px]">
-                    <span className="bg-gradient-to-r from-[#00D4E8] to-[#7CEBF5] bg-clip-text text-transparent">
-                      Auditoria
-                    </span>{' '}
-                    do Banco de Horas
-                  </h1>
+                  <TituloFaixa texto="Auditoria do Banco de Horas" />
                   <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
                     Quem alterou o quê e quando, nos cadastros e nos bancos de horas.
                   </p>

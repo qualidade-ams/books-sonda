@@ -1,7 +1,7 @@
 // Shell EXPLORATÓRIO compartilhado pelos protótipos do DS v2 (fora do glob de /prototipos):
 // menu em pílula e faixa escura do topo, aprovados por enquanto no protótipo do Controle (15/10/2026).
 // Desenhado só para avaliar a direção; não altera o LayoutAdmin.
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Award,
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
+import { aplicarAcento, lerAcento } from './acento';
 
 export const vidro = 'border border-white/15 bg-white/[0.06] backdrop-blur-md';
 export const botaoVidro = cn(
@@ -225,6 +226,8 @@ export function PaginaV2({
   onToggleMenu: () => void;
   children: ReactNode;
 }) {
+  // Comparação do destaque no claro (só protótipo): vale em todas as telas, inclusive nos níveis de edição
+  useEffect(() => aplicarAcento(lerAcento()), []);
   return (
     <div data-ds="v2" className="min-h-screen bg-ds-bg-page font-ds-sans text-ds-fg">
       <MenuPilula expandido={menuExpandido} onToggle={onToggleMenu} ativo={menuAtivo} />

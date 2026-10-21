@@ -66,6 +66,7 @@ import {
   Rotulo,
   Secao,
   TelaEdicao,
+  TituloFaixa,
 } from './compartilhado/formulario';
 import { MenuExportar } from './compartilhado/importacao';
 import { FiltroAlternar } from './compartilhado/filtros';
@@ -140,12 +141,7 @@ function Topo({
     <FaixaTopo>
       <div className="pb-24 pt-3 md:pb-28 md:pt-4">
         <div className="ds-surgir max-w-2xl">
-          <h1 className="font-ds-title text-[26px] font-semibold leading-8 tracking-tight md:text-[34px] md:leading-[42px]">
-            Controle de{' '}
-            <span className="bg-gradient-to-r from-[#00D4E8] to-[#7CEBF5] bg-clip-text text-transparent">
-              Banco de Horas
-            </span>
-          </h1>
+          <TituloFaixa texto="Controle de Banco de Horas" />
           <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
             Consumo, saldo e repasse de cada banco até o fechamento do período.
           </p>

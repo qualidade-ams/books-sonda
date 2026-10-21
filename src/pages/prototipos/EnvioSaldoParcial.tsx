@@ -51,6 +51,7 @@ import {
   Rotulo,
   Secao,
   TelaEdicao,
+  TituloFaixa,
 } from './compartilhado/formulario';
 import { MenuExportar } from './compartilhado/importacao';
 import {
@@ -748,12 +749,7 @@ export default function EnvioSaldoParcial({ estado }: PrototipoProps) {
         <FaixaTopo>
           <div className="pb-24 pt-3 md:pb-28 md:pt-4">
             <div className="ds-surgir max-w-2xl">
-              <h1 className="font-ds-title text-[26px] font-semibold leading-8 tracking-tight md:text-[34px] md:leading-[42px]">
-                Envio de{' '}
-                <span className="bg-gradient-to-r from-[#00D4E8] to-[#7CEBF5] bg-clip-text text-transparent">
-                  Saldo Parcial
-                </span>
-              </h1>
+              <TituloFaixa texto="Envio de Saldo Parcial" />
               <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
                 Agendamentos do e-mail de saldo parcial: um e-mail por empresa, com uma tabela por
                 banco.
