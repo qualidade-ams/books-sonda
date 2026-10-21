@@ -1647,11 +1647,10 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
                       </h2>
                       <p className="truncate text-xs text-ds-fg-muted">
                         {banco.tipoContrato === 'ambos'
-                          ? 'Horas e tickets'
+                          ? 'Banco de horas e tickets'
                           : banco.tipoContrato === 'tickets'
-                            ? 'Tickets'
-                            : 'Horas'}{' '}
-                        · {banco.escopo}
+                            ? 'Banco de tickets'
+                            : 'Banco de horas'}
                       </p>
                     </div>
                     <SegmentedTabs
