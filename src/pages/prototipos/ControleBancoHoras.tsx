@@ -485,6 +485,36 @@ function NavegadorPeriodo({
   );
 }
 
+/** Reajuste do mês como botão: mostra o total e abre o lançamento já com o mês escolhido */
+function BotaoReajuste({
+  mes,
+  podeEditar,
+  onClick,
+}: {
+  mes: MesControleMock;
+  podeEditar: boolean;
+  onClick: () => void;
+}) {
+  if (!podeEditar) return <HoursValue minutos={mes.reajustes} sinal="sempre" />;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Lançar reajuste em ${mes.rotulo}`}
+      className={cn(
+        'ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus',
+        mes.reajustes
+          ? 'border-[#00D4E8] bg-ds-accent-subtle text-ds-fg-accent'
+          : 'border-ds-border-strong text-ds-fg-secondary hover:border-[#00D4E8] hover:text-ds-fg-accent'
+      )}
+    >
+      <Clock className="h-3.5 w-3.5" aria-hidden />
+      {formatarHoras(mes.reajustes, { sinal: 'sempre' })}
+      <Plus className="h-3.5 w-3.5" aria-hidden />
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Aba Quadro                                                           */
 /* ------------------------------------------------------------------ */
@@ -498,7 +528,8 @@ function Quadro({
   banco: BancoControleMock;
   periodo: PeriodoMock;
   podeEditar: boolean;
-  onReajuste: () => void;
+  /** Abre o lançamento de reajuste no mês */
+  onReajuste: (mes: string) => void;
 }) {
   const [cobranca, setCobranca] = useState<'horas' | 'tickets'>('horas');
   const [copiado, setCopiado] = useState(false);
@@ -506,12 +537,9 @@ function Quadro({
   const entre = periodo.entreBancos;
   const fechamento = meses.find((m) => m.fimPeriodo && m.situacao === 'fechado');
 
-  const valor = (m: MesControleMock, n: number, cor?: 'saldo', sinal?: 'sempre') =>
-    m.situacao === 'futuro' ? (
-      <span className="text-ds-fg-disabled">—</span>
-    ) : (
-      <HoursValue minutos={n} cor={cor} sinal={sinal} />
-    );
+  const valor = (_m: MesControleMock, n: number, cor?: 'saldo', sinal?: 'sempre') => (
+    <HoursValue minutos={n} cor={cor} sinal={sinal} />
+  );
   const linha = (
     id: string,
     rotulo: ReactNode,
@@ -534,28 +562,24 @@ function Quadro({
     linha('disponivel', 'Disponível', (m) => m.disponivel, { enfase: 'total' }),
     linha('apontamentos', 'Chamados (Aranda)', (m) => m.apontamentos),
     linha('requerimentos', 'Requerimentos', (m) => m.requerimentos),
-    linha(
-      'reajustes',
-      'Reajustes',
-      (m) => m.reajustes,
-      {
-        acao: podeEditar ? (
-          <Button
-            tamanho="sm"
-            variante="fantasma"
-            onClick={onReajuste}
-            aria-label="Lançar reajuste"
-          >
-            <Plus />
-          </Button>
-        ) : undefined,
-      },
-      undefined,
-      'sempre'
-    ),
+    {
+      id: 'reajustes',
+      rotulo: 'Reajustes',
+      valores: Object.fromEntries(
+        meses.map((m) => [
+          m.id,
+          <BotaoReajuste
+            key={m.id}
+            mes={m}
+            podeEditar={podeEditar}
+            onClick={() => onReajuste(m.id)}
+          />,
+        ])
+      ),
+    },
     linha('consumo', 'Consumo total', (m) => m.consumo, { enfase: 'total' }),
     linha('saldo', 'Saldo do mês', (m) => m.saldo, { enfase: 'total' }, 'saldo'),
-    linha('repasse', `Repasse para o mês seguinte (${banco.repassePercentual}%)`, (m) =>
+    linha('repasse', `Repasse · ${banco.repassePercentual}%`, (m) =>
       m.fimPeriodo ? 0 : m.repasse
     ),
   ];
@@ -577,7 +601,7 @@ function Quadro({
       },
       {
         id: 'final',
-        rotulo: 'Saldo após consumo entre bancos',
+        rotulo: 'Saldo final',
         enfase: 'total',
         valores: soFechamento(<HoursValue minutos={entre.saldoFinal} cor="saldo" />),
       }
@@ -592,7 +616,7 @@ function Quadro({
       },
       {
         id: 'valor',
-        rotulo: `Valor a faturar (${banco.taxa.rotulo.toLowerCase()} ${reais(banco.taxa.valorHora)}/h)`,
+        rotulo: `Valor a faturar · ${reais(banco.taxa.valorHora)}/h`,
         enfase: 'total',
         valores: soFechamento(
           <span className="tabular-nums">{reais(periodo.excedente.valor)}</span>
@@ -660,7 +684,7 @@ function Quadro({
           rotuloIndicador={cobranca === 'horas' ? 'Horas' : 'Tickets'}
           colunas={meses.map((m) => ({
             id: m.id,
-            rotulo: m.situacao === 'futuro' ? `${m.rotulo} · a começar` : m.rotulo,
+            rotulo: m.rotulo,
             atual: m.situacao === 'aberto',
           }))}
           linhas={cobranca === 'horas' ? linhasHoras : linhasTickets}
@@ -964,14 +988,16 @@ function AbaReajustes({
 function LancarReajuste({
   banco,
   periodo,
+  mesInicial,
   onFechar,
 }: {
   banco: BancoControleMock;
   periodo: PeriodoMock;
+  mesInicial?: string;
   onFechar: () => void;
 }) {
-  const disponiveis = periodo.meses.filter((m) => m.situacao !== 'futuro');
-  const [mes, setMes] = useState(mesReferencia(periodo).id);
+  const disponiveis = periodo.meses;
+  const [mes, setMes] = useState(mesInicial ?? mesReferencia(periodo).id);
   const [efeito, setEfeito] = useState<'soma' | 'abate'>('abate');
   const [horas, setHoras] = useState('');
   const [tickets, setTickets] = useState('');
@@ -1009,7 +1035,11 @@ function LancarReajuste({
               {disponiveis.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.rotulo}
-                  {m.situacao === 'fechado' ? ' (fechado)' : ''}
+                  {m.situacao === 'fechado'
+                    ? ' (fechado)'
+                    : m.situacao === 'futuro'
+                      ? ' (a começar)'
+                      : ''}
                 </option>
               ))}
             </Select>
@@ -1473,6 +1503,7 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
   const [periodoPorBanco, setPeriodoPorBanco] = useState<Record<string, number>>({});
   const [secao, setSecao] = useState('quadro');
   const [nivel, setNivel] = useState<'reajuste' | 'envio' | null>(null);
+  const [mesReajuste, setMesReajuste] = useState<string | undefined>();
   const [recalcular, setRecalcular] = useState(false);
   const [requerimentos, setRequerimentos] = useState(REQUERIMENTOS_CONTROLE_MOCK);
   const [reajustes, setReajustes] = useState(REAJUSTES_MOCK);
@@ -1514,7 +1545,10 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
           banco={banco}
           periodo={periodo}
           podeEditar={podeEditar && !legado}
-          onReajuste={() => setNivel('reajuste')}
+          onReajuste={(mes) => {
+            setMesReajuste(mes);
+            setNivel('reajuste');
+          }}
         />
       );
     if (secao === 'requerimentos')
@@ -1533,7 +1567,10 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
           periodo={periodo}
           podeEditar={podeEditar && !legado}
           reajustes={reajustes}
-          onLancar={() => setNivel('reajuste')}
+          onLancar={() => {
+            setMesReajuste(undefined);
+            setNivel('reajuste');
+          }}
           onInativar={setInativar}
         />
       );
@@ -1551,7 +1588,14 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
 
   const corpo = () => {
     if (nivel === 'reajuste')
-      return <LancarReajuste banco={banco} periodo={periodo} onFechar={() => setNivel(null)} />;
+      return (
+        <LancarReajuste
+          banco={banco}
+          periodo={periodo}
+          mesInicial={mesReajuste}
+          onFechar={() => setNivel(null)}
+        />
+      );
     if (nivel === 'envio')
       return <EnviarSaldoParcial empresa={empresa.nome} onFechar={() => setNivel(null)} />;
     return (

@@ -98,11 +98,15 @@ function periodo(
       saldo,
       repasse,
       tickets:
-        tickets && tc !== undefined && tc !== null
-          ? { contratados: tickets.contratados, consumidos: tc, saldo: tickets.contratados - tc }
+        tickets && tc !== undefined
+          ? {
+              contratados: tickets.contratados,
+              consumidos: tc ?? 0,
+              saldo: tickets.contratados - (tc ?? 0),
+            }
           : undefined,
     };
-    if (situacao !== 'futuro') repasseAnterior = repasse;
+    repasseAnterior = repasse;
     return mes;
   });
 }

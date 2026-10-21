@@ -502,10 +502,11 @@ export function TelaEdicao({
   voltarPara: string;
   titulo: string;
   subtitulo?: string;
-  podeSalvar: boolean;
+  /** Sem onSalvar, o nível é só de leitura e não tem a barra de salvar */
+  podeSalvar?: boolean;
   rotuloSalvar?: string;
   onFechar: () => void;
-  onSalvar: () => void;
+  onSalvar?: () => void;
   children: ReactNode;
 }) {
   // Ao entrar no nível de edição, começa do topo
@@ -536,14 +537,16 @@ export function TelaEdicao({
         {children}
       </div>
 
-      <BarraRodape>
-        <div className="ml-auto flex gap-2">
-          <Button onClick={onFechar}>Cancelar</Button>
-          <Button variante="primario" disabled={!podeSalvar} onClick={onSalvar}>
-            {rotuloSalvar}
-          </Button>
-        </div>
-      </BarraRodape>
+      {onSalvar && (
+        <BarraRodape>
+          <div className="ml-auto flex gap-2">
+            <Button onClick={onFechar}>Cancelar</Button>
+            <Button variante="primario" disabled={!podeSalvar} onClick={onSalvar}>
+              {rotuloSalvar}
+            </Button>
+          </div>
+        </BarraRodape>
+      )}
     </>
   );
 }
