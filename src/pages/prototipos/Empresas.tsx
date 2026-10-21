@@ -22,7 +22,6 @@ import {
   CircleSlash,
   ClipboardPen,
   Copy,
-  Download,
   ExternalLink,
   Eye,
   Filter,
@@ -70,6 +69,8 @@ import { FaixaTopo, PaginaV2, botaoPrimarioTopo, botaoVidro } from './compartilh
 import { BotaoLimparFiltros, FiltroAlternar, FiltroMultiplo } from './compartilhado/filtros';
 import { Paginacao } from './compartilhado/paginacao';
 import { DicasContext } from './compartilhado/dicas';
+import { BotaoImportar, MenuExportar, TelaImportacao } from './compartilhado/importacao';
+import { IMPORTACAO_EMPRESAS } from './mocks/importacoes';
 import { campo } from './compartilhado/estilos';
 import {
   Ajuda,
@@ -502,6 +503,7 @@ function Lista({
   const [emProjeto, setEmProjeto] = useState<SimNao[]>([]);
   const [soPendentes, setSoPendentes] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [importando, setImportando] = useState(false);
 
   const casaSimNao = (filtro: SimNao[], valor: boolean) =>
     !filtro.length || filtro.includes(valor ? 'sim' : 'nao');
@@ -610,6 +612,18 @@ function Lista({
     },
   ];
 
+  // Na transição a identidade é cadastrada na tela atual: a importação só existe depois da virada
+  if (importando)
+    return (
+      <TelaImportacao
+        voltarPara="Empresas"
+        titulo="Importar empresas"
+        entidade="empresas"
+        {...IMPORTACAO_EMPRESAS}
+        onFechar={() => setImportando(false)}
+      />
+    );
+
   return (
     <>
       <FaixaTopo>
@@ -626,13 +640,9 @@ function Lista({
           </div>
           <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
             {podeEditar && modo === 'virada' && (
-              <button type="button" className={botaoVidro}>
-                <Upload className="h-4 w-4" /> Importar
-              </button>
+              <BotaoImportar onClick={() => setImportando(true)} />
             )}
-            <button type="button" className={botaoVidro}>
-              <Download className="h-4 w-4" /> Exportar
-            </button>
+            <MenuExportar total={linhas.length} entidade="empresas" />
             {podeEditar &&
               (modo === 'virada' ? (
                 <button type="button" className={botaoPrimarioTopo}>

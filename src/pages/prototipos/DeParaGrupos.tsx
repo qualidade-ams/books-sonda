@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Check,
-  Download,
   Filter,
   GitMerge,
   Layers,
@@ -37,10 +36,12 @@ import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import type { PrototipoProps } from '@/utils/prototipos';
 import { atraso } from './compartilhado/visual';
-import { FaixaTopo, PaginaV2, botaoPrimarioTopo, botaoVidro } from './compartilhado/shell';
+import { FaixaTopo, PaginaV2, botaoPrimarioTopo } from './compartilhado/shell';
 import { BotaoLimparFiltros, FiltroMultiplo } from './compartilhado/filtros';
 import { Paginacao } from './compartilhado/paginacao';
 import { DicasContext } from './compartilhado/dicas';
+import { BotaoImportar, MenuExportar, TelaImportacao } from './compartilhado/importacao';
+import { IMPORTACAO_DE_PARA } from './mocks/importacoes';
 import { campo, itemMenu } from './compartilhado/estilos';
 import {
   Ajuda,
@@ -956,6 +957,7 @@ export default function DeParaGrupos({ estado }: PrototipoProps) {
   const [aba, setAba] = useState('mapeamentos');
   const [situacao, setSituacao] = useState<Classificacao[]>([]);
   const [editando, setEditando] = useState<Edicao>(null);
+  const [importando, setImportando] = useState(false);
   const podeEditar = perfil === 'edicao';
 
   const totais = {
@@ -967,6 +969,23 @@ export default function DeParaGrupos({ estado }: PrototipoProps) {
   const soSemModulo = situacao.length === 3 && !situacao.includes('modulo');
 
   const conteudo = () => {
+    if (importando)
+      return (
+        <TelaImportacao
+          voltarPara="De-para de Grupos"
+          titulo="Importar mapeamentos"
+          entidade="mapeamentos"
+          {...IMPORTACAO_DE_PARA}
+          aviso={
+            <Callout tom="warning" titulo="Pode mover horas entre bancos">
+              Linhas que mudam o produto ou o módulo de um grupo mudam o banco das horas nas
+              empresas com bancos múltiplos, a partir do próximo recálculo. Meses fechados não
+              mudam.
+            </Callout>
+          }
+          onFechar={() => setImportando(false)}
+        />
+      );
     if (editando)
       return (
         <EdicaoMapeamento
@@ -992,9 +1011,8 @@ export default function DeParaGrupos({ estado }: PrototipoProps) {
               </p>
             </div>
             <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
-              <button type="button" className={botaoVidro}>
-                <Download className="h-4 w-4" /> Exportar
-              </button>
+              {podeEditar && <BotaoImportar onClick={() => setImportando(true)} />}
+              <MenuExportar total={totais.mapeados} entidade="mapeamentos" />
               {podeEditar && (
                 <button
                   type="button"

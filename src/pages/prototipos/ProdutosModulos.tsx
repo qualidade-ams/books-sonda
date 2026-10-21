@@ -62,6 +62,8 @@ import { atraso } from './compartilhado/visual';
 import { FaixaTopo, PaginaV2, botaoPrimarioTopo, botaoVidro } from './compartilhado/shell';
 import { BotaoLimparFiltros, FiltroAlternar, FiltroMultiplo } from './compartilhado/filtros';
 import { DicasContext } from './compartilhado/dicas';
+import { BotaoImportar, MenuExportar, TelaImportacao } from './compartilhado/importacao';
+import { IMPORTACAO_CATALOGO } from './mocks/importacoes';
 import { campo, itemMenu } from './compartilhado/estilos';
 import {
   Ajuda,
@@ -1537,6 +1539,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
   const [soSemGrupo, setSoSemGrupo] = useState(false);
   const [editando, setEditando] = useState<Edicao>(null);
   const [alterarStatus, setAlterarStatus] = useState<AlterarStatus | null>(null);
+  const [importando, setImportando] = useState(false);
   const podeEditar = perfil === 'edicao';
   const modulos = MODULOS_MOCK;
 
@@ -1565,6 +1568,16 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
     });
 
   const conteudo = () => {
+    if (importando)
+      return (
+        <TelaImportacao
+          voltarPara="Produtos e Módulos"
+          titulo="Importar produtos e módulos"
+          entidade="produtos e módulos"
+          {...IMPORTACAO_CATALOGO}
+          onFechar={() => setImportando(false)}
+        />
+      );
     if (editando?.tipo === 'solucao')
       return (
         <EdicaoSolucao
@@ -1609,37 +1622,41 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
                 Soluções contratadas pelas empresas, com seus produtos e módulos.
               </p>
             </div>
-            {podeEditar && (
-              <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
-                <button
-                  type="button"
-                  className={botaoVidro}
-                  onClick={() => setEditando({ tipo: 'solucao', solucao: null })}
-                >
-                  <Plus className="h-4 w-4" /> Nova solução
-                </button>
-                <button
-                  type="button"
-                  className={botaoVidro}
-                  onClick={() =>
-                    setEditando({
-                      tipo: 'produto',
-                      produto: null,
-                      solucaoId: solucaoAtual?.id ?? SOLUCOES_MOCK[0].id,
-                    })
-                  }
-                >
-                  <Plus className="h-4 w-4" /> Novo produto
-                </button>
-                <button
-                  type="button"
-                  className={botaoPrimarioTopo}
-                  onClick={() => setEditando({ tipo: 'modulo', modulo: null })}
-                >
-                  <Plus className="h-4 w-4" /> Novo módulo
-                </button>
-              </div>
-            )}
+            <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+              {podeEditar && <BotaoImportar onClick={() => setImportando(true)} />}
+              <MenuExportar entidade="soluções, produtos e módulos" />
+              {podeEditar && (
+                <>
+                  <button
+                    type="button"
+                    className={botaoVidro}
+                    onClick={() => setEditando({ tipo: 'solucao', solucao: null })}
+                  >
+                    <Plus className="h-4 w-4" /> Nova solução
+                  </button>
+                  <button
+                    type="button"
+                    className={botaoVidro}
+                    onClick={() =>
+                      setEditando({
+                        tipo: 'produto',
+                        produto: null,
+                        solucaoId: solucaoAtual?.id ?? SOLUCOES_MOCK[0].id,
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4" /> Novo produto
+                  </button>
+                  <button
+                    type="button"
+                    className={botaoPrimarioTopo}
+                    onClick={() => setEditando({ tipo: 'modulo', modulo: null })}
+                  >
+                    <Plus className="h-4 w-4" /> Novo módulo
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </FaixaTopo>
 
