@@ -1,7 +1,8 @@
 // Dados FICTÍCIOS do protótipo de Empresas (DS v2). Nenhum nome, e-mail ou dado real de cliente.
-// Os módulos são os nomes do catálogo (produto_modulos), que não identificam clientes.
+// O catálogo (Solução › Produto › Módulo) está em catalogo.ts.
+import { idProduto, idModulo, type SolucaoCodigo } from './catalogo';
 
-export type ProdutoCodigo = 'COMEX' | 'FISCAL' | 'GALLERY';
+export type { SolucaoCodigo };
 export type ModeloCalculo = 'legado' | 'multiplo' | 'liberada';
 
 export interface EmpresaListaMock {
@@ -11,10 +12,11 @@ export interface EmpresaListaMock {
   status: 'ativo' | 'inativo';
   temAms: boolean;
   emProjeto: boolean;
-  produtos: ProdutoCodigo[];
-  /** Produtos com AMS (o AMS passa a ser por produto); temAms = algum produto com AMS */
-  produtosAms: ProdutoCodigo[];
-  /** Produtos em projeto, com a justificativa; emProjeto = algum produto em projeto */
+  /** A empresa contrata soluções (decisão de 21/10/2026) */
+  solucoes: SolucaoCodigo[];
+  /** Soluções com AMS; temAms = alguma solução com AMS */
+  solucoesAms: SolucaoCodigo[];
+  /** Soluções em projeto, com a justificativa; emProjeto = alguma solução em projeto */
   projetos: ProjetosMock;
   modelo: ModeloCalculo;
   bancos: number;
@@ -28,8 +30,8 @@ export interface EmpresaListaMock {
   observacao: string;
 }
 
-/** Produto em projeto → breve justificativa (o "em projeto" passa a ser por produto) */
-export type ProjetosMock = Partial<Record<ProdutoCodigo, string>>;
+/** Solução em projeto → breve justificativa (o "em projeto" é por solução) */
+export type ProjetosMock = Partial<Record<SolucaoCodigo, string>>;
 
 type EmpresaBase = Omit<
   EmpresaListaMock,
@@ -38,7 +40,7 @@ type EmpresaBase = Omit<
   | 'nomeCs'
   | 'nomeComercial'
   | 'observacao'
-  | 'produtosAms'
+  | 'solucoesAms'
   | 'projetos'
 >;
 
@@ -55,9 +57,9 @@ const OBSERVACOES: Record<string, string> = {
 
 /** Justificativas fictícias dos produtos em projeto */
 const PROJETOS: Record<string, ProjetosMock> = {
-  alfa: { GALLERY: 'Implantação do GALLERY em andamento; entra em AMS ao fim do projeto.' },
-  gama: { GALLERY: 'Migração para a nova versão, previsão de conclusão em 03/2027.' },
-  iota: { FISCAL: 'Projeto de reforma tributária em execução.' },
+  alfa: { FISCAIS: 'Implantação do GALLERY em andamento, previsão de conclusão em 03/2027.' },
+  gama: { FISCAIS: 'Migração do COMPLY para a nova versão.' },
+  iota: { FISCAIS: 'Projeto de reforma tributária em execução.' },
 };
 
 const BASE_LISTA: EmpresaBase[] = [
@@ -68,7 +70,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: true,
     temAms: true,
-    produtos: ['COMEX', 'FISCAL', 'GALLERY'],
+    solucoes: ['COMEX', 'FISCAIS'],
     modelo: 'legado',
     bancos: 3,
     pendente: false,
@@ -80,7 +82,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: false,
     temAms: true,
-    produtos: ['FISCAL'],
+    solucoes: ['FISCAIS'],
     modelo: 'legado',
     bancos: 1,
     pendente: true,
@@ -92,7 +94,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: true,
     temAms: true,
-    produtos: ['COMEX', 'FISCAL', 'GALLERY'],
+    solucoes: ['COMEX', 'FISCAIS'],
     modelo: 'liberada',
     bancos: 2,
     pendente: false,
@@ -104,7 +106,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: false,
     temAms: true,
-    produtos: ['GALLERY'],
+    solucoes: ['FISCAIS'],
     modelo: 'legado',
     bancos: 1,
     pendente: true,
@@ -116,7 +118,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: false,
     temAms: true,
-    produtos: ['FISCAL'],
+    solucoes: ['FISCAIS'],
     modelo: 'multiplo',
     bancos: 2,
     pendente: false,
@@ -128,7 +130,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: false,
     temAms: false,
-    produtos: ['COMEX'],
+    solucoes: ['COMEX'],
     modelo: 'legado',
     bancos: 0,
     pendente: true,
@@ -140,7 +142,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'inativo',
     emProjeto: false,
     temAms: true,
-    produtos: ['FISCAL'],
+    solucoes: ['FISCAIS'],
     modelo: 'legado',
     bancos: 1,
     pendente: false,
@@ -152,7 +154,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: false,
     temAms: true,
-    produtos: ['COMEX', 'FISCAL'],
+    solucoes: ['COMEX', 'FISCAIS'],
     modelo: 'legado',
     bancos: 1,
     pendente: false,
@@ -164,7 +166,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'ativo',
     emProjeto: true,
     temAms: true,
-    produtos: ['FISCAL', 'GALLERY'],
+    solucoes: ['FISCAIS'],
     modelo: 'legado',
     bancos: 1,
     pendente: true,
@@ -176,7 +178,7 @@ const BASE_LISTA: EmpresaBase[] = [
     status: 'inativo',
     emProjeto: false,
     temAms: false,
-    produtos: ['COMEX'],
+    solucoes: ['COMEX'],
     modelo: 'legado',
     bancos: 0,
     pendente: false,
@@ -193,12 +195,8 @@ export const EMPRESAS_LISTA_MOCK: EmpresaListaMock[] = BASE_LISTA.map((e, i) => 
   nomeComercial: i % 3 === 2 ? '' : NOMES_COMERCIAL[i % NOMES_COMERCIAL.length],
   observacao: OBSERVACOES[e.id] ?? '',
   projetos: PROJETOS[e.id] ?? {},
-  // Gama tem AMS só em parte dos produtos, para mostrar o caso misto
-  produtosAms: !e.temAms
-    ? []
-    : e.id === 'gama' || e.id === 'alfa'
-      ? ['COMEX', 'FISCAL']
-      : e.produtos,
+  // Gama tem AMS só em parte das soluções, para mostrar o caso misto
+  solucoesAms: !e.temAms ? [] : e.id === 'gama' ? ['FISCAIS'] : e.solucoes,
 }));
 
 export const TOTAIS_EMPRESAS_MOCK = { total: 190, ativas: 151, inativas: 39, pendentes: 47 };
@@ -218,8 +216,8 @@ export const IDENTIDADE_ALFA_MOCK = {
   emProjeto: true,
   vigenciaInicio: '2026-01-01',
   vigenciaFim: '',
-  produtos: ['COMEX', 'FISCAL', 'GALLERY'] as ProdutoCodigo[],
-  produtosAms: ['COMEX', 'FISCAL'] as ProdutoCodigo[],
+  solucoes: ['COMEX', 'FISCAIS'] as SolucaoCodigo[],
+  solucoesAms: ['COMEX', 'FISCAIS'] as SolucaoCodigo[],
   projetos: PROJETOS.alfa,
   emailCustomerSuccess: 'cs.alfa@exemplo.com',
   emailComercial: 'comercial.alfa@exemplo.com',
@@ -389,9 +387,10 @@ export const TEMPLATES_BOOK_MOCK = [
 // Bancos de horas
 // ---------------------------------------------------------------------------
 
+/** O escopo marca produtos inteiros ou módulos; a solução só agrupa (decisão de 21/10/2026) */
 export interface EscopoMock {
-  produto: ProdutoCodigo;
-  /** vazio = produto inteiro */
+  produtoId: string;
+  /** ids dos módulos; vazio = produto inteiro */
   modulos: string[];
 }
 
@@ -437,14 +436,20 @@ export const BANCOS_ALFA_MOCK: BancoCadastroMock[] = [
     baseline: { valor: '40:00', desde: '01/2026' },
     repasse: { percentual: 50, desde: '01/2026' },
     repassePorPeriodo: null,
-    escopo: [{ produto: 'COMEX', modulos: [] }],
+    // Sem marcar a solução: os produtos COMEX, um a um
+    escopo: [
+      { produtoId: idProduto('CE PLUS'), modulos: [] },
+      { produtoId: idProduto('CE PLUS RECOF'), modulos: [] },
+      { produtoId: idProduto('CATÁLOGO DE PRODUTOS'), modulos: [] },
+      { produtoId: idProduto('FCI'), modulos: [] },
+    ],
     filtroIc: null,
     consomeOutros: false,
   },
   {
     id: 'edocs',
     nome: 'FISCAL – e-DOCS',
-    descricao: 'Horas dedicadas ao COMPLY e-DOCS.',
+    descricao: 'Horas dedicadas ao COMPLY e-DOCS e ao Monitor NF-e.',
     padrao: false,
     ativo: true,
     tipoContrato: 'horas',
@@ -458,14 +463,17 @@ export const BANCOS_ALFA_MOCK: BancoCadastroMock[] = [
     baseline: { valor: '20:00', desde: '07/2026' },
     repasse: { percentual: 100, desde: '07/2026' },
     repassePorPeriodo: null,
-    escopo: [{ produto: 'FISCAL', modulos: ['COMPLY e-DOCS'] }],
+    escopo: [
+      { produtoId: idProduto('COMPLY e-DOCS'), modulos: [] },
+      { produtoId: idProduto('COMPLY'), modulos: [idModulo('COMPLY', 'Monitor NF-e')] },
+    ],
     filtroIc: null,
     consomeOutros: true,
   },
   {
     id: 'fiscal',
     nome: 'Banco FISCAL',
-    descricao: 'Demais módulos FISCAL e grupos sem produto.',
+    descricao: 'Demais produtos FISCAIS e grupos de serviço.',
     padrao: true,
     ativo: true,
     tipoContrato: 'horas',
@@ -484,70 +492,6 @@ export const BANCOS_ALFA_MOCK: BancoCadastroMock[] = [
     consomeOutros: false,
   },
 ];
-
-export const MODULOS_MOCK: Record<ProdutoCodigo, string[]> = {
-  COMEX: [
-    'ABAP',
-    'Câmbio',
-    'Catálogo de Produtos',
-    'Drawback',
-    'Exportação',
-    'FCI',
-    'Fluxo de Caixa',
-    'ICS Inativos',
-    'Importação',
-    'LEGEM',
-    'Orçamentos',
-    'RECOF',
-    'SAPC',
-    'TP One',
-    'VENDOR',
-  ],
-  FISCAL: [
-    'Atualização Ambientes',
-    'Cadastros Básicos',
-    'Ciclo de Vida',
-    'COMPLY Analytics',
-    'COMPLY e-DOCS',
-    'Conciliação',
-    'Contabilização',
-    'Controle de Terceiros',
-    'DBA',
-    'ECD/ECF',
-    'EFD Contribuições',
-    'EFD ICMS',
-    'ETL',
-    'Framework',
-    'ICS Inativos',
-    'Indiretos',
-    'Infraestrutura',
-    'Integração Indiretos',
-    'Obrigações Estaduais',
-    'Orçamentos',
-    'REINF',
-    'Retidos',
-    'SAAS',
-    'SVA',
-    'Técnico',
-  ],
-  GALLERY: [
-    'EFD Contribuições',
-    'EFD ICMS/IPI',
-    'Federal',
-    'ICS Inativos',
-    'Indiretos',
-    'Infraestrutura',
-    'IRPJ/CSLL',
-    'Obrigações Estaduais',
-    'Obrigações Federais',
-    'Obrigações Municipais',
-    'PIS/COFINS',
-    'Retidos',
-    'SPED ECD',
-    'SPED ECF',
-    'SPED REINF',
-  ],
-};
 
 export const HISTORICO_BASELINE_MOCK = [
   {

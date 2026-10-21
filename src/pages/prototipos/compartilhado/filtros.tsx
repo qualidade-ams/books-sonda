@@ -87,7 +87,7 @@ export function FiltroMultiplo<T extends string>({
         align="start"
         className="w-[var(--radix-popover-trigger-width)] min-w-56 border-ds-border bg-ds-bg-raised p-1 font-ds-sans text-ds-fg"
       >
-        <div role="group" aria-label={rotulo}>
+        <div role="group" aria-label={rotulo} className="max-h-72 overflow-y-auto">
           {opcoes.map((o) => {
             const marcado = selecionados.includes(o.valor);
             return (

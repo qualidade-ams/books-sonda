@@ -1,24 +1,26 @@
 // Protótipo da tela nova de Produtos e Módulos (Especificação v2.0, seção 5.1), na direção visual
-// aprovada no protótipo de Empresas (21/10/2026). Mantém o catálogo usado no escopo dos bancos de
-// horas (produtos, produto_modulos), os grupos do Aranda ligados a cada módulo (grupos_aranda) e a
-// correspondência dos módulos de requerimento (modulos_requerimento_produto).
-// Dados fictícios (mocks/produtosModulos.ts). Sem Supabase.
+// aprovada no protótipo de Empresas. Catálogo em três níveis (decisão de 21/10/2026):
+// Solução (o que a empresa contrata) › Produto › Módulo (o que o escopo dos bancos marca). Mantém
+// também os grupos do Aranda ligados a cada nível e a correspondência dos módulos de requerimento.
+// Dados fictícios (mocks/catalogo.ts). Sem Supabase.
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   Boxes,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  GripVertical,
   Layers,
   Link2,
   MoreHorizontal,
+  Package,
   Pencil,
   Plus,
   Search,
   Unlink,
   Workflow,
+  Wrench,
   XCircle,
 } from 'lucide-react';
 import {
@@ -27,6 +29,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
@@ -59,27 +78,49 @@ import {
   Vazio,
 } from './compartilhado/formulario';
 import {
-  GRUPOS_LIVRES_MOCK,
-  GRUPOS_SEM_MODULO_MOCK,
-  MODULOS_CATALOGO_MOCK,
+  GRUPOS_ARANDA_MOCK,
+  MODULOS_MOCK,
   MODULOS_REQUERIMENTO_MOCK,
   PRODUTOS_MOCK,
+  SOLUCOES_MOCK,
+  USOS_MOCK,
+  gruposDaSolucao,
+  gruposDoModulo,
+  gruposSoDoProduto,
+  nomeModulo,
+  nomeProduto,
+  nomeSolucao,
+  usosDoModulo,
   type ModuloMock,
   type ModuloRequerimentoMock,
   type ProdutoMock,
-} from './mocks/produtosModulos';
+  type SolucaoMock,
+  type UsoEmBancoMock,
+} from './mocks/catalogo';
 
 type Situacao = 'ativo' | 'inativo';
+/** O que está escolhido na árvore à esquerda */
+type Selecao = { tipo: 'solucao'; id: string } | { tipo: 'produto'; id: string };
 
-/** Para que serve cada campo, pelo rótulo exibido (Especificação, seção 5.1, e Modelagem da Fase 1) */
+/** Para que serve cada campo, pelo rótulo exibido (Especificação, seção 5.1, e decisão de 21/10/2026) */
 const DICAS: Record<string, string> = {
-  // Produto
+  // Solução
   Código:
-    'Identificador do produto usado pelo sistema. Não muda depois de criado: o FISCAL habilita o Contrato FISCAL e o GALLERY tem taxa própria.',
-  'Nome do produto': 'Nome exibido nas telas, nos escopos dos bancos e no Book. Único.',
+    'Identificador da solução usado pelo sistema. Não muda depois de criado: FISCAIS habilita o Contrato FISCAL na empresa.',
+  'Nome da solução': 'Nome exibido nas telas e no contrato da empresa. Único.',
+  'Solução ativa':
+    'Solução inativa não aparece para empresas novas. As empresas que já a contratam não mudam.',
+  'Grupos de serviço':
+    'Grupos do Aranda que atendem a solução toda (DBA, Técnico…), sem ser de um produto. As horas deles vão sempre para o Banco padrão.',
+  // Produto
+  Solução:
+    'A empresa contrata soluções. O produto pertence a uma solução e não muda de solução depois de criado.',
+  'Nome do produto': 'Nome exibido no escopo dos bancos e no Book. Único na solução.',
   'Descrição do produto': 'Texto livre, só para consulta.',
   'Produto ativo':
-    'Produto inativo não aparece para escopos novos nem para empresas novas. Os bancos que já o usam não mudam.',
+    'Produto inativo não aparece para escopos novos. Os bancos que já o usam não mudam.',
+  'Grupos do produto':
+    'Grupos do Aranda ligados ao produto inteiro, sem módulo. As horas vão para o banco que cobre o produto inteiro; sem banco, para o Banco padrão.',
   // Módulo
   Produto: 'Produto ao qual o módulo pertence. Não muda depois de criado.',
   'Nome do módulo':
@@ -88,18 +129,17 @@ const DICAS: Record<string, string> = {
   'Módulo ativo':
     'Módulo inativo não aparece para escopos novos. Os bancos que já o usam não mudam.',
   'Grupos do Aranda':
-    'Grupos de atendimento do Aranda que pertencem a este módulo. É por eles que cada hora apontada chega ao módulo e, daí, ao banco. Um grupo pertence a no máximo um módulo.',
+    'Grupos de atendimento do Aranda que pertencem a este módulo. É por eles que cada hora apontada chega ao módulo e, daí, ao banco. Um grupo fica em um só lugar.',
   'Usado nos bancos':
-    'Bancos ativos que têm este módulo no escopo, diretamente ou por terem marcado o produto inteiro.',
+    'Bancos ativos que têm isto no escopo, diretamente ou por terem marcado o produto inteiro. O escopo marca produtos e módulos; a solução só agrupa.',
   // Requerimentos
   'Módulo do requerimento':
     'Valor do campo Módulo na tela de Requerimentos. A lista é fixa e não é editada aqui.',
   'Produto e módulo':
-    'Para onde vão os requerimentos de Banco de Horas com este módulo. "Produto inteiro" leva ao banco que cobre o produto; sem banco que cubra, vão para o Banco padrão.',
+    'Para onde vão os requerimentos de Banco de Horas com este módulo. "Todos os módulos" leva ao banco que cobre o produto inteiro; sem banco que cubra, vão para o Banco padrão.',
 };
 
-const nomeProduto = (id: string | null) => PRODUTOS_MOCK.find((p) => p.id === id)?.nome ?? '—';
-const nomeModulo = (id: string | null) => MODULOS_CATALOGO_MOCK.find((m) => m.id === id)?.nome;
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 /* ------------------------------------------------------------------ */
 /* Peças                                                                */
@@ -140,8 +180,8 @@ function ComLista({
   );
 }
 
-function GruposDoModulo({ modulo }: { modulo: ModuloMock }) {
-  if (!modulo.grupos.length)
+function ListaGrupos({ titulo, grupos }: { titulo: string; grupos: string[] }) {
+  if (!grupos.length)
     return (
       <span className="inline-flex items-center gap-1.5 text-ds-warning-fg">
         <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
@@ -149,43 +189,42 @@ function GruposDoModulo({ modulo }: { modulo: ModuloMock }) {
       </span>
     );
   return (
-    <ComLista rotulo={`Grupos do Aranda em ${modulo.nome}`} itens={modulo.grupos}>
-      <span className="font-mono text-xs">{modulo.grupos[0]}</span>
-      {modulo.grupos.length > 1 && (
-        <span className="ml-1.5 text-xs text-ds-fg-muted">+{modulo.grupos.length - 1}</span>
+    <ComLista rotulo={titulo} itens={grupos}>
+      <span className="font-mono text-xs">{grupos[0]}</span>
+      {grupos.length > 1 && (
+        <span className="ml-1.5 text-xs text-ds-fg-muted">+{grupos.length - 1}</span>
       )}
     </ComLista>
   );
 }
 
-function UsoDoModulo({ modulo }: { modulo: ModuloMock }) {
-  if (!modulo.usos.length) return <Vazio />;
+function ListaUsos({ usos }: { usos: UsoEmBancoMock[] }) {
+  if (!usos.length) return <Vazio />;
   return (
     <ComLista
       rotulo="Bancos ativos que usam"
-      itens={modulo.usos.map(
-        (u) =>
-          `${u.empresa} › ${u.banco}${u.produtoInteiro ? ` (${nomeProduto(modulo.produtoId)} inteiro)` : ''}`
+      itens={usos.map(
+        (u) => `${u.empresa} › ${u.banco}${u.produtoInteiro ? ' (produto inteiro)' : ''}`
       )}
     >
-      <span className="tabular-nums">
-        {modulo.usos.length} {modulo.usos.length === 1 ? 'banco' : 'bancos'}
-      </span>
+      <span className="tabular-nums">{plural(usos.length, 'banco', 'bancos')}</span>
     </ComLista>
   );
 }
 
-function MenuModulo({
-  modulo,
+function MenuAcoes({
+  nome,
+  ativo,
   onEditar,
   onAlterarStatus,
 }: {
-  modulo: ModuloMock;
+  nome: string;
+  ativo: boolean;
   onEditar: () => void;
   onAlterarStatus: () => void;
 }) {
   return (
-    // O menu fica dentro da linha clicável: o clique nele não pode abrir o módulo
+    // O menu fica dentro da linha clicável: o clique nele não pode abrir a edição
     <div
       className="flex justify-end"
       onClick={(e) => e.stopPropagation()}
@@ -193,7 +232,7 @@ function MenuModulo({
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button tamanho="icone" variante="fantasma" aria-label={`Ações de ${modulo.nome}`}>
+          <Button tamanho="icone" variante="fantasma" aria-label={`Ações de ${nome}`}>
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
@@ -206,11 +245,11 @@ function MenuModulo({
             <Pencil className="h-4 w-4" /> Editar
           </DropdownMenuItem>
           <DropdownMenuItem
-            className={cn(itemMenu, modulo.ativo && 'text-ds-danger-fg focus:bg-ds-danger-bg')}
+            className={cn(itemMenu, ativo && 'text-ds-danger-fg focus:bg-ds-danger-bg')}
             onSelect={onAlterarStatus}
           >
-            {modulo.ativo ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-            {modulo.ativo ? 'Inativar' : 'Reativar'}
+            {ativo ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+            {ativo ? 'Inativar' : 'Reativar'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -218,154 +257,431 @@ function MenuModulo({
   );
 }
 
+/** Linha do produto no cartão da solução; com a alça à esquerda, é reordenada arrastando */
+function ItemProduto({
+  produto,
+  atual,
+  podeEditar,
+  onSelecionar,
+}: {
+  produto: ProdutoMock;
+  atual: boolean;
+  podeEditar: boolean;
+  onSelecionar: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: produto.id,
+    disabled: !podeEditar,
+  });
+  const modulos = MODULOS_MOCK.filter((m) => m.produtoId === produto.id && m.ativo);
+  const semGrupo = modulos.filter((m) => !gruposDoModulo(m.id).length).length;
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        'flex items-center gap-1 rounded-lg',
+        isDragging && 'relative z-10 bg-ds-bg-raised shadow-[0_8px_24px_-8px_rgba(0,0,0,0.35)]'
+      )}
+    >
+      {podeEditar && (
+        // Alça de arrastar; pelo teclado: espaço para pegar, setas para mover, espaço para soltar
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reordenar ${produto.nome}`}
+          title="Arraste para mudar a ordem"
+          className="grid h-9 w-6 shrink-0 cursor-grab touch-none place-items-center rounded-md text-ds-fg-muted hover:bg-ds-bg-subtle hover:text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4" aria-hidden />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onSelecionar}
+        aria-current={atual ? 'true' : undefined}
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus',
+          atual ? 'bg-ds-accent text-ds-fg-on-accent' : 'hover:bg-ds-bg-subtle'
+        )}
+      >
+        <span className="min-w-0 flex-1">
+          <span className={cn('block truncate text-sm', atual ? 'font-semibold' : 'font-medium')}>
+            {produto.nome}
+          </span>
+          <span className={cn('block text-xs', atual ? 'opacity-75' : 'text-ds-fg-muted')}>
+            {modulos.length ? plural(modulos.length, 'módulo', 'módulos') : 'sem módulos'}
+          </span>
+        </span>
+        {semGrupo > 0 && (
+          <AlertTriangle
+            className={cn('h-4 w-4 shrink-0', !atual && 'text-ds-warning-fg')}
+            aria-label={`${plural(semGrupo, 'módulo', 'módulos')} sem grupo`}
+          />
+        )}
+      </button>
+    </li>
+  );
+}
+
 /* ------------------------------------------------------------------ */
-/* Aba Produtos e módulos                                               */
+/* Cartões das soluções, que abrem a lista de produtos                  */
 /* ------------------------------------------------------------------ */
 
-function ListaProdutos({
+function Arvore({
+  solucoes,
   produtos,
-  modulos,
-  selecionado,
+  selecao,
   podeEditar,
   carregando,
   onSelecionar,
-  onMover,
+  onReordenar,
 }: {
+  solucoes: SolucaoMock[];
   produtos: ProdutoMock[];
-  modulos: ModuloMock[];
-  selecionado: string;
+  selecao: Selecao;
   podeEditar: boolean;
   carregando: boolean;
-  onSelecionar: (id: string) => void;
-  onMover: (id: string, delta: number) => void;
+  onSelecionar: (s: Selecao) => void;
+  /** Novo lugar do produto arrastado, dentro da mesma solução */
+  onReordenar: (id: string, sobreId: string) => void;
 }) {
+  const solucaoDaSelecao =
+    selecao.tipo === 'solucao' ? selecao.id : produtos.find((p) => p.id === selecao.id)?.solucaoId;
+  const [abertas, setAbertas] = useState<string[]>(solucaoDaSelecao ? [solucaoDaSelecao] : []);
+  // Uma distância mínima antes de arrastar, para o clique na alça não virar arrasto sem querer
+  const sensores = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const soltar = (e: DragEndEvent) => {
+    if (e.over && e.active.id !== e.over.id) onReordenar(String(e.active.id), String(e.over.id));
+  };
+
   if (carregando)
     return (
-      <div className="space-y-2" role="status" aria-label="Carregando produtos">
+      <div className="space-y-3" role="status" aria-label="Carregando o catálogo">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-[72px] animate-pulse rounded-xl bg-ds-bg-subtle" />
+          <div key={i} className="h-[76px] animate-pulse rounded-xl bg-ds-bg-subtle" />
         ))}
       </div>
     );
   return (
-    <ul className="space-y-2" aria-label="Produtos">
-      {produtos.map((p, i) => {
-        const deste = modulos.filter((m) => m.produtoId === p.id);
-        const semGrupo = deste.filter((m) => m.ativo && !m.grupos.length).length;
-        const atual = p.id === selecionado;
+    <nav aria-label="Soluções e produtos" className="space-y-3">
+      {solucoes.map((s) => {
+        const daSolucao = produtos.filter((p) => p.solucaoId === s.id);
+        const modulosDaSolucao = MODULOS_MOCK.filter(
+          (m) => m.ativo && daSolucao.some((p) => p.id === m.produtoId)
+        );
+        const semGrupo = modulosDaSolucao.filter((m) => !gruposDoModulo(m.id).length).length;
+        const aberta = abertas.includes(s.id);
+        const atual = selecao.tipo === 'solucao' && selecao.id === s.id;
+        const contem = solucaoDaSelecao === s.id;
         return (
-          <li key={p.id} className="group relative">
+          <section
+            key={s.id}
+            className={cn(
+              'overflow-hidden rounded-xl border bg-ds-bg-surface transition',
+              contem
+                ? 'border-[#00D4E8] shadow-[0_8px_24px_-14px_rgba(0,212,232,0.6)]'
+                : 'border-ds-border hover:border-ds-border-strong'
+            )}
+          >
             <button
               type="button"
-              onClick={() => onSelecionar(p.id)}
+              onClick={() => {
+                onSelecionar({ tipo: 'solucao', id: s.id });
+                // Clicar de novo na solução já escolhida fecha o cartão
+                setAbertas((a) =>
+                  a.includes(s.id) && atual
+                    ? a.filter((x) => x !== s.id)
+                    : [...new Set([...a, s.id])]
+                );
+              }}
+              aria-expanded={aberta}
               aria-current={atual ? 'true' : undefined}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-xl border bg-ds-bg-surface px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus',
-                atual
-                  ? 'border-[#00D4E8] shadow-[0_8px_24px_-14px_rgba(0,212,232,0.6)]'
-                  : 'border-ds-border hover:border-ds-border-strong',
-                podeEditar && 'pr-12'
-              )}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ds-focus"
             >
               <span
                 className={cn(
-                  'grid h-9 w-9 shrink-0 place-items-center rounded-lg',
-                  atual ? 'bg-ds-accent text-ds-fg-on-accent' : 'bg-ds-bg-subtle text-ds-fg-muted'
+                  'grid h-10 w-10 shrink-0 place-items-center rounded-lg',
+                  atual
+                    ? 'bg-ds-accent text-ds-fg-on-accent'
+                    : 'bg-ds-accent-subtle text-ds-fg-accent'
                 )}
                 aria-hidden
               >
-                <Boxes className="h-4 w-4" />
+                <Boxes className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 font-semibold">
-                  {p.nome}
-                  {!p.ativo && <StatusBadge>Inativo</StatusBadge>}
+                  {s.nome}
+                  {!s.ativo && <StatusBadge>Inativa</StatusBadge>}
                 </span>
-                <span className="block truncate text-xs text-ds-fg-muted">
-                  {deste.filter((m) => m.ativo).length} módulos ativos
+                <span className="block text-xs text-ds-fg-muted">
+                  {plural(daSolucao.length, 'produto', 'produtos')} ·{' '}
+                  {plural(modulosDaSolucao.length, 'módulo', 'módulos')}
                   {semGrupo > 0 && (
                     <span className="text-ds-warning-fg"> · {semGrupo} sem grupo</span>
                   )}
                 </span>
               </span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 shrink-0 text-ds-fg-muted transition-transform',
+                  aberta && 'rotate-180'
+                )}
+                aria-hidden
+              />
             </button>
-            {/* Ordem dos produtos nas telas, nos escopos e no Book */}
-            {podeEditar && (
-              <span className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-col">
-                <button
-                  type="button"
-                  disabled={i === 0}
-                  onClick={() => onMover(p.id, -1)}
-                  aria-label={`Subir ${p.nome}`}
-                  className="grid h-5 w-7 place-items-center rounded text-ds-fg-muted hover:text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus disabled:opacity-30"
+
+            {aberta && (
+              <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={soltar}>
+                <SortableContext
+                  items={daSolucao.map((p) => p.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  disabled={i === produtos.length - 1}
-                  onClick={() => onMover(p.id, 1)}
-                  aria-label={`Descer ${p.nome}`}
-                  className="grid h-5 w-7 place-items-center rounded text-ds-fg-muted hover:text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus disabled:opacity-30"
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
-              </span>
+                  <ul
+                    className="ds-surgir space-y-1 border-t border-ds-border p-2"
+                    aria-label={`Produtos de ${s.nome}`}
+                  >
+                    {daSolucao.map((p) => (
+                      <ItemProduto
+                        key={p.id}
+                        produto={p}
+                        atual={selecao.tipo === 'produto' && selecao.id === p.id}
+                        podeEditar={podeEditar}
+                        onSelecionar={() => onSelecionar({ tipo: 'produto', id: p.id })}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+              </DndContext>
             )}
-          </li>
+          </section>
         );
       })}
-    </ul>
+    </nav>
   );
 }
 
-function AbaCatalogo({
-  estado,
+/* ------------------------------------------------------------------ */
+/* Painel da solução: produtos e grupos de serviço                      */
+/* ------------------------------------------------------------------ */
+
+function PainelSolucao({
+  solucao,
   produtos,
+  podeEditar,
+  onAbrirProduto,
+  onEditarSolucao,
+  onEditarProduto,
+  onAlterarStatusProduto,
+}: {
+  solucao: SolucaoMock;
+  produtos: ProdutoMock[];
+  podeEditar: boolean;
+  onAbrirProduto: (id: string) => void;
+  onEditarSolucao: () => void;
+  /** null = produto novo nesta solução */
+  onEditarProduto: (p: ProdutoMock | null) => void;
+  onAlterarStatusProduto: (p: ProdutoMock) => void;
+}) {
+  const daSolucao = produtos.filter((p) => p.solucaoId === solucao.id);
+  const servico = gruposDaSolucao(solucao.id);
+
+  const colunas: ColunaTabela<ProdutoMock>[] = [
+    {
+      id: 'produto',
+      cabecalho: 'Produto',
+      mobile: 'titulo',
+      celula: (p) => (
+        <div className="min-w-0">
+          <p
+            className={cn('flex items-center gap-2 font-semibold', !p.ativo && 'text-ds-fg-muted')}
+          >
+            {p.nome}
+            {!p.ativo && <StatusBadge>Inativo</StatusBadge>}
+          </p>
+          {p.descricao && <p className="truncate text-xs text-ds-fg-muted">{p.descricao}</p>}
+        </div>
+      ),
+    },
+    {
+      id: 'modulos',
+      cabecalho: 'Módulos',
+      celula: (p) => {
+        const n = MODULOS_MOCK.filter((m) => m.produtoId === p.id && m.ativo).length;
+        return n ? (
+          <span className="tabular-nums">{n}</span>
+        ) : (
+          <span className="text-ds-fg-muted">Sem módulos</span>
+        );
+      },
+    },
+    {
+      id: 'grupos',
+      cabecalho: 'Grupos do produto',
+      celula: (p) => (
+        <ListaGrupos
+          titulo={`Grupos ligados a ${p.nome} inteiro`}
+          grupos={gruposSoDoProduto(p.id)}
+        />
+      ),
+    },
+    {
+      id: 'uso',
+      cabecalho: 'Usado nos bancos',
+      celula: (p) => <ListaUsos usos={USOS_MOCK[p.id] ?? []} />,
+    },
+    {
+      id: 'acoes',
+      cabecalho: '',
+      mobile: 'acoes',
+      celula: (p) =>
+        podeEditar ? (
+          <MenuAcoes
+            nome={p.nome}
+            ativo={p.ativo}
+            onEditar={() => onEditarProduto(p)}
+            onAlterarStatus={() => onAlterarStatusProduto(p)}
+          />
+        ) : (
+          <ChevronRight className="ml-auto h-4 w-4 text-ds-fg-muted" aria-hidden />
+        ),
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <section className="min-w-0 overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-ds-border px-4 py-4 md:px-5">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ds-fg-muted">Solução</p>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              {solucao.nome}
+              {!solucao.ativo && <StatusBadge>Inativa</StatusBadge>}
+            </h2>
+          </div>
+          {podeEditar && (
+            <div className="flex flex-wrap gap-2">
+              <Button tamanho="sm" variante="fantasma" onClick={onEditarSolucao}>
+                <Pencil /> Editar solução
+              </Button>
+              <Button tamanho="sm" variante="primario" onClick={() => onEditarProduto(null)}>
+                <Plus /> Novo produto
+              </Button>
+            </div>
+          )}
+        </header>
+        <DataTable
+          rotulo={`Produtos de ${solucao.nome}`}
+          colunas={colunas}
+          linhas={daSolucao}
+          chaveLinha={(p) => p.id}
+          onLinhaClick={(p) => onAbrirProduto(p.id)}
+          vazio={
+            <EmptyState
+              icone={<Package />}
+              titulo="Nenhum produto nesta solução"
+              acao={
+                podeEditar ? (
+                  <Button variante="primario" onClick={() => onEditarProduto(null)}>
+                    <Plus /> Novo produto
+                  </Button>
+                ) : undefined
+              }
+            />
+          }
+        />
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ds-border px-4 py-4 md:px-5">
+          <div className="flex items-center gap-1.5">
+            <Wrench className="h-4 w-4 text-ds-fg-muted" aria-hidden />
+            <h2 className="text-xs font-bold uppercase tracking-[0.06em]">Grupos de serviço</h2>
+            <DicaDoRotulo rotulo="Grupos de serviço" />
+          </div>
+          {podeEditar && (
+            <VincularGrupo
+              alvo={{ tipo: 'solucao', id: solucao.id }}
+              vinculados={servico}
+              onVincular={() => undefined}
+            />
+          )}
+        </header>
+        {servico.length ? (
+          <ul className="divide-y divide-ds-border">
+            {servico.map((g) => (
+              <li key={g} className="flex items-center justify-between gap-3 px-4 py-2 md:px-5">
+                <span className="min-w-0 truncate font-mono text-xs">{g}</span>
+                {podeEditar && (
+                  <Button tamanho="sm" variante="fantasma" aria-label={`Desvincular ${g}`}>
+                    <Unlink /> Desvincular
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-4 py-4 text-sm text-ds-fg-muted md:px-5">
+            Nenhum grupo de serviço nesta solução.
+          </p>
+        )}
+        <p className="border-t border-ds-border px-4 py-2.5 text-xs text-ds-fg-muted md:px-5">
+          As horas dos grupos de serviço vão sempre para o Banco padrão da empresa.
+        </p>
+      </section>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Painel do produto: módulos                                           */
+/* ------------------------------------------------------------------ */
+
+function PainelProduto({
+  estado,
+  produto,
   modulos,
-  produtoId,
   podeEditar,
   soSemGrupo,
   onSoSemGrupo,
-  onSelecionarProduto,
-  onMoverProduto,
   onEditarProduto,
   onEditarModulo,
   onAlterarStatus,
 }: {
   estado: PrototipoProps['estado'];
-  produtos: ProdutoMock[];
+  produto: ProdutoMock;
   modulos: ModuloMock[];
-  produtoId: string;
   podeEditar: boolean;
   soSemGrupo: boolean;
   onSoSemGrupo: (v: boolean) => void;
-  onSelecionarProduto: (id: string) => void;
-  onMoverProduto: (id: string, delta: number) => void;
-  /** null = produto novo */
-  onEditarProduto: (p: ProdutoMock | null) => void;
+  onEditarProduto: () => void;
   /** null = módulo novo */
   onEditarModulo: (m: ModuloMock | null) => void;
   onAlterarStatus: (m: ModuloMock) => void;
 }) {
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState<Situacao[]>(['ativo']);
-  const produto = produtos.find((p) => p.id === produtoId) ?? produtos[0];
-  const gruposSoProduto = GRUPOS_SEM_MODULO_MOCK.filter((g) => g.produtoId === produto?.id);
+  const doProduto = modulos.filter((m) => m.produtoId === produto.id);
+  const gruposProduto = gruposSoDoProduto(produto.id);
 
   const linhas = useMemo(
     () =>
-      modulos.filter(
+      doProduto.filter(
         (m) =>
-          m.produtoId === produto?.id &&
           (!situacao.length || situacao.includes(m.ativo ? 'ativo' : 'inativo')) &&
-          (!soSemGrupo || !m.grupos.length) &&
+          (!soSemGrupo || !gruposDoModulo(m.id).length) &&
           (!busca ||
-            `${m.nome} ${m.descricao} ${m.grupos.join(' ')}`
+            `${m.nome} ${m.descricao} ${gruposDoModulo(m.id).join(' ')}`
               .toLowerCase()
               .includes(busca.toLowerCase()))
       ),
-    [modulos, produto, situacao, soSemGrupo, busca]
+    [doProduto, situacao, soSemGrupo, busca]
   );
   const filtrosAtivos =
     (situacao.length !== 1 || situacao[0] !== 'ativo' ? 1 : 0) + (soSemGrupo ? 1 : 0);
@@ -374,24 +690,6 @@ function AbaCatalogo({
     setSituacao(['ativo']);
     onSoSemGrupo(false);
   };
-
-  if (estado === 'vazio')
-    return (
-      <div className="rounded-xl border border-ds-border bg-ds-bg-surface">
-        <EmptyState
-          icone={<Boxes />}
-          titulo="Nenhum produto cadastrado"
-          descricao="Os produtos e módulos definem o que cada banco de horas consome."
-          acao={
-            podeEditar ? (
-              <Button variante="primario" onClick={() => onEditarProduto(null)}>
-                <Plus /> Novo produto
-              </Button>
-            ) : undefined
-          }
-        />
-      </div>
-    );
 
   const colunas: ColunaTabela<ModuloMock>[] = [
     {
@@ -410,16 +708,27 @@ function AbaCatalogo({
         </div>
       ),
     },
-    { id: 'grupos', cabecalho: 'Grupos do Aranda', celula: (m) => <GruposDoModulo modulo={m} /> },
-    { id: 'uso', cabecalho: 'Usado nos bancos', celula: (m) => <UsoDoModulo modulo={m} /> },
+    {
+      id: 'grupos',
+      cabecalho: 'Grupos do Aranda',
+      celula: (m) => (
+        <ListaGrupos titulo={`Grupos do Aranda em ${m.nome}`} grupos={gruposDoModulo(m.id)} />
+      ),
+    },
+    {
+      id: 'uso',
+      cabecalho: 'Usado nos bancos',
+      celula: (m) => <ListaUsos usos={usosDoModulo(m)} />,
+    },
     {
       id: 'acoes',
       cabecalho: '',
       mobile: podeEditar ? 'acoes' : 'oculta',
       celula: (m) =>
         podeEditar ? (
-          <MenuModulo
-            modulo={m}
+          <MenuAcoes
+            nome={m.nome}
+            ativo={m.ativo}
             onEditar={() => onEditarModulo(m)}
             onAlterarStatus={() => onAlterarStatus(m)}
           />
@@ -430,117 +739,148 @@ function AbaCatalogo({
   ];
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <ListaProdutos
-        produtos={produtos}
-        modulos={modulos}
-        selecionado={produto?.id}
-        podeEditar={podeEditar}
-        carregando={estado === 'carregando'}
-        onSelecionar={onSelecionarProduto}
-        onMover={onMoverProduto}
-      />
-
-      <section className="min-w-0 overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-ds-border px-4 py-4 md:px-5">
-          <div className="min-w-0">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              {produto?.nome}
-              {produto && !produto.ativo && <StatusBadge>Inativo</StatusBadge>}
-            </h2>
-            <p className="text-xs text-ds-fg-muted">
-              {produto?.descricao || 'Sem descrição'}
-              {gruposSoProduto.length > 0 && (
-                <>
-                  {' · '}
-                  <ComLista
-                    rotulo="Grupos ligados só ao produto (sem módulo)"
-                    itens={gruposSoProduto.map((g) => g.grupo)}
-                  >
-                    {gruposSoProduto.length}{' '}
-                    {gruposSoProduto.length === 1 ? 'grupo só do produto' : 'grupos só do produto'}
-                  </ComLista>
-                </>
-              )}
-            </p>
-          </div>
-          {podeEditar && produto && (
-            <div className="flex flex-wrap gap-2">
-              <Button tamanho="sm" variante="fantasma" onClick={() => onEditarProduto(produto)}>
-                <Pencil /> Editar produto
-              </Button>
-              <Button tamanho="sm" variante="primario" onClick={() => onEditarModulo(null)}>
-                <Plus /> Novo módulo
-              </Button>
-            </div>
-          )}
-        </header>
-
-        <div className="flex flex-wrap items-center gap-2 border-b border-ds-border p-3 md:px-4">
-          {(filtrosAtivos > 0 || busca) && <BotaoLimparFiltros onClick={limpar} />}
-          <label className="relative block min-w-0 flex-1 md:w-72 md:flex-none">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-fg-muted"
-              aria-hidden
-            />
-            <input
-              type="search"
-              aria-label="Buscar módulo ou grupo do Aranda"
-              placeholder="Buscar módulo ou grupo do Aranda"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className={cn(campo, 'pl-9')}
-            />
-          </label>
-          <FiltroMultiplo
-            rotulo="Situação"
-            opcoes={[
-              { valor: 'ativo', rotulo: 'Ativos' },
-              { valor: 'inativo', rotulo: 'Inativos' },
-            ]}
-            selecionados={situacao}
-            onChange={setSituacao}
-          />
-          <FiltroAlternar rotulo="Sem grupo do Aranda" ativo={soSemGrupo} onChange={onSoSemGrupo} />
+    <section className="min-w-0 overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-ds-border px-4 py-4 md:px-5">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-ds-fg-muted">{nomeSolucao(produto.solucaoId)} ›</p>
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            {produto.nome}
+            {!produto.ativo && <StatusBadge>Inativo</StatusBadge>}
+          </h2>
+          <p className="text-xs text-ds-fg-muted">
+            {produto.descricao || 'Sem descrição'}
+            {' · '}
+            {gruposProduto.length ? (
+              <ComLista rotulo={`Grupos ligados a ${produto.nome} inteiro`} itens={gruposProduto}>
+                {plural(gruposProduto.length, 'grupo do produto', 'grupos do produto')}
+              </ComLista>
+            ) : (
+              'nenhum grupo ligado ao produto inteiro'
+            )}
+            {(USOS_MOCK[produto.id] ?? []).length > 0 && (
+              <>
+                {' · '}
+                <ListaUsos usos={USOS_MOCK[produto.id]} />
+              </>
+            )}
+          </p>
         </div>
-
-        {estado === 'erro' ? (
-          <div className="space-y-3 p-4">
-            <Callout tom="danger" titulo="Não foi possível carregar os módulos">
-              Verifique a conexão e tente novamente.
-            </Callout>
-            <Button>Tentar novamente</Button>
+        {podeEditar && (
+          <div className="flex flex-wrap gap-2">
+            <Button tamanho="sm" variante="fantasma" onClick={onEditarProduto}>
+              <Pencil /> Editar produto
+            </Button>
+            <Button tamanho="sm" variante="primario" onClick={() => onEditarModulo(null)}>
+              <Plus /> Novo módulo
+            </Button>
           </div>
-        ) : (
-          <DataTable
-            rotulo={`Módulos de ${produto?.nome ?? ''}`}
-            colunas={colunas}
-            linhas={linhas}
-            chaveLinha={(m) => m.id}
-            carregando={estado === 'carregando'}
-            onLinhaClick={podeEditar ? (m) => onEditarModulo(m) : undefined}
-            vazio={
-              <EmptyState
-                icone={<Layers />}
-                titulo="Nenhum módulo encontrado"
-                descricao={filtrosAtivos || busca ? 'Nenhum módulo atende aos filtros.' : undefined}
-                acao={
-                  filtrosAtivos || busca ? (
-                    <Button onClick={limpar}>Limpar filtros</Button>
-                  ) : undefined
-                }
-              />
-            }
-          />
         )}
-      </section>
-    </div>
+      </header>
+
+      {doProduto.length === 0 && estado === 'dados' ? (
+        <EmptyState
+          icone={<Layers />}
+          titulo="Produto sem módulos"
+          descricao="Os grupos do Aranda ligam direto no produto, e o escopo dos bancos marca o produto inteiro. Cadastre módulos só se um banco precisar cobrir parte do produto."
+          acao={
+            podeEditar ? (
+              <Button onClick={onEditarProduto}>
+                <Link2 /> Ver grupos do produto
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 border-b border-ds-border p-3 md:px-4">
+            {(filtrosAtivos > 0 || busca) && <BotaoLimparFiltros onClick={limpar} />}
+            <label className="relative block min-w-0 flex-1 md:w-72 md:flex-none">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-fg-muted"
+                aria-hidden
+              />
+              <input
+                type="search"
+                aria-label="Buscar módulo ou grupo do Aranda"
+                placeholder="Buscar módulo ou grupo do Aranda"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className={cn(campo, 'pl-9')}
+              />
+            </label>
+            <FiltroMultiplo
+              rotulo="Situação"
+              opcoes={[
+                { valor: 'ativo', rotulo: 'Ativos' },
+                { valor: 'inativo', rotulo: 'Inativos' },
+              ]}
+              selecionados={situacao}
+              onChange={setSituacao}
+            />
+            <FiltroAlternar
+              rotulo="Sem grupo do Aranda"
+              ativo={soSemGrupo}
+              onChange={onSoSemGrupo}
+            />
+          </div>
+
+          {estado === 'erro' ? (
+            <div className="space-y-3 p-4">
+              <Callout tom="danger" titulo="Não foi possível carregar os módulos">
+                Verifique a conexão e tente novamente.
+              </Callout>
+              <Button>Tentar novamente</Button>
+            </div>
+          ) : (
+            <DataTable
+              rotulo={`Módulos de ${produto.nome}`}
+              colunas={colunas}
+              linhas={linhas}
+              chaveLinha={(m) => m.id}
+              carregando={estado === 'carregando'}
+              onLinhaClick={podeEditar ? (m) => onEditarModulo(m) : undefined}
+              vazio={
+                <EmptyState
+                  icone={<Layers />}
+                  titulo="Nenhum módulo encontrado"
+                  descricao={
+                    filtrosAtivos || busca ? 'Nenhum módulo atende aos filtros.' : undefined
+                  }
+                  acao={
+                    filtrosAtivos || busca ? (
+                      <Button onClick={limpar}>Limpar filtros</Button>
+                    ) : undefined
+                  }
+                />
+              }
+            />
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Aba Módulos de requerimento                                          */
 /* ------------------------------------------------------------------ */
+
+/** Lista de produtos agrupada por solução */
+function OpcoesProdutos({ soAtivos = true }: { soAtivos?: boolean }) {
+  return (
+    <>
+      {SOLUCOES_MOCK.map((s) => (
+        <optgroup key={s.id} label={s.nome}>
+          {PRODUTOS_MOCK.filter((p) => p.solucaoId === s.id && (!soAtivos || p.ativo)).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 function AbaRequerimentos({
   estado,
@@ -567,46 +907,47 @@ function AbaRequerimentos({
     {
       id: 'destino',
       cabecalho: 'Produto e módulo',
-      celula: (l) =>
-        podeEditar ? (
+      celula: (l) => {
+        const modulos = MODULOS_MOCK.filter((m) => m.produtoId === l.produtoId && m.ativo);
+        return podeEditar ? (
           <div className="flex flex-wrap gap-2">
             <Select
               aria-label={`Produto de ${l.moduloRequerimento}`}
               value={l.produtoId}
               onChange={(e) => alterar(l.indice, { produtoId: e.target.value, moduloId: null })}
-              className="w-36"
+              className="w-52"
             >
-              {PRODUTOS_MOCK.filter((p) => p.ativo).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
+              <OpcoesProdutos />
             </Select>
             <Select
               aria-label={`Módulo de ${l.moduloRequerimento}`}
               value={l.moduloId ?? ''}
+              disabled={!modulos.length}
               onChange={(e) => alterar(l.indice, { moduloId: e.target.value || null })}
               className="w-56"
             >
-              <option value="">Produto inteiro</option>
-              {MODULOS_CATALOGO_MOCK.filter((m) => m.produtoId === l.produtoId && m.ativo).map(
-                (m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nome}
-                  </option>
-                )
-              )}
+              <option value="">Todos os módulos</option>
+              {modulos.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
             </Select>
           </div>
         ) : (
           <span>
+            <span className="text-ds-fg-muted">
+              {nomeSolucao(PRODUTOS_MOCK.find((p) => p.id === l.produtoId)?.solucaoId ?? null)}{' '}
+              ›{' '}
+            </span>
             {nomeProduto(l.produtoId)}
             <span className="text-ds-fg-muted">
               {' '}
-              › {nomeModulo(l.moduloId) ?? 'Produto inteiro'}
+              › {nomeModulo(l.moduloId) ?? 'Todos os módulos'}
             </span>
           </span>
-        ),
+        );
+      },
     },
     {
       id: 'qtd',
@@ -666,34 +1007,36 @@ function AbaRequerimentos({
 }
 
 /* ------------------------------------------------------------------ */
-/* Edição de módulo                                                     */
+/* Vincular grupo do Aranda                                             */
 /* ------------------------------------------------------------------ */
 
+type Alvo = { tipo: 'solucao' | 'produto' | 'modulo'; id: string };
+
+/** Onde o grupo está hoje, em texto */
+const ondeEsta = (g: (typeof GRUPOS_ARANDA_MOCK)[number]) =>
+  g.moduloId
+    ? `Em ${nomeProduto(g.produtoId)} › ${nomeModulo(g.moduloId)}`
+    : g.produtoId
+      ? `Em ${nomeProduto(g.produtoId)}, sem módulo`
+      : g.solucaoId
+        ? `Serviço de ${nomeSolucao(g.solucaoId)}`
+        : 'Sem solução (não se aplica)';
+
 function VincularGrupo({
-  modulo,
+  alvo,
   vinculados,
   onVincular,
 }: {
-  modulo: { id: string; produtoId: string };
+  alvo: Alvo;
   vinculados: string[];
   onVincular: (grupo: string) => void;
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
-  // Candidatos: grupos só do produto, grupos livres e grupos de outros módulos (que serão movidos)
-  const candidatos = [
-    ...GRUPOS_SEM_MODULO_MOCK.filter((g) => g.produtoId === modulo.produtoId).map((g) => ({
-      grupo: g.grupo,
-      onde: `${nomeProduto(g.produtoId)}, sem módulo`,
-    })),
-    ...GRUPOS_LIVRES_MOCK.map((g) => ({ grupo: g.grupo, onde: 'Sem produto' })),
-    ...MODULOS_CATALOGO_MOCK.filter((m) => m.id !== modulo.id).flatMap((m) =>
-      m.grupos.map((g) => ({ grupo: g, onde: `Em ${nomeProduto(m.produtoId)} › ${m.nome}` }))
-    ),
-  ].filter(
-    (c) =>
-      !vinculados.includes(c.grupo) &&
-      (!busca || c.grupo.toLowerCase().includes(busca.toLowerCase()))
+  const candidatos = GRUPOS_ARANDA_MOCK.filter(
+    (g) =>
+      !vinculados.includes(g.grupoAranda) &&
+      (!busca || g.grupoAranda.toLowerCase().includes(busca.toLowerCase()))
   );
 
   return (
@@ -705,7 +1048,7 @@ function VincularGrupo({
       </PopoverTrigger>
       <PopoverContent
         data-ds="v2"
-        align="start"
+        align="end"
         className="w-[min(92vw,420px)] border-ds-border bg-ds-bg-raised p-2 font-ds-sans text-ds-fg"
       >
         <input
@@ -718,36 +1061,326 @@ function VincularGrupo({
           className={campo}
         />
         <ul className="mt-2 max-h-72 overflow-y-auto" aria-label="Grupos do Aranda">
-          {candidatos.slice(0, 40).map((c) => (
-            <li key={c.grupo}>
-              <button
-                type="button"
-                onClick={() => {
-                  onVincular(c.grupo);
-                  setAberto(false);
-                  setBusca('');
-                }}
-                className="flex w-full flex-col rounded-md px-2.5 py-2 text-left hover:bg-ds-bg-subtle focus-visible:bg-ds-bg-subtle focus-visible:outline-none"
-              >
-                <span className="font-mono text-xs">{c.grupo}</span>
-                <span
-                  className={cn(
-                    'text-xs',
-                    c.onde.startsWith('Em ') ? 'text-ds-warning-fg' : 'text-ds-fg-muted'
-                  )}
+          {candidatos.slice(0, 40).map((g) => {
+            const ocupado = g.classificacao !== 'nao_se_aplica';
+            return (
+              <li key={g.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onVincular(g.grupoAranda);
+                    setAberto(false);
+                    setBusca('');
+                  }}
+                  className="flex w-full flex-col rounded-md px-2.5 py-2 text-left hover:bg-ds-bg-subtle focus-visible:bg-ds-bg-subtle focus-visible:outline-none"
                 >
-                  {c.onde}
-                  {c.onde.startsWith('Em ') && ' · sai de lá e vem para este módulo'}
-                </span>
-              </button>
-            </li>
-          ))}
+                  <span className="font-mono text-xs">{g.grupoAranda}</span>
+                  <span
+                    className={cn('text-xs', ocupado ? 'text-ds-warning-fg' : 'text-ds-fg-muted')}
+                  >
+                    {ondeEsta(g)}
+                    {ocupado &&
+                      ` · sai de lá e vem para ${alvo.tipo === 'solucao' ? 'os serviços' : 'cá'}`}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
           {!candidatos.length && (
             <li className="px-2.5 py-3 text-sm text-ds-fg-muted">Nenhum grupo encontrado.</li>
           )}
         </ul>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** Lista de grupos vinculados, com desvincular e o aviso de impacto */
+function EditorGrupos({
+  alvo,
+  inicial,
+  vazioTexto,
+  ajuda,
+}: {
+  alvo: Alvo;
+  inicial: string[];
+  vazioTexto: string;
+  ajuda: string;
+}) {
+  const [grupos, setGrupos] = useState(inicial);
+  const mudaram = inicial.join('|') !== grupos.join('|');
+  return (
+    <>
+      {grupos.length ? (
+        <ul className="divide-y divide-ds-border rounded-lg border border-ds-border">
+          {grupos.map((g) => (
+            <li key={g} className="flex items-center justify-between gap-3 px-3 py-2">
+              <span className="min-w-0 truncate font-mono text-xs">{g}</span>
+              <Button
+                tamanho="sm"
+                variante="fantasma"
+                onClick={() => setGrupos((l) => l.filter((x) => x !== g))}
+                aria-label={`Desvincular ${g}`}
+              >
+                <Unlink /> Desvincular
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <Callout tom="warning">{vazioTexto}</Callout>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <VincularGrupo
+          alvo={alvo}
+          vinculados={grupos}
+          onVincular={(g) => setGrupos((l) => [...l, g])}
+        />
+        <Ajuda>{ajuda}</Ajuda>
+      </div>
+      {mudaram && (
+        <Callout tom="warning" titulo="Pode mover horas entre bancos">
+          Nas empresas com bancos múltiplos, as horas desses grupos passam para outro banco a partir
+          do próximo recálculo. Meses fechados não mudam.
+        </Callout>
+      )}
+    </>
+  );
+}
+
+function UsosNaEdicao({ usos, nenhum }: { usos: UsoEmBancoMock[]; nenhum: string }) {
+  return usos.length ? (
+    <ul className="space-y-1.5 text-sm">
+      {usos.map((u) => (
+        <li key={`${u.empresa}|${u.banco}`}>
+          <span className="font-medium">{u.empresa}</span>
+          <span className="text-ds-fg-secondary"> › {u.banco}</span>
+          {u.produtoInteiro && <span className="text-xs text-ds-fg-muted"> · produto inteiro</span>}
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p className="text-sm text-ds-fg-muted">{nenhum}</p>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Edições                                                              */
+/* ------------------------------------------------------------------ */
+
+function EdicaoSolucao({
+  solucao,
+  solucoes,
+  onFechar,
+}: {
+  solucao: SolucaoMock | null;
+  solucoes: SolucaoMock[];
+  onFechar: () => void;
+}) {
+  const novo = solucao === null;
+  const [codigo, setCodigo] = useState<string>(solucao?.codigo ?? '');
+  const [nome, setNome] = useState(solucao?.nome ?? '');
+  const [ativo, setAtivo] = useState(solucao?.ativo ?? true);
+  const outras = solucoes.filter((s) => s.id !== solucao?.id);
+  const erroCodigo = !codigo.trim()
+    ? 'Obrigatório.'
+    : outras.some((s) => s.codigo === codigo.trim())
+      ? 'Já existe uma solução com este código.'
+      : null;
+  const erroNome = !nome.trim()
+    ? 'Obrigatório.'
+    : outras.some((s) => s.nome.toLowerCase() === nome.trim().toLowerCase())
+      ? 'Já existe uma solução com este nome.'
+      : null;
+
+  return (
+    <TelaEdicao
+      voltarPara="Produtos e Módulos"
+      titulo={novo ? 'Nova solução' : `Editar ${solucao.nome}`}
+      subtitulo={novo ? undefined : 'Última alteração em 01/07/2026 por Usuário Teste'}
+      podeSalvar={!erroCodigo && !erroNome}
+      rotuloSalvar={novo ? 'Criar solução' : 'Salvar'}
+      onFechar={onFechar}
+      onSalvar={onFechar}
+    >
+      <Secao titulo="Identificação">
+        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <div>
+            <Rotulo obrigatorio htmlFor="codigo-solucao">
+              Código
+            </Rotulo>
+            <input
+              id="codigo-solucao"
+              value={codigo}
+              disabled={!novo}
+              onChange={(e) => setCodigo(e.target.value.toUpperCase().replace(/\s/g, ''))}
+              aria-invalid={!!(codigo && erroCodigo)}
+              className={cn(campo, codigo && erroCodigo && 'border-ds-danger-fg')}
+            />
+            {novo && codigo && erroCodigo && (
+              <p className="mt-1.5 text-xs text-ds-danger-fg">{erroCodigo}</p>
+            )}
+            {!novo && <Ajuda>O código não muda depois de criado.</Ajuda>}
+          </div>
+          <CampoTexto
+            id="nome-solucao"
+            rotulo="Nome da solução"
+            obrigatorio
+            maiusculas
+            valor={nome}
+            onChange={setNome}
+            erro={nome || !novo ? erroNome : null}
+          />
+        </div>
+        {!novo && <Interruptor ligado={ativo} onChange={setAtivo} rotulo="Solução ativa" />}
+      </Secao>
+      {!novo && (
+        <Secao titulo="Grupos de serviço">
+          <EditorGrupos
+            alvo={{ tipo: 'solucao', id: solucao.id }}
+            inicial={gruposDaSolucao(solucao.id)}
+            vazioTexto="Nenhum grupo de serviço nesta solução."
+            ajuda="As horas dos grupos de serviço vão sempre para o Banco padrão."
+          />
+        </Secao>
+      )}
+    </TelaEdicao>
+  );
+}
+
+function EdicaoProduto({
+  produto,
+  solucaoId,
+  produtos,
+  onFechar,
+}: {
+  /** null = produto novo */
+  produto: ProdutoMock | null;
+  solucaoId: string;
+  produtos: ProdutoMock[];
+  onFechar: () => void;
+}) {
+  const novo = produto === null;
+  const [solucao, setSolucao] = useState(produto?.solucaoId ?? solucaoId);
+  const [nome, setNome] = useState(produto?.nome ?? '');
+  const [descricao, setDescricao] = useState(produto?.descricao ?? '');
+  const [ativo, setAtivo] = useState(produto?.ativo ?? true);
+  const [confirmar, setConfirmar] = useState(false);
+
+  const erroNome = !nome.trim()
+    ? 'Obrigatório.'
+    : produtos.some(
+          (p) =>
+            p.id !== produto?.id &&
+            p.solucaoId === solucao &&
+            p.nome.toLowerCase() === nome.trim().toLowerCase()
+        )
+      ? `Já existe o produto ${nome.trim()} em ${nomeSolucao(solucao)}.`
+      : null;
+  // Bancos que alcançam o produto: os que o marcaram inteiro e os que marcaram módulos dele
+  const usos = produto
+    ? [
+        ...(USOS_MOCK[produto.id] ?? []),
+        ...MODULOS_MOCK.filter((m) => m.produtoId === produto.id).flatMap(
+          (m) => USOS_MOCK[m.id] ?? []
+        ),
+      ]
+    : [];
+  const inativando = !!produto?.ativo && !ativo;
+
+  return (
+    <TelaEdicao
+      voltarPara="Produtos e Módulos"
+      titulo={novo ? 'Novo produto' : `Editar ${produto.nome}`}
+      subtitulo={novo ? undefined : 'Última alteração em 01/07/2026 por Usuário Teste'}
+      podeSalvar={!erroNome}
+      rotuloSalvar={novo ? 'Criar produto' : 'Salvar'}
+      onFechar={onFechar}
+      onSalvar={() => (inativando && usos.length ? setConfirmar(true) : onFechar())}
+    >
+      <Secao titulo="Identificação">
+        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <div>
+            <Rotulo obrigatorio htmlFor="solucao-produto">
+              Solução
+            </Rotulo>
+            <Select
+              id="solucao-produto"
+              value={solucao}
+              disabled={!novo}
+              onChange={(e) => setSolucao(e.target.value)}
+              className="w-full"
+            >
+              {SOLUCOES_MOCK.filter((s) => s.ativo || s.id === solucao).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </Select>
+            {!novo && <Ajuda>A solução do produto não muda depois de criado.</Ajuda>}
+          </div>
+          <CampoTexto
+            id="nome-produto"
+            rotulo="Nome do produto"
+            obrigatorio
+            valor={nome}
+            onChange={setNome}
+            erro={nome || !novo ? erroNome : null}
+          />
+        </div>
+        <CampoTexto
+          id="descricao-produto"
+          rotulo="Descrição do produto"
+          valor={descricao}
+          onChange={setDescricao}
+          placeholder="Opcional"
+        />
+        {!novo && (
+          <Interruptor
+            ligado={ativo}
+            onChange={setAtivo}
+            rotulo="Produto ativo"
+            descricao={
+              inativando && usos.length
+                ? `Está no escopo de ${plural(usos.length, 'banco ativo', 'bancos ativos')}; você confirma ao salvar.`
+                : undefined
+            }
+          />
+        )}
+      </Secao>
+
+      <Secao titulo="Grupos do produto">
+        <EditorGrupos
+          alvo={{ tipo: 'produto', id: produto?.id ?? 'novo' }}
+          inicial={produto ? gruposSoDoProduto(produto.id) : []}
+          vazioTexto="Nenhum grupo ligado ao produto inteiro. Se o produto não tem módulos, sem grupo nenhuma hora chega a ele."
+          ajuda="Use para grupos que atendem o produto todo, sem ser de um módulo."
+        />
+      </Secao>
+
+      {!novo && (
+        <Secao titulo="Usado nos bancos">
+          <UsosNaEdicao usos={usos} nenhum="Nenhum banco ativo usa este produto." />
+        </Secao>
+      )}
+
+      <ConfirmDialog
+        aberto={confirmar}
+        onOpenChange={setConfirmar}
+        titulo={`Inativar ${produto?.nome ?? ''}?`}
+        descricao={`Está no escopo de ${plural(usos.length, 'banco ativo', 'bancos ativos')}.`}
+        consequencias={[
+          'Deixa de aparecer para escopos novos',
+          'Os bancos que já o usam não mudam',
+        ]}
+        rotuloConfirmar="Inativar"
+        tom="perigo"
+        onConfirmar={() => {
+          setConfirmar(false);
+          onFechar();
+        }}
+      />
+    </TelaEdicao>
   );
 }
 
@@ -768,7 +1401,6 @@ function EdicaoModulo({
   const [nome, setNome] = useState(modulo?.nome ?? '');
   const [descricao, setDescricao] = useState(modulo?.descricao ?? '');
   const [ativo, setAtivo] = useState(modulo?.ativo ?? true);
-  const [grupos, setGrupos] = useState(modulo?.grupos ?? []);
   const [confirmarInativar, setConfirmarInativar] = useState(false);
 
   const repetido = modulos.some(
@@ -782,25 +1414,22 @@ function EdicaoModulo({
     : repetido
       ? `Já existe um módulo ${nome.trim()} em ${nomeProduto(produto)}.`
       : null;
-  const gruposMudaram = (modulo?.grupos ?? []).join('|') !== grupos.join('|');
-  const usos = modulo?.usos ?? [];
+  const usos = modulo ? usosDoModulo(modulo) : [];
   const inativando = !!modulo?.ativo && !ativo;
-
-  const salvar = () => {
-    // Inativar módulo que está no escopo de banco ativo pede confirmação (Especificação 5.1)
-    if (inativando && usos.length) setConfirmarInativar(true);
-    else onFechar();
-  };
 
   return (
     <TelaEdicao
       voltarPara="Produtos e Módulos"
       titulo={novo ? 'Novo módulo' : `Editar ${modulo.nome}`}
-      subtitulo={novo ? undefined : 'Última alteração em 01/07/2026 por Usuário Teste'}
+      subtitulo={
+        novo
+          ? undefined
+          : `${nomeSolucao(PRODUTOS_MOCK.find((p) => p.id === produto)?.solucaoId ?? null)} › ${nomeProduto(produto)} · Última alteração em 01/07/2026 por Usuário Teste`
+      }
       podeSalvar={!erroNome}
       rotuloSalvar={novo ? 'Criar módulo' : 'Salvar'}
       onFechar={onFechar}
-      onSalvar={salvar}
+      onSalvar={() => (inativando && usos.length ? setConfirmarInativar(true) : onFechar())}
     >
       <Secao titulo="Identificação">
         <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -815,11 +1444,7 @@ function EdicaoModulo({
               onChange={(e) => setProduto(e.target.value)}
               className="w-full"
             >
-              {PRODUTOS_MOCK.filter((p) => p.ativo || p.id === produto).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
+              <OpcoesProdutos />
             </Select>
             {!novo && (
               <Ajuda>Para mudar de produto, crie o módulo no outro e mova os grupos.</Ajuda>
@@ -848,7 +1473,7 @@ function EdicaoModulo({
             rotulo="Módulo ativo"
             descricao={
               inativando && usos.length
-                ? `Está no escopo de ${usos.length} ${usos.length === 1 ? 'banco ativo' : 'bancos ativos'}; você confirma ao salvar.`
+                ? `Está no escopo de ${plural(usos.length, 'banco ativo', 'bancos ativos')}; você confirma ao salvar.`
                 : undefined
             }
           />
@@ -856,65 +1481,17 @@ function EdicaoModulo({
       </Secao>
 
       <Secao titulo="Grupos do Aranda">
-        {grupos.length ? (
-          <ul className="divide-y divide-ds-border rounded-lg border border-ds-border">
-            {grupos.map((g) => (
-              <li key={g} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="min-w-0 truncate font-mono text-xs">{g}</span>
-                <Button
-                  tamanho="sm"
-                  variante="fantasma"
-                  onClick={() => setGrupos((l) => l.filter((x) => x !== g))}
-                  aria-label={`Desvincular ${g}`}
-                >
-                  <Unlink /> Desvincular
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <Callout tom="warning">
-            Sem grupo do Aranda, nenhuma hora apontada chega a este módulo.
-          </Callout>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <VincularGrupo
-            modulo={{ id: modulo?.id ?? 'novo', produtoId: produto }}
-            vinculados={grupos}
-            onVincular={(g) => setGrupos((l) => [...l, g])}
-          />
-          <Ajuda>
-            Um grupo pertence a um só módulo. Desvinculado, ele fica no produto, sem módulo.
-          </Ajuda>
-        </div>
-        {gruposMudaram && (
-          <Callout tom="warning" titulo="Pode mover horas entre bancos">
-            Nas empresas com bancos múltiplos, as horas desses grupos passam para outro banco a
-            partir do próximo recálculo. Meses fechados não mudam.
-          </Callout>
-        )}
+        <EditorGrupos
+          alvo={{ tipo: 'modulo', id: modulo?.id ?? 'novo' }}
+          inicial={modulo ? gruposDoModulo(modulo.id) : []}
+          vazioTexto="Sem grupo do Aranda, nenhuma hora apontada chega a este módulo."
+          ajuda="Um grupo fica em um só lugar. Desvinculado, ele fica no produto, sem módulo."
+        />
       </Secao>
 
       {!novo && (
         <Secao titulo="Usado nos bancos">
-          {usos.length ? (
-            <ul className="space-y-1.5 text-sm">
-              {usos.map((u) => (
-                <li key={`${u.empresa}|${u.banco}`}>
-                  <span className="font-medium">{u.empresa}</span>
-                  <span className="text-ds-fg-secondary"> › {u.banco}</span>
-                  {u.produtoInteiro && (
-                    <span className="text-xs text-ds-fg-muted">
-                      {' '}
-                      · {nomeProduto(modulo.produtoId)} inteiro
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-ds-fg-muted">Nenhum banco ativo usa este módulo.</p>
-          )}
+          <UsosNaEdicao usos={usos} nenhum="Nenhum banco ativo usa este módulo." />
         </Secao>
       )}
 
@@ -922,7 +1499,7 @@ function EdicaoModulo({
         aberto={confirmarInativar}
         onOpenChange={setConfirmarInativar}
         titulo={`Inativar ${modulo?.nome ?? ''}?`}
-        descricao={`Está no escopo de ${usos.length} ${usos.length === 1 ? 'banco ativo' : 'bancos ativos'}.`}
+        descricao={`Está no escopo de ${plural(usos.length, 'banco ativo', 'bancos ativos')}.`}
         consequencias={[
           'Deixa de aparecer para escopos novos',
           'Os bancos que já o usam não mudam',
@@ -940,168 +1517,60 @@ function EdicaoModulo({
 }
 
 /* ------------------------------------------------------------------ */
-/* Edição de produto                                                    */
-/* ------------------------------------------------------------------ */
-
-function EdicaoProduto({
-  produto,
-  produtos,
-  modulos,
-  onFechar,
-}: {
-  /** null = produto novo */
-  produto: ProdutoMock | null;
-  produtos: ProdutoMock[];
-  modulos: ModuloMock[];
-  onFechar: () => void;
-}) {
-  const novo = produto === null;
-  const [codigo, setCodigo] = useState(produto?.codigo ?? '');
-  const [nome, setNome] = useState(produto?.nome ?? '');
-  const [descricao, setDescricao] = useState(produto?.descricao ?? '');
-  const [ativo, setAtivo] = useState(produto?.ativo ?? true);
-  const [confirmar, setConfirmar] = useState(false);
-
-  const outros = produtos.filter((p) => p.id !== produto?.id);
-  const erroCodigo = !codigo.trim()
-    ? 'Obrigatório.'
-    : outros.some((p) => p.codigo === codigo.trim())
-      ? 'Já existe um produto com este código.'
-      : null;
-  const erroNome = !nome.trim()
-    ? 'Obrigatório.'
-    : outros.some((p) => p.nome.toLowerCase() === nome.trim().toLowerCase())
-      ? 'Já existe um produto com este nome.'
-      : null;
-  const bancos = new Set(
-    modulos
-      .filter((m) => m.produtoId === produto?.id)
-      .flatMap((m) => m.usos.map((u) => `${u.empresa} › ${u.banco}`))
-  );
-  const inativando = !!produto?.ativo && !ativo;
-
-  return (
-    <TelaEdicao
-      voltarPara="Produtos e Módulos"
-      titulo={novo ? 'Novo produto' : `Editar ${produto.nome}`}
-      subtitulo={novo ? undefined : 'Última alteração em 01/07/2026 por Usuário Teste'}
-      podeSalvar={!erroCodigo && !erroNome}
-      rotuloSalvar={novo ? 'Criar produto' : 'Salvar'}
-      onFechar={onFechar}
-      onSalvar={() => (inativando && bancos.size ? setConfirmar(true) : onFechar())}
-    >
-      <Secao titulo="Identificação">
-        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <div>
-            <Rotulo obrigatorio htmlFor="codigo-produto">
-              Código
-            </Rotulo>
-            <input
-              id="codigo-produto"
-              value={codigo}
-              disabled={!novo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase().replace(/\s/g, ''))}
-              aria-invalid={!!(codigo && erroCodigo)}
-              className={cn(campo, codigo && erroCodigo && 'border-ds-danger-fg')}
-            />
-            {novo && codigo && erroCodigo && (
-              <p className="mt-1.5 text-xs text-ds-danger-fg">{erroCodigo}</p>
-            )}
-            {!novo && <Ajuda>O código não muda depois de criado.</Ajuda>}
-          </div>
-          <CampoTexto
-            id="nome-produto"
-            rotulo="Nome do produto"
-            obrigatorio
-            maiusculas
-            valor={nome}
-            onChange={setNome}
-            erro={nome || !novo ? erroNome : null}
-          />
-        </div>
-        <CampoTexto
-          id="descricao-produto"
-          rotulo="Descrição do produto"
-          valor={descricao}
-          onChange={setDescricao}
-          placeholder="Opcional"
-        />
-        {!novo && <Interruptor ligado={ativo} onChange={setAtivo} rotulo="Produto ativo" />}
-        {novo && (
-          <Callout tom="info">
-            Depois de criar o produto, cadastre os módulos e vincule os grupos do Aranda. Para as
-            empresas poderem usá-lo, ele precisa estar nos produtos contratados.
-          </Callout>
-        )}
-      </Secao>
-
-      <ConfirmDialog
-        aberto={confirmar}
-        onOpenChange={setConfirmar}
-        titulo={`Inativar ${produto?.nome ?? ''}?`}
-        descricao={`Está no escopo de ${bancos.size} ${bancos.size === 1 ? 'banco ativo' : 'bancos ativos'}.`}
-        consequencias={[
-          'Deixa de aparecer para escopos novos e para empresas novas',
-          'Os bancos e as empresas que já o usam não mudam',
-        ]}
-        rotuloConfirmar="Inativar"
-        tom="perigo"
-        onConfirmar={() => {
-          setConfirmar(false);
-          onFechar();
-        }}
-      />
-    </TelaEdicao>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Tela                                                                 */
 /* ------------------------------------------------------------------ */
 
 type Edicao =
+  | { tipo: 'solucao'; solucao: SolucaoMock | null }
+  | { tipo: 'produto'; produto: ProdutoMock | null; solucaoId: string }
   | { tipo: 'modulo'; modulo: ModuloMock | null }
-  | { tipo: 'produto'; produto: ProdutoMock | null }
   | null;
+
+type AlterarStatus = { tipo: 'produto' | 'modulo'; nome: string; ativo: boolean; usos: number };
 
 export default function ProdutosModulos({ estado }: PrototipoProps) {
   const [menuExpandido, setMenuExpandido] = useState(false);
   const [perfil, setPerfil] = useState<'edicao' | 'leitura'>('edicao');
   const [aba, setAba] = useState('catalogo');
   const [produtos, setProdutos] = useState(PRODUTOS_MOCK);
-  const [produtoId, setProdutoId] = useState(PRODUTOS_MOCK[0].id);
+  const [selecao, setSelecao] = useState<Selecao>({ tipo: 'produto', id: PRODUTOS_MOCK[0].id });
   const [soSemGrupo, setSoSemGrupo] = useState(false);
   const [editando, setEditando] = useState<Edicao>(null);
-  const [alterarStatus, setAlterarStatus] = useState<ModuloMock | null>(null);
+  const [alterarStatus, setAlterarStatus] = useState<AlterarStatus | null>(null);
   const podeEditar = perfil === 'edicao';
-  const modulos = MODULOS_CATALOGO_MOCK;
+  const modulos = MODULOS_MOCK;
 
-  const ativos = modulos.filter((m) => m.ativo);
+  const produtoAtual =
+    selecao.tipo === 'produto' ? produtos.find((p) => p.id === selecao.id) : null;
+  const solucaoAtual =
+    selecao.tipo === 'solucao'
+      ? SOLUCOES_MOCK.find((s) => s.id === selecao.id)
+      : SOLUCOES_MOCK.find((s) => s.id === produtoAtual?.solucaoId);
+
+  const modulosAtivos = modulos.filter((m) => m.ativo);
   const totais = {
     produtos: produtos.filter((p) => p.ativo).length,
-    modulos: ativos.length,
-    grupos: ativos.reduce((s, m) => s + m.grupos.length, 0) + GRUPOS_SEM_MODULO_MOCK.length,
-    semGrupo: ativos.filter((m) => !m.grupos.length).length,
+    modulos: modulosAtivos.length,
+    grupos: GRUPOS_ARANDA_MOCK.filter((g) => g.classificacao !== 'nao_se_aplica').length,
+    semGrupo: modulosAtivos.filter((m) => !gruposDoModulo(m.id).length).length,
   };
 
-  const moverProduto = (id: string, delta: number) =>
+  // A ordem vale dentro da solução: o produto arrastado vai para o lugar do outro
+  const reordenarProduto = (id: string, sobreId: string) =>
     setProdutos((ps) => {
-      const i = ps.findIndex((p) => p.id === id);
-      const j = i + delta;
-      if (j < 0 || j >= ps.length) return ps;
-      const novo = [...ps];
-      [novo[i], novo[j]] = [novo[j], novo[i]];
-      return novo;
+      const de = ps.findIndex((p) => p.id === id);
+      const para = ps.findIndex((p) => p.id === sobreId);
+      if (de < 0 || para < 0 || ps[de].solucaoId !== ps[para].solucaoId) return ps;
+      return arrayMove(ps, de, para);
     });
 
   const conteudo = () => {
-    if (editando?.tipo === 'modulo')
+    if (editando?.tipo === 'solucao')
       return (
-        <EdicaoModulo
-          key={editando.modulo?.id ?? 'novo'}
-          modulo={editando.modulo}
-          produtoId={produtoId}
-          modulos={modulos}
+        <EdicaoSolucao
+          key={editando.solucao?.id ?? 'nova'}
+          solucao={editando.solucao}
+          solucoes={SOLUCOES_MOCK}
           onFechar={() => setEditando(null)}
         />
       );
@@ -1110,7 +1579,17 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
         <EdicaoProduto
           key={editando.produto?.id ?? 'novo'}
           produto={editando.produto}
+          solucaoId={editando.solucaoId}
           produtos={produtos}
+          onFechar={() => setEditando(null)}
+        />
+      );
+    if (editando?.tipo === 'modulo')
+      return (
+        <EdicaoModulo
+          key={editando.modulo?.id ?? 'novo'}
+          modulo={editando.modulo}
+          produtoId={produtoAtual?.id ?? PRODUTOS_MOCK[0].id}
           modulos={modulos}
           onFechar={() => setEditando(null)}
         />
@@ -1127,7 +1606,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
                 </span>
               </h1>
               <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
-                Catálogo usado no escopo dos bancos de horas e na classificação das horas.
+                Soluções contratadas pelas empresas, com seus produtos e módulos.
               </p>
             </div>
             {podeEditar && (
@@ -1135,7 +1614,20 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
                 <button
                   type="button"
                   className={botaoVidro}
-                  onClick={() => setEditando({ tipo: 'produto', produto: null })}
+                  onClick={() => setEditando({ tipo: 'solucao', solucao: null })}
+                >
+                  <Plus className="h-4 w-4" /> Nova solução
+                </button>
+                <button
+                  type="button"
+                  className={botaoVidro}
+                  onClick={() =>
+                    setEditando({
+                      tipo: 'produto',
+                      produto: null,
+                      solucaoId: solucaoAtual?.id ?? SOLUCOES_MOCK[0].id,
+                    })
+                  }
                 >
                   <Plus className="h-4 w-4" /> Novo produto
                 </button>
@@ -1152,7 +1644,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
         </FaixaTopo>
 
         <div className="relative -mt-16 grid grid-cols-2 gap-3 md:-mt-20 lg:grid-cols-4">
-          <Indicador rotulo="Produtos ativos" valor={totais.produtos} icone={<Boxes />} />
+          <Indicador rotulo="Produtos ativos" valor={totais.produtos} icone={<Package />} />
           <Indicador
             rotulo="Módulos ativos"
             valor={totais.modulos}
@@ -1175,6 +1667,9 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
             onClick={() => {
               setAba('catalogo');
               setSoSemGrupo((v) => !v);
+              // Abre o primeiro produto que tem módulo sem grupo
+              const alvo = modulosAtivos.find((m) => !gruposDoModulo(m.id).length);
+              if (!soSemGrupo && alvo) setSelecao({ tipo: 'produto', id: alvo.produtoId });
             }}
           />
         </div>
@@ -1184,7 +1679,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
             <SegmentedTabs
               rotulo="Seções"
               itens={[
-                { valor: 'catalogo', rotulo: 'Produtos e módulos' },
+                { valor: 'catalogo', rotulo: 'Soluções, produtos e módulos' },
                 { valor: 'requerimentos', rotulo: 'Módulos de requerimento' },
               ]}
               valor={aba}
@@ -1192,23 +1687,91 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
             />
           </div>
           <div key={aba} className="ds-surgir" style={atraso(240)}>
-            {aba === 'catalogo' ? (
-              <AbaCatalogo
-                estado={estado}
-                produtos={produtos}
-                modulos={modulos}
-                produtoId={produtoId}
-                podeEditar={podeEditar}
-                soSemGrupo={soSemGrupo}
-                onSoSemGrupo={setSoSemGrupo}
-                onSelecionarProduto={setProdutoId}
-                onMoverProduto={moverProduto}
-                onEditarProduto={(p) => setEditando({ tipo: 'produto', produto: p })}
-                onEditarModulo={(m) => setEditando({ tipo: 'modulo', modulo: m })}
-                onAlterarStatus={setAlterarStatus}
-              />
-            ) : (
+            {aba === 'requerimentos' ? (
               <AbaRequerimentos estado={estado} podeEditar={podeEditar} />
+            ) : estado === 'vazio' ? (
+              <div className="rounded-xl border border-ds-border bg-ds-bg-surface">
+                <EmptyState
+                  icone={<Boxes />}
+                  titulo="Nenhuma solução cadastrada"
+                  descricao="As soluções são o que as empresas contratam; os produtos e módulos definem o que cada banco de horas consome."
+                  acao={
+                    podeEditar ? (
+                      <Button
+                        variante="primario"
+                        onClick={() => setEditando({ tipo: 'solucao', solucao: null })}
+                      >
+                        <Plus /> Nova solução
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+                <Arvore
+                  solucoes={SOLUCOES_MOCK}
+                  produtos={produtos}
+                  selecao={selecao}
+                  podeEditar={podeEditar}
+                  carregando={estado === 'carregando'}
+                  onSelecionar={setSelecao}
+                  onReordenar={reordenarProduto}
+                />
+                {estado === 'erro' && selecao.tipo === 'solucao' ? (
+                  <div className="space-y-3 rounded-xl border border-ds-border bg-ds-bg-surface p-4">
+                    <Callout tom="danger" titulo="Não foi possível carregar o catálogo">
+                      Verifique a conexão e tente novamente.
+                    </Callout>
+                    <Button>Tentar novamente</Button>
+                  </div>
+                ) : selecao.tipo === 'solucao' && solucaoAtual ? (
+                  <PainelSolucao
+                    solucao={solucaoAtual}
+                    produtos={produtos}
+                    podeEditar={podeEditar}
+                    onAbrirProduto={(id) => setSelecao({ tipo: 'produto', id })}
+                    onEditarSolucao={() => setEditando({ tipo: 'solucao', solucao: solucaoAtual })}
+                    onEditarProduto={(p) =>
+                      setEditando({ tipo: 'produto', produto: p, solucaoId: solucaoAtual.id })
+                    }
+                    onAlterarStatusProduto={(p) =>
+                      setAlterarStatus({
+                        tipo: 'produto',
+                        nome: p.nome,
+                        ativo: p.ativo,
+                        usos: (USOS_MOCK[p.id] ?? []).length,
+                      })
+                    }
+                  />
+                ) : produtoAtual ? (
+                  <PainelProduto
+                    key={produtoAtual.id}
+                    estado={estado}
+                    produto={produtoAtual}
+                    modulos={modulos}
+                    podeEditar={podeEditar}
+                    soSemGrupo={soSemGrupo}
+                    onSoSemGrupo={setSoSemGrupo}
+                    onEditarProduto={() =>
+                      setEditando({
+                        tipo: 'produto',
+                        produto: produtoAtual,
+                        solucaoId: produtoAtual.solucaoId,
+                      })
+                    }
+                    onEditarModulo={(m) => setEditando({ tipo: 'modulo', modulo: m })}
+                    onAlterarStatus={(m) =>
+                      setAlterarStatus({
+                        tipo: 'modulo',
+                        nome: m.nome,
+                        ativo: m.ativo,
+                        usos: usosDoModulo(m).length,
+                      })
+                    }
+                  />
+                ) : null}
+              </div>
             )}
           </div>
         </div>
@@ -1218,8 +1781,8 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
           onOpenChange={(v) => !v && setAlterarStatus(null)}
           titulo={`${alterarStatus?.ativo ? 'Inativar' : 'Reativar'} ${alterarStatus?.nome ?? ''}?`}
           descricao={
-            alterarStatus?.ativo && alterarStatus.usos.length
-              ? `Está no escopo de ${alterarStatus.usos.length} ${alterarStatus.usos.length === 1 ? 'banco ativo' : 'bancos ativos'}.`
+            alterarStatus?.ativo && alterarStatus.usos
+              ? `Está no escopo de ${plural(alterarStatus.usos, 'banco ativo', 'bancos ativos')}.`
               : undefined
           }
           consequencias={

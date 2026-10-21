@@ -3,7 +3,7 @@
 // a foto de marca, indicadores flutuantes e cartões compactos.
 //
 // Chave do protótipo "Transição | Após a virada":
-//  - Transição (Fase 3 a 5): a identidade da empresa (nomes, status, vigência, produtos, contatos e
+//  - Transição (Fase 3 a 5): a identidade da empresa (nomes, status, vigência, soluções, contatos e
 //    Book) continua sendo editada na tela atual e chega aqui sincronizada, só para leitura. Aqui se
 //    editam as organizações do Aranda, o ramo, o contrato FISCAL e os bancos de horas.
 //  - Após a virada (Fase 6): esta passa a ser a tela oficial e edita tudo.
@@ -88,6 +88,7 @@ import {
   Rotulo,
   Secao,
   TelaEdicao,
+  ValorCopiavel,
 } from './compartilhado/formulario';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -102,7 +103,6 @@ import {
   LIMITE_ANEXOS,
   HISTORICO_BASELINE_MOCK,
   IDENTIDADE_ALFA_MOCK,
-  MODULOS_MOCK,
   ORGANIZACOES_ALFA_MOCK,
   ORGANIZACOES_DE_OUTRAS_MOCK,
   RAMOS_MOCK,
@@ -117,8 +117,15 @@ import {
   type ContratoFiscalMock,
   type EmpresaListaMock,
   type ModeloCalculo,
-  type ProdutoCodigo,
+  type SolucaoCodigo,
 } from './mocks/empresas';
+import {
+  MODULOS_MOCK,
+  PRODUTOS_MOCK,
+  SOLUCOES_MOCK,
+  nomeModulo,
+  nomeProduto,
+} from './mocks/catalogo';
 
 type Modo = 'transicao' | 'virada';
 /** Edição (true) ou só visualização (false) em cada tela de permissão */
@@ -138,18 +145,18 @@ const DICAS: Record<string, string> = {
   'Nome completo': 'Razão social da empresa, em maiúsculas.',
   'Nome abreviado': 'Nome curto, usado no assunto dos e-mails e em todas as listas e ordenações.',
   'Tem AMS':
-    'Se a empresa tem contrato AMS em pelo menos um produto. Habilita o Book e os bancos de horas.',
-  AMS: 'Produtos com contrato AMS. Habilitam o Book e os bancos de horas.',
+    'Se a empresa tem contrato AMS em pelo menos uma solução. Habilita o Book e os bancos de horas.',
+  AMS: 'Soluções com contrato AMS. Habilitam o Book e os bancos de horas.',
   'Em projeto':
-    'Produtos em fase de projeto ou implantação, cada um com uma breve justificativa. É só informativo: aparece como ícone na lista, com os produtos e as justificativas na dica.',
+    'Soluções em fase de projeto ou implantação, cada uma com uma breve justificativa. É só informativo: aparece como ícone na lista, com as soluções e as justificativas na dica.',
   'Vigência inicial':
     'Início do contrato. O Book só é disparado a partir deste mês; sem data, a empresa fica fora do disparo.',
   'Vigência final':
     'Fim do contrato. Ao vencer, a empresa é inativada automaticamente e gera o alerta de vencimento.',
   'Vigência do contrato':
     'Início e fim do contrato. Controlam o disparo do Book e a inativação automática no vencimento.',
-  'Produtos contratados':
-    'Produtos do contrato e, em cada um, se tem AMS e se está em projeto (com a justificativa). Só os produtos com AMS podem entrar no escopo dos bancos de horas; o FISCAL habilita o Contrato FISCAL.',
+  'Soluções contratadas':
+    'Soluções do contrato (COMEX, FISCAIS, FINANCEIRAS) e, em cada uma, se tem AMS e se está em projeto (com a justificativa). Só os produtos de soluções com AMS podem entrar no escopo dos bancos; FISCAIS habilita o Contrato FISCAL.',
   'E-mail do Customer Success':
     'Vai em cópia em todos os Books e identifica o Customer Success no organograma do Book.',
   'E-mail do Comercial': 'Identifica o comercial no organograma do Book.',
@@ -319,10 +326,10 @@ function BolinhaSituacao({ empresa }: { empresa: EmpresaListaMock }) {
   );
 }
 
-/** "Sim"/"Não" na lista; ao passar o mouse ou focar, diz em quais produtos há AMS */
+/** "Sim"/"Não" na lista; ao passar o mouse ou focar, diz em quais soluções há AMS */
 function AmsDaEmpresa({ empresa }: { empresa: EmpresaListaMock }) {
-  if (!empresa.produtosAms.length) return <span className="text-ds-fg-muted">Não</span>;
-  const sem = empresa.produtos.filter((p) => !empresa.produtosAms.includes(p));
+  if (!empresa.solucoesAms.length) return <span className="text-ds-fg-muted">Não</span>;
+  const sem = empresa.solucoes.filter((p) => !empresa.solucoesAms.includes(p));
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -337,7 +344,7 @@ function AmsDaEmpresa({ empresa }: { empresa: EmpresaListaMock }) {
         data-ds="v2"
         className="border-ds-border bg-ds-bg-raised font-ds-sans text-xs leading-5 text-ds-fg"
       >
-        <p>AMS em {empresa.produtosAms.join(', ')}</p>
+        <p>AMS em {empresa.solucoesAms.join(', ')}</p>
         {sem.length > 0 && <p className="text-ds-fg-muted">Sem AMS: {sem.join(', ')}</p>}
       </TooltipContent>
     </Tooltip>
@@ -489,7 +496,7 @@ function Lista({
   // Só ilustrativo: as linhas fictícias são as mesmas em qualquer página
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
-  const [produto, setProduto] = useState<ProdutoCodigo[]>([]);
+  const [produto, setProduto] = useState<SolucaoCodigo[]>([]);
   const [modelo, setModelo] = useState<ModeloCalculo[]>([]);
   const [temAms, setTemAms] = useState<SimNao[]>([]);
   const [emProjeto, setEmProjeto] = useState<SimNao[]>([]);
@@ -507,7 +514,7 @@ function Lista({
           (!busca ||
             `${e.nomeAbreviado} ${e.nomeCompleto}`.toLowerCase().includes(busca.toLowerCase())) &&
           (!status.length || status.includes(e.status)) &&
-          (!produto.length || e.produtos.some((p) => produto.includes(p))) &&
+          (!produto.length || e.solucoes.some((p) => produto.includes(p))) &&
           casaSimNao(temAms, e.temAms) &&
           casaSimNao(emProjeto, e.emProjeto) &&
           (!modelo.length || modelo.includes(e.modelo)) &&
@@ -561,10 +568,10 @@ function Lista({
     },
     {
       id: 'produtos',
-      cabecalho: 'Produtos',
+      cabecalho: 'Soluções',
       celula: (e) => (
         <div className="flex gap-1">
-          {e.produtos.map((p) => (
+          {e.solucoes.map((p) => (
             <Chip key={p}>{p}</Chip>
           ))}
         </div>
@@ -724,12 +731,8 @@ function Lista({
                   onChange={setStatus}
                 />
                 <FiltroMultiplo
-                  rotulo="Produto"
-                  opcoes={[
-                    { valor: 'COMEX', rotulo: 'COMEX' },
-                    { valor: 'FISCAL', rotulo: 'FISCAL' },
-                    { valor: 'GALLERY', rotulo: 'GALLERY' },
-                  ]}
+                  rotulo="Solução"
+                  opcoes={SOLUCOES.map((x) => ({ valor: x, rotulo: x }))}
                   selecionados={produto}
                   onChange={setProduto}
                 />
@@ -875,11 +878,14 @@ function Identidade({
   podeEditar,
   dados,
   onEditar,
+  onEditarAms,
 }: {
   modo: Modo;
   podeEditar: boolean;
   dados: IdentidadeMock;
   onEditar: () => void;
+  /** Transição: AMS e Em projeto por solução já são editados aqui */
+  onEditarAms: () => void;
 }) {
   return (
     <section
@@ -895,7 +901,12 @@ function Identidade({
         </h2>
         {podeEditar &&
           (modo === 'transicao' ? (
-            <EditarNaTelaAtual />
+            <div className="flex flex-wrap items-center gap-1">
+              <Button tamanho="sm" variante="fantasma" onClick={onEditarAms}>
+                <Pencil /> AMS e projetos
+              </Button>
+              <EditarNaTelaAtual />
+            </div>
           ) : (
             <Button tamanho="sm" variante="fantasma" onClick={onEditar}>
               <Pencil /> Editar
@@ -904,10 +915,26 @@ function Identidade({
       </div>
       <div className="grid gap-x-6 gap-y-6 md:grid-cols-2 xl:grid-cols-4 xl:gap-x-0 xl:divide-x xl:divide-ds-border">
         <GrupoIdentidade titulo="Empresa">
-          <ItemIdentidade rotulo="Nome completo">{dados.nomeCompleto}</ItemIdentidade>
-          <ItemIdentidade rotulo="Nome abreviado">{dados.nomeAbreviado}</ItemIdentidade>
+          <ItemIdentidade rotulo="Nome completo">
+            {dados.nomeCompleto ? (
+              <ValorCopiavel valor={dados.nomeCompleto} rotulo="Nome completo" />
+            ) : (
+              vazio
+            )}
+          </ItemIdentidade>
+          <ItemIdentidade rotulo="Nome abreviado">
+            {dados.nomeAbreviado ? (
+              <ValorCopiavel valor={dados.nomeAbreviado} rotulo="Nome abreviado" />
+            ) : (
+              vazio
+            )}
+          </ItemIdentidade>
           <ItemIdentidade rotulo="Grupo empresarial">
-            {dados.grupoEmpresarial || vazio}
+            {dados.grupoEmpresarial ? (
+              <ValorCopiavel valor={dados.grupoEmpresarial} rotulo="Grupo empresarial" />
+            ) : (
+              vazio
+            )}
           </ItemIdentidade>
         </GrupoIdentidade>
 
@@ -917,15 +944,15 @@ function Identidade({
               ? `${dataBr(dados.vigenciaInicio)} – ${dados.vigenciaFim ? dataBr(dados.vigenciaFim) : 'sem data de fim'}`
               : vazio}
           </ItemIdentidade>
-          <ItemIdentidade rotulo="Produtos contratados">
+          <ItemIdentidade rotulo="Soluções contratadas">
             <ul className="mt-1 space-y-2">
-              {dados.produtos.map((p) => {
+              {dados.solucoes.map((p) => {
                 const projeto = dados.projetos[p];
                 return (
                   <li key={p}>
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span className="font-medium">{p}</span>
-                      {dados.produtosAms.includes(p) ? (
+                      {dados.solucoesAms.includes(p) ? (
                         <span className="rounded-full bg-ds-accent-subtle px-1.5 text-[11px] font-medium text-ds-fg-accent">
                           AMS
                         </span>
@@ -962,12 +989,25 @@ function Identidade({
 
         <GrupoIdentidade titulo="Responsáveis">
           <ItemIdentidade rotulo="E-mail do Customer Success">
-            {dados.emailCustomerSuccess || vazio}
+            {dados.emailCustomerSuccess ? (
+              <ValorCopiavel
+                valor={dados.emailCustomerSuccess}
+                rotulo="E-mail do Customer Success"
+              />
+            ) : (
+              vazio
+            )}
           </ItemIdentidade>
           <ItemIdentidade rotulo="E-mail do Comercial">
-            {dados.emailComercial || vazio}
+            {dados.emailComercial ? (
+              <ValorCopiavel valor={dados.emailComercial} rotulo="E-mail do Comercial" />
+            ) : (
+              vazio
+            )}
           </ItemIdentidade>
-          <ItemIdentidade rotulo="E-mail do T&M">{dados.emailTm || vazio}</ItemIdentidade>
+          <ItemIdentidade rotulo="E-mail do T&M">
+            {dados.emailTm ? <ValorCopiavel valor={dados.emailTm} rotulo="E-mail do T&M" /> : vazio}
+          </ItemIdentidade>
         </GrupoIdentidade>
 
         <GrupoIdentidade titulo="Observação e anexos">
@@ -997,7 +1037,7 @@ function Identidade({
   );
 }
 
-const PRODUTOS: ProdutoCodigo[] = ['COMEX', 'FISCAL', 'GALLERY'];
+const SOLUCOES: SolucaoCodigo[] = ['COMEX', 'FISCAIS', 'FINANCEIRAS'];
 
 const tamanhoTexto = (bytes: number) =>
   bytes >= 1024 * 1024
@@ -1091,14 +1131,14 @@ function EditorAnexos({
 
 const LIMITE_JUSTIFICATIVA_PROJETO = 200;
 
-/** Caixa que pede a justificativa ao colocar um produto em projeto (ou ao editá-la) */
+/** Caixa que pede a justificativa ao colocar uma solução em projeto (ou ao editá-la) */
 function DialogoProjeto({
   produto,
   inicial,
   onFechar,
   onConfirmar,
 }: {
-  produto: ProdutoCodigo | null;
+  produto: SolucaoCodigo | null;
   inicial: string;
   onFechar: () => void;
   onConfirmar: (justificativa: string) => void;
@@ -1166,6 +1206,196 @@ function DialogoProjeto({
   );
 }
 
+type SolucoesDaEmpresa = Pick<IdentidadeMock, 'solucoes' | 'solucoesAms' | 'projetos'>;
+
+/**
+ * Soluções contratadas, com AMS e Em projeto em cada uma. Na transição (podeMarcar = false) as
+ * soluções vêm da tela atual e só AMS e projeto são ajustados aqui (decisão de 21/10/2026).
+ */
+function ListaSolucoes({
+  opcoes,
+  podeMarcar,
+  valor,
+  inicialComAms,
+  erro,
+  onChange,
+}: {
+  opcoes: SolucaoCodigo[];
+  podeMarcar: boolean;
+  valor: SolucoesDaEmpresa;
+  inicialComAms: boolean;
+  erro?: string | null;
+  onChange: (v: Partial<SolucoesDaEmpresa>) => void;
+}) {
+  // Solução cuja justificativa de projeto está sendo escrita
+  const [projetoDe, setProjetoDe] = useState<SolucaoCodigo | null>(null);
+  const { solucoes, solucoesAms, projetos } = valor;
+
+  const alternarSolucao = (p: SolucaoCodigo) => {
+    const marcado = solucoes.includes(p);
+    // Solução desmarcada sai também do AMS e do projeto
+    const semProjeto = { ...projetos };
+    if (marcado) delete semProjeto[p];
+    onChange({
+      solucoes: marcado ? solucoes.filter((y) => y !== p) : [...solucoes, p],
+      solucoesAms: marcado ? solucoesAms.filter((y) => y !== p) : solucoesAms,
+      projetos: semProjeto,
+    });
+  };
+  const tirarDoProjeto = (p: SolucaoCodigo) => {
+    const semProjeto = { ...projetos };
+    delete semProjeto[p];
+    onChange({ projetos: semProjeto });
+  };
+
+  return (
+    <div>
+      <Rotulo obrigatorio={podeMarcar}>Soluções contratadas</Rotulo>
+      <ul
+        aria-label="Soluções contratadas"
+        className="divide-y divide-ds-border rounded-lg border border-ds-border"
+      >
+        {opcoes.map((p) => {
+          const marcado = solucoes.includes(p);
+          const ams = solucoesAms.includes(p);
+          const projeto = projetos[p];
+          return (
+            <li
+              key={p}
+              className="grid min-h-12 grid-cols-2 items-center gap-x-3 gap-y-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+            >
+              {podeMarcar ? (
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={marcado}
+                  onClick={() => alternarSolucao(p)}
+                  className="col-span-2 flex items-center gap-2.5 justify-self-start rounded-md py-1 text-sm font-medium text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus sm:col-span-1"
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'grid h-4 w-4 shrink-0 place-items-center rounded border transition',
+                      marcado
+                        ? 'border-ds-accent bg-ds-accent text-ds-fg-on-accent'
+                        : 'border-ds-border-strong'
+                    )}
+                  >
+                    {marcado && <Check className="h-3 w-3" strokeWidth={3} />}
+                  </span>
+                  {p}
+                </button>
+              ) : (
+                <span className="col-span-2 py-1 text-sm font-medium sm:col-span-1">{p}</span>
+              )}
+              {marcado && (
+                <>
+                  <span className="flex items-center gap-2 text-sm text-ds-fg-secondary sm:justify-self-center">
+                    AMS
+                    <ChaveCompacta
+                      ligado={ams}
+                      rotulo={`AMS em ${p}`}
+                      onClick={() =>
+                        onChange({
+                          solucoesAms: ams
+                            ? solucoesAms.filter((y) => y !== p)
+                            : [...solucoesAms, p],
+                        })
+                      }
+                    />
+                  </span>
+                  <span className="flex items-center gap-2 justify-self-end text-sm text-ds-fg-secondary">
+                    Em projeto
+                    <ChaveCompacta
+                      ligado={!!projeto}
+                      rotulo={`${p} em projeto`}
+                      onClick={() => (projeto ? tirarDoProjeto(p) : setProjetoDe(p))}
+                    />
+                  </span>
+                  {projeto && (
+                    <div className="col-span-full -mt-1 flex items-start gap-1.5 pl-5 text-xs text-ds-fg-muted">
+                      <button
+                        type="button"
+                        onClick={() => setProjetoDe(p)}
+                        aria-label={`Editar justificativa do projeto de ${p}`}
+                        className="-mt-1 grid h-6 w-6 shrink-0 place-items-center rounded text-ds-fg-accent hover:bg-ds-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <p className="min-w-0 flex-1">{projeto}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <DialogoProjeto
+        produto={projetoDe}
+        inicial={projetoDe ? (projetos[projetoDe] ?? '') : ''}
+        onFechar={() => setProjetoDe(null)}
+        onConfirmar={(texto) => {
+          onChange({ projetos: { ...projetos, [projetoDe]: texto } });
+          setProjetoDe(null);
+        }}
+      />
+      {!solucoesAms.length && inicialComAms && (
+        <div className="mt-2">
+          <Callout tom="warning">Sem AMS em nenhuma solução, a empresa deixa de ter Book.</Callout>
+        </div>
+      )}
+      {erro && <p className="mt-1.5 text-xs text-ds-danger-fg">{erro}</p>}
+    </div>
+  );
+}
+
+/**
+ * Transição: as soluções contratadas vêm da tela atual (COMEX; FISCAL e GALLERY viram FISCAIS),
+ * mas AMS e Em projeto por solução já são ajustados aqui. FINANCEIRAS só existe depois da virada.
+ */
+function PainelAmsProjetos({
+  inicial,
+  onFechar,
+  onSalvar,
+}: {
+  inicial: IdentidadeMock;
+  onFechar: () => void;
+  onSalvar: (dados: IdentidadeMock) => void;
+}) {
+  const [d, setD] = useState(inicial);
+  return (
+    <TelaEdicao
+      voltarPara={inicial.nomeAbreviado}
+      titulo="AMS e projetos"
+      subtitulo="As soluções contratadas vêm da tela atual; aqui se ajustam o AMS e os projetos de cada uma."
+      podeSalvar
+      onFechar={onFechar}
+      onSalvar={() =>
+        onSalvar({
+          ...d,
+          temAms: d.solucoesAms.length > 0,
+          emProjeto: Object.keys(d.projetos).length > 0,
+        })
+      }
+    >
+      <Secao titulo="Contrato">
+        <ListaSolucoes
+          opcoes={d.solucoes}
+          podeMarcar={false}
+          valor={d}
+          inicialComAms={inicial.solucoesAms.length > 0}
+          onChange={(v) => setD((x) => ({ ...x, ...v }))}
+        />
+        <Callout tom="info">
+          Para incluir ou tirar uma solução, edite a empresa na tela atual. FINANCEIRAS entra no
+          contrato depois da virada do cadastro.
+        </Callout>
+      </Secao>
+    </TelaEdicao>
+  );
+}
+
 function PainelIdentidade({
   inicial,
   onFechar,
@@ -1178,14 +1408,6 @@ function PainelIdentidade({
   const [d, setD] = useState(inicial);
   const set = <K extends keyof IdentidadeMock>(k: K, v: IdentidadeMock[K]) =>
     setD((x) => ({ ...x, [k]: v }));
-  // Produto cuja justificativa de projeto está sendo escrita
-  const [projetoDe, setProjetoDe] = useState<ProdutoCodigo | null>(null);
-  const tirarDoProjeto = (p: ProdutoCodigo) =>
-    setD((x) => {
-      const projetos = { ...x.projetos };
-      delete projetos[p];
-      return { ...x, projetos };
-    });
 
   const erroEmail = (v: string, obrigatorio: boolean) =>
     !v.trim()
@@ -1202,7 +1424,7 @@ function PainelIdentidade({
       d.vigenciaInicio && d.vigenciaFim && d.vigenciaFim < d.vigenciaInicio
         ? 'A vigência final não pode ser anterior à inicial.'
         : null,
-    produtos: d.produtos.length === 0 ? 'Escolha pelo menos um produto.' : null,
+    solucoes: d.solucoes.length === 0 ? 'Escolha pelo menos uma solução.' : null,
     cs: erroEmail(d.emailCustomerSuccess, true),
     comercial: erroEmail(d.emailComercial, false),
     tm: erroEmail(d.emailTm, false),
@@ -1219,7 +1441,7 @@ function PainelIdentidade({
       onSalvar={() =>
         onSalvar({
           ...d,
-          temAms: d.produtosAms.length > 0,
+          temAms: d.solucoesAms.length > 0,
           emProjeto: Object.keys(d.projetos).length > 0,
         })
       }
@@ -1281,117 +1503,14 @@ function PainelIdentidade({
             erro={erros.vigenciaFim}
           />
         </div>
-        <div>
-          <Rotulo obrigatorio>Produtos contratados</Rotulo>
-          <ul
-            aria-label="Produtos contratados"
-            className="divide-y divide-ds-border rounded-lg border border-ds-border"
-          >
-            {PRODUTOS.map((p) => {
-              const marcado = d.produtos.includes(p);
-              const ams = d.produtosAms.includes(p);
-              const projeto = d.projetos[p];
-              return (
-                <li
-                  key={p}
-                  className="grid min-h-12 grid-cols-2 items-center gap-x-3 gap-y-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
-                >
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={marcado}
-                    onClick={() =>
-                      setD((x) => {
-                        // Produto desmarcado sai também do AMS e do projeto
-                        const projetos = { ...x.projetos };
-                        if (marcado) delete projetos[p];
-                        return {
-                          ...x,
-                          produtos: marcado
-                            ? x.produtos.filter((y) => y !== p)
-                            : [...x.produtos, p],
-                          produtosAms: marcado
-                            ? x.produtosAms.filter((y) => y !== p)
-                            : x.produtosAms,
-                          projetos,
-                        };
-                      })
-                    }
-                    className="col-span-2 flex items-center gap-2.5 justify-self-start rounded-md py-1 text-sm font-medium text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus sm:col-span-1"
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'grid h-4 w-4 shrink-0 place-items-center rounded border transition',
-                        marcado
-                          ? 'border-ds-accent bg-ds-accent text-ds-fg-on-accent'
-                          : 'border-ds-border-strong'
-                      )}
-                    >
-                      {marcado && <Check className="h-3 w-3" strokeWidth={3} />}
-                    </span>
-                    {p}
-                  </button>
-                  {marcado && (
-                    <>
-                      <span className="flex items-center gap-2 text-sm text-ds-fg-secondary sm:justify-self-center">
-                        AMS
-                        <ChaveCompacta
-                          ligado={ams}
-                          rotulo={`AMS em ${p}`}
-                          onClick={() =>
-                            set(
-                              'produtosAms',
-                              ams ? d.produtosAms.filter((y) => y !== p) : [...d.produtosAms, p]
-                            )
-                          }
-                        />
-                      </span>
-                      <span className="flex items-center gap-2 justify-self-end text-sm text-ds-fg-secondary">
-                        Em projeto
-                        <ChaveCompacta
-                          ligado={!!projeto}
-                          rotulo={`${p} em projeto`}
-                          onClick={() => (projeto ? tirarDoProjeto(p) : setProjetoDe(p))}
-                        />
-                      </span>
-                      {projeto && (
-                        <div className="col-span-full -mt-1 flex items-start gap-1.5 pl-5 text-xs text-ds-fg-muted">
-                          <button
-                            type="button"
-                            onClick={() => setProjetoDe(p)}
-                            aria-label={`Editar justificativa do projeto de ${p}`}
-                            className="-mt-1 grid h-6 w-6 shrink-0 place-items-center rounded text-ds-fg-accent hover:bg-ds-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <p className="min-w-0 flex-1">{projeto}</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <DialogoProjeto
-            produto={projetoDe}
-            inicial={projetoDe ? (d.projetos[projetoDe] ?? '') : ''}
-            onFechar={() => setProjetoDe(null)}
-            onConfirmar={(texto) => {
-              set('projetos', { ...d.projetos, [projetoDe]: texto });
-              setProjetoDe(null);
-            }}
-          />
-          {!d.produtosAms.length && inicial.produtosAms.length > 0 && (
-            <div className="mt-2">
-              <Callout tom="warning">
-                Sem AMS em nenhum produto, a empresa deixa de ter Book.
-              </Callout>
-            </div>
-          )}
-          {erros.produtos && <p className="mt-1.5 text-xs text-ds-danger-fg">{erros.produtos}</p>}
-        </div>
+        <ListaSolucoes
+          opcoes={SOLUCOES}
+          podeMarcar
+          valor={d}
+          inicialComAms={inicial.solucoesAms.length > 0}
+          erro={erros.solucoes}
+          onChange={(v) => setD((x) => ({ ...x, ...v }))}
+        />
       </Secao>
 
       <Secao titulo="Responsáveis">
@@ -1898,8 +2017,8 @@ function Parametro({ rotulo, children }: { rotulo: string; children: ReactNode }
 function textoEscopo(banco: BancoCadastroMock): string[] {
   return banco.escopo.flatMap((e) =>
     e.modulos.length === 0
-      ? [`${e.produto} · todos os módulos`]
-      : e.modulos.map((m) => `${e.produto} › ${m}`)
+      ? [`${nomeProduto(e.produtoId)} inteiro`]
+      : e.modulos.map((m) => `${nomeProduto(e.produtoId)} › ${nomeModulo(m)}`)
   );
 }
 
@@ -2181,126 +2300,170 @@ function ValorComHistorico({
   );
 }
 
-/** Árvore Produto › Módulos com estado parcial e módulos bloqueados por outro banco (RN-05) */
+/**
+ * Árvore Solução › Produto › Módulos (decisão de 21/10/2026): a solução só agrupa; marca-se o
+ * produto inteiro (inclui módulos criados no futuro) ou módulos dele. Itens que outro banco já
+ * cobre ficam bloqueados (RN-05), e soluções sem AMS não entram em banco.
+ */
 function ArvoreEscopo({
-  produtos,
+  solucoes,
   semAms,
   usados,
   selecao,
   onChange,
 }: {
-  produtos: ProdutoCodigo[];
-  /** Produtos contratados sem AMS: aparecem bloqueados, sem poder entrar em banco */
-  semAms: ProdutoCodigo[];
-  /** módulo → banco que já o cobre; produto inteiro = '*' */
+  /** Soluções contratadas pela empresa */
+  solucoes: SolucaoCodigo[];
+  /** Soluções contratadas sem AMS: aparecem bloqueadas, sem poder entrar em banco */
+  semAms: SolucaoCodigo[];
+  /** "produtoId|*" (produto inteiro) ou "produtoId|moduloId" → banco que já o cobre */
   usados: Record<string, string>;
-  selecao: Record<ProdutoCodigo, string[] | 'todos'>;
-  onChange: (s: Record<ProdutoCodigo, string[] | 'todos'>) => void;
+  /** produtoId → 'todos' (produto inteiro) ou ids dos módulos */
+  selecao: Record<string, string[] | 'todos'>;
+  onChange: (s: Record<string, string[] | 'todos'>) => void;
 }) {
-  const [abertos, setAbertos] = useState<ProdutoCodigo[]>(['FISCAL']);
+  const [abertos, setAbertos] = useState<string[]>([]);
   return (
-    <ul className="divide-y divide-ds-border overflow-hidden rounded-xl border border-ds-border">
-      {produtos.map((p) => {
-        const modulos = MODULOS_MOCK[p];
-        const bloqueioProduto = semAms.includes(p) ? 'sem AMS' : usados[`${p}|*`];
-        const marcados = selecao[p] === 'todos' ? modulos : ((selecao[p] as string[]) ?? []);
-        const total = selecao[p] === 'todos';
-        const parcial = !total && marcados.length > 0;
-        const aberto = abertos.includes(p);
+    <div className="space-y-3">
+      {SOLUCOES_MOCK.filter((x) => solucoes.includes(x.codigo)).map((sol) => {
+        const bloqueadaSolucao = semAms.includes(sol.codigo);
+        const produtos = PRODUTOS_MOCK.filter((p) => p.solucaoId === sol.id && p.ativo);
         return (
-          <li key={p}>
-            <div className="flex items-center gap-3 px-3 py-2.5">
-              <input
-                type="checkbox"
-                aria-label={`${p}: todos os módulos`}
-                checked={total}
-                ref={(el) => el && (el.indeterminate = parcial)}
-                disabled={!!bloqueioProduto}
-                onChange={(e) => onChange({ ...selecao, [p]: e.target.checked ? 'todos' : [] })}
-                className="h-4 w-4 accent-ds-accent"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setAbertos((a) => (a.includes(p) ? a.filter((x) => x !== p) : [...a, p]))
-                }
-                aria-expanded={aberto}
-                className="flex flex-1 items-center justify-between gap-2 text-left text-sm font-medium text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus"
-              >
-                <span>
-                  {p}
-                  {bloqueioProduto && (
-                    <span className="font-normal text-ds-fg-muted">
-                      {' '}
-                      · {semAms.includes(p) ? 'sem AMS' : `em ${bloqueioProduto}`}
-                    </span>
-                  )}
+          <section key={sol.id}>
+            <h4 className="mb-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.06em] text-ds-fg-secondary">
+              {sol.nome}
+              {bloqueadaSolucao && (
+                <span className="font-normal normal-case tracking-normal text-ds-fg-muted">
+                  · sem AMS
                 </span>
-                <span className="flex items-center gap-2 text-xs font-normal text-ds-fg-muted">
-                  <span className="tabular-nums">
-                    {total ? 'todos' : `${marcados.length} de ${modulos.length}`}
-                  </span>
-                  <ChevronDown
-                    className={cn('h-4 w-4 transition-transform', aberto && 'rotate-180')}
-                  />
-                </span>
-              </button>
-            </div>
-            {aberto && (
-              <ul className="grid gap-x-4 bg-ds-bg-subtle px-3 py-2 sm:grid-cols-2">
-                {modulos.map((m) => {
-                  const bloqueio = usados[`${p}|${m}`] ?? bloqueioProduto;
-                  return (
-                    <li key={m}>
-                      <label
-                        className={cn(
-                          'flex min-h-11 items-center gap-3 py-1 text-sm md:min-h-9',
-                          bloqueio ? 'text-ds-fg-disabled' : 'text-ds-fg'
-                        )}
-                        title={bloqueio ? `Já está em ${bloqueio}` : undefined}
+              )}
+            </h4>
+            <ul className="divide-y divide-ds-border overflow-hidden rounded-xl border border-ds-border">
+              {produtos.map((p) => {
+                const modulos = MODULOS_MOCK.filter((x) => x.produtoId === p.id && x.ativo);
+                const bloqueioProduto = bloqueadaSolucao ? 'sem AMS' : usados[`${p.id}|*`];
+                const total = selecao[p.id] === 'todos';
+                const marcados = total
+                  ? modulos.map((x) => x.id)
+                  : ((selecao[p.id] as string[]) ?? []);
+                const parcial = !total && marcados.length > 0;
+                const aberto = abertos.includes(p.id);
+                return (
+                  <li key={p.id}>
+                    <div className="flex items-center gap-3 px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        aria-label={`${p.nome} inteiro`}
+                        checked={total}
+                        ref={(el) => el && (el.indeterminate = parcial)}
+                        disabled={!!bloqueioProduto}
+                        onChange={(e) =>
+                          onChange({ ...selecao, [p.id]: e.target.checked ? 'todos' : [] })
+                        }
+                        className="h-4 w-4 accent-ds-accent"
+                      />
+                      <button
+                        type="button"
+                        disabled={!modulos.length}
+                        onClick={() =>
+                          setAbertos((a) =>
+                            a.includes(p.id) ? a.filter((x) => x !== p.id) : [...a, p.id]
+                          )
+                        }
+                        aria-expanded={modulos.length ? aberto : undefined}
+                        className="flex flex-1 items-center justify-between gap-2 text-left text-sm font-medium text-ds-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus disabled:cursor-default"
                       >
-                        <input
-                          type="checkbox"
-                          disabled={!!bloqueio || total}
-                          checked={total || marcados.includes(m)}
-                          onChange={(e) =>
-                            onChange({
-                              ...selecao,
-                              [p]: e.target.checked
-                                ? [...marcados, m]
-                                : marcados.filter((x) => x !== m),
-                            })
-                          }
-                          className="h-4 w-4 accent-ds-accent"
-                        />
-                        <span className="min-w-0 flex-1 truncate">{m}</span>
-                        {bloqueio && (
-                          <span className="shrink-0 text-xs text-ds-fg-muted">em {bloqueio}</span>
-                        )}
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </li>
+                        <span className={bloqueioProduto ? 'text-ds-fg-disabled' : undefined}>
+                          {p.nome}
+                          {bloqueioProduto && !bloqueadaSolucao && (
+                            <span className="font-normal text-ds-fg-muted">
+                              {' '}
+                              · em {bloqueioProduto}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-2 text-xs font-normal text-ds-fg-muted">
+                          {modulos.length ? (
+                            <>
+                              <span className="tabular-nums">
+                                {total
+                                  ? 'todos os módulos'
+                                  : `${marcados.length} de ${modulos.length}`}
+                              </span>
+                              <ChevronDown
+                                className={cn(
+                                  'h-4 w-4 transition-transform',
+                                  aberto && 'rotate-180'
+                                )}
+                              />
+                            </>
+                          ) : (
+                            'sem módulos'
+                          )}
+                        </span>
+                      </button>
+                    </div>
+                    {aberto && modulos.length > 0 && (
+                      <ul className="grid gap-x-4 bg-ds-bg-subtle px-3 py-2 sm:grid-cols-2">
+                        {modulos.map((x) => {
+                          const bloqueio = usados[`${p.id}|${x.id}`] ?? bloqueioProduto;
+                          return (
+                            <li key={x.id}>
+                              <label
+                                className={cn(
+                                  'flex min-h-11 items-center gap-3 py-1 text-sm md:min-h-9',
+                                  bloqueio ? 'text-ds-fg-disabled' : 'text-ds-fg'
+                                )}
+                                title={bloqueio ? `Já está em ${bloqueio}` : undefined}
+                              >
+                                <input
+                                  type="checkbox"
+                                  disabled={!!bloqueio || total}
+                                  checked={total || marcados.includes(x.id)}
+                                  onChange={(e) =>
+                                    onChange({
+                                      ...selecao,
+                                      [p.id]: e.target.checked
+                                        ? [...marcados, x.id]
+                                        : marcados.filter((y) => y !== x.id),
+                                    })
+                                  }
+                                  className="h-4 w-4 accent-ds-accent"
+                                />
+                                <span className="min-w-0 flex-1 truncate">{x.nome}</span>
+                                {bloqueio && bloqueio !== 'sem AMS' && (
+                                  <span className="shrink-0 text-xs text-ds-fg-muted">
+                                    em {bloqueio}
+                                  </span>
+                                )}
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
 function PainelBanco({
   empresa,
-  produtos,
-  produtosAms,
+  solucoes,
+  solucoesAms,
   banco,
   onFechar,
 }: {
   empresa: string;
-  produtos: ProdutoCodigo[];
-  /** Só os produtos com AMS podem entrar no escopo de um banco */
-  produtosAms: ProdutoCodigo[];
+  solucoes: SolucaoCodigo[];
+  /** Só os produtos das soluções com AMS podem entrar no escopo de um banco */
+  solucoesAms: SolucaoCodigo[];
   banco: BancoCadastroMock | null;
   onFechar: () => void;
 }) {
@@ -2334,9 +2497,9 @@ function PainelBanco({
   const [consome, setConsome] = useState(base.consomeOutros);
   const [filtroOperador, setFiltroOperador] = useState(base.filtroIc?.operador ?? '');
   const [filtroValor, setFiltroValor] = useState(base.filtroIc?.valor ?? '');
-  const [selecao, setSelecao] = useState<Record<ProdutoCodigo, string[] | 'todos'>>(() => {
-    const s = { COMEX: [], FISCAL: [], GALLERY: [] } as Record<ProdutoCodigo, string[] | 'todos'>;
-    base.escopo.forEach((e) => (s[e.produto] = e.modulos.length === 0 ? 'todos' : e.modulos));
+  const [selecao, setSelecao] = useState<Record<string, string[] | 'todos'>>(() => {
+    const s: Record<string, string[] | 'todos'> = {};
+    base.escopo.forEach((e) => (s[e.produtoId] = e.modulos.length === 0 ? 'todos' : e.modulos));
     return s;
   });
 
@@ -2345,8 +2508,8 @@ function PainelBanco({
   BANCOS_ALFA_MOCK.filter((b) => b.id !== base.id && !b.padrao && b.ativo).forEach((b) =>
     b.escopo.forEach((e) =>
       e.modulos.length === 0
-        ? (usados[`${e.produto}|*`] = b.nome)
-        : e.modulos.forEach((m) => (usados[`${e.produto}|${m}`] = b.nome))
+        ? (usados[`${e.produtoId}|*`] = b.nome)
+        : e.modulos.forEach((m) => (usados[`${e.produtoId}|${m}`] = b.nome))
     )
   );
 
@@ -2554,8 +2717,8 @@ function PainelBanco({
       {!base.padrao && (
         <Secao titulo="Escopo">
           <ArvoreEscopo
-            produtos={produtos}
-            semAms={produtos.filter((x) => !produtosAms.includes(x))}
+            solucoes={solucoes}
+            semAms={solucoes.filter((x) => !solucoesAms.includes(x))}
             usados={usados}
             selecao={selecao}
             onChange={setSelecao}
@@ -2980,7 +3143,7 @@ function Detalhe({
   });
   const [identidade, setIdentidade] = useState(IDENTIDADE_ALFA_MOCK);
   const [book, setBook] = useState(BOOK_ALFA_MOCK);
-  const [editando, setEditando] = useState<'identidade' | 'book' | null>(
+  const [editando, setEditando] = useState<'identidade' | 'ams' | 'book' | null>(
     editarAoAbrir ? 'identidade' : null
   );
 
@@ -3070,6 +3233,17 @@ function Detalhe({
         }}
       />
     );
+  if (editando === 'ams')
+    return (
+      <PainelAmsProjetos
+        inicial={identidade}
+        onFechar={() => setEditando(null)}
+        onSalvar={(d) => {
+          setIdentidade(d);
+          setEditando(null);
+        }}
+      />
+    );
   if (editando === 'book')
     return (
       <PainelBook
@@ -3088,8 +3262,8 @@ function Detalhe({
       <PainelBanco
         key={painel.banco?.id ?? 'novo'}
         empresa={identidade.nomeAbreviado}
-        produtos={identidade.produtos}
-        produtosAms={identidade.produtosAms}
+        solucoes={identidade.solucoes}
+        solucoesAms={identidade.solucoesAms}
         banco={painel.banco}
         onFechar={() => setPainel({ aberto: false, banco: null })}
       />
@@ -3161,6 +3335,7 @@ function Detalhe({
         podeEditar={permissoes.empresa}
         dados={identidade}
         onEditar={() => setEditando('identidade')}
+        onEditarAms={() => setEditando('ams')}
       />
 
       <div className="mt-6 space-y-4">

@@ -3,7 +3,7 @@
 // Quando aprovadas, viram componentes em src/components/ds, com teste.
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, Info, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Info, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ds/Button';
 import { cn } from '@/lib/utils';
@@ -353,6 +353,43 @@ export function Chip({
           <X className="h-3 w-3" />
         </button>
       )}
+    </span>
+  );
+}
+
+/**
+ * Valor com o botão de copiar, que aparece ao passar o mouse ou focar (nomes, e-mails). Mostra
+ * "Copiado" por um instante depois do clique.
+ */
+export function ValorCopiavel({ valor, rotulo }: { valor: string; rotulo: string }) {
+  const [copiado, setCopiado] = useState(false);
+  useEffect(() => {
+    if (!copiado) return;
+    const t = setTimeout(() => setCopiado(false), 1500);
+    return () => clearTimeout(t);
+  }, [copiado]);
+  return (
+    <span className="group inline-flex max-w-full items-start gap-1.5">
+      <span className="min-w-0 break-words">{valor}</span>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard?.writeText(valor).catch(() => undefined);
+          setCopiado(true);
+        }}
+        aria-label={copiado ? `${rotulo} copiado` : `Copiar ${rotulo.toLowerCase()}`}
+        title={copiado ? 'Copiado' : 'Copiar'}
+        className={cn(
+          '-my-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md text-ds-fg-muted transition hover:bg-ds-bg-subtle hover:text-ds-fg focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus',
+          copiado ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        )}
+      >
+        {copiado ? (
+          <Check className="h-3.5 w-3.5 text-ds-success-fg" aria-hidden />
+        ) : (
+          <Copy className="h-3.5 w-3.5" aria-hidden />
+        )}
+      </button>
     </span>
   );
 }
