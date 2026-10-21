@@ -96,7 +96,7 @@ export const SOLUCOES_MOCK: SolucaoMock[] = [
 const slug = (t: string) =>
   t
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
@@ -237,7 +237,11 @@ const EMPRESAS = ['EMPRESA ALFA', 'EMPRESA GAMA', 'EMPRESA ÉPSILON', 'EMPRESA T
 const numero = (texto: string, max: number) =>
   [...texto].reduce((s, c) => (s * 31 + c.charCodeAt(0)) % 9973, 7) % max;
 
-const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+const semAcento = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toUpperCase();
 
 const prefixo = (solucao: string) =>
   ({ 's-comex': 'COMEX', 's-fiscais': 'FISCAL', 's-financeiras': 'FINANCEIRAS' })[solucao];
