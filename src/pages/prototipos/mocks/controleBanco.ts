@@ -376,6 +376,8 @@ export interface ReajusteMock {
   minutos: number;
   tickets?: number;
   motivo: string;
+  /** Só para a equipe: não vai ao cliente (Book, Saldo Parcial, e-mails) */
+  anotacaoInterna?: string;
   por: string;
   em: string;
   ativo: boolean;
@@ -400,6 +402,7 @@ export const REAJUSTES_MOCK: ReajusteMock[] = [
     mes: '2026-10',
     minutos: h(2),
     motivo: 'Atendimento presencial não apontado no Aranda.',
+    anotacaoInterna: 'Combinado com o gestor do contrato na reunião de 05/10; ata no SharePoint.',
     por: 'Usuário Teste',
     em: '15/10/2026',
     ativo: true,

@@ -24,7 +24,6 @@ import {
   Copy,
   ExternalLink,
   Eye,
-  Filter,
   FolderKanban,
   Search,
   History,
@@ -66,7 +65,12 @@ import { cn } from '@/lib/utils';
 import type { PrototipoProps } from '@/utils/prototipos';
 import { atraso } from './compartilhado/visual';
 import { FaixaTopo, PaginaV2, botaoPrimarioTopo, botaoVidro } from './compartilhado/shell';
-import { BotaoLimparFiltros, FiltroAlternar, FiltroMultiplo } from './compartilhado/filtros';
+import {
+  BotaoFiltros,
+  BotaoLimparFiltros,
+  FiltroAlternar,
+  FiltroMultiplo,
+} from './compartilhado/filtros';
 import { Paginacao } from './compartilhado/paginacao';
 import { DicasContext } from './compartilhado/dicas';
 import { BotaoImportar, MenuExportar, TelaImportacao } from './compartilhado/importacao';
@@ -688,27 +692,12 @@ function Lista({
         <div className="border-b border-ds-border p-3 md:p-4">
           {/* Filtro à esquerda; os filtros abrem na mesma linha, depois da busca */}
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
+            <BotaoFiltros
+              abertos={filtrosAbertos}
+              ativos={filtrosAtivos}
+              controla="filtros-empresas"
               onClick={() => setFiltrosAbertos((v) => !v)}
-              aria-expanded={filtrosAbertos}
-              aria-controls="filtros-empresas"
-              aria-label={filtrosAtivos ? `Filtros (${filtrosAtivos} ativos)` : 'Filtros'}
-              title="Filtros"
-              className={cn(
-                'relative grid h-11 w-11 shrink-0 place-items-center rounded-lg border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus md:h-9 md:w-9',
-                filtrosAbertos || filtrosAtivos
-                  ? 'border-[#00D4E8] bg-ds-accent-subtle text-ds-fg-accent'
-                  : 'border-ds-border-strong bg-ds-bg-surface text-ds-fg-secondary hover:text-ds-fg'
-              )}
-            >
-              <Filter className="h-4 w-4" />
-              {filtrosAtivos > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-ds-accent px-1 text-[11px] font-semibold text-ds-fg-on-accent tabular-nums">
-                  {filtrosAtivos}
-                </span>
-              )}
-            </button>
+            />
             {(filtrosAtivos > 0 || busca) && <BotaoLimparFiltros onClick={limpar} />}
             <label className="relative block min-w-0 flex-1 md:w-72 md:flex-none">
               <Search

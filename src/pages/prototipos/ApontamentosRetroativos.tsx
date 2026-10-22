@@ -249,9 +249,10 @@ function CartaoAjuste({
                   )}
                 </th>
                 <th className="px-3 py-2">Chamado · tarefa</th>
-                <th className="px-3 py-2">Trabalho em</th>
-                <th className="px-3 py-2">Lançado em</th>
+                <th className="px-3 py-2">Data atividade</th>
+                <th className="px-3 py-2">Data sistema</th>
                 <th className="px-3 py-2">Consultor</th>
+                <th className="px-3 py-2">Status do chamado</th>
                 <th className="px-3 py-2 text-right">Horas</th>
               </tr>
             </thead>
@@ -287,6 +288,11 @@ function CartaoAjuste({
                     )}
                   </td>
                   <td className="px-3 py-2">{a.consultor}</td>
+                  <td className="px-3 py-2">
+                    <StatusBadge tom={a.statusChamado === 'Closed' ? 'neutral' : 'info'}>
+                      {a.statusChamado}
+                    </StatusBadge>
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <HoursValue minutos={a.minutos} />
                   </td>
@@ -335,7 +341,7 @@ function EmailConsultores({
 
   return (
     <TelaEdicao
-      voltarPara="Ajustes Retroativos"
+      voltarPara="Apontamentos Retroativos"
       titulo="Pedir regularização aos consultores"
       subtitulo={`${plural(apontamentos.length, 'apontamento', 'apontamentos')} · ${plural(envelopes.length, 'consultor', 'consultores')}`}
       podeSalvar={enviaveis > 0}
@@ -428,7 +434,7 @@ function EmailConsultores({
 /* Tela                                                                 */
 /* ------------------------------------------------------------------ */
 
-export default function AjustesRetroativos({ estado }: PrototipoProps) {
+export default function ApontamentosRetroativos({ estado }: PrototipoProps) {
   const [menuExpandido, setMenuExpandido] = useState(false);
   const [perfil, setPerfil] = useState<Perfil>('edicao');
   const [ajustes, setAjustes] = useState(AJUSTES_RETROATIVOS_MOCK);
@@ -515,7 +521,7 @@ export default function AjustesRetroativos({ estado }: PrototipoProps) {
         <FaixaTopo>
           <div className="pb-24 pt-3 md:pb-28 md:pt-4">
             <div className="ds-surgir max-w-2xl">
-              <TituloFaixa texto="Ajustes Retroativos" />
+              <TituloFaixa texto="Apontamentos Retroativos" />
               <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
                 Apontamentos lançados no Aranda depois do fechamento do mês, por banco.
               </p>
@@ -651,7 +657,7 @@ export default function AjustesRetroativos({ estado }: PrototipoProps) {
               />
             </div>
           ) : (
-            <ul className="space-y-3" aria-label="Ajustes retroativos">
+            <ul className="space-y-3" aria-label="Apontamentos retroativos">
               {visiveis.map((a) => (
                 <CartaoAjuste
                   key={a.id}

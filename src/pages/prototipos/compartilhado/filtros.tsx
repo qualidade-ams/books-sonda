@@ -1,6 +1,6 @@
 // Filtros EXPLORATÓRIOS do DS v2 (fora do glob de /prototipos): seleção múltipla em lista suspensa
 // com o mesmo visual do campo de busca. Se aprovado, vira componente em src/components/ds/ com TDD.
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Filter } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,44 @@ function IconeVassoura({ className }: { className?: string }) {
       <path d="M5 14h14l1.97 6.77A1 1 0 0 1 20 22H4a1 1 0 0 1-.97-1.23z" />
       <path d="m8 22 1-4" />
     </svg>
+  );
+}
+
+/** Funil que mostra e esconde os filtros; o número é a quantidade de filtros em uso */
+export function BotaoFiltros({
+  abertos,
+  ativos,
+  controla,
+  onClick,
+}: {
+  abertos: boolean;
+  ativos: number;
+  /** id do bloco de filtros que o botão abre */
+  controla: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={abertos}
+      aria-controls={controla}
+      aria-label={ativos ? `Filtros (${ativos} ativos)` : 'Filtros'}
+      title="Filtros"
+      className={cn(
+        'relative grid h-11 w-11 shrink-0 place-items-center rounded-lg border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus md:h-9 md:w-9',
+        abertos || ativos
+          ? 'border-[#00D4E8] bg-ds-accent-subtle text-ds-fg-accent'
+          : 'border-ds-border-strong bg-ds-bg-surface text-ds-fg-secondary hover:text-ds-fg'
+      )}
+    >
+      <Filter className="h-4 w-4" />
+      {ativos > 0 && (
+        <span className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-ds-accent px-1 text-[11px] font-semibold text-ds-fg-on-accent tabular-nums">
+          {ativos}
+        </span>
+      )}
+    </button>
   );
 }
 

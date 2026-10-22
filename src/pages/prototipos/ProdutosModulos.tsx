@@ -1175,10 +1175,12 @@ function EdicaoSolucao({
   solucao,
   solucoes,
   onFechar,
+  onSalvar,
 }: {
   solucao: SolucaoMock | null;
   solucoes: SolucaoMock[];
   onFechar: () => void;
+  onSalvar: (s: SolucaoMock) => void;
 }) {
   const novo = solucao === null;
   const [codigo, setCodigo] = useState<string>(solucao?.codigo ?? '');
@@ -1204,7 +1206,15 @@ function EdicaoSolucao({
       podeSalvar={!erroCodigo && !erroNome}
       rotuloSalvar={novo ? 'Criar solução' : 'Salvar'}
       onFechar={onFechar}
-      onSalvar={onFechar}
+      onSalvar={() =>
+        onSalvar({
+          id: solucao?.id ?? `s-${codigo.trim().toLowerCase()}`,
+          codigo: (solucao?.codigo ?? codigo.trim()) as SolucaoMock['codigo'],
+          nome: nome.trim(),
+          ordem: solucao?.ordem ?? solucoes.length + 1,
+          ativo,
+        })
+      }
     >
       <Secao titulo="Identificação">
         <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -1536,6 +1546,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
   const [perfil, setPerfil] = useState<'edicao' | 'leitura'>('edicao');
   const [aba, setAba] = useState('catalogo');
   const [produtos, setProdutos] = useState(PRODUTOS_MOCK);
+  const [solucoes, setSolucoes] = useState(SOLUCOES_MOCK);
   const [selecao, setSelecao] = useState<Selecao>({ tipo: 'produto', id: PRODUTOS_MOCK[0].id });
   const [soSemGrupo, setSoSemGrupo] = useState(false);
   const [editando, setEditando] = useState<Edicao>(null);
@@ -1548,8 +1559,17 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
     selecao.tipo === 'produto' ? produtos.find((p) => p.id === selecao.id) : null;
   const solucaoAtual =
     selecao.tipo === 'solucao'
-      ? SOLUCOES_MOCK.find((s) => s.id === selecao.id)
-      : SOLUCOES_MOCK.find((s) => s.id === produtoAtual?.solucaoId);
+      ? solucoes.find((s) => s.id === selecao.id)
+      : solucoes.find((s) => s.id === produtoAtual?.solucaoId);
+
+  // Simula a gravação: a lista do mock também muda, porque os nomes das soluções são lidos dela
+  const salvarSolucao = (salva: SolucaoMock) => {
+    const existente = SOLUCOES_MOCK.find((s) => s.id === salva.id);
+    if (existente) Object.assign(existente, salva);
+    else SOLUCOES_MOCK.push(salva);
+    setSolucoes([...SOLUCOES_MOCK]);
+    setEditando(null);
+  };
 
   const modulosAtivos = modulos.filter((m) => m.ativo);
   const totais = {
@@ -1584,8 +1604,9 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
         <EdicaoSolucao
           key={editando.solucao?.id ?? 'nova'}
           solucao={editando.solucao}
-          solucoes={SOLUCOES_MOCK}
+          solucoes={solucoes}
           onFechar={() => setEditando(null)}
+          onSalvar={salvarSolucao}
         />
       );
     if (editando?.tipo === 'produto')
@@ -1638,7 +1659,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
                       setEditando({
                         tipo: 'produto',
                         produto: null,
-                        solucaoId: solucaoAtual?.id ?? SOLUCOES_MOCK[0].id,
+                        solucaoId: solucaoAtual?.id ?? solucoes[0].id,
                       })
                     }
                   >
@@ -1724,7 +1745,7 @@ export default function ProdutosModulos({ estado }: PrototipoProps) {
             ) : (
               <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
                 <Arvore
-                  solucoes={SOLUCOES_MOCK}
+                  solucoes={solucoes}
                   produtos={produtos}
                   selecao={selecao}
                   podeEditar={podeEditar}

@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import type { PrototipoProps } from '@/utils/prototipos';
 import { atraso } from './compartilhado/visual';
 import { FaixaTopo, PaginaV2 } from './compartilhado/shell';
-import { BotaoLimparFiltros, FiltroMultiplo } from './compartilhado/filtros';
+import { BotaoFiltros, BotaoLimparFiltros, FiltroMultiplo } from './compartilhado/filtros';
 import { Paginacao } from './compartilhado/paginacao';
 import { DicasContext } from './compartilhado/dicas';
 import { campo } from './compartilhado/estilos';
@@ -235,6 +235,10 @@ export default function AuditoriaBancoHoras({ estado }: PrototipoProps) {
   const filtrosAtivos =
     [empresa, banco, area, acao, origem, usuario].filter((f) => f.length).length +
     (registroDoHistorico ? 1 : 0);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const filtrosDaLista = [empresa, banco, area, acao, origem, usuario].filter(
+    (f) => f.length
+  ).length;
   const limpar = () => {
     setBusca('');
     setEmpresa([]);
@@ -383,6 +387,12 @@ export default function AuditoriaBancoHoras({ estado }: PrototipoProps) {
             >
               <div className="space-y-3 border-b border-ds-border p-3 md:p-4">
                 <div className="flex flex-wrap items-center gap-2">
+                  <BotaoFiltros
+                    abertos={filtrosAbertos}
+                    ativos={filtrosDaLista}
+                    controla="filtros-auditoria"
+                    onClick={() => setFiltrosAbertos((v) => !v)}
+                  />
                   {(filtrosAtivos > 0 || busca) && <BotaoLimparFiltros onClick={limpar} />}
                   <label className="relative block min-w-0 flex-1 md:w-72 md:flex-none">
                     <Search
@@ -416,53 +426,58 @@ export default function AuditoriaBancoHoras({ estado }: PrototipoProps) {
                     />
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
-                  <FiltroMultiplo
-                    rotulo="Empresa"
-                    opcoes={empresas.map((e) => ({ valor: e, rotulo: e }))}
-                    selecionados={empresa}
-                    onChange={(v) => {
-                      setEmpresa(v);
-                      setBanco([]);
-                    }}
-                  />
-                  <FiltroMultiplo
-                    rotulo="Banco"
-                    opcoes={bancos.map((b) => ({ valor: b, rotulo: b }))}
-                    selecionados={banco}
-                    onChange={setBanco}
-                  />
-                  <FiltroMultiplo
-                    rotulo="Área"
-                    opcoes={AREAS_AUDITORIA.map((a) => ({ valor: a, rotulo: a }))}
-                    selecionados={area}
-                    onChange={setArea}
-                  />
-                  <FiltroMultiplo
-                    rotulo="Ação"
-                    opcoes={(Object.keys(ACAO) as AcaoAuditoria[]).map((a) => ({
-                      valor: a,
-                      rotulo: ACAO[a].rotulo,
-                    }))}
-                    selecionados={acao}
-                    onChange={setAcao}
-                  />
-                  <FiltroMultiplo
-                    rotulo="Origem"
-                    opcoes={(Object.keys(ORIGEM) as OrigemAuditoria[]).map((o) => ({
-                      valor: o,
-                      rotulo: ORIGEM[o],
-                    }))}
-                    selecionados={origem}
-                    onChange={setOrigem}
-                  />
-                  <FiltroMultiplo
-                    rotulo="Quem"
-                    opcoes={usuarios.map((u) => ({ valor: u, rotulo: u }))}
-                    selecionados={usuario}
-                    onChange={setUsuario}
-                  />
-                </div>
+                {filtrosAbertos && (
+                  <div
+                    id="filtros-auditoria"
+                    className="ds-surgir flex flex-wrap gap-2 [&>*]:flex-1 sm:[&>*]:flex-none"
+                  >
+                    <FiltroMultiplo
+                      rotulo="Empresa"
+                      opcoes={empresas.map((e) => ({ valor: e, rotulo: e }))}
+                      selecionados={empresa}
+                      onChange={(v) => {
+                        setEmpresa(v);
+                        setBanco([]);
+                      }}
+                    />
+                    <FiltroMultiplo
+                      rotulo="Banco"
+                      opcoes={bancos.map((b) => ({ valor: b, rotulo: b }))}
+                      selecionados={banco}
+                      onChange={setBanco}
+                    />
+                    <FiltroMultiplo
+                      rotulo="Área"
+                      opcoes={AREAS_AUDITORIA.map((a) => ({ valor: a, rotulo: a }))}
+                      selecionados={area}
+                      onChange={setArea}
+                    />
+                    <FiltroMultiplo
+                      rotulo="Ação"
+                      opcoes={(Object.keys(ACAO) as AcaoAuditoria[]).map((a) => ({
+                        valor: a,
+                        rotulo: ACAO[a].rotulo,
+                      }))}
+                      selecionados={acao}
+                      onChange={setAcao}
+                    />
+                    <FiltroMultiplo
+                      rotulo="Origem"
+                      opcoes={(Object.keys(ORIGEM) as OrigemAuditoria[]).map((o) => ({
+                        valor: o,
+                        rotulo: ORIGEM[o],
+                      }))}
+                      selecionados={origem}
+                      onChange={setOrigem}
+                    />
+                    <FiltroMultiplo
+                      rotulo="Quem"
+                      opcoes={usuarios.map((u) => ({ valor: u, rotulo: u }))}
+                      selecionados={usuario}
+                      onChange={setUsuario}
+                    />
+                  </div>
+                )}
                 {registroDoHistorico && (
                   <Callout tom="info" titulo={`Histórico de "${registroDoHistorico}"`}>
                     Mostrando só as alterações deste registro.{' '}

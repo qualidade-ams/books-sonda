@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -17,12 +16,12 @@ import {
   FileSpreadsheet,
   History,
   Info,
+  Lock,
   MessageSquare,
   MoreHorizontal,
   Pencil,
   Plus,
   Receipt,
-  RefreshCw,
   Send,
   Sigma,
   Trash2,
@@ -51,7 +50,7 @@ import { formatarHoras } from '@/components/ds/horas';
 import { cn } from '@/lib/utils';
 import type { PrototipoProps } from '@/utils/prototipos';
 import { BarraConsumo, Sparkline, atraso, useContador } from './compartilhado/visual';
-import { FaixaTopo, PaginaV2, botaoPrimarioTopo, botaoVidro, vidro } from './compartilhado/shell';
+import { FaixaTopo, PaginaV2, botaoVidro } from './compartilhado/shell';
 import { DicasContext } from './compartilhado/dicas';
 import { areaTexto, campo, itemMenu } from './compartilhado/estilos';
 import {
@@ -96,6 +95,8 @@ const DICAS: Record<string, string> = {
   Horas: 'Quantidade de horas do reajuste, em HH:MM.',
   Tickets: 'Quantidade de tickets do reajuste (contrato de horas e tickets).',
   Motivo: 'Obrigatório. Vira a observação do mês e aparece no histórico de versões.',
+  'Anotações internas':
+    'Opcional. Só para a equipe Sonda: aparece no Controle e na auditoria, nunca no Book, no Saldo Parcial ou nos e-mails.',
   Destinatários:
     'Contatos da empresa com a finalidade Saldo Parcial (cadastro de Empresas › Contatos). Um e-mail por empresa, com uma tabela por banco.',
   'Com cópia': 'E-mails extras em cópia, separados por vírgula.',
@@ -128,14 +129,12 @@ function Topo({
   podeEditar,
   legado,
   onEnviar,
-  onRecalcular,
 }: {
   empresaId: string;
   onEmpresa: (id: string) => void;
   podeEditar: boolean;
   legado: boolean;
   onEnviar: () => void;
-  onRecalcular: () => void;
 }) {
   return (
     <FaixaTopo>
@@ -151,29 +150,20 @@ function Topo({
           className="ds-surgir relative mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
           style={atraso(100)}
         >
-          <label
-            className={cn(
-              'relative flex h-11 items-center rounded-lg transition hover:bg-white/[0.1] sm:w-64 md:h-9',
-              vidro
-            )}
+          {/* Trocar de empresa já recalcula os meses abertos: não há botão de recalcular */}
+          <Select
+            variante="vidro"
+            aria-label="Empresa"
+            value={empresaId}
+            onChange={(e) => onEmpresa(e.target.value)}
+            className="w-full sm:w-64"
           >
-            <span className="sr-only">Empresa</span>
-            <select
-              value={empresaId}
-              onChange={(e) => onEmpresa(e.target.value)}
-              className="h-full w-full appearance-none rounded-lg bg-transparent pl-3 pr-9 text-base font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:text-sm [&>option]:text-black"
-            >
-              {EMPRESAS_CONTROLE_MOCK.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute right-3 h-4 w-4 text-white/60"
-              aria-hidden
-            />
-          </label>
+            {EMPRESAS_CONTROLE_MOCK.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nome}
+              </option>
+            ))}
+          </Select>
           {legado ? (
             <span className="inline-flex h-7 items-center gap-1.5 self-start rounded-full border border-[#F0A43A]/35 bg-[#F0A43A]/10 px-2.5 text-xs font-medium text-[#F0A43A] sm:self-auto">
               <AlertTriangle className="h-3.5 w-3.5" /> Legado (em validação)
@@ -189,11 +179,6 @@ function Topo({
             {podeEditar && !legado && (
               <button type="button" className={botaoVidro} onClick={onEnviar}>
                 <Send className="h-4 w-4" /> Enviar Saldo Parcial
-              </button>
-            )}
-            {podeEditar && (
-              <button type="button" onClick={onRecalcular} className={botaoPrimarioTopo}>
-                <RefreshCw className="h-4 w-4" /> Recalcular
               </button>
             )}
           </div>
@@ -520,12 +505,15 @@ function Quadro({
   periodo,
   podeEditar,
   onReajuste,
+  paraEmail = false,
 }: {
   banco: BancoControleMock;
   periodo: PeriodoMock;
   podeEditar: boolean;
   /** Abre o lançamento de reajuste no mês */
   onReajuste: (mes: string) => void;
+  /** Prévia do Saldo Parcial: só leitura, horas e tickets juntos, sem os avisos da tela */
+  paraEmail?: boolean;
 }) {
   const [cobranca, setCobranca] = useState<'horas' | 'tickets'>('horas');
   const [copiado, setCopiado] = useState(false);
@@ -567,7 +555,7 @@ function Quadro({
           <BotaoReajuste
             key={m.id}
             mes={m}
-            podeEditar={podeEditar}
+            podeEditar={podeEditar && !paraEmail}
             onClick={() => onReajuste(m.id)}
           />,
         ])
@@ -659,6 +647,34 @@ function Quadro({
     (o) => o.bancoId === banco.id && o.tipo === 'automatica' && meses.some((m) => m.id === o.mes)
   );
 
+  const tabela = (tipo: 'horas' | 'tickets') => (
+    <MatrixTable
+      rotulo={`Quadro mensal — ${banco.nome}${tipo === 'tickets' ? ' (tickets)' : ''}`}
+      rotuloIndicador={tipo === 'horas' ? 'Horas' : 'Tickets'}
+      colunas={meses.map((m) => ({
+        id: m.id,
+        rotulo: m.rotulo,
+        atual: m.situacao === 'aberto',
+      }))}
+      linhas={tipo === 'horas' ? linhasHoras : linhasTickets}
+      modoMobile="mes-a-mes"
+      alinhamento="centro"
+      colunaInicial={mesReferencia(periodo).id}
+    />
+  );
+
+  if (paraEmail)
+    return (
+      <div className="overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
+        {banco.tipoContrato !== 'tickets' && tabela('horas')}
+        {banco.tipoContrato !== 'horas' && (
+          <div className={cn(banco.tipoContrato === 'ambos' && 'border-t border-ds-border')}>
+            {tabela('tickets')}
+          </div>
+        )}
+      </div>
+    );
+
   return (
     <div className="space-y-4">
       {banco.tipoContrato === 'ambos' && (
@@ -675,19 +691,7 @@ function Quadro({
         </div>
       )}
       <div className="ds-surgir overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
-        <MatrixTable
-          rotulo={`Quadro mensal — ${banco.nome}`}
-          rotuloIndicador={cobranca === 'horas' ? 'Horas' : 'Tickets'}
-          colunas={meses.map((m) => ({
-            id: m.id,
-            rotulo: m.rotulo,
-            atual: m.situacao === 'aberto',
-          }))}
-          linhas={cobranca === 'horas' ? linhasHoras : linhasTickets}
-          modoMobile="mes-a-mes"
-          alinhamento="centro"
-          colunaInicial={mesReferencia(periodo).id}
-        />
+        {tabela(cobranca)}
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ds-border px-4 py-2.5 text-xs text-ds-fg-muted">
           <span>Consumo sincronizado com o Aranda em {ULTIMA_SINCRONIZACAO_MOCK}</span>
         </p>
@@ -900,7 +904,17 @@ function AbaReajustes({
     {
       id: 'motivo',
       cabecalho: 'Motivo',
-      celula: (r) => <span className="text-sm">{r.motivo}</span>,
+      celula: (r) => (
+        <span className="text-sm">
+          {r.motivo}
+          {r.anotacaoInterna && (
+            <span className="mt-0.5 flex items-start gap-1 text-xs text-ds-fg-muted">
+              <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-label="Anotação interna" />
+              {r.anotacaoInterna}
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       id: 'por',
@@ -997,6 +1011,7 @@ function LancarReajuste({
   const [horas, setHoras] = useState('');
   const [tickets, setTickets] = useState('');
   const [motivo, setMotivo] = useState('');
+  const [anotacao, setAnotacao] = useState('');
   const escolhido = periodo.meses.find((m) => m.id === mes);
   const fechado = escolhido?.situacao === 'fechado';
   const minutos = /^\d{1,3}:[0-5]\d$/.test(horas)
@@ -1079,6 +1094,21 @@ function LancarReajuste({
           />
           <p className="mt-1 text-right text-xs tabular-nums text-ds-fg-muted">
             {motivo.length}/700
+          </p>
+        </div>
+        <div>
+          <Rotulo htmlFor="anotacao-reajuste">Anotações internas</Rotulo>
+          <textarea
+            id="anotacao-reajuste"
+            rows={3}
+            maxLength={700}
+            value={anotacao}
+            onChange={(e) => setAnotacao(e.target.value)}
+            placeholder="Ex.: combinado com o gestor do contrato na reunião de 05/10."
+            className={areaTexto}
+          />
+          <p className="mt-1 text-right text-xs tabular-nums text-ds-fg-muted">
+            {anotacao.length}/700
           </p>
         </div>
         {escolhido && minutos > 0 && (
@@ -1358,7 +1388,125 @@ function AbaHistorico({ banco, periodo }: { banco: BancoControleMock; periodo: P
 /* Envio manual do Saldo Parcial                                        */
 /* ------------------------------------------------------------------ */
 
-function EnviarSaldoParcial({ empresa, onFechar }: { empresa: string; onFechar: () => void }) {
+/** O que vai ao cliente: sem anotação interna, sem autor (D-08) e sem reajuste aguardando retificação */
+function DetalheDoBancoNoEmail({
+  banco,
+  periodo,
+  requerimentos,
+  reajustes,
+}: {
+  banco: BancoControleMock;
+  periodo: PeriodoMock;
+  requerimentos: RequerimentoControleMock[];
+  reajustes: ReajusteMock[];
+}) {
+  const doPeriodo = (mes: string) => periodo.meses.some((m) => m.id === mes);
+  const reqs = requerimentos.filter(
+    (r) => r.bancoId === banco.id && periodo.meses.some((m) => m.rotulo === r.mesCobranca)
+  );
+  const ajs = reajustes.filter(
+    (r) => r.bancoId === banco.id && r.ativo && !r.aguardandoRetificacao && doPeriodo(r.mes)
+  );
+  // A observação de reajuste repete o motivo, que já está na lista de reajustes
+  const obs = OBSERVACOES_MOCK.filter(
+    (o) => o.bancoId === banco.id && o.tipo !== 'reajuste' && doPeriodo(o.mes)
+  );
+  const titulo = 'mb-1.5 text-xs font-semibold uppercase tracking-[0.04em] text-ds-fg-muted';
+  const tabela = 'w-full text-sm [&_td]:px-3 [&_td]:py-2 [&_th]:px-3 [&_th]:py-2';
+  const cabecalho =
+    'bg-ds-bg-subtle text-left text-xs font-medium uppercase tracking-[0.04em] text-ds-fg-muted';
+
+  return (
+    <>
+      {reqs.length > 0 && (
+        <div>
+          <p className={titulo}>Requerimentos</p>
+          <div className="overflow-x-auto rounded-lg border border-ds-border">
+            <table className={tabela}>
+              <thead className={cabecalho}>
+                <tr>
+                  <th>Requerimento</th>
+                  <th>Módulo</th>
+                  <th>Cobrança</th>
+                  <th>Situação</th>
+                  <th className="text-right">Horas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ds-border">
+                {reqs.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <span className="font-medium">{r.chamado}</span>
+                      <span className="block text-xs text-ds-fg-muted">{r.titulo}</span>
+                    </td>
+                    <td>{r.modulo}</td>
+                    <td>{r.mesCobranca}</td>
+                    <td>{r.situacao === 'enviado' ? 'Enviado' : 'Em desenvolvimento'}</td>
+                    <td className="text-right">
+                      <HoursValue minutos={r.minutos} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {ajs.length > 0 && (
+        <div>
+          <p className={titulo}>Reajustes</p>
+          <div className="overflow-x-auto rounded-lg border border-ds-border">
+            <table className={tabela}>
+              <thead className={cabecalho}>
+                <tr>
+                  <th>Mês</th>
+                  <th className="text-right">Reajuste</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ds-border">
+                {ajs.map((r) => (
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap">{rotuloMes(r.mes)}</td>
+                    <td className="whitespace-nowrap text-right">
+                      <HoursValue minutos={r.minutos} sinal="sempre" />
+                    </td>
+                    <td>{r.motivo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {obs.length > 0 && (
+        <div>
+          <p className={titulo}>Observações</p>
+          <ul className="divide-y divide-ds-border rounded-lg border border-ds-border text-sm">
+            {obs.map((o) => (
+              <li key={o.id} className="flex gap-3 px-3 py-2">
+                <span className="w-16 shrink-0 text-ds-fg-muted">{rotuloMes(o.mes)}</span>
+                <span>{o.texto}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
+function EnviarSaldoParcial({
+  empresa,
+  requerimentos,
+  reajustes,
+  onFechar,
+}: {
+  empresa: string;
+  requerimentos: RequerimentoControleMock[];
+  reajustes: ReajusteMock[];
+  onFechar: () => void;
+}) {
   const contatos = CONTATOS_ALFA_MOCK.filter((c) => c.ativo && c.finalidade !== 'Book');
   const [destinatarios, setDestinatarios] = useState(contatos.map((c) => c.email));
   const [cc, setCc] = useState('');
@@ -1433,35 +1581,30 @@ function EnviarSaldoParcial({ empresa, onFechar }: { empresa: string; onFechar: 
 
       <Secao titulo="Prévia">
         <p className="text-sm text-ds-fg-secondary">{texto}</p>
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="space-y-6">
           {BANCOS_CONTROLE_MOCK.map((b) => {
             const p = b.periodos[b.periodos.length - 1];
             const m = mesReferencia(p);
             return (
-              <div key={b.id} className="rounded-lg border border-ds-border p-3">
-                <p className="text-sm font-semibold">{b.nome}</p>
-                <p className="text-xs text-ds-fg-muted">{p.rotulo}</p>
-                <dl className="mt-2 grid grid-cols-2 gap-y-1 text-sm">
-                  <dt className="text-ds-fg-muted">Disponível</dt>
-                  <dd className="text-right">
-                    <HoursValue minutos={m.disponivel} />
-                  </dd>
-                  <dt className="text-ds-fg-muted">Consumo</dt>
-                  <dd className="text-right">
-                    <HoursValue minutos={m.consumo} />
-                  </dd>
-                  <dt className="font-medium">Saldo</dt>
-                  <dd className="text-right font-medium">
-                    <HoursValue minutos={m.saldo} cor="saldo" />
-                  </dd>
-                </dl>
+              <article key={b.id} className="space-y-3">
+                <div>
+                  <h3 className="text-base font-semibold">{b.nome}</h3>
+                  <p className="text-xs text-ds-fg-muted">{p.rotulo}</p>
+                </div>
+                <Quadro banco={b} periodo={p} podeEditar={false} onReajuste={() => {}} paraEmail />
                 {m.saldo < 0 && (
-                  <p className="mt-2 text-xs text-ds-fg-secondary">
+                  <p className="text-xs text-ds-fg-secondary">
                     O saldo negativo deste banco poderá ser coberto pelo saldo dos demais bancos no
                     fechamento do período ({p.meses[p.meses.length - 1].rotulo}).
                   </p>
                 )}
-              </div>
+                <DetalheDoBancoNoEmail
+                  banco={b}
+                  periodo={p}
+                  requerimentos={requerimentos}
+                  reajustes={reajustes}
+                />
+              </article>
             );
           })}
         </div>
@@ -1499,7 +1642,6 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
   const [secao, setSecao] = useState('quadro');
   const [nivel, setNivel] = useState<'reajuste' | 'envio' | null>(null);
   const [mesReajuste, setMesReajuste] = useState<string | undefined>();
-  const [recalcular, setRecalcular] = useState(false);
   const [requerimentos, setRequerimentos] = useState(REQUERIMENTOS_CONTROLE_MOCK);
   const [reajustes, setReajustes] = useState(REAJUSTES_MOCK);
   const [inativar, setInativar] = useState<ReajusteMock | null>(null);
@@ -1592,7 +1734,14 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
         />
       );
     if (nivel === 'envio')
-      return <EnviarSaldoParcial empresa={empresa.nome} onFechar={() => setNivel(null)} />;
+      return (
+        <EnviarSaldoParcial
+          empresa={empresa.nome}
+          requerimentos={requerimentos}
+          reajustes={reajustes}
+          onFechar={() => setNivel(null)}
+        />
+      );
     return (
       <>
         <Topo
@@ -1601,7 +1750,6 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
           podeEditar={podeEditar}
           legado={legado}
           onEnviar={() => setNivel('envio')}
-          onRecalcular={() => setRecalcular(true)}
         />
 
         {estado === 'erro' ? (
@@ -1763,18 +1911,6 @@ export default function ControleBancoHoras({ estado }: PrototipoProps) {
         </ChavesPrototipo>
         {corpo()}
 
-        <ConfirmDialog
-          aberto={recalcular}
-          onOpenChange={setRecalcular}
-          titulo="Recalcular os bancos de horas?"
-          descricao={`Os meses abertos de todos os bancos de ${empresa.nome} são refeitos com os apontamentos, requerimentos e reajustes atuais.`}
-          consequencias={[
-            'Meses fechados não mudam; para eles, use a retificação do Book',
-            'O resultado anterior fica no histórico de versões',
-          ]}
-          rotuloConfirmar="Recalcular"
-          onConfirmar={() => setRecalcular(false)}
-        />
         <ConfirmDialog
           aberto={!!inativar}
           onOpenChange={(v) => !v && setInativar(null)}

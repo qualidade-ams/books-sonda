@@ -16,6 +16,8 @@ export interface ApontamentoRetroativoMock {
   /** Quando foi lançado no Aranda (data_sistema), depois do fechamento */
   lancadoEm: string;
   consultor: string;
+  /** Estado do chamado no Aranda (caso_estado), como vem de lá */
+  statusChamado: string;
   minutos: number;
   emailEnviado?: { em: string; por: string };
 }
@@ -59,6 +61,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '24/09/2026',
         lancadoEm: '20/10/2026',
         consultor: 'Consultor Teste Um',
+        statusChamado: 'Closed',
         minutos: h(2, 30),
       },
       {
@@ -68,6 +71,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '25/09/2026',
         lancadoEm: '20/10/2026',
         consultor: 'Consultor Teste Um',
+        statusChamado: 'Resolved',
         minutos: h(1),
       },
       {
@@ -77,6 +81,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '29/09/2026',
         lancadoEm: '21/10/2026',
         consultor: 'Consultor Teste Dois',
+        statusChamado: 'In Progress',
         minutos: h(0, 45),
       },
     ],
@@ -97,6 +102,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '30/08/2026',
         lancadoEm: '17/10/2026',
         consultor: 'Consultor Teste Três',
+        statusChamado: 'Closed',
         minutos: h(3),
         emailEnviado: { em: '18/10/2026 10:02', por: 'Usuário Teste' },
       },
@@ -123,6 +129,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '22/09/2026',
         lancadoEm: '13/10/2026',
         consultor: 'Consultor Teste Dois',
+        statusChamado: 'Closed',
         minutos: h(4),
       },
       {
@@ -132,6 +139,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '23/09/2026',
         lancadoEm: '13/10/2026',
         consultor: 'Consultor Teste Dois',
+        statusChamado: 'Resolved',
         minutos: h(1, 30),
       },
     ],
@@ -158,6 +166,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '27/08/2026',
         lancadoEm: '04/10/2026',
         consultor: 'Consultor Teste Um',
+        statusChamado: 'Open',
         minutos: h(2),
       },
     ],
@@ -184,6 +193,7 @@ export const AJUSTES_RETROATIVOS_MOCK: AjusteRetroativoMock[] = [
         dataAtividade: '18/09/2026',
         lancadoEm: '08/10/2026',
         consultor: 'Consultor Teste Três',
+        statusChamado: 'Closed',
         minutos: h(1, 15),
         emailEnviado: { em: '09/10/2026 15:40', por: 'Usuário Teste' },
       },

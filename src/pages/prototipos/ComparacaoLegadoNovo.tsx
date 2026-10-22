@@ -180,7 +180,7 @@ export default function ComparacaoLegadoNovo({ estado }: PrototipoProps) {
           acoes={[
             { rotulo: 'Exportar', onClick: () => undefined, icone: <Download /> },
             {
-              rotulo: 'Recalcular sombra',
+              rotulo: 'Recalcular',
               onClick: () => undefined,
               icone: <RefreshCw />,
               primaria: true,
