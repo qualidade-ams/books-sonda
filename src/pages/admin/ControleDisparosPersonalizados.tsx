@@ -13,7 +13,7 @@ import {
   Filter,
   Search,
   X,
-  Eye
+  Eye,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
@@ -22,12 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,11 +53,10 @@ import { AnexoUpload } from '@/components/admin/anexos/AnexoUpload';
 import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton';
 import FiltrosStatusDisparos from '@/components/admin/FiltrosStatusDisparos';
 import PreviewEmailBookModal from '@/components/admin/disparos/PreviewEmailBookModal';
-import type {
-  AgendamentoDisparo,
-  StatusControleMensal,
-  StatusMensal
-} from '@/types/clientBooks';
+import type { AgendamentoDisparo, StatusControleMensal, StatusMensal } from '@/types/clientBooks';
+
+// Botão de agendamento por empresa desativado; o modal de agendamento continua no código
+const AGENDAMENTO_HABILITADO = false;
 
 const ControleDisparosPersonalizados = () => {
   const { toast } = useToast();
@@ -70,8 +64,18 @@ const ControleDisparosPersonalizados = () => {
 
   // Nomes dos meses via i18n
   const monthKeys = [
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december'
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
   ];
   const getMonthName = (monthIndex: number) => t(`monthPicker.months.${monthKeys[monthIndex]}`);
 
@@ -107,8 +111,6 @@ const ControleDisparosPersonalizados = () => {
   const [buscaEmpresa, setBuscaEmpresa] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-
-
   // Hooks
   const {
     statusMensal = [] as StatusMensal[],
@@ -119,58 +121,57 @@ const ControleDisparosPersonalizados = () => {
     dispararSelecionados,
     reenviarSelecionados,
     reenviarFalhas,
-    agendarDisparo
+    agendarDisparo,
   } = useControleDisparosPersonalizados(mesAtual, anoAtual);
 
   const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
 
   // Hook para gerenciamento de anexos
-  const {
-    obterAnexosPorEmpresa,
-    obterSummary,
-    isUploading: isUploadingAnexos
-  } = useAnexos();
+  const { obterAnexosPorEmpresa, obterSummary, isUploading: isUploadingAnexos } = useAnexos();
 
   // Filtrar dados baseado no status e busca por nome de empresa
   const statusMensalFiltrado = useMemo<StatusMensal[]>(() => {
     if (!Array.isArray(statusMensal)) return [];
-    
+
     let filtrados: StatusMensal[] = statusMensal;
-    
+
     // Filtrar por status
     if (statusFiltro !== 'todos') {
-      filtrados = filtrados.filter(status => status.status === statusFiltro);
+      filtrados = filtrados.filter((status) => status.status === statusFiltro);
     }
-    
+
     // Filtrar por nome de empresa (busca em nome completo e abreviado)
     if (buscaEmpresa.trim()) {
       const termoBusca = buscaEmpresa.toLowerCase().trim();
-      filtrados = filtrados.filter(status => {
+      filtrados = filtrados.filter((status) => {
         const nomeCompleto = status.empresa?.nome_completo?.toLowerCase() || '';
         const nomeAbreviado = status.empresa?.nome_abreviado?.toLowerCase() || '';
         return nomeCompleto.includes(termoBusca) || nomeAbreviado.includes(termoBusca);
       });
     }
-    
+
     // Ordenar alfabeticamente por nome abreviado da empresa
     filtrados = filtrados.sort((a, b) => {
       const nomeA = a.empresa?.nome_abreviado || a.empresa?.nome_completo || '';
       const nomeB = b.empresa?.nome_abreviado || b.empresa?.nome_completo || '';
       return nomeA.localeCompare(nomeB, 'pt-BR');
     });
-    
+
     return filtrados;
   }, [statusMensal, statusFiltro, buscaEmpresa]);
 
   // Seleção de empresas
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
-  const allIds = useMemo(() => statusMensalFiltrado.map(s => s.empresaId), [statusMensalFiltrado]);
+  const allIds = useMemo(
+    () => statusMensalFiltrado.map((s) => s.empresaId),
+    [statusMensalFiltrado]
+  );
   const allSelected = selecionadas.length > 0 && selecionadas.length === allIds.length;
   const toggleSelectAll = () => {
-    setSelecionadas(prev => (prev.length === allIds.length ? [] : allIds));
+    setSelecionadas((prev) => (prev.length === allIds.length ? [] : allIds));
   };
   const toggleSelectOne = (id: string) => {
-    setSelecionadas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelecionadas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   // Limpar seleção quando filtro muda
@@ -181,12 +182,12 @@ const ControleDisparosPersonalizados = () => {
   // Status das empresas selecionadas
   const empresasSelecionadasStatus = useMemo(() => {
     if (!Array.isArray(statusMensal)) return [];
-    
-    return selecionadas.map(id => {
-      const status = (statusMensal as StatusMensal[]).find(s => s.empresaId === id);
+
+    return selecionadas.map((id) => {
+      const status = (statusMensal as StatusMensal[]).find((s) => s.empresaId === id);
       return {
         empresaId: id,
-        status: status?.status || 'pendente'
+        status: status?.status || 'pendente',
       };
     });
   }, [selecionadas, statusMensal]);
@@ -196,23 +197,28 @@ const ControleDisparosPersonalizados = () => {
     if (!Array.isArray(statusMensal)) {
       return { paraDisparar: 0, paraReenviar: 0 };
     }
-    
-    const paraDisparar = empresasSelecionadasStatus.filter(empresa => {
-      const status = empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou';
+
+    const paraDisparar = empresasSelecionadasStatus.filter((empresa) => {
+      const status =
+        empresa.status === 'pendente' ||
+        empresa.status === 'agendado' ||
+        empresa.status === 'falhou';
 
       // Verificar se empresa tem anexo obrigatório
-      const empresaData = (statusMensal as StatusMensal[]).find(s => s.empresaId === empresa.empresaId)?.empresa;
+      const empresaData = (statusMensal as StatusMensal[]).find(
+        (s) => s.empresaId === empresa.empresaId
+      )?.empresa;
       if (empresaData?.anexo) {
         const anexos = obterAnexosPorEmpresa(empresa.empresaId);
-        const temAnexosValidos = anexos.length > 0 && anexos.every(a => a.status !== 'erro');
+        const temAnexosValidos = anexos.length > 0 && anexos.every((a) => a.status !== 'erro');
         return status && temAnexosValidos;
       }
 
       return status;
     }).length;
 
-    const paraReenviar = empresasSelecionadasStatus.filter(empresa =>
-      empresa.status === 'enviado'
+    const paraReenviar = empresasSelecionadasStatus.filter(
+      (empresa) => empresa.status === 'enviado'
     ).length;
 
     return { paraDisparar, paraReenviar };
@@ -229,15 +235,15 @@ const ControleDisparosPersonalizados = () => {
         agendados: 0,
         totalEmails: 0,
         totalClientes: 0,
-        percentualConcluido: 0
+        percentualConcluido: 0,
       };
     }
-    
+
     const total = statusMensal.length;
-    const enviados = statusMensal.filter(s => s.status === 'enviado').length;
-    const pendentes = statusMensal.filter(s => s.status === 'pendente').length;
-    const falhas = statusMensal.filter(s => s.status === 'falhou').length;
-    const agendados = statusMensal.filter(s => s.status === 'agendado').length;
+    const enviados = statusMensal.filter((s) => s.status === 'enviado').length;
+    const pendentes = statusMensal.filter((s) => s.status === 'pendente').length;
+    const falhas = statusMensal.filter((s) => s.status === 'falhou').length;
+    const agendados = statusMensal.filter((s) => s.status === 'agendado').length;
 
     const totalEmails = statusMensal.reduce((acc, s) => acc + s.emailsEnviados, 0);
     const totalClientes = statusMensal.reduce((acc, s) => acc + s.clientesAtivos, 0);
@@ -250,7 +256,7 @@ const ControleDisparosPersonalizados = () => {
       agendados,
       totalEmails,
       totalClientes,
-      percentualConcluido: total > 0 ? Math.round((enviados / total) * 100) : 0
+      percentualConcluido: total > 0 ? Math.round((enviados / total) * 100) : 0,
     };
   }, [statusMensal]);
 
@@ -276,7 +282,7 @@ const ControleDisparosPersonalizados = () => {
   // Handlers para ações
   const handleDispararSelecionados = async () => {
     if (selecionadas.length === 0) return;
-    
+
     if (!Array.isArray(statusMensal)) {
       toast({
         title: t('common.error'),
@@ -287,29 +293,37 @@ const ControleDisparosPersonalizados = () => {
     }
 
     // Validar anexos obrigatórios antes do disparo
-    const empresasComAnexoObrigatorio = selecionadas.filter(empresaId => {
-      const empresaData = (statusMensal as StatusMensal[]).find(s => s.empresaId === empresaId)?.empresa;
+    const empresasComAnexoObrigatorio = selecionadas.filter((empresaId) => {
+      const empresaData = (statusMensal as StatusMensal[]).find(
+        (s) => s.empresaId === empresaId
+      )?.empresa;
       return empresaData?.anexo === true;
     });
 
     for (const empresaId of empresasComAnexoObrigatorio) {
       const anexos = obterAnexosPorEmpresa(empresaId);
-      const empresaData = (statusMensal as StatusMensal[]).find(s => s.empresaId === empresaId)?.empresa;
+      const empresaData = (statusMensal as StatusMensal[]).find(
+        (s) => s.empresaId === empresaId
+      )?.empresa;
 
       if (anexos.length === 0) {
         toast({
           title: t('disparosPersonalizados.attachmentsRequired'),
-          description: t('disparosPersonalizados.attachmentsRequiredDesc', { company: empresaData?.nome_abreviado }),
+          description: t('disparosPersonalizados.attachmentsRequiredDesc', {
+            company: empresaData?.nome_abreviado,
+          }),
           variant: 'destructive',
         });
         return;
       }
 
-      const anexosComErro = anexos.filter(a => a.status === 'erro');
+      const anexosComErro = anexos.filter((a) => a.status === 'erro');
       if (anexosComErro.length > 0) {
         toast({
           title: t('disparosPersonalizados.attachmentsWithError'),
-          description: t('disparosPersonalizados.attachmentsWithErrorDesc', { company: empresaData?.nome_abreviado }),
+          description: t('disparosPersonalizados.attachmentsWithErrorDesc', {
+            company: empresaData?.nome_abreviado,
+          }),
           variant: 'destructive',
         });
         return;
@@ -320,7 +334,10 @@ const ControleDisparosPersonalizados = () => {
       const resultado = await dispararSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
         title: t('disparosPersonalizados.customDispatchCompleted'),
-        description: t('disparosPersonalizados.customDispatchCompletedDesc', { success: resultado.sucesso, failures: resultado.falhas }),
+        description: t('disparosPersonalizados.customDispatchCompletedDesc', {
+          success: resultado.sucesso,
+          failures: resultado.falhas,
+        }),
       });
       setSelecionadas([]);
     } catch (error) {
@@ -338,7 +355,9 @@ const ControleDisparosPersonalizados = () => {
       const resultado = await reenviarSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
         title: t('disparosPersonalizados.customResendCompleted'),
-        description: t('disparosPersonalizados.customResendCompletedDesc', { success: resultado.sucesso }),
+        description: t('disparosPersonalizados.customResendCompletedDesc', {
+          success: resultado.sucesso,
+        }),
       });
       setSelecionadas([]);
     } catch (error) {
@@ -361,14 +380,15 @@ const ControleDisparosPersonalizados = () => {
 
       toast({
         title: t('disparosPersonalizados.customResendFailedCompleted'),
-        description: t('disparosPersonalizados.customResendFailedCompletedDesc', { success: resultado.sucesso }),
+        description: t('disparosPersonalizados.customResendFailedCompletedDesc', {
+          success: resultado.sucesso,
+        }),
       });
-
     } catch (error) {
       toast({
         title: t('disparosPersonalizados.customResendFailedError'),
         description: error instanceof Error ? error.message : t('common.error'),
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -390,7 +410,7 @@ const ControleDisparosPersonalizados = () => {
         empresaId: empresaSelecionada,
         clienteIds: empresa.clientes.map((c: any) => c.id),
         dataAgendamento: new Date(dataAgendamento),
-        observacoes: observacoesAgendamento
+        observacoes: observacoesAgendamento,
       };
 
       await agendarDisparo(agendamento);
@@ -404,12 +424,11 @@ const ControleDisparosPersonalizados = () => {
         title: t('disparosPersonalizados.customScheduleCompleted'),
         description: t('disparosPersonalizados.customScheduleCompletedDesc'),
       });
-
     } catch (error) {
       toast({
         title: t('disparosPersonalizados.customScheduleError'),
         description: error instanceof Error ? error.message : t('common.error'),
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -442,15 +461,17 @@ const ControleDisparosPersonalizados = () => {
       );
     }
 
-    const anexosComErro = anexos.filter(a => a.status === 'erro').length;
-    const anexosPendentes = anexos.filter(a => a.status === 'pendente').length;
-    const anexosProcessados = anexos.filter(a => a.status === 'processado').length;
+    const anexosComErro = anexos.filter((a) => a.status === 'erro').length;
+    const anexosPendentes = anexos.filter((a) => a.status === 'pendente').length;
+    const anexosProcessados = anexos.filter((a) => a.status === 'processado').length;
 
     if (anexosComErro > 0) {
       return (
         <div className="flex items-center gap-1 text-red-600">
           <Paperclip className="h-3 w-3" />
-          <span className="text-xs">{t('disparosPersonalizados.errorsCount', { count: anexosComErro })}</span>
+          <span className="text-xs">
+            {t('disparosPersonalizados.errorsCount', { count: anexosComErro })}
+          </span>
         </div>
       );
     }
@@ -459,7 +480,9 @@ const ControleDisparosPersonalizados = () => {
       return (
         <div className="flex items-center gap-1 text-blue-600">
           <Paperclip className="h-3 w-3" />
-          <span className="text-xs">{t('disparosPersonalizados.filesCount', { count: anexos.length })}</span>
+          <span className="text-xs">
+            {t('disparosPersonalizados.filesCount', { count: anexos.length })}
+          </span>
         </div>
       );
     }
@@ -467,7 +490,9 @@ const ControleDisparosPersonalizados = () => {
     return (
       <div className="flex items-center gap-1 text-green-600">
         <Paperclip className="h-3 w-3" />
-        <span className="text-xs">{t('disparosPersonalizados.filesCount', { count: anexos.length })}</span>
+        <span className="text-xs">
+          {t('disparosPersonalizados.filesCount', { count: anexos.length })}
+        </span>
       </div>
     );
   };
@@ -518,18 +543,26 @@ const ControleDisparosPersonalizados = () => {
             <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
               <Button
                 onClick={handleDispararSelecionados}
-                disabled={isDisparandoSelecionados || isUploadingAnexos || contadoresInteligentes.paraDisparar === 0}
+                disabled={
+                  isDisparandoSelecionados ||
+                  isUploadingAnexos ||
+                  contadoresInteligentes.paraDisparar === 0
+                }
                 size="sm"
                 title={
                   isUploadingAnexos
                     ? t('disparosPersonalizados.waitingUpload')
                     : contadoresInteligentes.paraDisparar === 0
                       ? t('disparosPersonalizados.noCompanyNeedsDispatchOrMissingAttachments')
-                      : t('disparosPersonalizados.dispatchCustomBooksFor', { count: contadoresInteligentes.paraDisparar })
+                      : t('disparosPersonalizados.dispatchCustomBooksFor', {
+                          count: contadoresInteligentes.paraDisparar,
+                        })
                 }
               >
                 <Send className="h-4 w-4 mr-2" />
-                {isDisparandoSelecionados ? t('disparos.sending') : `${t('disparos.sendSelected')} (${contadoresInteligentes.paraDisparar})`}
+                {isDisparandoSelecionados
+                  ? t('disparos.sending')
+                  : `${t('disparos.sendSelected')} (${contadoresInteligentes.paraDisparar})`}
               </Button>
             </ProtectedAction>
 
@@ -559,10 +592,16 @@ const ControleDisparosPersonalizados = () => {
                   onClick={handleReenvioFalhas}
                   disabled={isReenviando || isUploadingAnexos}
                   size="sm"
-                  title={isUploadingAnexos ? t('disparosPersonalizados.waitingUpload') : t('disparos.resendCompaniesWithFailure', { count: stats.falhas })}
+                  title={
+                    isUploadingAnexos
+                      ? t('disparosPersonalizados.waitingUpload')
+                      : t('disparos.resendCompaniesWithFailure', { count: stats.falhas })
+                  }
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  {isReenviando ? t('disparos.resending') : `${t('disparos.resendFailed')} (${stats.falhas})`}
+                  {isReenviando
+                    ? t('disparos.resending')
+                    : `${t('disparos.resendFailed')} (${stats.falhas})`}
                 </Button>
               </ProtectedAction>
             )}
@@ -578,7 +617,9 @@ const ControleDisparosPersonalizados = () => {
                 <p className="text-xs font-medium text-gray-500">{t('disparos.totalCompanies')}</p>
               </div>
               <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalClientes} {t('disparos.clients')}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.totalClientes} {t('disparos.clients')}
+              </p>
             </CardContent>
           </Card>
 
@@ -589,7 +630,9 @@ const ControleDisparosPersonalizados = () => {
                 <p className="text-xs font-medium text-green-500">{t('disparos.sent')}</p>
               </div>
               <p className="text-2xl font-bold text-green-600">{stats.enviados}</p>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalEmails} {t('disparos.emails')}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.totalEmails} {t('disparos.emails')}
+              </p>
             </CardContent>
           </Card>
 
@@ -618,11 +661,7 @@ const ControleDisparosPersonalizados = () => {
         <Card>
           <CardContent>
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={handleMesAnterior}
-                disabled={isLoading}
-              >
+              <Button variant="outline" onClick={handleMesAnterior} disabled={isLoading}>
                 ← {t('common.previous')}
               </Button>
 
@@ -638,11 +677,7 @@ const ControleDisparosPersonalizados = () => {
                 </p>
               </div>
 
-              <Button
-                variant="outline"
-                onClick={handleProximoMes}
-                disabled={isLoading}
-              >
+              <Button variant="outline" onClick={handleProximoMes} disabled={isLoading}>
                 {t('common.next')} →
               </Button>
             </div>
@@ -667,12 +702,16 @@ const ControleDisparosPersonalizados = () => {
                 {t('disparosPersonalizados.statusByCustomCompany')} ({statusMensalFiltrado.length})
                 {statusMensalFiltrado.length > 0 && (
                   <div className="flex items-center gap-2 text-sm">
-                    <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
+                    <Checkbox
+                      id="select-all"
+                      checked={allSelected}
+                      onCheckedChange={toggleSelectAll}
+                    />
                     <Label htmlFor="select-all">{t('disparos.selectAll')}</Label>
                   </div>
                 )}
               </CardTitle>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -683,7 +722,7 @@ const ControleDisparosPersonalizados = () => {
                   <Filter className="h-4 w-4" />
                   <span>{t('common.filter')}</span>
                 </Button>
-                
+
                 {(statusFiltro !== 'todos' || buscaEmpresa) && (
                   <Button
                     variant="outline"
@@ -700,7 +739,7 @@ const ControleDisparosPersonalizados = () => {
                 )}
               </div>
             </div>
-            
+
             {/* Filtros */}
             {mostrarFiltros && (
               <div className="space-y-4 pt-4 border-t">
@@ -724,17 +763,29 @@ const ControleDisparosPersonalizados = () => {
                     <div className="text-sm font-medium mb-2">{t('disparos.dispatchStatus')}</div>
                     <Select
                       value={statusFiltro}
-                      onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
+                      onValueChange={(value) =>
+                        setStatusFiltro(value as StatusControleMensal | 'todos')
+                      }
                     >
                       <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                         <SelectValue placeholder={t('disparos.allStatuses')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">{t('disparos.allStatuses')} ({stats.total})</SelectItem>
-                        <SelectItem value="enviado">{t('disparos.statusSent')} ({stats.enviados})</SelectItem>
-                        <SelectItem value="pendente">{t('disparos.statusPending')} ({stats.pendentes})</SelectItem>
-                        <SelectItem value="falhou">{t('disparos.statusFailed')} ({stats.falhas})</SelectItem>
-                        <SelectItem value="agendado">{t('disparos.statusScheduled')} ({stats.agendados})</SelectItem>
+                        <SelectItem value="todos">
+                          {t('disparos.allStatuses')} ({stats.total})
+                        </SelectItem>
+                        <SelectItem value="enviado">
+                          {t('disparos.statusSent')} ({stats.enviados})
+                        </SelectItem>
+                        <SelectItem value="pendente">
+                          {t('disparos.statusPending')} ({stats.pendentes})
+                        </SelectItem>
+                        <SelectItem value="falhou">
+                          {t('disparos.statusFailed')} ({stats.falhas})
+                        </SelectItem>
+                        <SelectItem value="agendado">
+                          {t('disparos.statusScheduled')} ({stats.agendados})
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -752,10 +803,9 @@ const ControleDisparosPersonalizados = () => {
               <div className="text-center py-8">
                 <Sparkles className="h-8 w-8 mx-auto text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  {statusFiltro === 'todos' 
+                  {statusFiltro === 'todos'
                     ? t('disparosPersonalizados.noCustomCompanyFound')
-                    : t('disparos.noCompanyWithStatus', { status: statusFiltro })
-                  }
+                    : t('disparos.noCompanyWithStatus', { status: statusFiltro })}
                 </p>
               </div>
             ) : (
@@ -783,13 +833,17 @@ const ControleDisparosPersonalizados = () => {
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {status.clientesAtivos} {t('disparos.activeClients')}
-                          {status.emailsEnviados > 0 && ` • ${status.emailsEnviados} ${t('disparos.emailsSent')}`}
+                          {status.emailsEnviados > 0 &&
+                            ` • ${status.emailsEnviados} ${t('disparos.emailsSent')}`}
                         </p>
-                        {status.empresa.anexo && obterIndicadorAnexos(status.empresaId, status.empresa.anexo)}
+                        {status.empresa.anexo &&
+                          obterIndicadorAnexos(status.empresaId, status.empresa.anexo)}
                         {status.observacoes && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                             {(() => {
-                              const match = status.observacoes.match(/E-mail consolidado enviado para (\d+) clientes/);
+                              const match = status.observacoes.match(
+                                /E-mail consolidado enviado para (\d+) clientes/
+                              );
                               if (match) {
                                 return `${t('disparos.consolidatedEmailSent')} ${match[1]} ${t('disparos.clients')}`;
                               }
@@ -812,7 +866,12 @@ const ControleDisparosPersonalizados = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleAbrirPreview(status.empresaId, status.empresa.nome_abreviado || status.empresa.nome_completo)}
+                          onClick={() =>
+                            handleAbrirPreview(
+                              status.empresaId,
+                              status.empresa.nome_abreviado || status.empresa.nome_completo
+                            )
+                          }
                           className="h-8 w-8 p-0"
                           title={t('disparos.preview.buttonTooltip')}
                           aria-label={t('disparos.preview.buttonTooltip')}
@@ -836,7 +895,7 @@ const ControleDisparosPersonalizados = () => {
                         </ProtectedAction>
                       )}
 
-                      {false && status.status === 'pendente' && (
+                      {AGENDAMENTO_HABILITADO && status.status === 'pendente' && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                           <Button
                             size="sm"
@@ -867,17 +926,20 @@ const ControleDisparosPersonalizados = () => {
         <AlertDialog open={showReenvioModal} onOpenChange={setShowReenvioModal}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{t('disparosPersonalizados.confirmResendCustomTitle')}</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t('disparosPersonalizados.confirmResendCustomTitle')}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                {t('disparosPersonalizados.confirmResendCustomDescription', { count: stats.falhas, month: getMonthName(mesAtual - 1), year: anoAtual })}
+                {t('disparosPersonalizados.confirmResendCustomDescription', {
+                  count: stats.falhas,
+                  month: getMonthName(mesAtual - 1),
+                  year: anoAtual,
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmarReenvioFalhas}
-                disabled={isReenviando}
-              >
+              <AlertDialogAction onClick={confirmarReenvioFalhas} disabled={isReenviando}>
                 {isReenviando ? t('disparos.resending') : t('disparos.confirmResend')}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -903,7 +965,9 @@ const ControleDisparosPersonalizados = () => {
               </div>
 
               <div>
-                <Label htmlFor="observacoes-agendamento">{t('disparos.scheduleObservations')}</Label>
+                <Label htmlFor="observacoes-agendamento">
+                  {t('disparos.scheduleObservations')}
+                </Label>
                 <Textarea
                   id="observacoes-agendamento"
                   value={observacoesAgendamento}
@@ -913,10 +977,7 @@ const ControleDisparosPersonalizados = () => {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAgendamentoModal(false)}
-                >
+                <Button variant="outline" onClick={() => setShowAgendamentoModal(false)}>
                   {t('common.cancel')}
                 </Button>
                 <Button
@@ -940,7 +1001,12 @@ const ControleDisparosPersonalizados = () => {
                 {t('disparosPersonalizados.manageAttachments')}
                 {empresaAnexoSelecionada && Array.isArray(statusMensal) && (
                   <span className="text-sm font-normal text-muted-foreground">
-                    - {(statusMensal as StatusMensal[]).find(s => s.empresaId === empresaAnexoSelecionada)?.empresa.nome_abreviado}
+                    -{' '}
+                    {
+                      (statusMensal as StatusMensal[]).find(
+                        (s) => s.empresaId === empresaAnexoSelecionada
+                      )?.empresa.nome_abreviado
+                    }
                   </span>
                 )}
               </DialogTitle>

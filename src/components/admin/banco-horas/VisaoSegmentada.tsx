@@ -1,18 +1,25 @@
 /**
  * Componente VisaoSegmentada
- * 
+ *
  * Exibe a visão segmentada do banco de horas, dividindo os dados
  * entre múltiplas empresas conforme configuração de segmentação.
- * 
+ *
  * Estrutura idêntica à Visão Consolidada, exceto pela linha de Reajuste.
- * 
+ *
  * @module components/admin/banco-horas/VisaoSegmentada
  */
 
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Building2, AlertCircle, Loader2, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -57,12 +64,16 @@ interface ApontamentoAranda {
 /**
  * Aplicar filtro de item_configuracao baseado na configuração da empresa segmentada
  */
-function aplicarFiltro(itemConfiguracao: string | null | undefined, filtroTipo: string, filtroValor: string): boolean {
+function aplicarFiltro(
+  itemConfiguracao: string | null | undefined,
+  filtroTipo: string,
+  filtroValor: string
+): boolean {
   if (!itemConfiguracao) return false;
-  
+
   const item = itemConfiguracao.toUpperCase();
   const valor = filtroValor.toUpperCase();
-  
+
   switch (filtroTipo) {
     case 'contem':
       return item.includes(valor);
@@ -84,7 +95,7 @@ function aplicarFiltro(itemConfiguracao: string | null | undefined, filtroTipo: 
 /**
  * Calcular horas de consumo de chamados para uma empresa segmentada em um mês específico
  * Busca dados da tabela apontamentos_aranda filtrando por item_configuracao
- * 
+ *
  * IMPORTANTE: Segue EXATAMENTE a mesma lógica do backend (bancoHorasIntegracaoService.buscarConsumo)
  * com filtro adicional por item_configuracao
  */
@@ -101,25 +112,25 @@ async function calcularConsumoSegmentadoPorMes(
       filtroTipo,
       filtroValor,
       mes,
-      ano
+      ano,
     });
-    
+
     // Buscar nome da empresa para filtrar apontamentos
     const { data: empresa, error: empresaError } = await supabase
       .from('empresas_clientes')
       .select('nome_abreviado, nome_completo')
       .eq('id', empresaId)
       .single();
-    
+
     if (empresaError || !empresa) {
       console.error('❌ Empresa não encontrada:', empresaError);
       return 0;
     }
-    
+
     // Calcular data de início e fim do mês
     const dataInicio = new Date(ano, mes - 1, 1);
     const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
-    
+
     // Códigos de resolução válidos (MESMA LISTA DO BACKEND)
     const codigosResolucaoValidos = [
       'Alocação',
@@ -168,77 +179,85 @@ async function calcularConsumoSegmentadoPorMes(
       'Parametrização / Funcionalidade (Banco=S| SLA=N)',
       'Validação de Arquivo',
       'Validação de Arquivo (Banco=S |SLA=N)',
-      'Validação de Arquivo (Banco=S| SLA=N)'
+      'Validação de Arquivo (Banco=S| SLA=N)',
     ];
-    
+
     console.log('📅 Período de busca:', {
       dataInicio: dataInicio.toISOString(),
       dataFim: dataFim.toISOString(),
-      empresaNome: empresa.nome_abreviado || empresa.nome_completo
+      empresaNome: empresa.nome_abreviado || empresa.nome_completo,
     });
-    
+
     // Construir query base (ALINHADA com bancoHorasIntegracaoService.buscarConsumo)
     const nomeCompleto = empresa.nome_completo;
-    
+
     if (!nomeCompleto) {
-      console.error('❌ Nome completo da empresa não cadastrado. Obrigatório para buscar apontamentos.');
+      console.error(
+        '❌ Nome completo da empresa não cadastrado. Obrigatório para buscar apontamentos.'
+      );
       return 0;
     }
-    
-    let query = supabase
+
+    const query = supabase
       .from('apontamentos_aranda' as any)
-      .select('tempo_gasto_horas, tempo_gasto_minutos, item_configuracao, data_atividade, data_sistema')
+      .select(
+        'tempo_gasto_horas, tempo_gasto_minutos, item_configuracao, data_atividade, data_sistema'
+      )
       .eq('ativi_interna', 'Não')
-      .neq('item_configuracao', '000000 - PROJETOS APL')  // Excluir projetos APL
-      .in('tipo_chamado', ['IM', 'RF', 'PM'])  // ✅ CORREÇÃO: Mesmos tipos do consolidado
-      .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%')  // ✅ CORREÇÃO: Filtro de caso_grupo igual ao consolidado
+      .neq('item_configuracao', '000000 - PROJETOS APL') // Excluir projetos APL
+      .in('tipo_chamado', ['IM', 'RF', 'PM']) // ✅ CORREÇÃO: Mesmos tipos do consolidado
+      .or(
+        'caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%'
+      ) // ✅ CORREÇÃO: Filtro de caso_grupo igual ao consolidado
       .gte('data_atividade', dataInicio.toISOString())
       .lte('data_atividade', dataFim.toISOString())
-      .ilike('org_us_final', nomeCompleto)  // ✅ CORREÇÃO: Match exato sem wildcards (%) igual ao consolidado
+      .ilike('org_us_final', nomeCompleto) // ✅ CORREÇÃO: Match exato sem wildcards (%) igual ao consolidado
       .in('cod_resolucao', codigosResolucaoValidos)
-      .limit(10000);  // ✅ CORREÇÃO: Mesmo limite do consolidado
-    
+      .limit(10000); // ✅ CORREÇÃO: Mesmo limite do consolidado
+
     // Executar query
-    const { data: apontamentos, error: apontamentosError } = await query as any;
-    
+    const { data: apontamentos, error: apontamentosError } = (await query) as any;
+
     if (apontamentosError) {
       console.error('❌ Erro ao buscar apontamentos:', apontamentosError);
       return 0;
     }
-    
+
     console.log(`📊 Total de apontamentos encontrados: ${apontamentos?.length || 0}`);
-    
+
     // Filtrar apontamentos baseado no item_configuracao (FILTRO ADICIONAL DA SEGMENTAÇÃO)
     // Todos os apontamentos retornados pela query são considerados válidos.
     // A detecção de extemporâneos é feita pelo bancoHorasQuarentenaService (synced_at > fechado_em).
-    const apontamentosFiltrados = (apontamentos || []).filter(apt => {
+    const apontamentosFiltrados = (apontamentos || []).filter((apt) => {
       // Aplicar filtro de segmentação
       return aplicarFiltro(apt.item_configuracao, filtroTipo, filtroValor);
     });
-    
+
     console.log(`✅ Apontamentos após filtro de segmentação: ${apontamentosFiltrados.length}`);
-    
+
     // Somar horas (MESMA LÓGICA DO BACKEND)
     let totalMinutos = 0;
-    
+
     for (const apontamento of apontamentosFiltrados) {
       // Priorizar tempo_gasto_horas (formato HH:MM)
       if (apontamento.tempo_gasto_horas) {
         try {
           const [horas, minutos] = apontamento.tempo_gasto_horas.split(':').map(Number);
-          totalMinutos += (horas * 60) + minutos;
+          totalMinutos += horas * 60 + minutos;
         } catch (error) {
           console.warn('⚠️ Erro ao converter tempo_gasto_horas:', apontamento.tempo_gasto_horas);
         }
-      } 
+      }
       // Fallback para tempo_gasto_minutos
       else if (apontamento.tempo_gasto_minutos) {
         totalMinutos += apontamento.tempo_gasto_minutos;
       }
     }
-    
-    console.log(`💰 Total de minutos calculados: ${totalMinutos} (${converterMinutosParaHoras(totalMinutos)})`);
-    
+
+    console.log(
+      `💰 Total de minutos calculados: ${totalMinutos} (${converterMinutosParaHoras(totalMinutos)})`
+    );
+
     return totalMinutos;
   } catch (error) {
     console.error('❌ Erro ao calcular consumo segmentado:', error);
@@ -270,7 +289,7 @@ const formatarMoeda = (valor?: number): string => {
   if (valor === undefined || valor === null) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
-    currency: 'BRL'
+    currency: 'BRL',
   }).format(valor);
 };
 
@@ -291,18 +310,26 @@ export function VisaoSegmentada({
   empresaAtual,
 }: VisaoSegmentadaProps) {
   const { t, i18n } = useTranslation();
-  
+
   // Nomes dos meses traduzidos
   const MESES = [
-    t('bankHours.months.january'), t('bankHours.months.february'), t('bankHours.months.march'),
-    t('bankHours.months.april'), t('bankHours.months.may'), t('bankHours.months.june'),
-    t('bankHours.months.july'), t('bankHours.months.august'), t('bankHours.months.september'),
-    t('bankHours.months.october'), t('bankHours.months.november'), t('bankHours.months.december')
+    t('bankHours.months.january'),
+    t('bankHours.months.february'),
+    t('bankHours.months.march'),
+    t('bankHours.months.april'),
+    t('bankHours.months.may'),
+    t('bankHours.months.june'),
+    t('bankHours.months.july'),
+    t('bankHours.months.august'),
+    t('bankHours.months.september'),
+    t('bankHours.months.october'),
+    t('bankHours.months.november'),
+    t('bankHours.months.december'),
   ];
-  
+
   // Meses abreviados para headers compactos
-  const MESES_ABREV = MESES.map(mes => mes.substring(0, 3));
-  
+  const MESES_ABREV = MESES.map((mes) => mes.substring(0, 3));
+
   // Calcular nome do período atual (mesma lógica da Visão Consolidada)
   const uiLanguage = i18n.language === 'en' ? true : i18n.language === 'es' ? 'es' : false;
   const nomePeriodoAtual = useMemo(() => {
@@ -318,61 +345,60 @@ export function VisaoSegmentada({
       uiLanguage
     );
   }, [inicioVigencia, periodoApuracao, mesesDoPeriodo, uiLanguage]);
-  
+
   // Estado para armazenar dados de consumo de chamados
-  const [consumoPorEmpresaMes, setConsumoPorEmpresaMes] = useState<Record<string, Record<string, number>>>({});
+  const [consumoPorEmpresaMes, setConsumoPorEmpresaMes] = useState<
+    Record<string, Record<string, number>>
+  >({});
   const [carregandoConsumo, setCarregandoConsumo] = useState(true);
-  
+
   // Estado para armazenar reajustes por empresa segmentada e mês
-  const [reajustesPorEmpresaMes, setReajustesPorEmpresaMes] = useState<Record<string, Record<string, number>>>({});
+  const [reajustesPorEmpresaMes, setReajustesPorEmpresaMes] = useState<
+    Record<string, Record<string, number>>
+  >({});
   const [carregandoReajustes, setCarregandoReajustes] = useState(true);
-  
+
   // Buscar taxa hora/ticket (mesma lógica da Visão Consolidada)
-  const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
-  
+  const isTicket =
+    tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
+
   const taxaHoraCalculada = useMemo(() => {
     if (calculos.length === 0) return undefined;
-    
+
     // Buscar taxa de qualquer cálculo que tenha o valor
     if (isTicket) {
-      return calculos.find(c => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada;
+      return calculos.find((c) => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada;
     } else {
-      return calculos.find(c => c.taxa_hora_utilizada)?.taxa_hora_utilizada;
+      return calculos.find((c) => c.taxa_hora_utilizada)?.taxa_hora_utilizada;
     }
   }, [calculos, isTicket]);
-  
+
   console.log('💰 [VisaoSegmentada] Taxa calculada:', {
     taxaHoraCalculada,
     tipoCobranca,
     isTicket,
-    calculos: calculos.length
+    calculos: calculos.length,
   });
-  
-  // Validar se há configuração de segmentação
-  if (!segmentacaoConfig || !segmentacaoConfig.empresas || segmentacaoConfig.empresas.length === 0) {
-    return (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Nenhuma configuração de segmentação encontrada para esta empresa.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-  
+
+  // Sem configuração os hooks abaixo não fazem nada; o aviso é exibido depois
+  // deles, para manter a mesma ordem de hooks entre renders
+  const temSegmentacao = !!segmentacaoConfig?.empresas?.length;
+
   // Buscar dados de consumo de chamados ao montar o componente
   useEffect(() => {
+    if (!temSegmentacao) return;
+
     const buscarConsumoSegmentado = async () => {
       setCarregandoConsumo(true);
-      
+
       console.log('🔄 [VisaoSegmentada] Iniciando busca de consumo segmentado...');
-      
+
       const consumoTemp: Record<string, Record<string, number>> = {};
-      
+
       // Para cada empresa segmentada
       for (const empresa of segmentacaoConfig.empresas) {
         consumoTemp[empresa.nome] = {};
-        
+
         // Para cada mês do período
         for (const mesAno of mesesDoPeriodo) {
           const chave = `${mesAno.mes}-${mesAno.ano}`;
@@ -383,39 +409,41 @@ export function VisaoSegmentada({
             mesAno.mes,
             mesAno.ano
           );
-          
+
           consumoTemp[empresa.nome][chave] = consumo;
-          
+
           console.log(`📊 [${empresa.nome}] ${chave}: ${converterMinutosParaHoras(consumo)}`);
         }
       }
-      
+
       setConsumoPorEmpresaMes(consumoTemp);
       setCarregandoConsumo(false);
-      
+
       console.log('✅ [VisaoSegmentada] Busca de consumo concluída!');
     };
-    
+
     buscarConsumoSegmentado();
-  }, [empresaId, segmentacaoConfig, mesesDoPeriodo]);
-  
+  }, [empresaId, segmentacaoConfig, mesesDoPeriodo, temSegmentacao]);
+
   // Buscar reajustes por empresa segmentada
   useEffect(() => {
+    if (!temSegmentacao) return;
+
     const buscarReajustesSegmentados = async () => {
       setCarregandoReajustes(true);
-      
+
       console.log('🔄 [VisaoSegmentada] Iniciando busca de reajustes segmentados...');
-      
+
       const reajustesTemp: Record<string, Record<string, number>> = {};
-      
+
       // Para cada empresa segmentada
       for (const empresa of segmentacaoConfig.empresas) {
         reajustesTemp[empresa.nome] = {};
-        
+
         // Para cada mês do período
         for (const mesAno of mesesDoPeriodo) {
           const chave = `${mesAno.mes}-${mesAno.ano}`;
-          
+
           // Buscar reajustes desta empresa segmentada neste mês
           const { data: reajustes, error } = await (supabase
             .from('banco_horas_reajustes' as any)
@@ -425,24 +453,26 @@ export function VisaoSegmentada({
             .eq('ano', mesAno.ano)
             .eq('empresa_segmentada', empresa.nome)
             .eq('ativo', true) as any);
-          
+
           if (error) {
             console.error(`❌ Erro ao buscar reajustes de ${empresa.nome} em ${chave}:`, error);
             reajustesTemp[empresa.nome][chave] = 0;
             continue;
           }
-          
+
           // Somar todos os reajustes (saida = positivo, entrada = negativo)
           // ✅ CORREÇÃO: Alinhado com a visão consolidada (bancoHorasService.ts)
           // Fórmula: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
           // - Reajustes de SAÍDA aumentam o consumo (horas gastas/debitadas) → positivo
           // - Reajustes de ENTRADA diminuem o consumo (horas devolvidas) → negativo
           let totalReajusteMinutos = 0;
-          
+
           if (reajustes && reajustes.length > 0) {
             for (const reajuste of reajustes) {
-              const valorMinutos = converterHorasParaMinutos(reajuste.valor_reajuste_horas || '00:00');
-              
+              const valorMinutos = converterHorasParaMinutos(
+                reajuste.valor_reajuste_horas || '00:00'
+              );
+
               if (reajuste.tipo_reajuste === 'saida') {
                 totalReajusteMinutos += valorMinutos;
               } else if (reajuste.tipo_reajuste === 'entrada') {
@@ -450,30 +480,34 @@ export function VisaoSegmentada({
               }
             }
           }
-          
+
           reajustesTemp[empresa.nome][chave] = totalReajusteMinutos;
-          
-          console.log(`📊 [${empresa.nome}] Reajuste ${chave}: ${converterMinutosParaHoras(Math.abs(totalReajusteMinutos))} (${totalReajusteMinutos >= 0 ? '+' : '-'})`);
+
+          console.log(
+            `📊 [${empresa.nome}] Reajuste ${chave}: ${converterMinutosParaHoras(Math.abs(totalReajusteMinutos))} (${totalReajusteMinutos >= 0 ? '+' : '-'})`
+          );
         }
       }
-      
+
       setReajustesPorEmpresaMes(reajustesTemp);
       setCarregandoReajustes(false);
-      
+
       console.log('✅ [VisaoSegmentada] Busca de reajustes concluída!');
     };
-    
+
     buscarReajustesSegmentados();
-  }, [empresaId, segmentacaoConfig, mesesDoPeriodo]);
-  
+  }, [empresaId, segmentacaoConfig, mesesDoPeriodo, temSegmentacao]);
+
   // Calcular dados para cada empresa segmentada por mês
   const dadosSegmentados = useMemo(() => {
+    if (!temSegmentacao) return [];
+
     // TODO: Buscar baseline total real da empresa do banco de dados
     const baselineTotal = '80:00'; // Placeholder
-    
-    return segmentacaoConfig.empresas.map(empresa => {
+
+    return segmentacaoConfig.empresas.map((empresa) => {
       const baseline = calcularBaselineSegmentado(baselineTotal, empresa.percentual);
-      
+
       // Array temporário para armazenar dados de cada mês
       const dadosPorMes: Array<{
         mes: number;
@@ -488,93 +522,117 @@ export function VisaoSegmentada({
         saldo: number;
         repasse: number;
       }> = [];
-      
+
       // Calcular dados para cada mês do período
       mesesDoPeriodo.forEach((mesAno, indexMes) => {
         // Buscar consumo de chamados do estado
         const chave = `${mesAno.mes}-${mesAno.ano}`;
         const consumoChamados = consumoPorEmpresaMes[empresa.nome]?.[chave] || 0;
-        
+
         // Calcular repasse do mês anterior (PERMITIR VALORES NEGATIVOS)
-        const repasseMesAnterior = indexMes > 0 && dadosPorMes[indexMes - 1]
-          ? Math.round(dadosPorMes[indexMes - 1].saldo * (percentualRepasseMensal / 100))
-          : 0;
-        
+        const repasseMesAnterior =
+          indexMes > 0 && dadosPorMes[indexMes - 1]
+            ? Math.round(dadosPorMes[indexMes - 1].saldo * (percentualRepasseMensal / 100))
+            : 0;
+
         // Saldo a utilizar = baseline + repasse mês anterior (pode ser negativo)
         const saldoAUtilizar = baseline + repasseMesAnterior;
-        
+
         console.log(`🔍 [${empresa.nome}] ${chave} - INÍCIO DA FILTRAGEM:`, {
           mes: mesAno.mes,
           ano: mesAno.ano,
           totalRequerimentos: requerimentos.length,
-          requerimentosEmpresa: requerimentos.filter(r => r.empresa_segmentacao_nome === empresa.nome).length,
-          todosRequerimentos: requerimentos.map(r => ({
+          requerimentosEmpresa: requerimentos.filter(
+            (r) => r.empresa_segmentacao_nome === empresa.nome
+          ).length,
+          todosRequerimentos: requerimentos.map((r) => ({
             id: r.id,
             chamado: r.chamado,
             empresa_segmentacao_nome: r.empresa_segmentacao_nome,
             mes_cobranca: r.mes_cobranca,
             horas_funcional: r.horas_funcional,
-            horas_tecnico: r.horas_tecnico
-          }))
+            horas_tecnico: r.horas_tecnico,
+          })),
         });
-        
+
         // Filtrar requerimentos desta empresa segmentada neste mês
-        const requerimentosDoMes = requerimentos.filter(req => {
+        const requerimentosDoMes = requerimentos.filter((req) => {
           // Verificar se o requerimento pertence a esta empresa de segmentação
           if (req.empresa_segmentacao_nome !== empresa.nome) {
-            console.log(`❌ [${empresa.nome}] Requerimento ${req.chamado} não pertence a esta empresa (tem: ${req.empresa_segmentacao_nome})`);
+            console.log(
+              `❌ [${empresa.nome}] Requerimento ${req.chamado} não pertence a esta empresa (tem: ${req.empresa_segmentacao_nome})`
+            );
             return false;
           }
-          
+
           // Verificar se o requerimento tem mês de cobrança
           if (!req.mes_cobranca || typeof req.mes_cobranca !== 'string') {
-            console.warn(`⚠️ [${empresa.nome}] Requerimento sem mes_cobranca válido:`, req.id, req.chamado);
+            console.warn(
+              `⚠️ [${empresa.nome}] Requerimento sem mes_cobranca válido:`,
+              req.id,
+              req.chamado
+            );
             return false;
           }
-          
+
           // Formato esperado: "MM/YYYY" (ex: "01/2026" ou "02/2026") ou "YYYY-MM" (ex: "2026-01")
           let mesReq: number;
           let anoReq: number;
-          
+
           if (req.mes_cobranca.includes('/')) {
             // Formato: "MM/YYYY"
             const partes = req.mes_cobranca.split('/');
             mesReq = parseInt(partes[0], 10);
             anoReq = parseInt(partes[1], 10);
-            console.log(`🔍 [${empresa.nome}] Parsing mes_cobranca "${req.mes_cobranca}" (formato MM/YYYY):`, { mesReq, anoReq, esperado: { mes: mesAno.mes, ano: mesAno.ano } });
+            console.log(
+              `🔍 [${empresa.nome}] Parsing mes_cobranca "${req.mes_cobranca}" (formato MM/YYYY):`,
+              { mesReq, anoReq, esperado: { mes: mesAno.mes, ano: mesAno.ano } }
+            );
           } else if (req.mes_cobranca.includes('-')) {
             // Formato: "YYYY-MM"
             const partes = req.mes_cobranca.split('-');
             anoReq = parseInt(partes[0], 10);
             mesReq = parseInt(partes[1], 10);
-            console.log(`🔍 [${empresa.nome}] Parsing mes_cobranca "${req.mes_cobranca}" (formato YYYY-MM):`, { mesReq, anoReq, esperado: { mes: mesAno.mes, ano: mesAno.ano } });
+            console.log(
+              `🔍 [${empresa.nome}] Parsing mes_cobranca "${req.mes_cobranca}" (formato YYYY-MM):`,
+              { mesReq, anoReq, esperado: { mes: mesAno.mes, ano: mesAno.ano } }
+            );
           } else {
-            console.warn(`⚠️ [${empresa.nome}] Formato de mes_cobranca inválido:`, req.mes_cobranca);
+            console.warn(
+              `⚠️ [${empresa.nome}] Formato de mes_cobranca inválido:`,
+              req.mes_cobranca
+            );
             return false;
           }
-          
+
           // Validar se são números válidos
           if (isNaN(mesReq) || isNaN(anoReq)) {
-            console.warn(`⚠️ [${empresa.nome}] Mês ou ano inválido:`, { mesReq, anoReq, mes_cobranca: req.mes_cobranca });
+            console.warn(`⚠️ [${empresa.nome}] Mês ou ano inválido:`, {
+              mesReq,
+              anoReq,
+              mes_cobranca: req.mes_cobranca,
+            });
             return false;
           }
-          
+
           const match = mesReq === mesAno.mes && anoReq === mesAno.ano;
-          console.log(`${match ? '✅' : '❌'} [${empresa.nome}] Requerimento ${req.chamado}: ${mesReq}/${anoReq} ${match ? '===' : '!=='} ${mesAno.mes}/${mesAno.ano}`);
-          
+          console.log(
+            `${match ? '✅' : '❌'} [${empresa.nome}] Requerimento ${req.chamado}: ${mesReq}/${anoReq} ${match ? '===' : '!=='} ${mesAno.mes}/${mesAno.ano}`
+          );
+
           return match;
         });
-        
+
         // Somar horas dos requerimentos (funcional + técnico)
         const requerimentosMinutos = requerimentosDoMes.reduce((total, req) => {
           let horasFuncional = 0;
           let horasTecnico = 0;
-          
+
           // Converter horas_funcional (pode ser string "HH:MM" ou number decimal)
           if (typeof req.horas_funcional === 'string' && req.horas_funcional.includes(':')) {
             // Formato "HH:MM" - converter para minutos
             const [horas, minutos] = req.horas_funcional.split(':').map(Number);
-            horasFuncional = (horas * 60) + minutos;
+            horasFuncional = horas * 60 + minutos;
           } else if (typeof req.horas_funcional === 'number') {
             // Formato decimal - converter para minutos
             horasFuncional = Math.round(req.horas_funcional * 60);
@@ -585,12 +643,12 @@ export function VisaoSegmentada({
               horasFuncional = Math.round(valor * 60);
             }
           }
-          
+
           // Converter horas_tecnico (pode ser string "HH:MM" ou number decimal)
           if (typeof req.horas_tecnico === 'string' && req.horas_tecnico.includes(':')) {
             // Formato "HH:MM" - converter para minutos
             const [horas, minutos] = req.horas_tecnico.split(':').map(Number);
-            horasTecnico = (horas * 60) + minutos;
+            horasTecnico = horas * 60 + minutos;
           } else if (typeof req.horas_tecnico === 'number') {
             // Formato decimal - converter para minutos
             horasTecnico = Math.round(req.horas_tecnico * 60);
@@ -601,7 +659,7 @@ export function VisaoSegmentada({
               horasTecnico = Math.round(valor * 60);
             }
           }
-          
+
           console.log(`💰 [${empresa.nome}] ${chave} - Processando requerimento ${req.chamado}:`, {
             horas_funcional_original: req.horas_funcional,
             horas_tecnico_original: req.horas_tecnico,
@@ -610,50 +668,55 @@ export function VisaoSegmentada({
             tipo_horas_funcional: typeof req.horas_funcional,
             tipo_horas_tecnico: typeof req.horas_tecnico,
             total_minutos: horasFuncional + horasTecnico,
-            total_horas: converterMinutosParaHoras(horasFuncional + horasTecnico)
+            total_horas: converterMinutosParaHoras(horasFuncional + horasTecnico),
           });
-          
+
           // Validar se são números válidos
           if (isNaN(horasFuncional) || isNaN(horasTecnico)) {
-            console.warn(`⚠️ [${empresa.nome}] Horas inválidas no requerimento:`, req.id, { horasFuncional, horasTecnico });
+            console.warn(`⚠️ [${empresa.nome}] Horas inválidas no requerimento:`, req.id, {
+              horasFuncional,
+              horasTecnico,
+            });
             return total;
           }
-          
+
           const minutosRequerimento = horasFuncional + horasTecnico;
-          console.log(`✅ [${empresa.nome}] ${chave} - Adicionando ${minutosRequerimento} minutos (${converterMinutosParaHoras(minutosRequerimento)}) ao total`);
-          
+          console.log(
+            `✅ [${empresa.nome}] ${chave} - Adicionando ${minutosRequerimento} minutos (${converterMinutosParaHoras(minutosRequerimento)}) ao total`
+          );
+
           return total + minutosRequerimento;
         }, 0);
-        
+
         console.log(`📊 [${empresa.nome}] ${chave} - Requerimentos:`, {
           total: requerimentosDoMes.length,
           minutos: requerimentosMinutos,
           horas: converterMinutosParaHoras(requerimentosMinutos),
-          requerimentos: requerimentosDoMes.map(r => ({
+          requerimentos: requerimentosDoMes.map((r) => ({
             id: r.id,
             chamado: r.chamado,
             mes_cobranca: r.mes_cobranca,
             horas_funcional: r.horas_funcional,
-            horas_tecnico: r.horas_tecnico
-          }))
+            horas_tecnico: r.horas_tecnico,
+          })),
         });
-        
+
         // Buscar reajuste do estado
         const reajuste = reajustesPorEmpresaMes[empresa.nome]?.[chave] || 0;
-        
+
         // Consumo total = consumo chamados + requerimentos + reajuste
         // IMPORTANTE: Reajuste já vem com o sinal correto:
         //             Saída = positivo (aumenta consumo)
         //             Entrada = negativo (diminui consumo)
         // Alinhado com: consumo_total = consumo + requerimentos + reajustes_saida - reajustes_entrada
         const consumoTotal = consumoChamados + requerimentosMinutos + reajuste;
-        
+
         // Saldo = saldo a utilizar - consumo total (pode ser negativo)
         const saldo = saldoAUtilizar - consumoTotal;
-        
+
         // Repasse para próximo mês (PERMITIR VALORES NEGATIVOS)
         const repasse = Math.round(saldo * (percentualRepasseMensal / 100));
-        
+
         // Adicionar dados do mês ao array
         dadosPorMes.push({
           mes: mesAno.mes,
@@ -669,11 +732,11 @@ export function VisaoSegmentada({
           repasse,
         });
       });
-      
+
       // Calcular excedentes (saldo negativo do último mês do período)
       const ultimoMes = dadosPorMes[dadosPorMes.length - 1];
       const excedentes = ultimoMes && ultimoMes.saldo < 0 ? Math.abs(ultimoMes.saldo) : 0;
-      
+
       // Calcular valor total dos excedentes DESTA EMPRESA
       let valorTotalExcedentes = 0;
       if (taxaHoraCalculada && taxaHoraCalculada > 0 && excedentes > 0) {
@@ -682,7 +745,7 @@ export function VisaoSegmentada({
         // Calcular valor total
         valorTotalExcedentes = horasDecimais * taxaHoraCalculada;
       }
-      
+
       console.log(`📊 [${empresa.nome}] Excedentes e valor calculados:`, {
         ultimoMesSaldo: ultimoMes?.saldo,
         ultimoMesSaldoHoras: ultimoMes ? converterMinutosParaHoras(ultimoMes.saldo) : 'N/A',
@@ -690,9 +753,9 @@ export function VisaoSegmentada({
         excedentesHoras: converterMinutosParaHoras(excedentes),
         temExcedentes: excedentes > 0,
         taxaHora: taxaHoraCalculada,
-        valorTotal: valorTotalExcedentes
+        valorTotal: valorTotalExcedentes,
       });
-      
+
       return {
         nome: empresa.nome,
         percentual: empresa.percentual,
@@ -704,8 +767,29 @@ export function VisaoSegmentada({
         filtroValor: empresa.filtro_valor,
       };
     });
-  }, [segmentacaoConfig, mesesDoPeriodo, percentualRepasseMensal, consumoPorEmpresaMes, reajustesPorEmpresaMes, taxaHoraCalculada, requerimentos]);
-  
+  }, [
+    segmentacaoConfig,
+    mesesDoPeriodo,
+    percentualRepasseMensal,
+    consumoPorEmpresaMes,
+    reajustesPorEmpresaMes,
+    taxaHoraCalculada,
+    requerimentos,
+    temSegmentacao,
+  ]);
+
+  // Validar se há configuração de segmentação
+  if (!temSegmentacao) {
+    return (
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Nenhuma configuração de segmentação encontrada para esta empresa.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   // Mostrar loading enquanto busca dados
   if (carregandoConsumo || carregandoReajustes) {
     return (
@@ -714,14 +798,16 @@ export function VisaoSegmentada({
           <div className="flex flex-col items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
             <p className="text-sm text-gray-500">
-              {carregandoConsumo ? t('bankHours.loadingSegmentedData') : t('bankHours.loadingAdjustments')}
+              {carregandoConsumo
+                ? t('bankHours.loadingSegmentedData')
+                : t('bankHours.loadingAdjustments')}
             </p>
           </div>
         </CardContent>
       </Card>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Tabela para cada empresa segmentada */}
@@ -730,247 +816,269 @@ export function VisaoSegmentada({
           excedentes: dados.excedentes,
           excedentesHoras: converterMinutosParaHoras(dados.excedentes),
           temExcedentes: dados.excedentes > 0,
-          mostrarLinha: dados.excedentes > 0
+          mostrarLinha: dados.excedentes > 0,
         });
-        
+
         return (
-        <Card key={index} className="rounded-xl overflow-hidden">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-sonda-blue" />
-                {dados.nome}
-              </CardTitle>
-              <Badge className="bg-sonda-blue text-white">
-                {dados.percentual}% {t('bankHours.ofBaseline')}
-              </Badge>
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table className="min-w-full">
-                <TableHeader>
-                  {/* Linha: Período */}
-                  <TableRow className="bg-gray-700 hover:bg-gray-700">
-                    <TableHead className="font-semibold text-white text-center">{t('common.period')}</TableHead>
-                    <TableHead className="font-semibold text-white text-center" colSpan={mesesDoPeriodo.length}>
-                      {nomePeriodoAtual}
-                    </TableHead>
-                  </TableRow>
-                  
-                  {/* Linha: Mês */}
-                  <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
-                    <TableHead className="text-white font-semibold text-center">{t('bankHours.monthLabel')}</TableHead>
-                    {mesesDoPeriodo.map((mesAno, idx) => {
-                      // Verificar se empresa tem período de apuração customizado
-                      const diaInicio = (empresaAtual as any)?.dia_inicio_apuracao ?? 1;
-                      const diaFim = (empresaAtual as any)?.dia_fim_apuracao ?? 0;
-                      const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
-                      
-                      let headerMes: string;
-                      if (temApuracaoCustomizada) {
-                        const mesInicio = mesAno.mes;
-                        const anoInicio = mesAno.ano;
-                        let mesFim = mesInicio + 1;
-                        let anoFim = anoInicio;
-                        if (mesFim > 12) {
-                          mesFim = 1;
-                          anoFim += 1;
+          <Card key={index} className="rounded-xl overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-sonda-blue" />
+                  {dados.nome}
+                </CardTitle>
+                <Badge className="bg-sonda-blue text-white">
+                  {dados.percentual}% {t('bankHours.ofBaseline')}
+                </Badge>
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table className="min-w-full">
+                  <TableHeader>
+                    {/* Linha: Período */}
+                    <TableRow className="bg-gray-700 hover:bg-gray-700">
+                      <TableHead className="font-semibold text-white text-center">
+                        {t('common.period')}
+                      </TableHead>
+                      <TableHead
+                        className="font-semibold text-white text-center"
+                        colSpan={mesesDoPeriodo.length}
+                      >
+                        {nomePeriodoAtual}
+                      </TableHead>
+                    </TableRow>
+
+                    {/* Linha: Mês */}
+                    <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
+                      <TableHead className="text-white font-semibold text-center">
+                        {t('bankHours.monthLabel')}
+                      </TableHead>
+                      {mesesDoPeriodo.map((mesAno, idx) => {
+                        // Verificar se empresa tem período de apuração customizado
+                        const diaInicio = (empresaAtual as any)?.dia_inicio_apuracao ?? 1;
+                        const diaFim = (empresaAtual as any)?.dia_fim_apuracao ?? 0;
+                        const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
+
+                        let headerMes: string;
+                        if (temApuracaoCustomizada) {
+                          const mesInicio = mesAno.mes;
+                          const anoInicio = mesAno.ano;
+                          let mesFim = mesInicio + 1;
+                          let anoFim = anoInicio;
+                          if (mesFim > 12) {
+                            mesFim = 1;
+                            anoFim += 1;
+                          }
+                          const anoInicioAbrev = String(anoInicio).slice(-2);
+                          const anoFimAbrev = String(anoFim).slice(-2);
+                          headerMes = `${diaInicio} ${MESES_ABREV[mesInicio - 1]}/${anoInicioAbrev} à ${diaFim} ${MESES_ABREV[mesFim - 1]}/${anoFimAbrev}`;
+                        } else {
+                          headerMes = `${MESES_ABREV[mesAno.mes - 1]}/${String(mesAno.ano).slice(-2)}`;
                         }
-                        const anoInicioAbrev = String(anoInicio).slice(-2);
-                        const anoFimAbrev = String(anoFim).slice(-2);
-                        headerMes = `${diaInicio} ${MESES_ABREV[mesInicio - 1]}/${anoInicioAbrev} à ${diaFim} ${MESES_ABREV[mesFim - 1]}/${anoFimAbrev}`;
-                      } else {
-                        headerMes = `${MESES_ABREV[mesAno.mes - 1]}/${String(mesAno.ano).slice(-2)}`;
-                      }
-                      
-                      return (
-                        <TableHead key={idx} className="text-white font-semibold text-center whitespace-nowrap">
-                          {headerMes}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Banco Contratado (Baseline) */}
-                  <TableRow className="bg-gray-700 hover:bg-gray-700">
-                    <TableCell className="font-semibold text-white text-center">
-                      {t('bankHours.contractedBank')}
-                    </TableCell>
-                    {mesesDoPeriodo.map((_, idx) => (
-                      <TableCell key={idx} className="text-center font-semibold text-white">
-                        {converterMinutosParaHoras(dados.baseline)}
+
+                        return (
+                          <TableHead
+                            key={idx}
+                            className="text-white font-semibold text-center whitespace-nowrap"
+                          >
+                            {headerMes}
+                          </TableHead>
+                        );
+                      })}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Banco Contratado (Baseline) */}
+                    <TableRow className="bg-gray-700 hover:bg-gray-700">
+                      <TableCell className="font-semibold text-white text-center">
+                        {t('bankHours.contractedBank')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Repasse mês anterior */}
-                  <TableRow className="bg-gray-200 hover:bg-gray-200">
-                    <TableCell className="font-medium text-gray-900 text-center">
-                      {t('bankHours.previousMonthCarryover')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell 
-                        key={idx} 
-                        className={`text-center font-semibold ${getColorClass(mesDados.repasseMesAnterior)}`}
-                      >
-                        {converterMinutosParaHoras(mesDados.repasseMesAnterior)}
+                      {mesesDoPeriodo.map((_, idx) => (
+                        <TableCell key={idx} className="text-center font-semibold text-white">
+                          {converterMinutosParaHoras(dados.baseline)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Repasse mês anterior */}
+                    <TableRow className="bg-gray-200 hover:bg-gray-200">
+                      <TableCell className="font-medium text-gray-900 text-center">
+                        {t('bankHours.previousMonthCarryover')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Saldo a utilizar */}
-                  <TableRow className="bg-gray-50">
-                    <TableCell className="font-medium text-center">
-                      {t('bankHours.balanceToUse')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell 
-                        key={idx} 
-                        className={`text-center font-semibold ${getColorClass(mesDados.saldoAUtilizar)}`}
-                      >
-                        {converterMinutosParaHoras(mesDados.saldoAUtilizar)}
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell
+                          key={idx}
+                          className={`text-center font-semibold ${getColorClass(mesDados.repasseMesAnterior)}`}
+                        >
+                          {converterMinutosParaHoras(mesDados.repasseMesAnterior)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Saldo a utilizar */}
+                    <TableRow className="bg-gray-50">
+                      <TableCell className="font-medium text-center">
+                        {t('bankHours.balanceToUse')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Consumo Chamados */}
-                  <TableRow>
-                    <TableCell className="font-medium text-center">
-                      {t('bankHours.ticketConsumption')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell key={idx} className="text-center font-semibold text-gray-900">
-                        {converterMinutosParaHoras(mesDados.consumoChamados)}
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell
+                          key={idx}
+                          className={`text-center font-semibold ${getColorClass(mesDados.saldoAUtilizar)}`}
+                        >
+                          {converterMinutosParaHoras(mesDados.saldoAUtilizar)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Consumo Chamados */}
+                    <TableRow>
+                      <TableCell className="font-medium text-center">
+                        {t('bankHours.ticketConsumption')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Requerimentos */}
-                  <TableRow>
-                    <TableCell className="font-medium text-center">
-                      {t('bankHours.requirementsLabel')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell key={idx} className="text-center font-semibold text-gray-900">
-                        {converterMinutosParaHoras(mesDados.requerimentos)}
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell key={idx} className="text-center font-semibold text-gray-900">
+                          {converterMinutosParaHoras(mesDados.consumoChamados)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Requerimentos */}
+                    <TableRow>
+                      <TableCell className="font-medium text-center">
+                        {t('bankHours.requirementsLabel')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Reajuste */}
-                  <TableRow>
-                    <TableCell className="font-medium text-center">
-                      {t('bankHours.adjustmentLabel')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell 
-                        key={idx} 
-                        className={`text-center font-semibold ${getColorClass(-mesDados.reajuste)}`}
-                      >
-                        {converterMinutosParaHoras(Math.abs(mesDados.reajuste))}
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell key={idx} className="text-center font-semibold text-gray-900">
+                          {converterMinutosParaHoras(mesDados.requerimentos)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Reajuste */}
+                    <TableRow>
+                      <TableCell className="font-medium text-center">
+                        {t('bankHours.adjustmentLabel')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Consumo Total */}
-                  <TableRow className="bg-gray-50">
-                    <TableCell className="font-medium text-center">
-                      {t('bankHours.totalConsumption')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell key={idx} className="text-center font-semibold text-gray-900">
-                        {converterMinutosParaHoras(mesDados.consumoTotal)}
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell
+                          key={idx}
+                          className={`text-center font-semibold ${getColorClass(-mesDados.reajuste)}`}
+                        >
+                          {converterMinutosParaHoras(Math.abs(mesDados.reajuste))}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Consumo Total */}
+                    <TableRow className="bg-gray-50">
+                      <TableCell className="font-medium text-center">
+                        {t('bankHours.totalConsumption')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Saldo */}
-                  <TableRow className="bg-gray-50">
-                    <TableCell className="font-medium text-center">
-                      {t('bankHours.balance')}
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell 
-                        key={idx} 
-                        className={`text-center font-semibold ${getColorClass(mesDados.saldo)}`}
-                      >
-                        {converterMinutosParaHoras(mesDados.saldo)}
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell key={idx} className="text-center font-semibold text-gray-900">
+                          {converterMinutosParaHoras(mesDados.consumoTotal)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Saldo */}
+                    <TableRow className="bg-gray-50">
+                      <TableCell className="font-medium text-center">
+                        {t('bankHours.balance')}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Repasse - Percentual */}
-                  <TableRow className="bg-gray-50">
-                    <TableCell className="font-medium text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <span>{t('bankHours.carryover')} - {percentualRepasseMensal}%</span>
-                        {tipoRepasseEspecial === 'por_periodo' && (
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell
+                          key={idx}
+                          className={`text-center font-semibold ${getColorClass(mesDados.saldo)}`}
+                        >
+                          {converterMinutosParaHoras(mesDados.saldo)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Repasse - Percentual */}
+                    <TableRow className="bg-gray-50">
+                      <TableCell className="font-medium text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>
+                            {t('bankHours.carryover')} - {percentualRepasseMensal}%
+                          </span>
+                          {tipoRepasseEspecial === 'por_periodo' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">
+                                    i
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
+                                  <p className="text-sm">
+                                    {t('bankHours.specialCarryover')}:{' '}
+                                    <strong>{percentualEntrePeriodos ?? 0}%</strong>
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                      </TableCell>
+                      {dados.dadosPorMes.map((mesDados, idx) => (
+                        <TableCell
+                          key={idx}
+                          className={`text-center font-semibold ${getColorClass(mesDados.repasse)}`}
+                        >
+                          {converterMinutosParaHoras(mesDados.repasse)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Taxa/hora Excedente e Valor Total na mesma linha */}
+                    <TableRow className="bg-gray-700 hover:bg-gray-700">
+                      <TableCell className="font-medium text-white text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{t('bankHours.surplusRate')}</span>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">i</span>
+                                <button className="inline-flex items-center justify-center">
+                                  <Info className="h-4 w-4 text-blue-300 hover:text-blue-100 transition-colors" />
+                                </button>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
-                                <p className="text-sm">
-                                  {t('bankHours.specialCarryover')}: <strong>{percentualEntrePeriodos ?? 0}%</strong>
-                                </p>
+                              <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
+                                <div className="space-y-2 text-sm">
+                                  <p className="font-semibold">
+                                    {t('bankHours.segmentedExceedanceNote')}
+                                  </p>
+                                  <p>{t('bankHours.segmentedExceedanceDesc1')}</p>
+                                  <p>{t('bankHours.segmentedExceedanceDesc2')}</p>
+                                </div>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        )}
-                      </div>
-                    </TableCell>
-                    {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell 
-                        key={idx} 
-                        className={`text-center font-semibold ${getColorClass(mesDados.repasse)}`}
-                      >
-                        {converterMinutosParaHoras(mesDados.repasse)}
+                        </div>
                       </TableCell>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Taxa/hora Excedente e Valor Total na mesma linha */}
-                  <TableRow className="bg-gray-700 hover:bg-gray-700">
-                    <TableCell className="font-medium text-white text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <span>{t('bankHours.surplusRate')}</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button className="inline-flex items-center justify-center">
-                                <Info className="h-4 w-4 text-blue-300 hover:text-blue-100 transition-colors" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
-                              <div className="space-y-2 text-sm">
-                                <p className="font-semibold">{t('bankHours.segmentedExceedanceNote')}</p>
-                                <p>{t('bankHours.segmentedExceedanceDesc1')}</p>
-                                <p>{t('bankHours.segmentedExceedanceDesc2')}</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center font-semibold text-white">
-                      {taxaHoraCalculada && taxaHoraCalculada > 0 ? formatarMoeda(taxaHoraCalculada) : ''}
-                    </TableCell>
-                    <TableCell className="font-medium text-center text-white" colSpan={mesesDoPeriodo.length > 1 ? mesesDoPeriodo.length - 2 : 1}>
-                      {t('bankHours.totalAmount')}
-                    </TableCell>
-                    <TableCell className="text-center font-semibold text-white">
-                      {formatarMoeda(dados.valorTotalExcedentes)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                      <TableCell className="text-center font-semibold text-white">
+                        {taxaHoraCalculada && taxaHoraCalculada > 0
+                          ? formatarMoeda(taxaHoraCalculada)
+                          : ''}
+                      </TableCell>
+                      <TableCell
+                        className="font-medium text-center text-white"
+                        colSpan={mesesDoPeriodo.length > 1 ? mesesDoPeriodo.length - 2 : 1}
+                      >
+                        {t('bankHours.totalAmount')}
+                      </TableCell>
+                      <TableCell className="text-center font-semibold text-white">
+                        {formatarMoeda(dados.valorTotalExcedentes)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>
