@@ -48,8 +48,8 @@ Hoje: `produtos` (COMEX, FISCAL, GALLERY) → `produto_modulos` (55 módulos). P
 
 ### 2.3 `produto_modulos` (sem mudança de estrutura)
 
-- Os ids dos 55 módulos são mantidos; só o `produto_id` muda na reorganização (2.6).
-- Depois da reorganização, um gatilho impede trocar o produto do módulo (regra do protótipo). **Exceção (P8):** o módulo de um produto "A classificar" pode ir para um produto que não seja provisório. Como ele sai do provisório, a troca acontece uma vez só.
+- Os 39 módulos que continuam módulos mantêm o id; só o `produto_id` muda na reorganização (2.6). Os 16 que viram produto ou grupo de serviço deixam de ser módulos.
+- Depois da reorganização, um gatilho impede trocar o produto do módulo (regra do protótipo). **Exceção (P8):** o módulo de um produto "A classificar" pode ir para um produto **da mesma solução** que não seja provisório. Como ele sai do provisório, a troca acontece uma vez só. A mesma solução garante que o vínculo dos grupos (produto e solução) continua válido.
 - As FKs compostas que apontam para `produto_modulos` usam `ON UPDATE CASCADE`. Assim, ao mover o módulo, os grupos do Aranda e os escopos dos bancos o acompanham, sem perder o id.
 - Na tela Produtos e Módulos, o módulo "A classificar" ganha a ação "Mover para produto…", e a solução mostra quantos módulos faltam classificar. O protótipo ainda não tem isso; entra na implementação.
 
@@ -77,9 +77,11 @@ A estrutura não muda. A carga refaz as 7 linhas como no protótipo:
 | Comply                 | COMPLY        | Todos  |
 | Comply e-DOCS          | COMPLY e-DOCS | Todos  |
 | pw.SATI                | SATI          | Todos  |
-| pw.SPED                | COMPLY        | SPED   |
+| pw.SPED                | COMPLY        | Todos  |
 | pw.SATI/pw.SPED        | SATI          | Todos  |
 | Gallery                | GALLERY       | Todos  |
+
+O pw.SPED aponta para o COMPLY inteiro porque o módulo SPED ainda não existe na carga. Depois de cadastrar o SPED, a ligação é ajustada na aba "Módulos de requerimento".
 
 ### 2.6 Reorganização (migration de dados)
 
@@ -90,19 +92,34 @@ Ela roda numa transação só, com `origem = 'carga'` na auditoria, e aborta se 
    - FISCAIS: COMPLY, COMPLY e-DOCS, GALLERY (a linha atual, mesmo id) e SATI.
    - FINANCEIRAS: FC, SAPC e VENDOR.
    - "A classificar" em COMEX e em FISCAIS, com `a_classificar = true`.
-2. Move os módulos para os produtos novos pela distribuição aceita em 21/10/2026. Os 9 sem destino vão para os produtos "A classificar":
-   - em COMEX: ABAP, LEGEM e TP One;
-   - em FISCAIS: ETL, SVA, Framework, COMPLY Analytics, Ciclo de Vida e Controle de Terceiros.
+2. Redistribui os 55 módulos (decisões de 21 e 22/10/2026):
 
-   As FKs compostas que apontam para `produto_modulos` são recriadas na mesma transação, depois de mover, já com `ON UPDATE CASCADE` (2.3).
+   | Destino                    | Módulos atuais                                                                                                                                                              |
+   | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Módulo do CE PLUS          | Câmbio, Drawback, Exportação, Importação                                                                                                                                    |
+   | Módulo do COMPLY           | Cadastros Básicos, Conciliação, Contabilização, Indiretos, Infraestrutura, Obrigações Estaduais, Retidos, ECD/ECF, EFD Contribuições, EFD ICMS, REINF, Integração Indiretos |
+   | "A classificar" de COMEX   | ABAP, LEGEM, TP One                                                                                                                                                         |
+   | "A classificar" de FISCAIS | ETL, SVA, Framework, COMPLY Analytics, Ciclo de Vida, Controle de Terceiros                                                                                                 |
+   | Vira o próprio produto     | RECOF → CE PLUS RECOF, Catálogo de Produtos, FCI, COMPLY e-DOCS, Fluxo de Caixa → FC, SAPC, VENDOR                                                                          |
+   | Vira grupo de serviço      | DBA, Técnico, Atualização Ambientes, SAAS, Orçamentos (COMEX e FISCAL), ICS Inativos (COMEX, FISCAL e GALLERY)                                                              |
+   | Fica no GALLERY            | os demais 14 do GALLERY                                                                                                                                                     |
+   - O módulo que continua módulo muda de produto e mantém o id. As FKs compostas para `produto_modulos` são recriadas antes, já com `ON UPDATE CASCADE` (2.3), e os grupos o acompanham.
+   - No que vira produto, o grupo passa a `produto`, apontando para o produto novo. No que vira grupo de serviço, o grupo passa a `solucao`. Nos dois casos a linha do módulo é apagada, e a auditoria guarda a cópia.
+   - Módulo de COMEX ou FISCAL que não estiver na tabela vai para "A classificar" e aparece no aviso final.
+   - **Pré-condição:** nenhum banco com escopo no produto inteiro COMEX ou FISCAL ou num módulo que deixa de existir. A tela de escopo ainda não está no ar; se houver, a migration para e lista os bancos.
 
 3. Reclassifica `grupos_aranda` (2.4) e refaz `modulos_requerimento_produto` (2.5).
-4. Apaga as linhas COMEX e FISCAL de `produtos`. A FK RESTRICT funciona como conferência: se algo ainda apontar para elas, a migration falha. A auditoria guarda o registro apagado.
+4. Converte os produtos contratados em soluções (3.2) e apaga `empresas_produtos`.
+5. Apaga as linhas COMEX e FISCAL de `produtos`. A FK RESTRICT funciona como conferência: se algo ainda apontar para elas, a migration falha. A auditoria guarda o registro apagado.
+6. Confere: 13 produtos, módulos = antes − convertidos, o mesmo número de grupos, soluções contratadas = produtos da tela atual convertidos e 7 módulos do requerimento.
+
+Arquivo: `supabase/migrations/20261022000002_fase3_catalogo.sql`, com o teste `supabase/tests/fase3_01_catalogo.test.sql`. Ensaiada em 22/10/2026 num Postgres descartável (PGlite), com o schema de base, as migrations das Fases 1 e 2 e uma carga fictícia com os nomes reais dos grupos do Book: o teste falha antes da migration e passa depois, e a migration roda duas vezes sem erro.
 
 **Depois da carga, pela tela (P8):**
 
 - os módulos que faltam do COMPLY, FC, SAPC e VENDOR são cadastrados manualmente; a migration não os cria;
-- os 9 módulos "A classificar" são movidos para o produto certo;
+- os 9 módulos "A classificar" são movidos para o produto certo, da mesma solução;
+- o pw.SPED passa para o módulo SPED do COMPLY, depois que ele for cadastrado;
 - o produto "A classificar" que ficar vazio é inativado.
 
 ### 2.7 Efeito no motor

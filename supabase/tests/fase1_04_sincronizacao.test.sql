@@ -7,6 +7,9 @@
 -- qual verificação falhou.
 -- Grava no LEGADO como a tela atual faz e confere o efeito nas tabelas novas.
 -- =====================================================================
+-- Depois da migration 20261022000002_fase3_catalogo, empresas_produtos virou
+-- empresas_solucoes e foi apagada: a parte de produtos contratados deste teste não
+-- se aplica mais. Soluções e sincronização estão em fase3_01_catalogo.test.sql.
 DO $teste$
 DECLARE
   v_a uuid := gen_random_uuid();
