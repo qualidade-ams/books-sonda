@@ -451,6 +451,9 @@ Cada migration tem antes um teste SQL em bloco `DO` autorreversível, que falha 
 | 15  | `fase3_retroativos.sql`: seção 8 e a mudança no registro do fechamento                                                       |
 | 16  | `fase3_telas.sql`: chaves, menu, política de DELETE dos ramos, leitura da auditoria pelo Controle e status `pulado`          |
 | 17  | `fase3_menu.sql`: `menu_itens`, `menu_aparencia` com os padrões, bucket `menu-logos` e a chave `organizar_menu` (12.1)       |
+| 18  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)        |
+
+**Situação em 22/10/2026:** as migrations 10 a 13 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
 
 No TypeScript (Vitest antes):
 
