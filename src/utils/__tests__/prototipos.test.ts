@@ -36,7 +36,7 @@ describe('montarRegistroPrototipos', () => {
       './prototipos/ListaContratos.tsx': loader,
     });
 
-    expect(registro.map(p => p.slug)).toEqual(['lista-contratos', 'zeta']);
+    expect(registro.map((p) => p.slug)).toEqual(['lista-contratos', 'zeta']);
     expect(registro[0]).toMatchObject({ nome: 'Lista Contratos', load: loader });
   });
 

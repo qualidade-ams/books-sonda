@@ -61,6 +61,25 @@ const ptBR = {
       markAllRead: 'Marcar todas como lidas',
       empty: 'Nenhuma pendência no momento',
     },
+    mainMenu: 'Menu principal',
+    openMenu: 'Abrir menu',
+    collapseMenu: 'Recolher menu',
+    expandMenu: 'Expandir menu',
+  },
+
+  // Design System v2 (src/components/ds)
+  ds: {
+    loading: 'Carregando',
+    filters: 'Filtros',
+    applyFilters: 'Ver resultados',
+    clearFilters: 'Limpar filtros',
+    moreActions: 'Mais ações',
+    previous: 'Anterior',
+    next: 'Próximo',
+    positionOf: '{{atual}} de {{total}}',
+    previousPeriod: 'Período anterior',
+    nextPeriod: 'Próximo período',
+    cancel: 'Cancelar',
   },
 
   // Autenticação

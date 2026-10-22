@@ -8,24 +8,24 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@500&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,700&display=swap" rel="stylesheet">
 <style>
-/* ===== Tokens — claro (padrão) ===== */
+/* ===== Tokens — claro (padrão; "suave", aprovado em 21/10/2026) ===== */
 :root {
-  --ds-bg-page: #F5F5F5;
-  --ds-bg-surface: #FFFFFF;
+  --ds-bg-page: #ECEEF1;
+  --ds-bg-surface: #FAFBFC;
   --ds-bg-raised: #FFFFFF;
-  --ds-bg-subtle: #F5F5F5;
+  --ds-bg-subtle: #F0F2F5;
   --ds-bg-selected: #E0F8FB;
   --ds-overlay: rgba(0,0,0,.5);
 
-  --ds-fg: #000000;
-  --ds-fg-secondary: #3D3D3D;
-  --ds-fg-muted: #6B6B6B;
+  --ds-fg: #1B1F24;
+  --ds-fg-secondary: #424850;
+  --ds-fg-muted: #5F6670;
   --ds-fg-disabled: #B1B1B1;
   --ds-fg-accent: #006F7D;
   --ds-fg-on-accent: #000000;
 
-  --ds-border: #E4E4E4;
-  --ds-border-strong: #8A8A8A;
+  --ds-border: #DDE1E6;
+  --ds-border-strong: #8A9099;
   --ds-focus: #006F7D;
 
   --ds-accent: #00D4E8;
@@ -39,16 +39,16 @@
   --ds-info-fg:    #006F7D; --ds-info-bg:    #E0F8FB; --ds-info-border:    #9FE6EE;
   --ds-danger-solid: #B42328; --ds-fg-on-danger: #FFFFFF;
 
-  --ds-shell-bg: #FFFFFF;
-  --ds-shell-fg: #000000;
-  --ds-shell-fg-muted: #6B6B6B;
-  --ds-shell-hover: #F5F5F5;
+  --ds-shell-bg: #FAFBFC;
+  --ds-shell-fg: #1B1F24;
+  --ds-shell-fg-muted: #5F6670;
+  --ds-shell-hover: #EEF1F4;
   --ds-shell-active-bg: #E0F8FB;
   --ds-shell-active-fg: #006F7D;
-  --ds-shell-border: #E4E4E4;
+  --ds-shell-border: #DDE1E6;
 
-  --ds-shadow-sm: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
-  --ds-shadow-lg: 0 10px 30px rgba(0,0,0,.14);
+  --ds-shadow-sm: 0 1px 2px rgba(16,24,40,.04);
+  --ds-shadow-lg: 0 10px 30px rgba(16,24,40,.08);
 
   --ds-radius-sm: 6px; --ds-radius-md: 8px; --ds-radius-lg: 12px;
   --ds-font-title: "Kumbh Sans", system-ui, sans-serif;
@@ -58,10 +58,10 @@
 }
 /* ===== Tokens — escuro ===== */
 :root[data-theme="dark"] {
-  --ds-bg-page: #000000;
-  --ds-bg-surface: #141414;
-  --ds-bg-raised: #1F1F1F;
-  --ds-bg-subtle: #1F1F1F;
+  --ds-bg-page: #121212;
+  --ds-bg-surface: #1C1C1C;
+  --ds-bg-raised: #262626;
+  --ds-bg-subtle: #262626;
   --ds-bg-selected: #0D2B2E;
   --ds-overlay: rgba(0,0,0,.7);
 
@@ -87,13 +87,13 @@
   --ds-info-fg:    #00D4E8; --ds-info-bg:    #0D2B2E; --ds-info-border:    #11606A;
   --ds-danger-solid: #FF6B6B; --ds-fg-on-danger: #000000;
 
-  --ds-shell-bg: #141414;
+  --ds-shell-bg: #1C1C1C;
   --ds-shell-fg: #FFFFFF;
   --ds-shell-fg-muted: #B1B1B1;
-  --ds-shell-hover: #1F1F1F;
+  --ds-shell-hover: #262626;
   --ds-shell-active-bg: #0D2B2E;
   --ds-shell-active-fg: #00D4E8;
-  --ds-shell-border: #1F1F1F;
+  --ds-shell-border: #262626;
 
   --ds-shadow-sm: none;
   --ds-shadow-lg: none;

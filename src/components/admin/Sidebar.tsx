@@ -47,7 +47,17 @@ import { useToast } from '@/hooks/use-toast';
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  /** fixed: coluna fixa do desktop. drawer: conteúdo da gaveta abaixo de 1024 px, sempre expandido. */
+  variant?: 'fixed' | 'drawer';
+  /** Chamado depois de navegar (a gaveta usa para fechar). */
+  onNavigate?: () => void;
 }
+
+// Classes do Design System v2 (tokens em src/styles/ds-v2.css)
+const itemClasses =
+  'text-ds-shell-fg hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:ring-ds-focus';
+const activeItemClasses =
+  'bg-ds-shell-active-bg text-ds-shell-active-fg shadow-[inset_2px_0_0_var(--ds-shell-active-fg)] hover:bg-ds-shell-active-bg hover:text-ds-shell-active-fg';
 
 interface MenuItem {
   icon: React.ComponentType<any>;
@@ -57,7 +67,14 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  isCollapsed: isCollapsedProp,
+  onToggle,
+  variant = 'fixed',
+  onNavigate,
+}) => {
+  // Na gaveta o menu fica sempre expandido
+  const isCollapsed = variant === 'fixed' && isCollapsedProp;
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
@@ -210,6 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
     // Navegar
     navigate(path);
+    onNavigate?.();
 
     // Desativar prevenção após um tempo
     setTimeout(() => {
@@ -608,17 +626,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   }, []);
 
   return (
-    <div
+    <aside
+      data-ds="v2"
+      aria-label={t('layout.mainMenu')}
       className={cn(
-        'bg-blue-600 flex flex-col transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10',
-        isCollapsed ? 'w-16' : 'w-64'
+        'bg-ds-shell-bg text-ds-shell-fg font-ds-sans flex flex-col',
+        variant === 'fixed'
+          ? cn(
+              'transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10 border-r border-ds-shell-border',
+              isCollapsed ? 'w-16' : 'w-64'
+            )
+          : 'h-full w-full'
       )}
     >
       {/* Header com Logo */}
-      <div className="p-4 border-b border-blue-700 relative">
+      <div className="p-4 border-b border-ds-shell-border relative">
         <div className="flex items-center justify-center">
+          {/* Logo branco: no tema claro vira preto (brightness-0) até chegar a versão para fundo claro */}
           {!isCollapsed && (
-            <img src="/images/logo-sonda.png" alt="Sonda Logo" className="h-12 w-auto" />
+            <img
+              src="/images/logo-sonda.png"
+              alt="Sonda Logo"
+              className="h-12 w-auto brightness-0 dark:brightness-100"
+            />
           )}
           {isCollapsed && (
             <img
@@ -628,14 +658,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             />
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className="h-6 w-6 absolute -right-3 top-1/2 transform -translate-y-1/2 text-white hover:bg-blue-700 bg-blue-600 z-50 shadow-lg border border-blue-500"
-        >
-          {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-        </Button>
+        {variant === 'fixed' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            aria-label={isCollapsed ? t('layout.expandMenu') : t('layout.collapseMenu')}
+            className="h-6 w-6 absolute -right-3 top-1/2 transform -translate-y-1/2 z-50 shadow-lg border border-ds-shell-border bg-ds-shell-bg text-ds-shell-fg hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:ring-ds-focus"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Menu Items */}
@@ -663,11 +700,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             const buttonContent = (
               <Button
                 key={item.path || index}
-                variant={isActive ? 'secondary' : 'ghost'}
+                variant="ghost"
                 className={cn(
-                  'w-full text-white hover:bg-blue-700 min-w-0 flex-shrink-0',
+                  'w-full min-w-0 flex-shrink-0',
+                  itemClasses,
                   isCollapsed ? 'justify-center px-2' : 'justify-start px-3',
-                  isActive && 'bg-blue-800 text-white'
+                  isActive && activeItemClasses
                 )}
                 onClick={() => item.path && handleNavigation(item.path)}
               >
@@ -695,7 +733,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             <Button
               variant="ghost"
               className={cn(
-                'w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0 gap-3',
+                'w-full font-medium min-w-0 flex-shrink-0 gap-3',
+                itemClasses,
                 isCollapsed ? 'justify-center px-4' : 'justify-start px-3 pr-2'
               )}
               onClick={() => toggleSection(sectionKey)}
@@ -738,11 +777,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                   return (
                     <Button
                       key={child.path || childIndex}
-                      variant={isChildActive ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       className={cn(
-                        'w-full text-white hover:bg-blue-700 ml-4 min-w-0 flex-shrink-0',
+                        'w-full ml-4 min-w-0 flex-shrink-0',
+                        itemClasses,
                         'justify-start px-3 text-sm',
-                        isChildActive && 'bg-blue-800 text-white'
+                        isChildActive && activeItemClasses
                       )}
                       onClick={() => child.path && handleNavigation(child.path)}
                     >
@@ -754,7 +794,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
               {/* Separador visual entre seções */}
               {index < menuItems.length - 1 && !isCollapsed && (
-                <div className="h-px bg-blue-700 mx-2 my-2" />
+                <div className="h-px bg-ds-shell-border mx-2 my-2" />
               )}
             </div>
           );
@@ -762,7 +802,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       </nav>
 
       {/* User Actions */}
-      <div className="p-2 border-t border-blue-700 space-y-1">
+      <div className="p-2 border-t border-ds-shell-border space-y-1">
         {isCollapsed ? (
           <>
             {hasPermission('user-config', 'view') && (
@@ -770,7 +810,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-center px-2 text-white hover:bg-blue-700"
+                    className={cn('w-full justify-center px-2', itemClasses)}
                     onClick={() => handleNavigation('/admin/user-config')}
                   >
                     <User className="h-4 w-4" />
@@ -786,7 +826,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-center px-2 text-red-300 hover:text-red-200 hover:bg-blue-700"
+                  className="w-full justify-center px-2 text-ds-danger-fg hover:text-ds-danger-fg hover:bg-ds-shell-hover focus-visible:ring-ds-focus"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
@@ -802,7 +842,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             {hasPermission('user-config', 'view') && (
               <Button
                 variant="ghost"
-                className="w-full justify-start px-3 text-white hover:bg-blue-700 min-w-0 flex-shrink-0"
+                className={cn('w-full justify-start px-3 min-w-0 flex-shrink-0', itemClasses)}
                 onClick={() => handleNavigation('/admin/user-config')}
               >
                 <User className="h-4 w-4 mr-3 flex-shrink-0" />
@@ -812,7 +852,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
             <Button
               variant="ghost"
-              className="w-full justify-start px-3 text-red-300 hover:text-red-200 hover:bg-blue-700 min-w-0 flex-shrink-0"
+              className="w-full justify-start px-3 min-w-0 flex-shrink-0 text-ds-danger-fg hover:text-ds-danger-fg hover:bg-ds-shell-hover focus-visible:ring-ds-focus"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-3 flex-shrink-0" />
@@ -826,7 +866,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       {isCollapsed && hoveredSection && submenuPosition && (
         <div
           ref={submenuRef}
-          className="fixed bg-blue-600 border border-blue-500/30 rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
+          className="fixed bg-ds-shell-bg border border-ds-shell-border rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
           style={{
             top: `${submenuPosition.top}px`,
             left: `${submenuPosition.left}px`,
@@ -845,7 +885,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               return (
                 <div key={sectionKey} className="space-y-0.5">
                   {/* Título da seção */}
-                  <div className="px-2 py-1.5 text-white font-semibold text-sm border-b border-blue-500 mb-1">
+                  <div className="px-2 py-1.5 text-ds-shell-fg font-semibold text-sm border-b border-ds-shell-border mb-1">
                     {item.label}
                   </div>
 
@@ -857,10 +897,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                     return (
                       <Button
                         key={child.path || childIndex}
-                        variant={isChildActive ? 'secondary' : 'ghost'}
+                        variant="ghost"
                         className={cn(
-                          'w-full text-white hover:bg-blue-700 justify-start px-2 py-1.5 h-8 text-sm gap-2',
-                          isChildActive && 'bg-blue-800 text-white'
+                          'w-full justify-start px-2 py-1.5 h-8 text-sm gap-2',
+                          itemClasses,
+                          isChildActive && activeItemClasses
                         )}
                         onClick={() => {
                           if (child.path) {
@@ -882,7 +923,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           })}
         </div>
       )}
-    </div>
+    </aside>
   );
 };
 

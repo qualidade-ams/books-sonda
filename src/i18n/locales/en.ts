@@ -61,6 +61,25 @@ const en = {
       markAllRead: 'Mark all as read',
       empty: 'No pending items right now',
     },
+    mainMenu: 'Main menu',
+    openMenu: 'Open menu',
+    collapseMenu: 'Collapse menu',
+    expandMenu: 'Expand menu',
+  },
+
+  // Design System v2 (src/components/ds)
+  ds: {
+    loading: 'Loading',
+    filters: 'Filters',
+    applyFilters: 'Show results',
+    clearFilters: 'Clear filters',
+    moreActions: 'More actions',
+    previous: 'Previous',
+    next: 'Next',
+    positionOf: '{{atual}} of {{total}}',
+    previousPeriod: 'Previous period',
+    nextPeriod: 'Next period',
+    cancel: 'Cancel',
   },
 
   // Authentication
