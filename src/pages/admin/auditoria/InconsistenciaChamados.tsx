@@ -63,6 +63,7 @@ import {
   useDescartarInconsistencias,
   useTarefasAntesDaTroca,
 } from '@/hooks/useInconsistenciasChamados';
+import { useBuscarEspecialistasParaEmail } from '@/hooks/useConsultoresCoordenadores';
 import { ArquivarInconsistenciaMenu } from '@/components/admin/inconsistencias/ArquivarInconsistenciaMenu';
 import { TarefasAntesDaTrocaTabela } from '@/components/admin/inconsistencias/TarefasAntesDaTrocaTabela';
 import { EmailEnviadoIndicador } from '@/components/admin/inconsistencias/EmailEnviadoIndicador';
@@ -104,6 +105,8 @@ export interface EmpresaCadastradaResumo {
 export interface EspecialistaResumo {
   nome: string | null;
   email: string | null;
+  // Coordenador vinculado na tela Consultores x Coordenadores — vai no CC do email
+  email_coordenador?: string | null;
 }
 
 // Normaliza um nome de pessoa pra comparação tolerante a acentuação, caixa e espaços
@@ -250,17 +253,16 @@ export function listarAnosComDados(itens: InconsistenciaChamado[]): number[] {
  * visualmente. Tenta match exato primeiro; se não achar, tenta parcial bidirecional
  * (tolera um dos nomes ser um trecho contíguo do outro, ex: nome truncado sem sobrenome).
  */
-// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
-export function encontrarEmailEspecialista(
+function encontrarEspecialista(
   nomeAnalista: string | null,
   especialistas: EspecialistaResumo[]
-): string | null {
+): EspecialistaResumo | null {
   if (!nomeAnalista) return null;
   const alvo = normalizarNomePessoa(nomeAnalista);
   if (!alvo) return null;
 
   const exato = especialistas.find((e) => e.nome && normalizarNomePessoa(e.nome) === alvo);
-  if (exato) return exato.email || null;
+  if (exato) return exato;
 
   const parcial = especialistas.find((e) => {
     if (!e.nome) return false;
@@ -268,7 +270,32 @@ export function encontrarEmailEspecialista(
     return nomeNormalizado.includes(alvo) || alvo.includes(nomeNormalizado);
   });
 
-  return parcial?.email || null;
+  return parcial || null;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function encontrarEmailEspecialista(
+  nomeAnalista: string | null,
+  especialistas: EspecialistaResumo[]
+): string | null {
+  return encontrarEspecialista(nomeAnalista, especialistas)?.email || null;
+}
+
+/**
+ * Destinatário (email do consultor) e CC (email do coordenador vinculado na tela
+ * Consultores x Coordenadores) do envelope de um analista. "Sem analista" fica vazio.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- exportado para teste isolado (TDD)
+export function resolverDestinatariosAnalista(
+  analista: string,
+  especialistas: EspecialistaResumo[]
+): { destinatario: string; cc: string } {
+  const especialista =
+    analista !== 'Sem analista' ? encontrarEspecialista(analista, especialistas) : null;
+  return {
+    destinatario: especialista?.email || '',
+    cc: especialista?.email_coordenador || '',
+  };
 }
 
 /**
@@ -352,6 +379,7 @@ export default function InconsistenciaChamados({
   subtitulo,
 }: InconsistenciaChamadosProps = {}) {
   const { toast } = useToast();
+  const buscarEspecialistasParaEmail = useBuscarEspecialistasParaEmail();
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState('inconsistencias_detectadas');
@@ -514,14 +542,12 @@ export default function InconsistenciaChamados({
       return;
     }
 
-    // Busca todos os especialistas de uma vez (em vez de 1 query por analista) — a resolução
-    // do email é feita em memória via encontrarEmailEspecialista, tolerante a diferenças de
-    // espaçamento/acentuação nos dados sincronizados.
+    // Busca todos os especialistas de uma vez (em vez de 1 query por analista), já com o email
+    // do coordenador — a resolução é feita em memória via resolverDestinatariosAnalista,
+    // tolerante a diferenças de espaçamento/acentuação nos dados sincronizados.
     let especialistas: EspecialistaResumo[] = [];
     try {
-      const { data, error } = await supabase.from('especialistas').select('nome, email');
-      if (error) throw error;
-      especialistas = data || [];
+      especialistas = await buscarEspecialistasParaEmail();
     } catch (error) {
       console.error(
         'Erro ao buscar especialistas:',
@@ -532,15 +558,12 @@ export default function InconsistenciaChamados({
     const grupos = agruparInconsistenciasPorAnalista(selecionadas);
     const envelopes: InconsistenciaEmailEnvelope[] = Array.from(grupos.entries()).map(
       ([analista, itensDoAnalista]) => {
-        const destinatario =
-          analista !== 'Sem analista'
-            ? encontrarEmailEspecialista(analista, especialistas) || ''
-            : '';
+        const { destinatario, cc } = resolverDestinatariosAnalista(analista, especialistas);
         return {
           analista,
           itens: itensDoAnalista,
           destinatario,
-          cc: '',
+          cc,
           bcc: '',
           assunto: '[AUDITORIA ARANDA] – Regularização de Chamados',
           anexos: [],

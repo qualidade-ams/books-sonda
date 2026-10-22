@@ -543,6 +543,7 @@ const en = {
     clientRates: 'Client Rates Registry',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
+    consultantsCoordinators: 'Consultants x Coordinators',
     userConfig: 'Settings',
     designSystem: 'Design System',
     inconsistencies: 'Ticket Inconsistencies',

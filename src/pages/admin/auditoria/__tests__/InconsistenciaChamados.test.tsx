@@ -4,6 +4,7 @@ import {
   agruparPorTipoOrdenado,
   encontrarEmpresaCadastrada,
   encontrarEmailEspecialista,
+  resolverDestinatariosAnalista,
   agruparGestoresIC999999,
   montarTextoGestorIC999999,
   calcularPeriodoFiltro,
@@ -13,7 +14,9 @@ import { listarAnalistasDaAba } from '@/utils/listarAnalistasDaAba';
 import type { InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsistenciasChamados';
 
 // Helper para criar uma inconsistência de teste com defaults, sobrescrevendo só o necessário
-function criarInconsistencia(overrides: Partial<InconsistenciaChamado> = {}): InconsistenciaChamado {
+function criarInconsistencia(
+  overrides: Partial<InconsistenciaChamado> = {}
+): InconsistenciaChamado {
   return {
     id: overrides.id ?? '1',
     origem: 'apontamentos',
@@ -83,7 +86,11 @@ describe('agruparPorTipoOrdenado', () => {
     const grupos = agruparPorTipoOrdenado(itens);
 
     expect(Array.from(grupos.keys())).toEqual([
-      'mes_diferente', 'tempo_excessivo', 'ic_999999', 'sem_atualizacao', 'troca_codigo_resolucao',
+      'mes_diferente',
+      'tempo_excessivo',
+      'ic_999999',
+      'sem_atualizacao',
+      'troca_codigo_resolucao',
     ]);
   });
 
@@ -134,7 +141,10 @@ describe('encontrarEmailEspecialista', () => {
   ];
 
   it('encontra por match exato após normalizar espaços duplicados e trailing', () => {
-    const resultado = encontrarEmailEspecialista('Guilherme Augusto Baptista Marques', especialistas);
+    const resultado = encontrarEmailEspecialista(
+      'Guilherme Augusto Baptista Marques',
+      especialistas
+    );
     expect(resultado).toBe('guilherme.baptista@sonda.com');
   });
 
@@ -160,6 +170,42 @@ describe('encontrarEmailEspecialista', () => {
   it('retorna null quando o especialista não tem email cadastrado', () => {
     const semEmail = [{ nome: 'Sem Email', email: null }];
     expect(encontrarEmailEspecialista('Sem Email', semEmail)).toBeNull();
+  });
+});
+
+describe('resolverDestinatariosAnalista', () => {
+  const especialistas = [
+    {
+      nome: 'Ketlin Schiessl Dos Santos',
+      email: 'ketlin.santos@sonda.com',
+      email_coordenador: 'coord@sonda.com',
+    },
+    { nome: 'Maria Souza', email: 'maria.souza@sonda.com', email_coordenador: null },
+  ];
+
+  it('preenche o destinatário com o consultor e o CC com o coordenador vinculado', () => {
+    expect(resolverDestinatariosAnalista('Ketlin  Schiessl dos Santos', especialistas)).toEqual({
+      destinatario: 'ketlin.santos@sonda.com',
+      cc: 'coord@sonda.com',
+    });
+  });
+
+  it('consultor sem coordenador deixa o CC vazio', () => {
+    expect(resolverDestinatariosAnalista('Maria Souza', especialistas)).toEqual({
+      destinatario: 'maria.souza@sonda.com',
+      cc: '',
+    });
+  });
+
+  it('analista não cadastrado ou "Sem analista" deixa os dois vazios', () => {
+    expect(resolverDestinatariosAnalista('Pessoa Inexistente', especialistas)).toEqual({
+      destinatario: '',
+      cc: '',
+    });
+    expect(resolverDestinatariosAnalista('Sem analista', especialistas)).toEqual({
+      destinatario: '',
+      cc: '',
+    });
   });
 });
 
@@ -211,7 +257,9 @@ describe('montarTextoGestorIC999999', () => {
   });
 
   it('retorna apenas o email quando há 1 único grupo com email (sem citar empresa)', () => {
-    const texto = montarTextoGestorIC999999([{ emailGestor: 'gestor@x.com', empresas: ['Empresa A'] }]);
+    const texto = montarTextoGestorIC999999([
+      { emailGestor: 'gestor@x.com', empresas: ['Empresa A'] },
+    ]);
     expect(texto).toBe('gestor@x.com');
   });
 
@@ -233,7 +281,9 @@ describe('montarTextoGestorIC999999', () => {
       { emailGestor: 'gestorA@x.com', empresas: ['Empresa A'] },
       { emailGestor: null, empresas: ['Empresa B'] },
     ]);
-    expect(texto).toBe('gestorA@x.com para Empresa A; e-mail do gestor não cadastrado para Empresa B');
+    expect(texto).toBe(
+      'gestorA@x.com para Empresa A; e-mail do gestor não cadastrado para Empresa B'
+    );
   });
 
   it('agrupa múltiplas empresas no mesmo email dentro de um segmento com múltiplos grupos', () => {
@@ -241,7 +291,9 @@ describe('montarTextoGestorIC999999', () => {
       { emailGestor: 'gestorA@x.com', empresas: ['Empresa A', 'Empresa C'] },
       { emailGestor: null, empresas: ['Empresa B'] },
     ]);
-    expect(texto).toBe('gestorA@x.com (Empresa A, Empresa C); e-mail do gestor não cadastrado para Empresa B');
+    expect(texto).toBe(
+      'gestorA@x.com (Empresa A, Empresa C); e-mail do gestor não cadastrado para Empresa B'
+    );
   });
 });
 
@@ -277,36 +329,67 @@ describe('listarAnalistasDaAba', () => {
 
 describe('calcularPeriodoFiltro', () => {
   it('não restringe datas quando nenhum ano é escolhido (traz todas as pendências)', () => {
-    expect(calcularPeriodoFiltro('all', 'all')).toEqual({ data_inicio: undefined, data_fim: undefined });
+    expect(calcularPeriodoFiltro('all', 'all')).toEqual({
+      data_inicio: undefined,
+      data_fim: undefined,
+    });
   });
 
   it('ignora o mês quando nenhum ano é escolhido', () => {
-    expect(calcularPeriodoFiltro('all', '03')).toEqual({ data_inicio: undefined, data_fim: undefined });
+    expect(calcularPeriodoFiltro('all', '03')).toEqual({
+      data_inicio: undefined,
+      data_fim: undefined,
+    });
   });
 
   it('usa o ano inteiro quando o ano é escolhido sem mês', () => {
-    expect(calcularPeriodoFiltro(2025, 'all')).toEqual({ data_inicio: '2025-01-01', data_fim: '2025-12-31' });
+    expect(calcularPeriodoFiltro(2025, 'all')).toEqual({
+      data_inicio: '2025-01-01',
+      data_fim: '2025-12-31',
+    });
   });
 
   it('usa o mês do ano escolhido, com o último dia correto', () => {
-    expect(calcularPeriodoFiltro(2024, '02')).toEqual({ data_inicio: '2024-02-01', data_fim: '2024-02-29' });
-    expect(calcularPeriodoFiltro(2026, '09')).toEqual({ data_inicio: '2026-09-01', data_fim: '2026-09-30' });
+    expect(calcularPeriodoFiltro(2024, '02')).toEqual({
+      data_inicio: '2024-02-01',
+      data_fim: '2024-02-29',
+    });
+    expect(calcularPeriodoFiltro(2026, '09')).toEqual({
+      data_inicio: '2026-09-01',
+      data_fim: '2026-09-30',
+    });
   });
 });
 
 describe('listarAnosComDados', () => {
   it('lista os anos da data_atividade, sem repetição e do mais recente para o mais antigo', () => {
     const itens = [
-      criarInconsistencia({ id: '1', tipo_inconsistencia: 'tempo_excessivo', data_atividade: '2025-03-10' }),
-      criarInconsistencia({ id: '2', tipo_inconsistencia: 'tempo_excessivo', data_atividade: '2026-07-01' }),
-      criarInconsistencia({ id: '3', tipo_inconsistencia: 'tempo_excessivo', data_atividade: '2025-11-20' }),
+      criarInconsistencia({
+        id: '1',
+        tipo_inconsistencia: 'tempo_excessivo',
+        data_atividade: '2025-03-10',
+      }),
+      criarInconsistencia({
+        id: '2',
+        tipo_inconsistencia: 'tempo_excessivo',
+        data_atividade: '2026-07-01',
+      }),
+      criarInconsistencia({
+        id: '3',
+        tipo_inconsistencia: 'tempo_excessivo',
+        data_atividade: '2025-11-20',
+      }),
     ];
     expect(listarAnosComDados(itens)).toEqual([2026, 2025]);
   });
 
   it('em "mes_diferente" usa a data mais recente entre atividade e sistema', () => {
     const itens = [
-      criarInconsistencia({ tipo_inconsistencia: 'mes_diferente', data_atividade: '2025-12-20', data_sistema: '2026-01-05' }),
+      criarInconsistencia({
+        tipo_inconsistencia: 'mes_diferente',
+        data_atividade: '2025-12-20',
+        data_sistema: '2026-01-05',
+      }),
     ];
     expect(listarAnosComDados(itens)).toEqual([2026]);
   });
