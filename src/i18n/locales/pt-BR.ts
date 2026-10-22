@@ -543,6 +543,7 @@ const ptBR = {
     clientRates: 'Cadastro Taxas Clientes',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
+    consultantsCoordinators: 'Consultores x Coordenadores',
     userConfig: 'Configurações',
     designSystem: 'Design System',
     inconsistencies: 'Inconsistência de Chamados',

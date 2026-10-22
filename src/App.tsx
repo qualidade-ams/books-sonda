@@ -33,6 +33,7 @@ import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesC
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
 import AuditLogs from './pages/admin/AuditLogs';
 import MonitoramentoVigencias from './pages/admin/MonitoramentoVigencias';
+import ConsultoresCoordenadores from './pages/admin/ConsultoresCoordenadores';
 import SincronizacaoSqlServer from './pages/admin/SincronizacaoSqlServer';
 import { RedirecionarPreservandoBusca } from './components/admin/RedirecionarPreservandoBusca';
 import LancarRequerimentos from './pages/admin/LancarRequerimentos';
@@ -243,6 +244,14 @@ const App = () => (
                       element={
                         <ProtectedRoute screenKey="monitoramento_vigencias">
                           <MonitoramentoVigencias />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/consultores-coordenadores"
+                      element={
+                        <ProtectedRoute screenKey="consultores_coordenadores">
+                          <ConsultoresCoordenadores />
                         </ProtectedRoute>
                       }
                     />

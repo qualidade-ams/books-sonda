@@ -37,6 +37,7 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -464,6 +465,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: t('nav.monitoringTerms'),
           path: '/admin/monitoramento-vigencias',
           screenKey: 'monitoramento_vigencias',
+        },
+        {
+          icon: Network,
+          label: t('nav.consultantsCoordinators'),
+          path: '/admin/consultores-coordenadores',
+          screenKey: 'consultores_coordenadores',
         },
         {
           icon: DatabaseZap,

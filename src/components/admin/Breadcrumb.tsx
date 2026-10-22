@@ -24,6 +24,7 @@ const Breadcrumb = () => {
     'historico-books': 'nav.historyBooks',
     'disparos-personalizados': 'nav.customShoots',
     'monitoramento-vigencias': 'nav.monitoringTerms',
+    'consultores-coordenadores': 'nav.consultantsCoordinators',
     'rotinas-automaticas': 'nav.automatedRoutines',
     'lancar-requerimentos': 'nav.registerRequirements',
     'faturar-requerimentos': 'nav.billingRequirements',

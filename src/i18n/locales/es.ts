@@ -543,6 +543,7 @@ const es = {
     clientRates: 'Registro de Tasas Clientes',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
+    consultantsCoordinators: 'Consultores x Coordinadores',
     userConfig: 'Configuraciones',
     designSystem: 'Design System',
     inconsistencies: 'Inconsistencias de Llamados',
