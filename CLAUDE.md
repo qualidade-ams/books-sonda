@@ -17,14 +17,15 @@ npm run dev          # Vite dev server, porta 8080
 npm run dev:vercel   # Vercel dev (inclui as serverless functions em /api)
 npm run build        # Build de produção
 npm run test         # Vitest watch
-npm run test:run     # Vitest single run  ← precisa passar antes de concluir qualquer tarefa
+npm run test:run     # Vitest single run
+npm run test:ci      # trava do CI: falha só com teste falhando fora de scripts/test-baseline.json  ← precisa passar antes de concluir qualquer tarefa
 npm run typecheck    # tsc --noEmit
 npm run typecheck:ci # trava do CI: falha só se passar do limite em scripts/typecheck-baseline.json
 npm run lint         # ESLint (flat config); lint:fix para corrigir
 npm run format       # Prettier; format:check para verificar
 ```
 
-Pre-commit (Husky + lint-staged) roda `eslint --fix` + `prettier --write` nos arquivos staged. CI (`.github/workflows/ci.yml`) roda lint + typecheck + test + build em todo push/PR para `main`. O typecheck do CI usa trava de contagem (o main tem erros de tipo antigos): ao corrigir erros, baixe o `limite` em `scripts/typecheck-baseline.json` no mesmo PR.
+Pre-commit (Husky + lint-staged) roda `eslint --fix` + `prettier --write` nos arquivos staged. CI (`.github/workflows/ci.yml`) roda lint + typecheck + test + build em todo push/PR para `main`. O typecheck do CI usa trava de contagem (o main tem erros de tipo antigos): ao corrigir erros, baixe o `limite` em `scripts/typecheck-baseline.json` no mesmo PR. Os testes também: o main tem falhas antigas listadas em `scripts/test-baseline.json`; ao corrigir um teste da lista, tire-o de lá no mesmo PR.
 
 ## Arquitetura: fluxo em camadas
 
@@ -113,7 +114,7 @@ Referências de projeto (fora de skill): `.claude/references/dominios.md` (mapa 
 3. Localizar o código existente (`.claude/references/dominios.md`).
 4. Reutilizar estrutura existente; evitar alteração desnecessária.
 5. Escrever o teste (Red), implementar (Green), limpar (Refactor).
-6. Rodar `npm run test:run`, `npm run typecheck`, `npm run build`.
+6. Rodar `npm run test:ci`, `npm run typecheck:ci`, `npm run build`.
 7. Corrigir o que falhar.
 8. Relatar objetivamente o que mudou.
 
