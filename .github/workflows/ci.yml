@@ -16,9 +16,16 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            sync-api/package-lock.json
 
+      # sync-api tem dependências próprias (express, mssql...) usadas pelos
+      # testes dele, que rodam junto na suíte da raiz
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm ci --prefix sync-api
 
       - name: Lint
         run: npm run lint
