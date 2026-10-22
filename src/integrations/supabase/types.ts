@@ -443,6 +443,7 @@ export type Database = {
           dados_depois: Json | null
           empresa_id: string | null
           id: number
+          motivo: string | null
           origem: string
           registro_id: string
           tabela: string
@@ -457,6 +458,7 @@ export type Database = {
           dados_depois?: Json | null
           empresa_id?: string | null
           id?: never
+          motivo?: string | null
           origem: string
           registro_id: string
           tabela: string
@@ -471,6 +473,7 @@ export type Database = {
           dados_depois?: Json | null
           empresa_id?: string | null
           id?: never
+          motivo?: string | null
           origem?: string
           registro_id?: string
           tabela?: string
@@ -1338,6 +1341,7 @@ export type Database = {
           espelha_legado: boolean
           filtro_ic_operador: string | null
           filtro_ic_valor: string | null
+          fim_vigencia: string | null
           id: string
           inativado_em: string | null
           inativado_por: string | null
@@ -1369,6 +1373,7 @@ export type Database = {
           espelha_legado?: boolean
           filtro_ic_operador?: string | null
           filtro_ic_valor?: string | null
+          fim_vigencia?: string | null
           id?: string
           inativado_em?: string | null
           inativado_por?: string | null
@@ -1400,6 +1405,7 @@ export type Database = {
           espelha_legado?: boolean
           filtro_ic_operador?: string | null
           filtro_ic_valor?: string | null
+          fim_vigencia?: string | null
           id?: string
           inativado_em?: string | null
           inativado_por?: string | null
@@ -1832,6 +1838,7 @@ export type Database = {
       bancos_horas_reajustes: {
         Row: {
           ano: number
+          anotacao_interna: string | null
           ativo: boolean
           banco_id: string
           created_at: string
@@ -1851,6 +1858,7 @@ export type Database = {
         }
         Insert: {
           ano: number
+          anotacao_interna?: string | null
           ativo?: boolean
           banco_id: string
           created_at?: string
@@ -1870,6 +1878,7 @@ export type Database = {
         }
         Update: {
           ano?: number
+          anotacao_interna?: string | null
           ativo?: boolean
           banco_id?: string
           created_at?: string
@@ -1949,6 +1958,150 @@ export type Database = {
             columns: ["banco_id"]
             isOneToOne: false
             referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_retroativos: {
+        Row: {
+          ano: number
+          atualizado_em: string
+          banco_id: string
+          consumo_antes_minutos: number
+          consumo_antes_tickets: number
+          consumo_depois_minutos: number
+          consumo_depois_tickets: number
+          created_at: string
+          created_by: string | null
+          decidido_em: string | null
+          decidido_por: string | null
+          detectado_em: string
+          fechamento_aplicado_id: string | null
+          fechamento_id: string
+          id: string
+          justificativa: string | null
+          mes: number
+          situacao: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ano: number
+          atualizado_em?: string
+          banco_id: string
+          consumo_antes_minutos: number
+          consumo_antes_tickets: number
+          consumo_depois_minutos: number
+          consumo_depois_tickets: number
+          created_at?: string
+          created_by?: string | null
+          decidido_em?: string | null
+          decidido_por?: string | null
+          detectado_em?: string
+          fechamento_aplicado_id?: string | null
+          fechamento_id: string
+          id?: string
+          justificativa?: string | null
+          mes: number
+          situacao?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ano?: number
+          atualizado_em?: string
+          banco_id?: string
+          consumo_antes_minutos?: number
+          consumo_antes_tickets?: number
+          consumo_depois_minutos?: number
+          consumo_depois_tickets?: number
+          created_at?: string
+          created_by?: string | null
+          decidido_em?: string | null
+          decidido_por?: string | null
+          detectado_em?: string
+          fechamento_aplicado_id?: string | null
+          fechamento_id?: string
+          id?: string
+          justificativa?: string | null
+          mes?: number
+          situacao?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_retroativos_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_retroativos_fechamento_aplicado_id_fkey"
+            columns: ["fechamento_aplicado_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bancos_horas_retroativos_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_retroativos_itens: {
+        Row: {
+          aviso_enviado_em: string | null
+          aviso_enviado_por: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          minutos: number
+          retroativo_id: string
+          tickets: number
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          aviso_enviado_em?: string | null
+          aviso_enviado_por?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          minutos?: number
+          retroativo_id: string
+          tickets?: number
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          aviso_enviado_em?: string | null
+          aviso_enviado_por?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          minutos?: number
+          retroativo_id?: string
+          tickets?: number
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_retroativos_itens_retroativo_id_fkey"
+            columns: ["retroativo_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_retroativos"
             referencedColumns: ["id"]
           },
         ]
@@ -2933,7 +3086,9 @@ export type Database = {
           email_tm: string | null
           empresa_consolidadora_id: string | null
           excluida_no_legado_em: string | null
+          grupo_empresarial: string | null
           id: string
+          id_aranda: string | null
           link_sharepoint: string | null
           meta_sla_percentual: number | null
           modelo_alterado_em: string | null
@@ -2966,7 +3121,9 @@ export type Database = {
           email_tm?: string | null
           empresa_consolidadora_id?: string | null
           excluida_no_legado_em?: string | null
+          grupo_empresarial?: string | null
           id: string
+          id_aranda?: string | null
           link_sharepoint?: string | null
           meta_sla_percentual?: number | null
           modelo_alterado_em?: string | null
@@ -2999,7 +3156,9 @@ export type Database = {
           email_tm?: string | null
           empresa_consolidadora_id?: string | null
           excluida_no_legado_em?: string | null
+          grupo_empresarial?: string | null
           id?: string
+          id_aranda?: string | null
           link_sharepoint?: string | null
           meta_sla_percentual?: number | null
           modelo_alterado_em?: string | null
@@ -3188,42 +3347,54 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          descricao_atividade: string | null
           empresa_id: string
           fiscal_atualizacao_contratada: boolean | null
           fiscal_atualizacoes_por_ano: number | null
           fiscal_banco_dados: string | null
           fiscal_dba: string | null
+          fiscal_dba_minutos_atendimento: number | null
+          fiscal_dba_minutos_monitoramento: number | null
           fiscal_edocs_24x7: boolean | null
           fiscal_modalidade: string | null
           ramo_atividade_id: string | null
+          ramo_secundario_id: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          descricao_atividade?: string | null
           empresa_id: string
           fiscal_atualizacao_contratada?: boolean | null
           fiscal_atualizacoes_por_ano?: number | null
           fiscal_banco_dados?: string | null
           fiscal_dba?: string | null
+          fiscal_dba_minutos_atendimento?: number | null
+          fiscal_dba_minutos_monitoramento?: number | null
           fiscal_edocs_24x7?: boolean | null
           fiscal_modalidade?: string | null
           ramo_atividade_id?: string | null
+          ramo_secundario_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          descricao_atividade?: string | null
           empresa_id?: string
           fiscal_atualizacao_contratada?: boolean | null
           fiscal_atualizacoes_por_ano?: number | null
           fiscal_banco_dados?: string | null
           fiscal_dba?: string | null
+          fiscal_dba_minutos_atendimento?: number | null
+          fiscal_dba_minutos_monitoramento?: number | null
           fiscal_edocs_24x7?: boolean | null
           fiscal_modalidade?: string | null
           ramo_atividade_id?: string | null
+          ramo_secundario_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -3238,6 +3409,13 @@ export type Database = {
           {
             foreignKeyName: "empresas_informacoes_contrato_ramo_atividade_id_fkey"
             columns: ["ramo_atividade_id"]
+            isOneToOne: false
+            referencedRelation: "ramos_atividade"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empresas_informacoes_contrato_ramo_secundario_id_fkey"
+            columns: ["ramo_secundario_id"]
             isOneToOne: false
             referencedRelation: "ramos_atividade"
             referencedColumns: ["id"]
@@ -3291,47 +3469,56 @@ export type Database = {
           },
         ]
       }
-      empresas_produtos: {
+      empresas_solucoes: {
         Row: {
           created_at: string
           created_by: string | null
+          em_projeto: boolean
           empresa_id: string
           id: string
-          produto_id: string
+          justificativa_projeto: string | null
+          solucao_id: string
+          tem_ams: boolean
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          em_projeto?: boolean
           empresa_id: string
           id?: string
-          produto_id: string
+          justificativa_projeto?: string | null
+          solucao_id: string
+          tem_ams: boolean
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          em_projeto?: boolean
           empresa_id?: string
           id?: string
-          produto_id?: string
+          justificativa_projeto?: string | null
+          solucao_id?: string
+          tem_ams?: boolean
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "empresas_produtos_empresa_id_fkey"
+            foreignKeyName: "empresas_solucoes_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "empresas_produtos_produto_id_fkey"
-            columns: ["produto_id"]
+            foreignKeyName: "empresas_solucoes_solucao_id_fkey"
+            columns: ["solucao_id"]
             isOneToOne: false
-            referencedRelation: "produtos"
+            referencedRelation: "solucoes"
             referencedColumns: ["id"]
           },
         ]
@@ -3399,6 +3586,48 @@ export type Database = {
         }
         Relationships: []
       }
+      especialistas_coordenadores: {
+        Row: {
+          coordenador_id: string
+          created_at: string
+          created_by: string | null
+          especialista_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          coordenador_id: string
+          created_at?: string
+          created_by?: string | null
+          especialista_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          coordenador_id?: string
+          created_at?: string
+          created_by?: string | null
+          especialista_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "especialistas_coordenadores_coordenador_id_fkey"
+            columns: ["coordenador_id"]
+            isOneToOne: false
+            referencedRelation: "organizacao_estrutura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "especialistas_coordenadores_especialista_id_fkey"
+            columns: ["especialista_id"]
+            isOneToOne: true
+            referencedRelation: "especialistas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grupo_emails: {
         Row: {
           created_at: string | null
@@ -3444,6 +3673,7 @@ export type Database = {
           inativado_por: string | null
           modulo_id: string | null
           produto_id: string | null
+          solucao_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -3459,6 +3689,7 @@ export type Database = {
           inativado_por?: string | null
           modulo_id?: string | null
           produto_id?: string | null
+          solucao_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -3474,6 +3705,7 @@ export type Database = {
           inativado_por?: string | null
           modulo_id?: string | null
           produto_id?: string | null
+          solucao_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -3491,6 +3723,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produtos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_aranda_solucao_id_fkey"
+            columns: ["solucao_id"]
+            isOneToOne: false
+            referencedRelation: "solucoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_aranda_solucao_produto_fk"
+            columns: ["produto_id", "solucao_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id", "solucao_id"]
           },
         ]
       }
@@ -3853,6 +4099,113 @@ export type Database = {
           operacao?: string
         }
         Relationships: []
+      }
+      menu_aparencia: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hover_fundo: string
+          hover_texto: string
+          item_fundo: string
+          item_texto: string
+          logo_path: string | null
+          logo_recolhido_path: string | null
+          menu_fundo: string
+          menu_texto: string
+          selecionado_fundo: string
+          selecionado_texto: string
+          subitem_fundo: string
+          subitem_texto: string
+          tema: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hover_fundo: string
+          hover_texto: string
+          item_fundo: string
+          item_texto: string
+          logo_path?: string | null
+          logo_recolhido_path?: string | null
+          menu_fundo: string
+          menu_texto: string
+          selecionado_fundo: string
+          selecionado_texto: string
+          subitem_fundo: string
+          subitem_texto: string
+          tema: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hover_fundo?: string
+          hover_texto?: string
+          item_fundo?: string
+          item_texto?: string
+          logo_path?: string | null
+          logo_recolhido_path?: string | null
+          menu_fundo?: string
+          menu_texto?: string
+          selecionado_fundo?: string
+          selecionado_texto?: string
+          subitem_fundo?: string
+          subitem_texto?: string
+          tema?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      menu_itens: {
+        Row: {
+          chave: string
+          created_at: string
+          created_by: string | null
+          icone: string | null
+          pai: string | null
+          posicao: number
+          rotulo_i18n: string
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          created_by?: string | null
+          icone?: string | null
+          pai?: string | null
+          posicao: number
+          rotulo_i18n: string
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          created_by?: string | null
+          icone?: string | null
+          pai?: string | null
+          posicao?: number
+          rotulo_i18n?: string
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_itens_pai_fkey"
+            columns: ["pai"]
+            isOneToOne: false
+            referencedRelation: "menu_itens"
+            referencedColumns: ["chave"]
+          },
+        ]
       }
       modulos_requerimento_produto: {
         Row: {
@@ -4731,6 +5084,7 @@ export type Database = {
       }
       produtos: {
         Row: {
+          a_classificar: boolean
           ativo: boolean
           codigo: string
           created_at: string
@@ -4741,10 +5095,12 @@ export type Database = {
           inativado_por: string | null
           nome: string
           ordem: number
+          solucao_id: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          a_classificar?: boolean
           ativo?: boolean
           codigo: string
           created_at?: string
@@ -4755,10 +5111,12 @@ export type Database = {
           inativado_por?: string | null
           nome: string
           ordem: number
+          solucao_id: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          a_classificar?: boolean
           ativo?: boolean
           codigo?: string
           created_at?: string
@@ -4769,10 +5127,19 @@ export type Database = {
           inativado_por?: string | null
           nome?: string
           ordem?: number
+          solucao_id?: string
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "produtos_solucao_id_fkey"
+            columns: ["solucao_id"]
+            isOneToOne: false
+            referencedRelation: "solucoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -4841,6 +5208,45 @@ export type Database = {
           inativado_por?: string | null
           nome?: string
           ordem?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      regras_contagem: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          grupos_que_contam: string[]
+          id: number
+          ignorar_atividade_interna: boolean
+          itens_excluidos: string[]
+          so_tickets_fechados: boolean
+          tipos_chamado: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          grupos_que_contam: string[]
+          id?: number
+          ignorar_atividade_interna: boolean
+          itens_excluidos?: string[]
+          so_tickets_fechados: boolean
+          tipos_chamado: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          grupos_que_contam?: string[]
+          id?: number
+          ignorar_atividade_interna?: boolean
+          itens_excluidos?: string[]
+          so_tickets_fechados?: boolean
+          tipos_chamado?: string[]
           updated_at?: string
           updated_by?: string | null
         }
@@ -5165,6 +5571,48 @@ export type Database = {
           resolvida_por?: string | null
           sqlstate?: string
           tabela_origem?: string
+        }
+        Relationships: []
+      }
+      solucoes: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          created_by: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          nome: string
+          ordem: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome: string
+          ordem: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inativado_em?: string | null
+          inativado_por?: string | null
+          nome?: string
+          ordem?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -5815,6 +6263,10 @@ export type Database = {
         Args: { p_fechamento: Json }
         Returns: Json
       }
+      bancos_horas_registrar_retroativo: {
+        Args: { p_retroativo: Json }
+        Returns: string
+      }
       bancos_horas_requerimentos: {
         Args: { p_ano: number; p_empresa_id: string; p_mes: number }
         Returns: {
@@ -5890,6 +6342,18 @@ export type Database = {
       }
       cleanup_old_jobs: { Args: never; Returns: number }
       cleanup_realtime_old_data: { Args: never; Returns: undefined }
+      codigos_resolucao_uso: {
+        Args: { p_meses?: number }
+        Returns: {
+          apontamentos: number
+          codigo: string
+          conta_horas: boolean
+          conta_tickets: boolean
+          primeira_ocorrencia: string
+          tem_regra: boolean
+          tickets: number
+        }[]
+      }
       create_banco_horas_audit_log: {
         Args: {
           p_acao: string
@@ -5907,6 +6371,14 @@ export type Database = {
           group_name: string
         }
         Returns: string
+      }
+      decidir_retroativo: {
+        Args: {
+          p_decisao: string
+          p_justificativa: string
+          p_retroativo_id: string
+        }
+        Returns: undefined
       }
       detectar_inconsistencias: { Args: never; Returns: Json }
       especialistas_ativos: {
@@ -6062,6 +6534,16 @@ export type Database = {
           screen_key: string
         }[]
       }
+      grupos_aranda_nao_mapeados: {
+        Args: { p_meses?: number }
+        Returns: {
+          apontamentos: number
+          empresas: string[]
+          grupo_aranda: string
+          primeira_ocorrencia: string
+          tickets: number
+        }[]
+      }
       has_especialistas_permission: { Args: never; Returns: boolean }
       has_screen_permission:
         | {
@@ -6093,6 +6575,23 @@ export type Database = {
           user_full_name: string
           user_id: string
           user_last_sign_in_at: string
+        }[]
+      }
+      listar_especialistas_para_email: {
+        Args: never
+        Returns: {
+          email: string
+          email_coordenador: string
+          nome: string
+        }[]
+      }
+      listar_responsaveis_organograma: {
+        Args: never
+        Returns: {
+          cargo: string
+          email: string
+          id: string
+          nome: string
         }[]
       }
       marcar_pesquisa_encaminhada: {
@@ -6144,12 +6643,26 @@ export type Database = {
         Args: { p_execucao_id: string }
         Returns: undefined
       }
+      notificar_grupos_nao_mapeados: { Args: never; Returns: undefined }
       obter_ultima_sincronizacao_pesquisas: {
         Args: { p_tipo_sincronizacao: string }
         Returns: string
       }
+      perfis_resumo: {
+        Args: { p_emails: string[]; p_ids: string[] }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       pode_consultar_bancos_horas: { Args: never; Returns: boolean }
+      pode_ver_regras_contagem: { Args: { p_nivel: string }; Returns: boolean }
       realtime_maintenance: { Args: never; Returns: string }
+      registrar_aviso_retroativo: {
+        Args: { p_item_ids: string[]; p_retroativo_id: string }
+        Returns: undefined
+      }
       registrar_envio_book: {
         Args: {
           p_book_id: string
@@ -6175,6 +6688,14 @@ export type Database = {
           p_registros_processados?: number
           p_tipo_sincronizacao: string
         }
+        Returns: undefined
+      }
+      salvar_menu: {
+        Args: { p_aparencia?: Json; p_itens: Json }
+        Returns: undefined
+      }
+      salvar_regras_contagem: {
+        Args: { p_codigos?: Json; p_motivo: string; p_regras?: Json }
         Returns: undefined
       }
       schedule_monthly_dispatch:
