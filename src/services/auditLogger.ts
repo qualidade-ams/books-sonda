@@ -3,6 +3,7 @@ import {
   type EmailTemplateErrorLog,
   type ErrorSeverity,
 } from '@/errors/EmailTemplateError';
+import type { AnexoAuditOperation } from './anexoAuditService';
 
 /**
  * Interface para logs de auditoria de operações de mapeamento
@@ -11,7 +12,7 @@ export interface AuditLogEntry {
   id: string;
   timestamp: string;
   operation: AuditOperation;
-  entityType: 'template' | 'mapping' | 'configuration';
+  entityType: AuditEntityType;
   entityId?: string;
   userId?: string;
   details: Record<string, any>;
@@ -35,7 +36,13 @@ export type AuditOperation =
   | 'admin_notification_sent'
   | 'error_recovery_attempted'
   | 'error_recovery_success'
-  | 'error_recovery_failed';
+  | 'error_recovery_failed'
+  | AnexoAuditOperation;
+
+/**
+ * Entidades auditáveis (anexoAuditService registra por este mesmo logger)
+ */
+export type AuditEntityType = 'template' | 'mapping' | 'configuration' | 'anexo';
 
 /**
  * Configuração do sistema de auditoria
@@ -77,7 +84,7 @@ export class AuditLogger {
    */
   async logOperation(
     operation: AuditOperation,
-    entityType: 'template' | 'mapping' | 'configuration',
+    entityType: AuditEntityType,
     details: Record<string, any>,
     result: 'success' | 'failure' | 'warning' = 'success',
     entityId?: string,
@@ -237,7 +244,7 @@ export class AuditLogger {
    */
   getLogs(filter?: {
     operation?: AuditOperation;
-    entityType?: 'template' | 'mapping' | 'configuration';
+    entityType?: AuditEntityType;
     result?: 'success' | 'failure' | 'warning';
     startDate?: Date;
     endDate?: Date;
