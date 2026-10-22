@@ -1,7 +1,7 @@
 // Shell EXPLORATÓRIO compartilhado pelos protótipos do DS v2 (fora do glob de /prototipos):
 // menu em pílula e faixa escura do topo, aprovados por enquanto no protótipo do Controle (15/10/2026).
 // Desenhado só para avaliar a direção; não altera o LayoutAdmin.
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type CSSProperties, type ComponentType, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Award,
@@ -21,9 +21,14 @@ import {
   Sun,
   ThumbsUp,
 } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
-import { aplicarAcento, lerAcento } from './acento';
+import {
+  aplicarDestaque,
+  paraPilula,
+  useAparenciaSalva,
+  useTemaDaPagina,
+  type CoresPilula,
+} from './aparencia';
 
 export const vidro = 'border border-white/15 bg-white/[0.06] backdrop-blur-md';
 export const botaoVidro = cn(
@@ -40,7 +45,12 @@ export const botaoPrimarioTopo =
 /* Menu em pílula, com logo e expansível                               */
 /* ------------------------------------------------------------------ */
 
-const MENU = [
+export interface ItemMenuPilula {
+  icone: ComponentType<{ className?: string }>;
+  rotulo: string;
+}
+
+const MENU: ItemMenuPilula[] = [
   { icone: Home, rotulo: 'Dashboard' },
   { icone: Award, rotulo: 'Elogios' },
   { icone: FileText, rotulo: 'Books' },
@@ -57,12 +67,18 @@ export function MenuPilula({
   expandido,
   onToggle,
   ativo,
+  itens = MENU,
+  cores,
 }: {
   expandido: boolean;
   onToggle: () => void;
   /** Rótulo do item ativo */
   ativo: string;
+  /** Itens do primeiro nível; o padrão é o menu exploratório do DS v2 */
+  itens?: ItemMenuPilula[];
+  cores?: CoresPilula;
 }) {
+  const logoClaro = cores?.logoBranco;
   return (
     <nav
       aria-label="Menu principal"
@@ -71,25 +87,44 @@ export function MenuPilula({
         'fixed left-0 top-1/2 z-20 hidden -translate-y-1/2 flex-col rounded-r-3xl bg-ds-shell-bg py-4 text-ds-shell-fg shadow-[0_16px_40px_rgba(0,0,0,0.12)] ring-1 ring-ds-shell-border transition-[width] duration-300 dark:shadow-none lg:flex',
         expandido ? 'w-56' : 'w-[60px]'
       )}
+      style={cores && { background: cores.fundo, color: cores.texto }}
     >
       <div className="flex h-8 items-center justify-center">
         {expandido ? (
           <img
-            src="/images/logo-sonda.png"
+            src={cores?.logo ?? '/images/logo-sonda.png'}
             alt="Sonda"
-            className="h-5 w-auto brightness-0 dark:brightness-100"
+            className={cn(
+              'h-5 w-auto max-w-[180px] object-contain',
+              cores?.logo
+                ? ''
+                : cores
+                  ? logoClaro
+                    ? 'brightness-0 invert'
+                    : 'brightness-0'
+                  : 'brightness-0 dark:brightness-100'
+            )}
           />
         ) : (
           <img
-            src="/images/n-sonda-azul.png"
+            src={cores?.logoRecolhido ?? '/images/n-sonda-azul.png'}
             alt="Sonda"
-            className="h-6 w-auto brightness-0 dark:invert"
+            className={cn(
+              'h-6 w-auto max-w-6 object-contain',
+              cores?.logoRecolhido
+                ? ''
+                : cores
+                  ? logoClaro
+                    ? 'brightness-0 invert'
+                    : 'brightness-0'
+                  : 'brightness-0 dark:invert'
+            )}
           />
         )}
       </div>
 
       <ul className={cn('mt-4 flex flex-col gap-1', expandido ? 'px-3' : 'items-center')}>
-        {MENU.map(({ icone: Icone, rotulo }) => {
+        {itens.map(({ icone: Icone, rotulo }) => {
           const atual = rotulo === ativo;
           return (
             <li key={rotulo} className={expandido ? undefined : 'contents'}>
@@ -99,12 +134,29 @@ export function MenuPilula({
                 aria-label={expandido ? undefined : rotulo}
                 title={expandido ? undefined : rotulo}
                 aria-current={atual ? 'page' : undefined}
+                style={
+                  cores &&
+                  (atual
+                    ? {
+                        background: cores.selecionado,
+                        color: cores.selecionadoTexto,
+                        boxShadow: `0 6px 14px ${cores.selecionado}66`,
+                      }
+                    : ({
+                        '--item': cores.item,
+                        '--item-texto': cores.itemTexto,
+                        '--hover': cores.hover,
+                        '--hover-texto': cores.hoverTexto,
+                      } as CSSProperties))
+                }
                 className={cn(
                   'flex h-9 items-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4E8]',
                   expandido ? 'w-full gap-2.5 px-2.5' : 'w-9 justify-center',
                   atual
                     ? 'bg-[#00D4E8] text-black shadow-[0_6px_14px_rgba(0,212,232,0.4)]'
-                    : 'text-ds-shell-fg-muted hover:bg-ds-shell-hover hover:text-ds-shell-fg'
+                    : cores
+                      ? 'bg-[var(--item)] text-[var(--item-texto)] hover:bg-[var(--hover)] hover:text-[var(--hover-texto)]'
+                      : 'text-ds-shell-fg-muted hover:bg-ds-shell-hover hover:text-ds-shell-fg'
                 )}
               >
                 <Icone className="h-4 w-4 shrink-0" />
@@ -118,6 +170,7 @@ export function MenuPilula({
       <div
         className={cn(
           'mt-3 border-t border-ds-shell-border pt-3',
+          cores && (logoClaro ? 'border-white/20' : 'border-black/10'),
           expandido ? 'px-3' : 'flex justify-center'
         )}
       >
@@ -126,6 +179,7 @@ export function MenuPilula({
           onClick={onToggle}
           aria-expanded={expandido}
           aria-label={expandido ? 'Recolher menu' : 'Expandir menu'}
+          style={cores && { color: cores.texto }}
           className={cn(
             'flex h-9 items-center rounded-xl text-ds-shell-fg-muted transition hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4E8]',
             expandido ? 'w-full gap-2.5 px-2.5' : 'w-9 justify-center'
@@ -148,8 +202,8 @@ export function MenuPilula({
 /* ------------------------------------------------------------------ */
 
 export function FaixaTopo({ children }: { children: ReactNode }) {
-  const { resolvedTheme, toggleTheme } = useTheme();
-  const escuro = resolvedTheme === 'dark';
+  const [tema, setTema] = useTemaDaPagina();
+  const escuro = tema === 'escuro';
   return (
     // 20 px além dos cartões de cada lado (-mx-5 + px-5): os indicadores ficam flutuando sobre a faixa
     <section className="ds-faixa-topo relative -mx-4 overflow-hidden rounded-2xl bg-[var(--ds-faixa-bg)] text-white md:-mx-5">
@@ -176,7 +230,7 @@ export function FaixaTopo({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-1 sm:gap-2">
             <button
               type="button"
-              onClick={toggleTheme}
+              onClick={() => setTema(escuro ? 'claro' : 'escuro')}
               aria-label={escuro ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
               className={botaoIconeTopo}
             >
@@ -219,18 +273,30 @@ export function PaginaV2({
   menuAtivo,
   menuExpandido,
   onToggleMenu,
+  menu,
+  coresMenu,
   children,
 }: {
   menuAtivo: string;
   menuExpandido: boolean;
   onToggleMenu: () => void;
+  menu?: ItemMenuPilula[];
+  coresMenu?: CoresPilula;
   children: ReactNode;
 }) {
-  // Comparação do destaque no claro (só protótipo): vale em todas as telas, inclusive nos níveis de edição
-  useEffect(() => aplicarAcento(lerAcento()), []);
+  // Aparência salva em Organizar Menu (só protótipo): cores do menu e destaque do sistema, por tema
+  const aparencia = useAparenciaSalva();
+  const [tema] = useTemaDaPagina();
+  useEffect(() => aplicarDestaque(aparencia), [aparencia]);
   return (
     <div data-ds="v2" className="min-h-screen bg-ds-bg-page font-ds-sans text-ds-fg">
-      <MenuPilula expandido={menuExpandido} onToggle={onToggleMenu} ativo={menuAtivo} />
+      <MenuPilula
+        expandido={menuExpandido}
+        onToggle={onToggleMenu}
+        ativo={menuAtivo}
+        itens={menu}
+        cores={coresMenu ?? paraPilula(aparencia[tema])}
+      />
       <div
         className={cn(
           'mx-auto max-w-[1440px] px-4 py-4 pb-24 transition-[padding] duration-300 md:px-6 lg:pr-8',

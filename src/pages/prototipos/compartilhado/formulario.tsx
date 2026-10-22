@@ -7,7 +7,6 @@ import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Info, X } from 'lucide-
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ds/Button';
 import { cn } from '@/lib/utils';
-import { aplicarAcento, gravarAcento, lerAcento, type Acento } from './acento';
 import { useDicas } from './dicas';
 import { campo } from './estilos';
 import { FaixaTopo, botaoVidro } from './shell';
@@ -664,26 +663,6 @@ export function ChavePrototipo<T extends string>({
   );
 }
 
-/** Comparação só do protótipo: no tema claro, ciano da marca ou azul #2563EB (21/10/2026) */
-function ChaveAcento() {
-  const [acento, setAcento] = useState<Acento>(lerAcento);
-  useEffect(() => {
-    aplicarAcento(acento);
-    gravarAcento(acento);
-  }, [acento]);
-  return (
-    <ChavePrototipo<Acento>
-      rotulo="Destaque no claro"
-      opcoes={[
-        ['ciano', 'Ciano'],
-        ['azul', 'Azul #2563EB'],
-      ]}
-      valor={acento}
-      onChange={setAcento}
-    />
-  );
-}
-
 /**
  * Título da faixa do topo: só a primeira palavra em degradê, o resto em branco, em todos os temas
  * (decisão de 21/10/2026).
@@ -705,7 +684,6 @@ export function ChavesPrototipo({ children }: { children: ReactNode }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-dashed border-ds-border-strong px-3 py-2 text-xs text-ds-fg-secondary">
       {children}
-      <ChaveAcento />
     </div>
   );
 }
