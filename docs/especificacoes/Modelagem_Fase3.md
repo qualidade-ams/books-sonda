@@ -441,17 +441,17 @@ A auditoria segue o gatilho padrão.
 
 Cada migration tem antes um teste SQL em bloco `DO` autorreversível, que falha e depois passa.
 
-| #   | Entrega                                                                                                                      |
-| --- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 10  | `fase3_catalogo.sql`: soluções, produtos, grupos, `empresas_solucoes`, reorganização (2.6) e sincronização das soluções (10) |
-| 11  | `fase3_empresas.sql`: colunas de 3.1 e 3.3, carga do FISCAL e `perfis_resumo`                                                |
-| 12  | `fase3_bancos.sql`: `fim_vigencia`                                                                                           |
-| 13  | `fase3_regras_contagem.sql`: seção 5, com o consumo lendo a tabela                                                           |
-| 14  | `fase3_de_para.sql`: sincronização nova → atual, não mapeados e notificação                                                  |
-| 15  | `fase3_retroativos.sql`: seção 8 e a mudança no registro do fechamento                                                       |
-| 16  | `fase3_telas.sql`: chaves, menu, política de DELETE dos ramos, leitura da auditoria pelo Controle e status `pulado`          |
-| 17  | `fase3_menu.sql`: `menu_itens`, `menu_aparencia` com os padrões, bucket `menu-logos` e a chave `organizar_menu` (12.1)       |
-| 18  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)        |
+| #   | Entrega                                                                                                                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10  | `fase3_catalogo.sql`: soluções, produtos, grupos, `empresas_solucoes`, reorganização (2.6) e sincronização das soluções (10)                                                                |
+| 11  | `fase3_empresas.sql`: colunas de 3.1 e 3.3, carga do FISCAL e `perfis_resumo`                                                                                                               |
+| 12  | `fase3_bancos.sql`: `fim_vigencia`                                                                                                                                                          |
+| 13  | `fase3_regras_contagem.sql`: seção 5, com o consumo lendo a tabela                                                                                                                          |
+| 14  | `fase3_de_para.sql`: sincronização nova → atual, não mapeados e notificação                                                                                                                 |
+| 15  | `fase3_retroativos.sql`: seção 8 e a mudança no registro do fechamento                                                                                                                      |
+| 16  | `fase3_telas.sql`: anotação interna do reajuste, auditoria lida pelo Controle, DELETE dos ramos, categoria de Produtos e Módulos e status `pulado` (as chaves novas entraram na 13 e na 15) |
+| 17  | `fase3_menu.sql`: `menu_itens`, `menu_aparencia` com os padrões, bucket `menu-logos` e a chave `organizar_menu` (12.1)                                                                      |
+| 18  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
 
 **Situação em 22/10/2026:** as migrations 10 a 13 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
 
