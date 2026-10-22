@@ -419,10 +419,7 @@ A permissão continua vindo de `screens` e `screen_permissions`. Menu sem tela v
 
 **Storage:** bucket `menu-logos`, até 500 KB, PNG, SVG, WebP ou JPG. Usuários logados leem; quem edita `organizar_menu` grava.
 
-**RLS das duas tabelas:**
-
-- SELECT para todo usuário logado, porque todo usuário monta o menu;
-- INSERT, UPDATE e DELETE só com `has_screen_permission('organizar_menu', 'edit')`, com `(SELECT auth.uid())`.
+**RLS das duas tabelas:** SELECT para todo usuário logado, porque todo usuário monta o menu. Não há política de escrita: a gravação é feita só por `salvar_menu(p_itens, p_aparencia)`, que exige Edição em `organizar_menu` e grava só o que mudou. As posições são únicas por menu (conferidas no fim da gravação, para permitir trocar duas de lugar), inclusive no primeiro nível.
 
 A auditoria segue o gatilho padrão.
 
