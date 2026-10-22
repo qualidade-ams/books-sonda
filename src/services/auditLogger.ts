@@ -1,4 +1,8 @@
-import { EmailTemplateError, type EmailTemplateErrorLog, type ErrorSeverity } from '@/errors/EmailTemplateError';
+import {
+  EmailTemplateError,
+  type EmailTemplateErrorLog,
+  type ErrorSeverity,
+} from '@/errors/EmailTemplateError';
 
 /**
  * Interface para logs de auditoria de operações de mapeamento
@@ -19,7 +23,7 @@ export interface AuditLogEntry {
 /**
  * Tipos de operações auditáveis
  */
-export type AuditOperation = 
+export type AuditOperation =
   | 'template_search'
   | 'template_mapping_search'
   | 'template_fallback_used'
@@ -64,7 +68,7 @@ export class AuditLogger {
       enableFileOutput: false,
       enableDatabaseOutput: false,
       notificationThreshold: 'error',
-      ...config
+      ...config,
     };
   }
 
@@ -95,7 +99,7 @@ export class AuditLogger {
       details,
       result,
       duration,
-      error: error?.toLogObject()
+      error: error?.toLogObject(),
     };
 
     // Adicionar à lista de logs em memória
@@ -144,7 +148,7 @@ export class AuditLogger {
         templateFound,
         templateId,
         fallbackUsed,
-        fallbackType
+        fallbackType,
       },
       templateFound ? 'success' : 'warning',
       templateId,
@@ -173,7 +177,7 @@ export class AuditLogger {
         fallbackType,
         templateId,
         templateName,
-        reason
+        reason,
       },
       'warning',
       templateId
@@ -195,7 +199,7 @@ export class AuditLogger {
         errorCode: error.code,
         errorMessage: error.message,
         ...error.context,
-        ...additionalContext
+        ...additionalContext,
       },
       'failure',
       undefined,
@@ -222,7 +226,7 @@ export class AuditLogger {
         originalErrorCode: originalError.code,
         recoveryAttempt,
         recoveryStrategy,
-        ...details
+        ...details,
       },
       success ? 'success' : 'failure'
     );
@@ -243,30 +247,24 @@ export class AuditLogger {
 
     if (filter) {
       if (filter.operation) {
-        filteredLogs = filteredLogs.filter(log => log.operation === filter.operation);
+        filteredLogs = filteredLogs.filter((log) => log.operation === filter.operation);
       }
       if (filter.entityType) {
-        filteredLogs = filteredLogs.filter(log => log.entityType === filter.entityType);
+        filteredLogs = filteredLogs.filter((log) => log.entityType === filter.entityType);
       }
       if (filter.result) {
-        filteredLogs = filteredLogs.filter(log => log.result === filter.result);
+        filteredLogs = filteredLogs.filter((log) => log.result === filter.result);
       }
       if (filter.startDate) {
-        filteredLogs = filteredLogs.filter(log => 
-          new Date(log.timestamp) >= filter.startDate!
-        );
+        filteredLogs = filteredLogs.filter((log) => new Date(log.timestamp) >= filter.startDate!);
       }
       if (filter.endDate) {
-        filteredLogs = filteredLogs.filter(log => 
-          new Date(log.timestamp) <= filter.endDate!
-        );
+        filteredLogs = filteredLogs.filter((log) => new Date(log.timestamp) <= filter.endDate!);
       }
     }
 
     // Ordenar por timestamp (mais recente primeiro)
-    filteredLogs.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    filteredLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     // Aplicar limite se especificado
     if (filter?.limit) {
@@ -291,34 +289,41 @@ export class AuditLogger {
     let logs = this.logs;
 
     if (timeframe) {
-      logs = logs.filter(log => {
+      logs = logs.filter((log) => {
         const logDate = new Date(log.timestamp);
         return logDate >= timeframe.startDate && logDate <= timeframe.endDate;
       });
     }
 
     const totalOperations = logs.length;
-    const successCount = logs.filter(log => log.result === 'success').length;
-    const errorCount = logs.filter(log => log.result === 'failure').length;
-    const warningCount = logs.filter(log => log.result === 'warning').length;
+    const successCount = logs.filter((log) => log.result === 'success').length;
+    const errorCount = logs.filter((log) => log.result === 'failure').length;
+    const warningCount = logs.filter((log) => log.result === 'warning').length;
 
-    const operationCounts = logs.reduce((acc, log) => {
-      acc[log.operation] = (acc[log.operation] || 0) + 1;
-      return acc;
-    }, {} as Record<AuditOperation, number>);
+    const operationCounts = logs.reduce(
+      (acc, log) => {
+        acc[log.operation] = (acc[log.operation] || 0) + 1;
+        return acc;
+      },
+      {} as Record<AuditOperation, number>
+    );
 
     const errorCounts = logs
-      .filter(log => log.error)
-      .reduce((acc, log) => {
-        const errorCode = log.error!.code;
-        acc[errorCode] = (acc[errorCode] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      .filter((log) => log.error)
+      .reduce(
+        (acc, log) => {
+          const errorCode = log.error!.code;
+          acc[errorCode] = (acc[errorCode] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
-    const logsWithDuration = logs.filter(log => log.duration !== undefined);
-    const averageResponseTime = logsWithDuration.length > 0
-      ? logsWithDuration.reduce((sum, log) => sum + log.duration!, 0) / logsWithDuration.length
-      : undefined;
+    const logsWithDuration = logs.filter((log) => log.duration !== undefined);
+    const averageResponseTime =
+      logsWithDuration.length > 0
+        ? logsWithDuration.reduce((sum, log) => sum + log.duration!, 0) / logsWithDuration.length
+        : undefined;
 
     return {
       totalOperations,
@@ -327,7 +332,7 @@ export class AuditLogger {
       warningRate: totalOperations > 0 ? (warningCount / totalOperations) * 100 : 0,
       operationCounts,
       errorCounts,
-      averageResponseTime
+      averageResponseTime,
     };
   }
 
@@ -338,9 +343,7 @@ export class AuditLogger {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - this.config.retentionDays);
 
-    this.logs = this.logs.filter(log => 
-      new Date(log.timestamp) > cutoffDate
-    );
+    this.logs = this.logs.filter((log) => new Date(log.timestamp) > cutoffDate);
 
     // Manter apenas o número máximo de logs
     if (this.logs.length > this.config.maxLogEntries) {
@@ -410,7 +413,7 @@ export class AuditLogger {
   private async notifyAdministrators(entry: AuditLogEntry): Promise<void> {
     // Implementação placeholder para notificação de administradores
     console.warn(`[AdminNotification] Problema crítico detectado:`, entry);
-    
+
     // Registrar que a notificação foi enviada
     await this.logOperation(
       'admin_notification_sent',
@@ -418,7 +421,7 @@ export class AuditLogger {
       {
         originalOperation: entry.operation,
         originalError: entry.error?.code,
-        notificationReason: 'critical_error_detected'
+        notificationReason: 'critical_error_detected',
       },
       'success'
     );
