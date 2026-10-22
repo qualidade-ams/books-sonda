@@ -2,53 +2,58 @@ import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useBookTemplates } from '../useBookTemplates';
 
-// Mock do hook useEmailTemplates
+// Mock do hook useEmailTemplates. O retorno precisa ser o mesmo objeto em
+// todo render, como o useState do hook real: um array novo a cada chamada
+// redispara o useEffect([templates]) de useBookTemplates em loop infinito
+// (estourava a memória da suíte).
+const mockEmailTemplates = vi.hoisted(() => ({
+  templates: [
+    {
+      id: 'template-1',
+      nome: 'Template Book Mensal',
+      assunto: 'Book Mensal - {{empresa}}',
+      corpo: '<p>Conteúdo do template mensal</p>',
+      descricao: 'Template para books mensais',
+      ativo: true,
+      formulario: 'book',
+      modalidade: 'mensal',
+    },
+    {
+      id: 'template-2',
+      nome: 'Template Book Semanal',
+      assunto: 'Book Semanal - {{empresa}}',
+      corpo: '<p>Conteúdo do template semanal</p>',
+      descricao: 'Template para books semanais',
+      ativo: true,
+      formulario: 'book',
+      modalidade: 'semanal',
+    },
+    {
+      id: 'template-3',
+      nome: 'Template Inativo',
+      assunto: 'Template Inativo',
+      corpo: '<p>Template inativo</p>',
+      descricao: 'Template desativado',
+      ativo: false,
+      formulario: 'book',
+      modalidade: null,
+    },
+    {
+      id: 'template-4',
+      nome: 'Template Outro Formulário',
+      assunto: 'Outro formulário',
+      corpo: '<p>Template para outro formulário</p>',
+      descricao: 'Template para outro tipo de formulário',
+      ativo: true,
+      formulario: 'orcamento',
+      modalidade: null,
+    },
+  ],
+  loading: false,
+}));
+
 vi.mock('../useEmailTemplates', () => ({
-  useEmailTemplates: () => ({
-    templates: [
-      {
-        id: 'template-1',
-        nome: 'Template Book Mensal',
-        assunto: 'Book Mensal - {{empresa}}',
-        corpo: '<p>Conteúdo do template mensal</p>',
-        descricao: 'Template para books mensais',
-        ativo: true,
-        formulario: 'book',
-        modalidade: 'mensal'
-      },
-      {
-        id: 'template-2',
-        nome: 'Template Book Semanal',
-        assunto: 'Book Semanal - {{empresa}}',
-        corpo: '<p>Conteúdo do template semanal</p>',
-        descricao: 'Template para books semanais',
-        ativo: true,
-        formulario: 'book',
-        modalidade: 'semanal'
-      },
-      {
-        id: 'template-3',
-        nome: 'Template Inativo',
-        assunto: 'Template Inativo',
-        corpo: '<p>Template inativo</p>',
-        descricao: 'Template desativado',
-        ativo: false,
-        formulario: 'book',
-        modalidade: null
-      },
-      {
-        id: 'template-4',
-        nome: 'Template Outro Formulário',
-        assunto: 'Outro formulário',
-        corpo: '<p>Template para outro formulário</p>',
-        descricao: 'Template para outro tipo de formulário',
-        ativo: true,
-        formulario: 'orcamento',
-        modalidade: null
-      }
-    ],
-    loading: false
-  })
+  useEmailTemplates: () => mockEmailTemplates,
 }));
 
 describe('useBookTemplates', () => {
@@ -60,13 +65,13 @@ describe('useBookTemplates', () => {
     const { result } = renderHook(() => useBookTemplates());
 
     expect(result.current.bookTemplateOptions).toHaveLength(4); // 2 padrão + 2 personalizados ativos para book
-    
+
     // Verificar templates padrão
     const defaultTemplates = result.current.getDefaultTemplates();
     expect(defaultTemplates).toHaveLength(2);
     expect(defaultTemplates[0].value).toBe('portugues');
     expect(defaultTemplates[1].value).toBe('ingles');
-    
+
     // Verificar templates personalizados
     const customTemplates = result.current.getCustomTemplates();
     expect(customTemplates).toHaveLength(2);
@@ -78,16 +83,16 @@ describe('useBookTemplates', () => {
     const { result } = renderHook(() => useBookTemplates());
 
     const customTemplates = result.current.getCustomTemplates();
-    
+
     // Não deve incluir template inativo
-    expect(customTemplates.find(t => t.value === 'template-3')).toBeUndefined();
-    
+    expect(customTemplates.find((t) => t.value === 'template-3')).toBeUndefined();
+
     // Não deve incluir template de outro formulário
-    expect(customTemplates.find(t => t.value === 'template-4')).toBeUndefined();
-    
+    expect(customTemplates.find((t) => t.value === 'template-4')).toBeUndefined();
+
     // Deve incluir apenas os templates ativos do formulário book
     expect(customTemplates).toHaveLength(2);
-    expect(customTemplates.map(t => t.value)).toEqual(['template-1', 'template-2']);
+    expect(customTemplates.map((t) => t.value)).toEqual(['template-1', 'template-2']);
   });
 
   it('deve identificar corretamente templates padrão', () => {
@@ -123,20 +128,20 @@ describe('useBookTemplates', () => {
     const { result } = renderHook(() => useBookTemplates());
 
     const defaultTemplates = result.current.getDefaultTemplates();
-    
+
     expect(defaultTemplates).toHaveLength(2);
-    expect(defaultTemplates.every(t => t.isDefault)).toBe(true);
-    expect(defaultTemplates.map(t => t.value)).toEqual(['portugues', 'ingles']);
+    expect(defaultTemplates.every((t) => t.isDefault)).toBe(true);
+    expect(defaultTemplates.map((t) => t.value)).toEqual(['portugues', 'ingles']);
   });
 
   it('deve retornar apenas templates personalizados quando solicitado', () => {
     const { result } = renderHook(() => useBookTemplates());
 
     const customTemplates = result.current.getCustomTemplates();
-    
+
     expect(customTemplates).toHaveLength(2);
-    expect(customTemplates.every(t => !t.isDefault)).toBe(true);
-    expect(customTemplates.map(t => t.value)).toEqual(['template-1', 'template-2']);
+    expect(customTemplates.every((t) => !t.isDefault)).toBe(true);
+    expect(customTemplates.map((t) => t.value)).toEqual(['template-1', 'template-2']);
   });
 
   it('deve incluir descrições corretas nos templates', () => {

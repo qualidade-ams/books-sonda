@@ -26,8 +26,15 @@ jobs:
       - name: Typecheck
         run: npm run typecheck:ci
 
+      # Trava: falha só com teste falhando fora de scripts/test-baseline.json.
+      # Supabase fictício (os testes não acessam o banco) e fuso de São Paulo,
+      # o mesmo de quem roda a suíte localmente.
       - name: Tests
-        run: npm run test:run
+        run: npm run test:ci
+        env:
+          VITE_SUPABASE_URL: http://localhost
+          VITE_SUPABASE_ANON_KEY: chave-ficticia-de-teste
+          TZ: America/Sao_Paulo
 
       - name: Build
         run: npm run build
