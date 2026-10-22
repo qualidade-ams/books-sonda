@@ -225,18 +225,19 @@ Guarda os filtros que hoje estão fixos em `bancos_horas_consumo_itens`. A carga
 | tipos_chamado             | text[] NOT NULL  | `IM`, `RF`, `PM`                                                |
 | ignorar_atividade_interna | boolean NOT NULL | true                                                            |
 | itens_excluidos           | text[] NOT NULL  | `000000 - PROJETOS APL`                                         |
-| status_tickets            | text[] NOT NULL  | `Closed`                                                        |
+| so_tickets_fechados       | boolean NOT NULL | true (só status `Closed`, pela data de fechamento)              |
 
-`bancos_horas_consumo_itens` passa a ler essa linha. Os testes `fase2_02` e os do motor continuam valendo como verificação de que nada mudou.
+A chave "Só tickets fechados" segue o protótipo; a versão 0.1 previa uma lista de status. `bancos_horas_consumo_itens` passa a ler essa linha. Os testes `fase2_02` e os do motor continuam valendo como verificação de que nada mudou: em produção, rode o `fase2_02` depois da migration 13.
 
 ### 5.2 `codigos_resolucao_banco` e códigos sem regra
 
-- A tabela ganha políticas de escrita com `edit` em `regras_contagem`. Hoje ela é escrita só por migration (Q6, revista em 16/10/2026).
-- A aba "Códigos sem regra" usa a função `codigos_resolucao_sem_regra()`. Ela lista os códigos que aparecem em apontamentos e tickets dos últimos 12 meses e não estão na tabela, com a primeira ocorrência.
+- A tabela ganha políticas de escrita com `edit` em `regras_contagem`. Hoje ela é escrita só por migration (Q6, revista em 16/10/2026). A leitura, que estava aberta (`USING (true)`), passa a exigir usuário logado.
+- As abas "Códigos de resolução" e "Códigos sem regra" usam a função `codigos_resolucao_uso(p_meses)`, com padrão de 6 meses, como no protótipo. Ela devolve apontamentos e tickets por código, contando só o que passa nos demais filtros, se o código tem regra e a primeira ocorrência no período.
+- A tela `regras_contagem` é registrada já nesta migration (13), porque as políticas dependem da chave.
 
 ### 5.3 Motivo da alteração
 
-Salvar pede um motivo. Para isso, `auditoria_alteracoes` ganha a coluna `motivo` (text), e o gatilho genérico passa a preenchê-la com `current_setting('app.motivo', true)`. A tela salva por uma função que recebe o motivo, aplica as mudanças e grava tudo numa transação.
+Salvar pede um motivo. Para isso, `auditoria_alteracoes` ganha a coluna `motivo` (text), e o gatilho genérico passa a preenchê-la com `current_setting('app.motivo', true)`. A tela salva por `salvar_regras_contagem(p_motivo, p_regras, p_codigos)`, que exige `edit`, recebe o motivo (até 500 caracteres), aplica as mudanças e grava tudo numa transação. Em `p_regras` vão só os campos que mudaram. `p_codigos` é a lista completa: o código que não estiver nela sai.
 
 A coluna serve também para as decisões dos Apontamentos Retroativos.
 
