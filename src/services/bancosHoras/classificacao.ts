@@ -6,7 +6,7 @@
  * cadastro, cujo escopo e filtro atendem → senão, Banco padrão.
  */
 
-import { mesesDesdeVigencia, type MesAno } from './calculo';
+import { estaVigente, type MesAno } from './calculo';
 
 export interface EscopoBanco {
   produtoId: string;
@@ -25,6 +25,7 @@ export interface BancoClassificavel {
   padrao: boolean;
   ativo: boolean;
   inicioVigencia: MesAno;
+  fimVigencia?: MesAno | null;
   escopo: EscopoBanco[];
   filtroIc: FiltroItemConfiguracao | null;
 }
@@ -71,14 +72,14 @@ function atendeFiltro(banco: BancoClassificavel, itemConfiguracao: string | null
 
 /**
  * Monta o classificador de uma empresa num mês. Só participam bancos ativos e
- * já vigentes no mês.
+ * vigentes no mês; depois do fim da vigência, o consumo vai para o padrão.
  */
 export function criarClassificador(
   bancos: BancoClassificavel[],
   dePara: GrupoDePara[],
   mes: MesAno
 ): Classificador {
-  const vigentes = bancos.filter((b) => b.ativo && mesesDesdeVigencia(b, mes) >= 0);
+  const vigentes = bancos.filter((b) => b.ativo && estaVigente(b, mes));
 
   const solto = vigentes.find((b) => !b.padrao && b.escopo.length === 0 && !b.filtroIc);
   if (solto) {

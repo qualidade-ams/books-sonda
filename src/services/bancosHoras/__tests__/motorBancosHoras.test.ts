@@ -335,6 +335,36 @@ describe('calcularEmpresaMes — vários bancos', () => {
     expect(doBanco(r, 'fiscal').horas!.consumo).toBe(100);
   });
 
+  it('depois do fim da vigência o banco não aparece; o consumo vai para o padrão', async () => {
+    const repo = repositorio({
+      bancos: [{ ...bancos[0], fimVigencia: { mes: 2, ano: 2026 } }, bancos[2]],
+      dePara,
+      consumo: { '3/2026': [linha('CAMBIO', 100)] },
+    });
+    const r = await calcularEmpresaMes(repo, EMPRESA, { mes: 3, ano: 2026 });
+    expect(r.bancos.map((b) => b.bancoId)).toEqual(['fiscal']);
+    expect(doBanco(r, 'fiscal').horas!.consumo).toBe(100);
+  });
+
+  it('no último mês da vigência o banco encerra como num fim de período (P1)', async () => {
+    // Trimestral desde janeiro, encerrado em fevereiro, no meio do período
+    const repo = repositorio({
+      bancos: [{ ...bancos[0], fimVigencia: { mes: 2, ano: 2026 } }, bancos[2]],
+      dePara,
+      consumo: { '1/2026': [linha('CAMBIO', 1000)], '2/2026': [linha('CAMBIO', 4000)] },
+    });
+    const r = await calcularEmpresaMes(repo, EMPRESA, { mes: 2, ano: 2026 });
+    const comex = doBanco(r, 'comex');
+    expect(comex.fimPeriodo).toBe(true);
+    // Janeiro: 2400 − 1000 = 1400, repassa 50% = 700. Fevereiro: 2400 + 700 − 4000 = −900
+    expect(comex.horas).toMatchObject({
+      repasseAnterior: 700,
+      saldo: -900,
+      repasse: 0,
+      excedente: 900,
+    });
+  });
+
   it('sem Banco padrão, o que não se encaixa fica sem banco e gera alerta', async () => {
     const repo = repositorio({
       bancos: [bancos[0]],

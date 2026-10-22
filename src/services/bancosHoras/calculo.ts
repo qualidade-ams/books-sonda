@@ -20,6 +20,8 @@ export interface ParametrosCalculo {
   tipoContrato: TipoContrato;
   periodoApuracao: number;
   inicioVigencia: MesAno;
+  /** Último mês em que o banco vale; nulo = tempo indeterminado */
+  fimVigencia?: MesAno | null;
   repasseEspecial: 'nenhum' | 'por_periodo';
   duracaoPeriodoMeses?: number | null;
   periodosAteZerar?: number | null;
@@ -69,16 +71,34 @@ export function mesesDesdeVigencia(
   return (m.ano - p.inicioVigencia.ano) * 12 + (m.mes - p.inicioVigencia.mes);
 }
 
-/** Último mês de um período de apuração (RC-28) */
+const depoisDoFim = (p: Pick<ParametrosCalculo, 'fimVigencia'>, m: MesAno) =>
+  !!p.fimVigencia && m.ano * 12 + m.mes > p.fimVigencia.ano * 12 + p.fimVigencia.mes;
+
+/** O banco vale no mês: do início ao fim da vigência, inclusive */
+export function estaVigente(
+  p: Pick<ParametrosCalculo, 'inicioVigencia' | 'fimVigencia'>,
+  m: MesAno
+): boolean {
+  return mesesDesdeVigencia(p, m) >= 0 && !depoisDoFim(p, m);
+}
+
+/**
+ * Último mês de um período de apuração (RC-28). O último mês da vigência também
+ * é, mesmo no meio do período: o banco encerra como num fim de período (P1).
+ */
 export function ehFimDePeriodo(p: ParametrosCalculo, m: MesAno): boolean {
-  const indice = mesesDesdeVigencia(p, m);
-  return indice >= 0 && (indice + 1) % p.periodoApuracao === 0;
+  if (!estaVigente(p, m)) return false;
+  if (p.fimVigencia && p.fimVigencia.mes === m.mes && p.fimVigencia.ano === m.ano) return true;
+  return (mesesDesdeVigencia(p, m) + 1) % p.periodoApuracao === 0;
 }
 
 function exigirVigente(p: ParametrosCalculo, m: MesAno): number {
   const indice = mesesDesdeVigencia(p, m);
   if (indice < 0) {
     throw new Error(`Mês ${m.mes}/${m.ano} é antes do início da vigência do banco`);
+  }
+  if (depoisDoFim(p, m)) {
+    throw new Error(`Mês ${m.mes}/${m.ano} é depois do fim da vigência do banco`);
   }
   return indice;
 }

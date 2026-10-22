@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   mesesDesdeVigencia,
+  estaVigente,
   ehFimDePeriodo,
   inicioDoCiclo,
   calcularRepasse,
@@ -56,6 +57,56 @@ describe('ehFimDePeriodo (RC-28)', () => {
 
   it('nunca é fim de período antes da vigência', () => {
     expect(ehFimDePeriodo(trimestral, { mes: 12, ano: 2024 })).toBe(false);
+  });
+});
+
+// Trimestral desde janeiro de 2025, encerrado em maio: no meio do segundo período
+const encerrado: ParametrosCalculo = { ...trimestral, fimVigencia: { mes: 5, ano: 2025 } };
+
+describe('estaVigente', () => {
+  it('vale do início ao fim da vigência, inclusive', () => {
+    expect(estaVigente(encerrado, { mes: 12, ano: 2024 })).toBe(false);
+    expect(estaVigente(encerrado, { mes: 1, ano: 2025 })).toBe(true);
+    expect(estaVigente(encerrado, { mes: 5, ano: 2025 })).toBe(true);
+    expect(estaVigente(encerrado, { mes: 6, ano: 2025 })).toBe(false);
+  });
+
+  it('sem fim, vale por tempo indeterminado', () => {
+    expect(estaVigente(trimestral, { mes: 1, ano: 2040 })).toBe(true);
+    expect(estaVigente({ ...trimestral, fimVigencia: null }, { mes: 1, ano: 2040 })).toBe(true);
+  });
+});
+
+describe('fim da vigência (P1)', () => {
+  it('o último mês é fim de período, mesmo no meio do período', () => {
+    expect(ehFimDePeriodo(encerrado, { mes: 4, ano: 2025 })).toBe(false);
+    expect(ehFimDePeriodo(encerrado, { mes: 5, ano: 2025 })).toBe(true);
+  });
+
+  it('depois do fim não há fim de período', () => {
+    expect(ehFimDePeriodo(encerrado, { mes: 6, ano: 2025 })).toBe(false);
+  });
+
+  it('no último mês, saldo positivo zera e negativo vira excedente', () => {
+    const maio = { mes: 5, ano: 2025 };
+    expect(aplicarRegraDeSaida(encerrado, maio, 500, { mensal: 50 }, 'horas')).toEqual({
+      repasse: 0,
+      excedente: 0,
+      fimPeriodo: true,
+      transicaoPeriodo: false,
+    });
+    expect(aplicarRegraDeSaida(encerrado, maio, -300, { mensal: 50 }, 'horas')).toMatchObject({
+      repasse: 0,
+      excedente: 300,
+    });
+  });
+
+  it('recusa mês depois do fim da vigência', () => {
+    const junho = { mes: 6, ano: 2025 };
+    expect(() => inicioDoCiclo(encerrado, junho)).toThrow(/depois do fim da vigência/);
+    expect(() => aplicarRegraDeSaida(encerrado, junho, 0, { mensal: 50 }, 'horas')).toThrow(
+      /depois do fim da vigência/
+    );
   });
 });
 

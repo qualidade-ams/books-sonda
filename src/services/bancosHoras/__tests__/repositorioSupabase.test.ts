@@ -19,6 +19,7 @@ function cenario() {
           tipo_contrato: 'horas',
           periodo_apuracao: 3,
           inicio_vigencia: '2026-01-01',
+          fim_vigencia: '2026-06-01',
           dia_inicio_apuracao: 1,
           dia_fim_apuracao: 0,
           taxa_produto: 'OUTROS',
@@ -41,6 +42,7 @@ function cenario() {
           tipo_contrato: 'ambos',
           periodo_apuracao: 6,
           inicio_vigencia: '2025-07-01',
+          fim_vigencia: null,
           dia_inicio_apuracao: 16,
           dia_fim_apuracao: 15,
           taxa_produto: 'GALLERY',
@@ -251,6 +253,7 @@ describe('criarRepositorioSupabase', () => {
     expect(bancos[0]).toMatchObject({
       nome: 'Banco COMEX',
       inicioVigencia: { mes: 1, ano: 2026 },
+      fimVigencia: { mes: 6, ano: 2026 },
       escopo: [{ produtoId: 'COMEX', moduloId: null }],
       filtroIc: { operador: 'contem', valor: 'NIQUEL' },
       consomeOutrosBancos: true,
@@ -268,6 +271,7 @@ describe('criarRepositorioSupabase', () => {
     expect(bancos[1]).toMatchObject({
       padrao: true,
       visivelCliente: false,
+      fimVigencia: null,
       tipoContrato: 'ambos',
       diaInicioApuracao: 16,
       diaFimApuracao: 15,
