@@ -594,6 +594,7 @@ const ptBR = {
     groupMapping: 'De-para de Grupos',
     businessSectors: 'Ramos de Atividade',
     countingRules: 'Regras de contagem',
+    bankHoursNew: 'Controle de Bancos de Horas (novo)',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',

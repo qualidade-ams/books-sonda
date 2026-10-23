@@ -34,6 +34,7 @@ import RamosAtividade from './pages/admin/RamosAtividade';
 import RegrasContagem from './pages/admin/RegrasContagem';
 import Empresas from './pages/admin/Empresas';
 import EmpresaDetalhe from './pages/admin/EmpresaDetalhe';
+import ControleBancosHoras from './pages/admin/ControleBancosHoras';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -250,6 +251,14 @@ const App = () => (
                       element={
                         <ProtectedRoute screenKey="empresas">
                           <EmpresaDetalhe />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/bancos-horas"
+                      element={
+                        <ProtectedRoute screenKey="bancos_horas_controle">
+                          <ControleBancosHoras />
                         </ProtectedRoute>
                       }
                     />

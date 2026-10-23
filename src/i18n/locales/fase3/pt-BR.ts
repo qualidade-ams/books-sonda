@@ -9,6 +9,7 @@ import deParaGrupos from './pt-BR/deParaGrupos';
 import ramosAtividade from './pt-BR/ramosAtividade';
 import regrasContagem from './pt-BR/regrasContagem';
 import empresasCadastro from './pt-BR/empresasCadastro';
+import controleBancoHoras from './pt-BR/controleBancoHoras';
 
 const fase3 = {
   fase3Comum,
@@ -17,6 +18,7 @@ const fase3 = {
   ramosAtividade,
   regrasContagem,
   empresasCadastro,
+  controleBancoHoras,
 };
 
 export default fase3;

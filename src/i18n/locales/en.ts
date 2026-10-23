@@ -594,6 +594,7 @@ const en = {
     groupMapping: 'Group Mapping',
     businessSectors: 'Business Sectors',
     countingRules: 'Counting rules',
+    bankHoursNew: 'Hour Bank Control (new)',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

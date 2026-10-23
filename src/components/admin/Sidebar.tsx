@@ -109,6 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/historico-books') ||
       path.includes('/geracao-books') ||
       path.includes('/controle-banco-horas') ||
+      path === '/admin/bancos-horas' ||
       path.includes('/ajustes-retroativos') ||
       path.includes('/regras-contagem')
     ) {
@@ -257,6 +258,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/historico-books') ||
       path.includes('/geracao-books') ||
       path.includes('/controle-banco-horas') ||
+      path === '/admin/bancos-horas' ||
       path.includes('/ajustes-retroativos') ||
       path.includes('/regras-contagem')
     ) {
@@ -401,6 +403,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.bankHours'),
           path: '/admin/controle-banco-horas',
           screenKey: 'controle_banco_horas',
+        },
+        {
+          icon: Clock,
+          label: t('nav.bankHoursNew'),
+          path: '/admin/bancos-horas',
+          screenKey: 'bancos_horas_controle',
         },
         {
           icon: AlertTriangle,

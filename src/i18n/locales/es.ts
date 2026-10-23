@@ -594,6 +594,7 @@ const es = {
     groupMapping: 'Correspondencia de Grupos',
     businessSectors: 'Ramos de Actividad',
     countingRules: 'Reglas de conteo',
+    bankHoursNew: 'Control de Bancos de Horas (nuevo)',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
     consultantsCoordinators: 'Consultores x Coordinadores',
