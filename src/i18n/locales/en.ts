@@ -589,6 +589,7 @@ const en = {
     clientEmails: 'Client Emails Registry',
     responsibleGroups: 'Responsible Groups',
     clientRates: 'Client Rates Registry',
+    companiesNew: 'Companies (new)',
     productsModules: 'Products and Modules',
     groupMapping: 'Group Mapping',
     businessSectors: 'Business Sectors',

@@ -32,6 +32,8 @@ import ProdutosModulos from './pages/admin/ProdutosModulos';
 import DeParaGrupos from './pages/admin/DeParaGrupos';
 import RamosAtividade from './pages/admin/RamosAtividade';
 import RegrasContagem from './pages/admin/RegrasContagem';
+import Empresas from './pages/admin/Empresas';
+import EmpresaDetalhe from './pages/admin/EmpresaDetalhe';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -232,6 +234,22 @@ const App = () => (
                       element={
                         <ProtectedRoute screenKey="regras_contagem">
                           <RegrasContagem />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/empresas"
+                      element={
+                        <ProtectedRoute screenKey="empresas">
+                          <Empresas />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/empresas/:empresaId"
+                      element={
+                        <ProtectedRoute screenKey="empresas">
+                          <EmpresaDetalhe />
                         </ProtectedRoute>
                       }
                     />

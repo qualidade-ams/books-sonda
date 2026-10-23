@@ -589,6 +589,7 @@ const es = {
     clientEmails: 'Registro de Emails Clientes',
     responsibleGroups: 'Grupos Responsables',
     clientRates: 'Registro de Tasas Clientes',
+    companiesNew: 'Empresas (nueva)',
     productsModules: 'Productos y Módulos',
     groupMapping: 'Correspondencia de Grupos',
     businessSectors: 'Ramos de Actividad',

@@ -589,6 +589,7 @@ const ptBR = {
     clientEmails: 'Cadastro E-mails Clientes',
     responsibleGroups: 'Grupos Responsáveis',
     clientRates: 'Cadastro Taxas Clientes',
+    companiesNew: 'Empresas (nova)',
     productsModules: 'Produtos e Módulos',
     groupMapping: 'De-para de Grupos',
     businessSectors: 'Ramos de Atividade',

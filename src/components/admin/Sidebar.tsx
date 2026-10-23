@@ -117,6 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (
       path.includes('/empresas-clientes') ||
       path.includes('/clientes') ||
+      path.includes('/admin/empresas') ||
       path.includes('/produtos-modulos') ||
       path.includes('/de-para-grupos') ||
       path.includes('/ramos-atividade')
@@ -267,6 +268,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (
       path.includes('/empresas-clientes') ||
       path.includes('/clientes') ||
+      path.includes('/admin/empresas') ||
       path.includes('/produtos-modulos') ||
       path.includes('/de-para-grupos') ||
       path.includes('/ramos-atividade')
@@ -441,6 +443,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.companies'),
           path: '/admin/empresas-clientes',
           screenKey: 'empresas_clientes',
+        },
+        {
+          icon: Building2,
+          label: t('nav.companiesNew'),
+          path: '/admin/empresas',
+          screenKey: 'empresas',
         },
         {
           icon: Boxes,

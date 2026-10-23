@@ -1,0 +1,141 @@
+/** Pantalla Empresas (nueva) */
+const empresasCadastro = {
+  titulo: 'Empresas',
+  subtitulo: 'Clientes, organizaciones de Aranda y bancos de horas.',
+  novaNaTelaAtual: 'Nueva empresa en la pantalla actual',
+  editarNaTelaAtual: 'Editar en la pantalla actual',
+  abrirNaTelaAtual: 'Abrir en la pantalla actual',
+  telaAtualDica:
+    'Hasta el cambio, estos datos se mantienen en la pantalla actual y se sincronizan con esta.',
+  indicadores: {
+    total: 'Empresas',
+    ativas: 'Activas',
+    inativas: 'Inactivas',
+    pendentes: 'Información pendiente',
+  },
+  lista: {
+    rotulo: 'Empresas',
+    buscar: 'Buscar por nombre',
+    colunaEmpresa: 'Empresa',
+    colunaSolucoes: 'Soluciones',
+    colunaAms: 'AMS',
+    colunaCs: 'Customer Success',
+    colunaComercial: 'Comercial',
+    sim: 'Sí',
+    nao: 'No',
+    amsEm: 'AMS en {{solucoes}}',
+    semAms: 'Sin AMS: {{solucoes}}',
+    emProjeto: 'En proyecto',
+    observacao: 'Observación',
+    copiarEmail: '{{nome}}: copiar e-mail {{email}}',
+    cliqueCopiar: '{{email}} · clic para copiar',
+    emailCopiado: 'E-mail copiado',
+    nenhuma: 'No se encontró ninguna empresa',
+    nenhumaNoFiltro: 'Ninguna empresa cumple los filtros.',
+    erro: 'No fue posible cargar las empresas',
+  },
+  filtros: {
+    status: 'Estado',
+    ativas: 'Activas',
+    inativas: 'Inactivas',
+    solucao: 'Solución',
+    temAms: 'Tiene AMS',
+    emProjeto: 'En proyecto',
+    modelo: 'Modelo de cálculo',
+    soPendentes: 'Solo pendientes',
+  },
+  modelo: {
+    legado: 'Legado',
+    multiplo: 'Múltiples bancos',
+    liberada: 'Liberada',
+  },
+  situacao: {
+    ativa: 'Activa',
+    inativa: 'Inactiva',
+    pendente: 'Activa, con información pendiente: {{pendencias}}',
+  },
+  pendencia: {
+    ramo: 'ramo de actividad',
+    contrato_fiscal: 'Contrato FISCAL',
+    organizacao: 'organizaciones de Aranda',
+    projeto_sem_solucao: 'proyecto sin solución',
+  },
+  detalhe: {
+    voltar: 'Empresas',
+    carregando: 'Cargando la empresa',
+    erro: 'No fue posible cargar la empresa',
+    naoEncontrada: 'Empresa no encontrada',
+    somenteVisualizacao: 'Solo visualización',
+    seloModelo: {
+      legado: 'Legado',
+      multiplo: 'Legado (en validación)',
+      liberada: 'Múltiples bancos',
+    },
+    abas: 'Secciones de la empresa',
+  },
+  identidade: {
+    titulo: 'Identidad',
+    amsEProjetos: 'AMS y proyectos',
+    grupoEmpresa: 'Empresa',
+    grupoContrato: 'Contrato',
+    grupoResponsaveis: 'Responsables',
+    grupoObservacao: 'Observación y adjuntos',
+    nomeCompleto: 'Nombre completo',
+    nomeAbreviado: 'Nombre abreviado',
+    grupoEmpresarial: 'Grupo empresarial',
+    vigencia: 'Vigencia del contrato',
+    vigenciaAte: '{{inicio}} – {{fim}}',
+    semFim: 'sin fecha de fin',
+    solucoes: 'Soluciones contratadas',
+    ams: 'AMS',
+    semAms: 'sin AMS',
+    emProjeto: 'En proyecto',
+    emProjetoDe: 'En proyecto: {{justificativa}}',
+    emailCs: 'E-mail del Customer Success',
+    emailComercial: 'E-mail del Comercial',
+    emailTm: 'E-mail del T&M',
+    observacao: 'Observación',
+    anexos: 'Adjuntos',
+    baixar: 'Descargar {{nome}}',
+  },
+  ams: {
+    titulo: 'AMS y proyectos',
+    subtitulo:
+      'Las soluciones contratadas vienen de la pantalla actual; aquí se ajustan el AMS y los proyectos de cada una.',
+    secao: 'Contrato',
+    amsEm: 'AMS en {{solucao}}',
+    projetoDe: '{{solucao}} en proyecto',
+    editarJustificativa: 'Editar la justificación del proyecto de {{solucao}}',
+    semAmsAviso: 'Sin AMS en ninguna solución, la empresa deja de tener Book.',
+    incluirSolucao:
+      'Para agregar o quitar una solución, edite la empresa en la pantalla actual. FINANCEIRAS entra en el contrato después del cambio.',
+    nenhumaSolucao: 'Ninguna solución contratada en la pantalla actual.',
+    projetoTitulo: '{{solucao}} en proyecto',
+    projetoDescricao:
+      'Explique brevemente el proyecto. La justificación aparece en la sugerencia del ícono de proyecto, en la lista de empresas.',
+    justificativa: 'Justificación',
+    justificativaPlaceholder: 'Ej.: implementación en curso, previsión de conclusión en 03/2027.',
+    colocarEmProjeto: 'Poner en proyecto',
+  },
+  dicas: {
+    nomeCompleto: 'Razón social de la empresa, en mayúsculas.',
+    nomeAbreviado:
+      'Nombre corto, usado en el asunto de los e-mails y en todas las listas y ordenaciones.',
+    grupoEmpresarial:
+      'Nombre del grupo económico al que pertenece la empresa, para reunir las empresas del mismo grupo.',
+    vigencia:
+      'Inicio y fin del contrato. Controlan el envío del Book y la inactivación automática al vencer.',
+    solucoes:
+      'Soluciones del contrato y, en cada una, si tiene AMS y si está en proyecto (con la justificación). Solo los productos de soluciones con AMS pueden entrar en el alcance de los bancos; FISCAIS habilita el Contrato FISCAL.',
+    emailCs:
+      'Va en copia en todos los Books e identifica al Customer Success en el organigrama del Book.',
+    emailComercial: 'Identifica al comercial en el organigrama del Book.',
+    emailTm: 'Identifica al responsable T&M en el organigrama del Book.',
+    observacao:
+      'Anotación libre sobre la empresa, hasta 500 caracteres. Aparece en el ícono junto al nombre en la lista.',
+    anexos:
+      'Archivos permanentes de la empresa. Van con el Book cuando la opción Adjunto está activada en la pestaña Book.',
+  },
+};
+
+export default empresasCadastro;
