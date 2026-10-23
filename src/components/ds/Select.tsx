@@ -10,6 +10,8 @@ interface Opcao {
   valor: string;
   rotulo: React.ReactNode;
   desabilitada: boolean;
+  /** Rótulo do <optgroup> em que a opção está */
+  grupo?: string;
 }
 
 const textoDe = (no: React.ReactNode): string =>
@@ -17,25 +19,39 @@ const textoDe = (no: React.ReactNode): string =>
     .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : ''))
     .join('');
 
-/** Lê as <option> dos filhos, inclusive dentro de fragmentos e listas */
-function lerOpcoes(filhos: React.ReactNode): Opcao[] {
+/** Lê as <option> dos filhos, inclusive dentro de fragmentos, listas e <optgroup> */
+function lerOpcoes(filhos: React.ReactNode, grupo?: string): Opcao[] {
   return React.Children.toArray(filhos).flatMap((filho): Opcao[] => {
     if (!React.isValidElement(filho)) return [];
     const props = filho.props as {
       value?: string | number;
       disabled?: boolean;
+      label?: string;
       children?: React.ReactNode;
     };
-    if (filho.type === React.Fragment) return lerOpcoes(props.children);
+    if (filho.type === React.Fragment) return lerOpcoes(props.children, grupo);
+    if (filho.type === 'optgroup') return lerOpcoes(props.children, props.label);
     if (filho.type !== 'option') return [];
     return [
       {
         valor: String(props.value ?? textoDe(props.children)),
         rotulo: props.children,
         desabilitada: !!props.disabled,
+        grupo,
       },
     ];
   });
+}
+
+/** Opções seguidas do mesmo <optgroup> ficam juntas, na ordem em que vieram */
+function agrupar(opcoes: Opcao[]): { grupo?: string; opcoes: Opcao[] }[] {
+  const blocos: { grupo?: string; opcoes: Opcao[] }[] = [];
+  for (const o of opcoes) {
+    const ultimo = blocos[blocos.length - 1];
+    if (ultimo && ultimo.grupo === o.grupo) ultimo.opcoes.push(o);
+    else blocos.push({ grupo: o.grupo, opcoes: [o] });
+  }
+  return blocos;
 }
 
 const paraInterno = (v: string) => (v === '' ? VAZIO : v);
@@ -110,19 +126,31 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             className="z-50 max-h-[min(18rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-ds-border bg-ds-bg-raised p-1 font-ds-sans text-ds-fg shadow-[0_12px_32px_-12px_rgba(0,0,0,0.45)]"
           >
             <SelectPrimitive.Viewport>
-              {opcoes.map((o) => (
-                <SelectPrimitive.Item
-                  key={o.valor}
-                  value={paraInterno(o.valor)}
-                  disabled={o.desabilitada}
-                  className="relative flex h-11 cursor-default select-none items-center rounded-md pl-8 pr-2.5 text-sm outline-none transition data-[disabled]:pointer-events-none data-[highlighted]:bg-ds-bg-subtle data-[state=checked]:font-medium data-[disabled]:text-ds-fg-disabled md:h-9"
-                >
-                  <SelectPrimitive.ItemIndicator className="absolute left-2.5 grid place-items-center text-ds-fg-accent">
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  </SelectPrimitive.ItemIndicator>
-                  <SelectPrimitive.ItemText>{o.rotulo}</SelectPrimitive.ItemText>
-                </SelectPrimitive.Item>
-              ))}
+              {agrupar(opcoes).map((bloco, i) => {
+                const itens = bloco.opcoes.map((o) => (
+                  <SelectPrimitive.Item
+                    key={o.valor}
+                    value={paraInterno(o.valor)}
+                    disabled={o.desabilitada}
+                    className="relative flex h-11 cursor-default select-none items-center rounded-md pl-8 pr-2.5 text-sm outline-none transition data-[disabled]:pointer-events-none data-[highlighted]:bg-ds-bg-subtle data-[state=checked]:font-medium data-[disabled]:text-ds-fg-disabled md:h-9"
+                  >
+                    <SelectPrimitive.ItemIndicator className="absolute left-2.5 grid place-items-center text-ds-fg-accent">
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </SelectPrimitive.ItemIndicator>
+                    <SelectPrimitive.ItemText>{o.rotulo}</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                ));
+                return bloco.grupo === undefined ? (
+                  <React.Fragment key={`sem-grupo-${i}`}>{itens}</React.Fragment>
+                ) : (
+                  <SelectPrimitive.Group key={`${bloco.grupo}-${i}`}>
+                    <SelectPrimitive.Label className="px-2.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.06em] text-ds-fg-muted">
+                      {bloco.grupo}
+                    </SelectPrimitive.Label>
+                    {itens}
+                  </SelectPrimitive.Group>
+                );
+              })}
             </SelectPrimitive.Viewport>
           </SelectPrimitive.Content>
         </SelectPrimitive.Portal>

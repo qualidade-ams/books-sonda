@@ -60,6 +60,26 @@ describe('Select (DS v2)', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ target: { value: '' } }));
   });
 
+  it('agrupa as opções de <optgroup>, com o nome do grupo', async () => {
+    const onChange = vi.fn();
+    render(
+      <Select aria-label="Produto" value="ce" onChange={onChange}>
+        <optgroup label="COMEX">
+          <option value="ce">CE PLUS</option>
+          <option value="fci">FCI</option>
+        </optgroup>
+        <optgroup label="FISCAIS">
+          <option value="comply">COMPLY</option>
+        </optgroup>
+      </Select>
+    );
+    expect(screen.getByRole('combobox', { name: 'Produto' })).toHaveTextContent('CE PLUS');
+    await userEvent.click(screen.getByRole('combobox', { name: 'Produto' }));
+    expect(screen.getByRole('group', { name: 'FISCAIS' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('option', { name: 'COMPLY' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ target: { value: 'comply' } }));
+  });
+
   it('mostra a opção vazia quando o valor é vazio', () => {
     render(
       <Select aria-label="Ramo" value="" onChange={() => {}}>

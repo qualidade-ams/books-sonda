@@ -1,7 +1,2 @@
-// Textos do "i" ao lado de cada rótulo, por tela. Cada protótipo fornece o seu dicionário com
-// <DicasContext.Provider value={DICAS}>; Rotulo, Interruptor e Secao procuram o texto pelo rótulo.
-import { createContext, useContext } from 'react';
-
-export const DicasContext = createContext<Record<string, string>>({});
-
-export const useDicas = () => useContext(DicasContext);
+// Promovido para src/components/ds/Dicas (23/10/2026); os protótipos usam o mesmo contexto.
+export { DicasContext, useDicas } from '@/components/ds/Dicas';

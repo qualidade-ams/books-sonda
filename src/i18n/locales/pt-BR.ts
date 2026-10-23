@@ -80,6 +80,35 @@ const ptBR = {
     previousPeriod: 'Período anterior',
     nextPeriod: 'Próximo período',
     cancel: 'Cancelar',
+    paginacao: {
+      mostrar: 'Mostrar',
+      itensPorPagina: 'Itens por página: {{quantidade}}',
+      navegacao: 'Paginação',
+      proxima: 'Próxima',
+      paginaDe: 'Página {{pagina}} de {{total}}',
+      pagina: 'Página {{pagina}}',
+      intervalo: '{{inicio}}–{{fim}} de {{total}}',
+    },
+    filtros: {
+      ativos: 'Filtros ({{quantidade}} ativos)',
+      limparSelecao: 'Limpar seleção',
+    },
+    formulario: {
+      paraQueServe: 'Para que serve: {{assunto}}',
+      aumentar: 'Aumentar',
+      diminuir: 'Diminuir',
+      horasInvalidas: 'Use HH:MM, com minutos de 00 a 59.',
+      porMes: '/mês',
+      remover: 'Remover {{item}}',
+      copiar: 'Copiar {{rotulo}}',
+      copiado: '{{rotulo}} copiado',
+      copiarCurto: 'Copiar',
+      copiadoCurto: 'Copiado',
+      salvar: 'Salvar',
+    },
+    visual: {
+      consumoDe: '{{consumo}} de {{disponivel}}',
+    },
   },
 
   // Autenticação

@@ -25,6 +25,10 @@ interface ConfirmDialogProps {
   /** Exige texto antes de confirmar (ex.: aprovar ou descartar ajuste retroativo) */
   justificativa?: { rotulo: string; placeholder?: string };
   processando?: boolean;
+  /** Campo próprio da confirmação (ex.: produto de destino ao mover um módulo) */
+  children?: React.ReactNode;
+  /** O campo próprio ainda não está pronto */
+  confirmarDesabilitado?: boolean;
   onConfirmar: (justificativa?: string) => void;
 }
 
@@ -39,6 +43,8 @@ export function ConfirmDialog({
   tom = 'padrao',
   justificativa,
   processando,
+  children,
+  confirmarDesabilitado,
   onConfirmar,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
@@ -77,6 +83,8 @@ export function ConfirmDialog({
           </ul>
         )}
 
+        {children}
+
         {justificativa && (
           <div>
             <label htmlFor={idJustificativa} className="mb-1.5 block text-sm font-medium">
@@ -106,7 +114,7 @@ export function ConfirmDialog({
           </AlertDialogCancel>
           <Button
             variante={tom === 'perigo' ? 'perigo' : 'primario'}
-            disabled={processando || faltaJustificativa}
+            disabled={processando || faltaJustificativa || confirmarDesabilitado}
             onClick={() => onConfirmar(justificativa ? texto.trim() : undefined)}
           >
             {processando && <Loader2 className="animate-spin" />}

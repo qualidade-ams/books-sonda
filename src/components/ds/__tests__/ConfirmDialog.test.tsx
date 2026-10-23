@@ -37,6 +37,37 @@ describe('ConfirmDialog', () => {
     expect(onConfirmar).toHaveBeenCalledWith(undefined);
   });
 
+  it('aceita um campo próprio e só confirma quando ele está pronto', () => {
+    const { rerender } = render(
+      <ConfirmDialog
+        aberto
+        onOpenChange={vi.fn()}
+        titulo="Mover?"
+        rotuloConfirmar="Mover"
+        confirmarDesabilitado
+        onConfirmar={vi.fn()}
+      >
+        <label>
+          Destino <input />
+        </label>
+      </ConfirmDialog>
+    );
+    expect(screen.getByLabelText('Destino')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mover' })).toBeDisabled();
+    rerender(
+      <ConfirmDialog
+        aberto
+        onOpenChange={vi.fn()}
+        titulo="Mover?"
+        rotuloConfirmar="Mover"
+        onConfirmar={vi.fn()}
+      >
+        <span />
+      </ConfirmDialog>
+    );
+    expect(screen.getByRole('button', { name: 'Mover' })).toBeEnabled();
+  });
+
   it('só habilita a confirmação depois de preencher a justificativa', () => {
     const onConfirmar = vi.fn();
     render(

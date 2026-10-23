@@ -80,6 +80,35 @@ const en = {
     previousPeriod: 'Previous period',
     nextPeriod: 'Next period',
     cancel: 'Cancel',
+    paginacao: {
+      mostrar: 'Show',
+      itensPorPagina: 'Items per page: {{quantidade}}',
+      navegacao: 'Pagination',
+      proxima: 'Next',
+      paginaDe: 'Page {{pagina}} of {{total}}',
+      pagina: 'Page {{pagina}}',
+      intervalo: '{{inicio}}–{{fim}} of {{total}}',
+    },
+    filtros: {
+      ativos: 'Filters ({{quantidade}} active)',
+      limparSelecao: 'Clear selection',
+    },
+    formulario: {
+      paraQueServe: 'What it is for: {{assunto}}',
+      aumentar: 'Increase',
+      diminuir: 'Decrease',
+      horasInvalidas: 'Use HH:MM, with minutes from 00 to 59.',
+      porMes: '/month',
+      remover: 'Remove {{item}}',
+      copiar: 'Copy {{rotulo}}',
+      copiado: '{{rotulo}} copied',
+      copiarCurto: 'Copy',
+      copiadoCurto: 'Copied',
+      salvar: 'Save',
+    },
+    visual: {
+      consumoDe: '{{consumo}} of {{disponivel}}',
+    },
   },
 
   // Authentication
