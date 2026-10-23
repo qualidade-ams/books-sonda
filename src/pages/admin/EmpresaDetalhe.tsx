@@ -14,8 +14,11 @@ import { atraso } from '@/components/ds/Visual';
 import { botaoVidro } from '@/components/ds/estilos';
 import { IdentidadeEmpresa } from '@/components/admin/empresas/IdentidadeEmpresa';
 import { EdicaoAmsProjetos } from '@/components/admin/empresas/EdicaoAmsProjetos';
+import { AbaInformacoes } from '@/components/admin/empresas/AbaInformacoes';
+import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
 import { useEmpresaCadastro } from '@/hooks/useEmpresasCadastro';
 import { useEmpresaAnexos } from '@/hooks/useEmpresaAnexos';
+import { useRamosAtividade } from '@/hooks/useRamosAtividade';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import { TELA_ATUAL_EMPRESAS } from '@/utils/empresasTela';
@@ -34,6 +37,19 @@ const DICAS: [string, string][] = [
   ['empresasCadastro.identidade.emailTm', 'emailTm'],
   ['empresasCadastro.identidade.observacao', 'observacao'],
   ['empresasCadastro.identidade.anexos', 'anexos'],
+  ['empresasCadastro.informacoes.idAranda', 'idAranda'],
+  ['empresasCadastro.informacoes.nomesOrganizacoes', 'nomesOrganizacoes'],
+  ['empresasCadastro.informacoes.ramo', 'ramo'],
+  ['empresasCadastro.informacoes.ramoSecundario', 'ramoSecundario'],
+  ['empresasCadastro.informacoes.descricaoAtividade', 'descricaoAtividade'],
+  ['empresasCadastro.informacoes.modalidade', 'modalidade'],
+  ['empresasCadastro.informacoes.edocs', 'edocs'],
+  ['empresasCadastro.informacoes.atualizacao', 'atualizacao'],
+  ['empresasCadastro.informacoes.atualizacoesAno', 'atualizacoesAno'],
+  ['empresasCadastro.informacoes.dba', 'dba'],
+  ['empresasCadastro.informacoes.horasAtendimento', 'horasAtendimento'],
+  ['empresasCadastro.informacoes.horasMonitoramento', 'horasMonitoramento'],
+  ['empresasCadastro.informacoes.bancoDados', 'bancoDados'],
 ];
 
 const TOM_DO_MODELO: Record<ModeloEmpresa, 'neutral' | 'warning' | 'info'> = {
@@ -76,10 +92,13 @@ export default function EmpresaDetalhe() {
   const podeEditarEmpresa = hasPermission('empresas', 'edit');
   const podeEditarBancos = hasPermission('bancos_horas_parametros', 'edit');
   const soLeitura = !podeEditarEmpresa && !podeEditarBancos;
-  const { empresa, isLoading, error, salvarSolucoes } = useEmpresaCadastro(empresaId);
+  const { empresa, isLoading, error, salvarSolucoes, salvarInformacoes } =
+    useEmpresaCadastro(empresaId);
+  const { ramos } = useRamosAtividade();
   // Só o download: sem id, o hook não busca a lista de anexos
   const { downloadAnexo } = useEmpresaAnexos();
   const [editando, setEditando] = useState<'ams' | null>(null);
+  const [aba, setAba] = useState('informacoes');
 
   const dicas = useMemo(
     () =>
@@ -190,6 +209,25 @@ export default function EmpresaDetalhe() {
           onEditarAms={() => setEditando('ams')}
           onBaixarAnexo={baixar}
         />
+
+        <div className="mt-6 space-y-4">
+          <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+            <SegmentedTabs
+              rotulo={t('empresasCadastro.detalhe.abas')}
+              itens={[{ valor: 'informacoes', rotulo: t('empresasCadastro.abas.informacoes') }]}
+              valor={aba}
+              onChange={setAba}
+            />
+          </div>
+          <div key={aba} className="ds-surgir">
+            <AbaInformacoes
+              empresa={empresa}
+              ramos={ramos}
+              podeEditar={podeEditarEmpresa}
+              onSalvar={salvarInformacoes}
+            />
+          </div>
+        </div>
       </>
     );
   };

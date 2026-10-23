@@ -1,9 +1,18 @@
 /**
- * Regras da lista da tela Empresas: busca e filtros. Dentro de um filtro vale qualquer
- * opção marcada; entre filtros, todos.
+ * Regras da tela Empresas que não dependem de componente: busca e filtros da lista (dentro
+ * de um filtro vale qualquer opção marcada; entre filtros, todos) e o rascunho da aba
+ * Informações.
  */
 
-import type { EmpresaLista, ModeloEmpresa } from '@/types/empresas';
+import { formatarHoras } from '@/components/ds/horas';
+import { converterHorasParaMinutos } from '@/utils/horasUtils';
+import type {
+  ContratoFiscal,
+  EmpresaDetalhe,
+  EmpresaLista,
+  ModeloEmpresa,
+  SalvarInformacoesInput,
+} from '@/types/empresas';
 
 export type SimNao = 'sim' | 'nao';
 
@@ -57,3 +66,76 @@ export const codigosDeSolucao = (lista: EmpresaLista[]) =>
   [...new Set(lista.flatMap((e) => e.solucoes.map((s) => s.codigo)))].sort((a, b) =>
     a.localeCompare(b)
   );
+
+// ---------------------------------------------------------------------------
+// Aba Informações
+// ---------------------------------------------------------------------------
+
+/** O que a tela mostra quando o Contrato FISCAL ainda não foi informado */
+const FISCAL_PADRAO = {
+  modalidade: 'on_premise',
+  edocs24x7: false,
+  atualizacaoContratada: false,
+  dba: 'nao_contratado',
+  bancoDados: 'sql_server',
+} as const;
+
+export const comPadraoFiscal = (f: ContratoFiscal): ContratoFiscal => ({
+  ...f,
+  modalidade: f.modalidade ?? FISCAL_PADRAO.modalidade,
+  edocs24x7: f.edocs24x7 ?? FISCAL_PADRAO.edocs24x7,
+  atualizacaoContratada: f.atualizacaoContratada ?? FISCAL_PADRAO.atualizacaoContratada,
+  dba: f.dba ?? FISCAL_PADRAO.dba,
+  bancoDados: f.bancoDados ?? FISCAL_PADRAO.bancoDados,
+});
+
+/** Campos da aba como são editados; as horas de DBA ficam em HH:MM */
+export interface RascunhoInformacoes {
+  idAranda: string;
+  organizacoes: string[];
+  ramoId: string | null;
+  ramoSecundarioId: string | null;
+  descricaoAtividade: string;
+  fiscal: ContratoFiscal;
+  horasAtendimento: string;
+  horasMonitoramento: string;
+}
+
+const horasOuVazio = (minutos: number | null) => (minutos === null ? '' : formatarHoras(minutos));
+
+export const rascunhoInformacoes = (
+  e: Pick<EmpresaDetalhe, 'idAranda' | 'organizacoes' | 'informacoes'>
+): RascunhoInformacoes => ({
+  idAranda: e.idAranda ?? '',
+  organizacoes: e.organizacoes.map((o) => o.nome),
+  ramoId: e.informacoes.ramoId,
+  ramoSecundarioId: e.informacoes.ramoSecundarioId,
+  descricaoAtividade: e.informacoes.descricaoAtividade ?? '',
+  fiscal: comPadraoFiscal(e.informacoes.fiscal),
+  horasAtendimento: horasOuVazio(e.informacoes.fiscal.minutosAtendimento),
+  horasMonitoramento: horasOuVazio(e.informacoes.fiscal.minutosMonitoramento),
+});
+
+const HORAS = /^\d{1,3}:[0-5]\d$/;
+const minutosOuNulo = (horas: string) =>
+  horas.trim() ? converterHorasParaMinutos(horas.trim()) : null;
+
+/** Horas de DBA vazias ou em HH:MM */
+export const horasDoRascunhoValidas = (r: RascunhoInformacoes) =>
+  [r.horasAtendimento, r.horasMonitoramento].every((h) => !h.trim() || HORAS.test(h.trim()));
+
+/** Os campos que deixam de se aplicar ficam guardados (RN-33) */
+export const informacoesParaSalvar = (r: RascunhoInformacoes): SalvarInformacoesInput => ({
+  idAranda: r.idAranda.trim() || null,
+  organizacoes: r.organizacoes,
+  informacoes: {
+    ramoId: r.ramoId,
+    ramoSecundarioId: r.ramoSecundarioId,
+    descricaoAtividade: r.descricaoAtividade.trim() || null,
+    fiscal: {
+      ...r.fiscal,
+      minutosAtendimento: minutosOuNulo(r.horasAtendimento),
+      minutosMonitoramento: minutosOuNulo(r.horasMonitoramento),
+    },
+  },
+});

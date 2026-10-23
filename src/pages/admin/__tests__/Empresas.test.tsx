@@ -71,6 +71,22 @@ const DETALHE = {
   anexos: [
     { id: 'a1', nome: 'contrato.pdf', tamanhoBytes: 1, storagePath: 'empresas/alfa/contrato.pdf' },
   ],
+  organizacoes: [],
+  informacoes: {
+    ramoId: null,
+    ramoSecundarioId: null,
+    descricaoAtividade: null,
+    fiscal: {
+      modalidade: null,
+      edocs24x7: null,
+      atualizacaoContratada: null,
+      atualizacoesPorAno: null,
+      dba: null,
+      minutosAtendimento: null,
+      minutosMonitoramento: null,
+      bancoDados: null,
+    },
+  },
   atualizadoEm: '2026-10-22T12:00:00Z',
   atualizadoPor: null,
 } as unknown as Detalhe;
@@ -89,6 +105,9 @@ vi.mock('@/hooks/useEmpresasCadastro', () => ({
   useEmpresaCadastro: () => detalheHook,
 }));
 vi.mock('@/hooks/useEmpresaAnexos', () => ({ useEmpresaAnexos: () => ({ downloadAnexo }) }));
+vi.mock('@/hooks/useRamosAtividade', () => ({
+  useRamosAtividade: () => ({ ramos: [{ id: 'r1', nome: 'Agronegócio', ativo: true }] }),
+}));
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({
     hasPermission: (tela: string, nivel: string) => permissoes.includes(`${tela}:${nivel}`),
@@ -164,6 +183,27 @@ describe('Empresas (detalhe)', () => {
       ])
     );
     await waitFor(() => expect(screen.getByRole('heading', { name: 'ALFA' })).toBeInTheDocument());
+  });
+
+  it('a aba Informações abre primeiro e salva pelo hook', async () => {
+    renderizar('/admin/empresas/alfa');
+    expect(screen.getByRole('tab', { name: /empresasCadastro.abas.informacoes/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'empresasCadastro.informacoes.novaOrganizacao' }),
+      {
+        target: { value: 'alfa sa' },
+      }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'empresasCadastro.informacoes.adicionar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.salvar' }));
+    await waitFor(() =>
+      expect(detalheHook.salvarInformacoes).toHaveBeenCalledWith(
+        expect.objectContaining({ organizacoes: ['ALFA SA'] })
+      )
+    );
   });
 
   it('baixar anexo usa o download dos anexos da empresa', () => {
