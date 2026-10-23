@@ -6544,6 +6544,15 @@ export type Database = {
           tickets: number
         }[]
       }
+      grupos_aranda_uso: {
+        Args: { p_meses?: number }
+        Returns: {
+          apontamentos: number
+          empresas_multiplos: string[]
+          grupo_aranda_id: string
+          tickets: number
+        }[]
+      }
       has_especialistas_permission: { Args: never; Returns: boolean }
       has_screen_permission:
         | {

@@ -124,7 +124,7 @@ Arquivo: `supabase/migrations/20261022000002_fase3_catalogo.sql`, com o teste `s
 
 ### 2.7 Efeito no motor
 
-O classificador da Fase 2 já manda para o padrão todo grupo sem produto. Por isso, `solucao` e `nao_se_aplica` não pedem código novo. A mudança no TypeScript é renomear `sem_modulo` para `produto` nos tipos, com teste antes.
+O classificador da Fase 2 já manda para o padrão todo grupo sem produto. Por isso, `solucao` e `nao_se_aplica` não pedem código novo. O TypeScript não tinha `sem_modulo` (o classificador só olha produto e módulo), então também não houve troca de nome.
 
 ---
 
@@ -197,7 +197,7 @@ A lista mostra o nome a partir do e-mail. Para não abrir `profiles` a quem vê 
 - devolve só o id, o e-mail e o `full_name`;
 - é `SECURITY DEFINER` e exige `view` em `empresas` ou em `bancos_horas_auditoria`.
 
-A Auditoria (seção 9) usa a mesma função para mostrar o nome de quem alterou.
+A Auditoria (seção 9) usa a mesma função para mostrar o nome de quem alterou. Na migration 18 (decisão de 22/10/2026) ela passa a responder também a quem vê as outras telas da Fase 3 (Controle, Apontamentos Retroativos, Produtos e Módulos, De-para, Ramos, Regras de contagem e Organizar Menu), para o "Última alteração por <nome>".
 
 ---
 
@@ -245,13 +245,14 @@ A coluna serve também para as decisões dos Apontamentos Retroativos.
 
 ## 6. De-para, Produtos e Módulos, Ramos
 
-| Tela               | Mudança no schema                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| De-para de Grupos  | 2.4. "Excluir" um mapeamento grava `ativo = false`: o grupo volta para os não mapeados. `grupo_aranda` não muda depois de criado (gatilho)                                        |
-| De-para de Grupos  | Aba "Não mapeados": função `grupos_aranda_nao_mapeados()`, com os grupos dos últimos 12 meses sem linha ativa, as empresas e a primeira ocorrência                                |
-| De-para de Grupos  | Notificação "Grupo Aranda não mapeado" no sino, para quem edita a tela (decisão complementar de 14/10/2026). Ela é gerada por pg_cron diário e resolvida quando o grupo é mapeado |
-| Produtos e Módulos | 2.1 a 2.3. A aba "Módulos de requerimento" edita `modulos_requerimento_produto`                                                                                                   |
-| Ramos de Atividade | Política de DELETE com `edit`. A FK RESTRICT de `empresas_informacoes_contrato` impede apagar ramo em uso, principal ou secundário                                                |
+| Tela               | Mudança no schema                                                                                                                                                                             |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| De-para de Grupos  | 2.4. "Excluir" um mapeamento grava `ativo = false`: o grupo volta para os não mapeados. `grupo_aranda` não muda depois de criado (gatilho)                                                    |
+| De-para de Grupos  | Aba "Não mapeados": função `grupos_aranda_nao_mapeados()`, com os grupos dos últimos 12 meses sem linha ativa, as empresas e a primeira ocorrência                                            |
+| De-para de Grupos  | Coluna "Uso": função `grupos_aranda_uso()` (migration 18), com apontamentos e tickets de cada grupo mapeado nos últimos 6 meses e as empresas com mais de um banco ativo que têm esse consumo |
+| De-para de Grupos  | Notificação "Grupo Aranda não mapeado" no sino, para quem edita a tela (decisão complementar de 14/10/2026). Ela é gerada por pg_cron diário e resolvida quando o grupo é mapeado             |
+| Produtos e Módulos | 2.1 a 2.3. A aba "Módulos de requerimento" edita `modulos_requerimento_produto`                                                                                                               |
+| Ramos de Atividade | Política de DELETE com `edit`. A FK RESTRICT de `empresas_informacoes_contrato` impede apagar ramo em uso, principal ou secundário                                                            |
 
 ---
 
@@ -448,13 +449,14 @@ Cada migration tem antes um teste SQL em bloco `DO` autorreversível, que falha 
 | 15  | `fase3_retroativos.sql`: seção 8 e a mudança no registro do fechamento                                                                                                                      |
 | 16  | `fase3_telas.sql`: anotação interna do reajuste, auditoria lida pelo Controle, DELETE dos ramos, categoria de Produtos e Módulos e status `pulado` (as chaves novas entraram na 13 e na 15) |
 | 17  | `fase3_menu.sql`: `menu_itens`, `menu_aparencia` com os padrões, bucket `menu-logos` e a chave `organizar_menu` (12.1)                                                                      |
-| 18  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
+| 18  | `fase3_uso_autoria.sql`: `grupos_aranda_uso()` (coluna Uso do De-para) e `perfis_resumo` liberada para as telas da Fase 3 (decisões de 22/10/2026)                                          |
+| 19  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
 
-**Situação em 22/10/2026:** as migrations 10 a 13 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
+**Situação em 22/10/2026:** as migrations 10 a 17 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
 
 No TypeScript (Vitest antes):
 
-- motor: `produto` no lugar de `sem_modulo` e `fim_vigencia`;
+- motor: `fim_vigencia` (o TypeScript não tinha `sem_modulo`: o classificador só olha produto e módulo, então não houve troca de nome);
 - services e hooks de cada tela;
 - as telas: o JSX dos protótipos vai para `src/pages/admin/`, e o protótipo e o mock são apagados;
 - sync-api: o job de detecção dos retroativos e o pulo do "Executar agora".
