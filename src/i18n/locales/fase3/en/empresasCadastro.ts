@@ -317,7 +317,48 @@ const empresasCadastro = {
     motivoTipo: '{{tipo}} contract',
     motivoPeriodo: '{{periodo}} calculation',
   },
+  contatos: {
+    titulo: 'Contacts',
+    colunaContato: 'Contact',
+    colunaRecebe: 'Receives',
+    colunaSituacao: 'Status',
+    principal: 'Main',
+    nenhum: 'No contact registered.',
+  },
+  book: {
+    titulo: 'Book',
+    tipoBook: 'Book type',
+    tipo: {
+      nao_tem_book: 'No Book',
+      qualidade: 'Quality',
+      outros: 'Others',
+    },
+    semAms: 'No AMS, no Book',
+    templatePadrao: 'Default template',
+    templatePersonalizado: 'Custom template',
+    linkSharepoint: 'SharePoint link',
+    personalizado: 'Custom Book',
+    anexo: 'Attachment',
+    consolidadora: 'Consolidating company',
+    nenhumaConsolidadora: 'None (shows in the sendings)',
+    metaSla: 'SLA target',
+    minimoSla: 'Minimum tickets for the SLA',
+    sim: 'Yes',
+    nao: 'No',
+  },
   dicas: {
+    tipoBook:
+      'Only the Quality type generates and sends the Book. "No Book" erases the template and the SharePoint link.',
+    templatePadrao:
+      'E-mail model of the Book (Portuguese, English or a registered template). It also sets the language of the Partial Balance and the Hour Bank.',
+    linkSharepoint: 'Client folder in SharePoint. Required when the company has a Book.',
+    bookPersonalizado:
+      'Book with its own template. The company goes to Custom Sendings instead of the Sending Control.',
+    anexoBook: 'Sends the company attachments, registered in the Identity, with the Book.',
+    consolidadora:
+      'The Book of this company goes with the consolidating one, and this company disappears from the sending screens.',
+    metaSla: 'SLA target shown and assessed in the Book, from 0 to 100.',
+    minimoSla: 'Minimum number of tickets in the month for the SLA to be assessed.',
     nomeBanco:
       'Shown to the client in the Book and the Partial Balance. Cannot repeat within the company.',
     descricaoBanco: 'Internal note; not shown to the client.',

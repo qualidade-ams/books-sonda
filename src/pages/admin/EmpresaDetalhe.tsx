@@ -17,12 +17,15 @@ import { EdicaoAmsProjetos } from '@/components/admin/empresas/EdicaoAmsProjetos
 import { AbaInformacoes } from '@/components/admin/empresas/AbaInformacoes';
 import { AbaBancos } from '@/components/admin/empresas/AbaBancos';
 import { EdicaoBanco } from '@/components/admin/empresas/EdicaoBanco';
+import { AbaContatos } from '@/components/admin/empresas/AbaContatos';
+import { AbaBook } from '@/components/admin/empresas/AbaBook';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
 import { useEmpresaCadastro } from '@/hooks/useEmpresasCadastro';
 import { useEmpresaAnexos } from '@/hooks/useEmpresaAnexos';
 import { useRamosAtividade } from '@/hooks/useRamosAtividade';
 import { useBancosHorasCadastro } from '@/hooks/useBancosHorasCadastro';
 import { useCatalogo } from '@/hooks/useCatalogo';
+import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import { TELA_ATUAL_EMPRESAS } from '@/utils/empresasTela';
@@ -83,6 +86,14 @@ const DICAS: [string, string][] = [
   ['empresasCadastro.edicaoBanco.itemConfiguracao', 'itemConfiguracao'],
   ['empresasCadastro.edicaoBanco.valor', 'valor'],
   ['empresasCadastro.edicaoBanco.consome', 'consome'],
+  ['empresasCadastro.book.tipoBook', 'tipoBook'],
+  ['empresasCadastro.book.templatePadrao', 'templatePadrao'],
+  ['empresasCadastro.book.linkSharepoint', 'linkSharepoint'],
+  ['empresasCadastro.book.personalizado', 'bookPersonalizado'],
+  ['empresasCadastro.book.anexo', 'anexoBook'],
+  ['empresasCadastro.book.consolidadora', 'consolidadora'],
+  ['empresasCadastro.book.metaSla', 'metaSla'],
+  ['empresasCadastro.book.minimoSla', 'minimoSla'],
 ];
 
 const TOM_DO_MODELO: Record<ModeloEmpresa, 'neutral' | 'warning' | 'info'> = {
@@ -136,6 +147,7 @@ export default function EmpresaDetalhe() {
   );
   // Só o download: sem id, o hook não busca a lista de anexos
   const { downloadAnexo } = useEmpresaAnexos();
+  const { getTemplateById } = useBookTemplates();
   const [editando, setEditando] = useState<Edicao>(null);
   const [aba, setAba] = useState('informacoes');
 
@@ -276,6 +288,12 @@ export default function EmpresaDetalhe() {
                   rotulo: t('empresasCadastro.abas.bancos'),
                   contador: bancosHook.bancos.filter((b) => b.ativo).length,
                 },
+                {
+                  valor: 'contatos',
+                  rotulo: t('empresasCadastro.abas.contatos'),
+                  contador: empresa.contatos.filter((c) => c.ativo).length,
+                },
+                { valor: 'book', rotulo: t('empresasCadastro.abas.book') },
               ]}
               valor={aba}
               onChange={setAba}
@@ -295,6 +313,19 @@ export default function EmpresaDetalhe() {
                 onInativar={(banco, motivo) => bancosHook.inativar({ bancoId: banco.id, motivo })}
                 onReativar={(banco) => bancosHook.reativar(banco.id)}
                 onTentarNovamente={bancosHook.recarregar}
+              />
+            ) : aba === 'contatos' ? (
+              <AbaContatos contatos={empresa.contatos} podeEditar={podeEditarEmpresa} />
+            ) : aba === 'book' ? (
+              <AbaBook
+                book={empresa.book}
+                temAms={empresa.solucoes.some((s) => s.temAms)}
+                nomeTemplate={
+                  empresa.book.templatePadrao
+                    ? getTemplateById(empresa.book.templatePadrao)?.label
+                    : undefined
+                }
+                podeEditar={podeEditarEmpresa}
               />
             ) : (
               <AbaInformacoes

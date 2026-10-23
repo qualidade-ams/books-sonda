@@ -316,7 +316,48 @@ const empresasCadastro = {
     motivoTipo: 'contrato de {{tipo}}',
     motivoPeriodo: 'apuração {{periodo}}',
   },
+  contatos: {
+    titulo: 'Contatos',
+    colunaContato: 'Contato',
+    colunaRecebe: 'Recebe',
+    colunaSituacao: 'Situação',
+    principal: 'Principal',
+    nenhum: 'Nenhum contato cadastrado.',
+  },
+  book: {
+    titulo: 'Book',
+    tipoBook: 'Tipo de Book',
+    tipo: {
+      nao_tem_book: 'Não tem Book',
+      qualidade: 'Qualidade',
+      outros: 'Outros',
+    },
+    semAms: 'Sem AMS, sem Book',
+    templatePadrao: 'Template padrão',
+    templatePersonalizado: 'Template personalizado',
+    linkSharepoint: 'Link SharePoint',
+    personalizado: 'Book personalizado',
+    anexo: 'Anexo',
+    consolidadora: 'Empresa consolidadora',
+    nenhumaConsolidadora: 'Nenhuma (aparece nos disparos)',
+    metaSla: 'Meta de SLA',
+    minimoSla: 'Mínimo de chamados para o SLA',
+    sim: 'Sim',
+    nao: 'Não',
+  },
   dicas: {
+    tipoBook:
+      'Só o tipo Qualidade gera e dispara o Book. "Não tem Book" apaga o template e o link do SharePoint.',
+    templatePadrao:
+      'Modelo de e-mail do Book (português, inglês ou um template cadastrado). Também define o idioma do Saldo Parcial e do Banco de Horas.',
+    linkSharepoint: 'Pasta do cliente no SharePoint. Obrigatória quando a empresa tem Book.',
+    bookPersonalizado:
+      'Book com template próprio. A empresa vai para Disparos Personalizados em vez do Controle de Disparos.',
+    anexoBook: 'Envia os anexos da empresa, cadastrados na Identidade, junto com o Book.',
+    consolidadora:
+      'O Book desta empresa vai junto com o da consolidadora, e esta empresa some das telas de disparo.',
+    metaSla: 'Meta de SLA exibida e avaliada no Book, de 0 a 100.',
+    minimoSla: 'Quantidade mínima de chamados no mês para o SLA ser avaliado.',
     nomeBanco:
       'Aparece para o cliente no Book e no Saldo Parcial. Não pode repetir dentro da empresa.',
     descricaoBanco: 'Anotação interna; não aparece para o cliente.',

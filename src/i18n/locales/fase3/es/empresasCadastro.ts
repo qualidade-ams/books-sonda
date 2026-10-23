@@ -318,7 +318,48 @@ const empresasCadastro = {
     motivoTipo: 'contrato de {{tipo}}',
     motivoPeriodo: 'apuración {{periodo}}',
   },
+  contatos: {
+    titulo: 'Contactos',
+    colunaContato: 'Contacto',
+    colunaRecebe: 'Recibe',
+    colunaSituacao: 'Estado',
+    principal: 'Principal',
+    nenhum: 'Ningún contacto registrado.',
+  },
+  book: {
+    titulo: 'Book',
+    tipoBook: 'Tipo de Book',
+    tipo: {
+      nao_tem_book: 'No tiene Book',
+      qualidade: 'Calidad',
+      outros: 'Otros',
+    },
+    semAms: 'Sin AMS, sin Book',
+    templatePadrao: 'Plantilla predeterminada',
+    templatePersonalizado: 'Plantilla personalizada',
+    linkSharepoint: 'Enlace SharePoint',
+    personalizado: 'Book personalizado',
+    anexo: 'Adjunto',
+    consolidadora: 'Empresa consolidadora',
+    nenhumaConsolidadora: 'Ninguna (aparece en los envíos)',
+    metaSla: 'Meta de SLA',
+    minimoSla: 'Mínimo de tickets para el SLA',
+    sim: 'Sí',
+    nao: 'No',
+  },
   dicas: {
+    tipoBook:
+      'Solo el tipo Calidad genera y envía el Book. "No tiene Book" borra la plantilla y el enlace de SharePoint.',
+    templatePadrao:
+      'Modelo de e-mail del Book (portugués, inglés o una plantilla registrada). También define el idioma del Saldo Parcial y del Banco de Horas.',
+    linkSharepoint: 'Carpeta del cliente en SharePoint. Obligatoria cuando la empresa tiene Book.',
+    bookPersonalizado:
+      'Book con plantilla propia. La empresa va a Envíos Personalizados en lugar del Control de Envíos.',
+    anexoBook: 'Envía los adjuntos de la empresa, registrados en la Identidad, junto con el Book.',
+    consolidadora:
+      'El Book de esta empresa va junto con el de la consolidadora, y esta empresa desaparece de las pantallas de envío.',
+    metaSla: 'Meta de SLA mostrada y evaluada en el Book, de 0 a 100.',
+    minimoSla: 'Cantidad mínima de tickets en el mes para que se evalúe el SLA.',
     nomeBanco:
       'Aparece para el cliente en el Book y el Saldo Parcial. No puede repetirse dentro de la empresa.',
     descricaoBanco: 'Anotación interna; no aparece para el cliente.',

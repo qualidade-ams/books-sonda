@@ -72,6 +72,26 @@ const DETALHE = {
     { id: 'a1', nome: 'contrato.pdf', tamanhoBytes: 1, storagePath: 'empresas/alfa/contrato.pdf' },
   ],
   organizacoes: [],
+  contatos: [
+    {
+      id: 'c1',
+      nome: 'Pessoa A',
+      email: 'a@cliente.com',
+      finalidade: 'Book',
+      principal: true,
+      ativo: true,
+    },
+  ],
+  book: {
+    tipoBook: 'qualidade',
+    templatePadrao: 't-1',
+    linkSharepoint: 'https://sharepoint.com/alfa',
+    bookPersonalizado: false,
+    bookAnexo: false,
+    consolidadora: null,
+    metaSlaPercentual: null,
+    quantidadeMinimaChamadosSla: null,
+  },
   informacoes: {
     ramoId: null,
     ramoSecundarioId: null,
@@ -152,6 +172,12 @@ const bancosHook = {
 };
 vi.mock('@/hooks/useBancosHorasCadastro', () => ({ useBancosHorasCadastro: () => bancosHook }));
 vi.mock('@/hooks/useNomesUsuarios', () => ({ useNomesUsuarios: () => ({}) }));
+vi.mock('@/hooks/useBookTemplates', () => ({
+  useBookTemplates: () => ({
+    getTemplateById: (id: string) =>
+      id === 't-1' ? { value: 't-1', label: 'Template Samarco' } : null,
+  }),
+}));
 vi.mock('@/hooks/useCatalogo', () => ({
   useCatalogo: () => ({ solucoes: [], produtos: [], modulos: [], isLoading: false, error: null }),
 }));
@@ -282,6 +308,14 @@ describe('Empresas (detalhe)', () => {
     await waitFor(() =>
       expect(screen.getByRole('article', { name: 'Banco padrão' })).toBeInTheDocument()
     );
+  });
+
+  it('abas Contatos e Book mostram o que vem da tela atual', () => {
+    renderizar('/admin/empresas/alfa');
+    fireEvent.click(screen.getByRole('tab', { name: /empresasCadastro.abas.contatos/ }));
+    expect(screen.getByText('a@cliente.com')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /empresasCadastro.abas.book/ }));
+    expect(screen.getByText('Template Samarco')).toBeInTheDocument();
   });
 
   it('sem Edição nos bancos, a aba só mostra', () => {
