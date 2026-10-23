@@ -6247,6 +6247,19 @@ export type Database = {
           tickets: number
         }[]
       }
+      bancos_horas_criar: {
+        Args: {
+          p_banco: Json
+          p_baseline: Json
+          p_escopo: Json
+          p_repasse: Json
+        }
+        Returns: string
+      }
+      bancos_horas_inativar: {
+        Args: { p_banco_id: string; p_motivo: string }
+        Returns: undefined
+      }
       bancos_horas_janela: {
         Args: {
           p_ano: number
@@ -6258,6 +6271,16 @@ export type Database = {
           fim: string
           inicio: string
         }[]
+      }
+      bancos_horas_nova_vigencia: {
+        Args: {
+          p_banco_id: string
+          p_desde: string
+          p_motivo: string
+          p_tipo: string
+          p_valores: Json
+        }
+        Returns: string
       }
       bancos_horas_registrar_fechamento: {
         Args: { p_fechamento: Json }
@@ -6423,6 +6446,7 @@ export type Database = {
           total_anexos: number
         }[]
       }
+      exigir_motivo: { Args: { p_motivo: string }; Returns: string }
       gerar_caminho_anexo:
         | {
             Args: { empresa_id: string; nome_arquivo: string }
@@ -6666,6 +6690,7 @@ export type Database = {
         }[]
       }
       pode_consultar_bancos_horas: { Args: never; Returns: boolean }
+      pode_editar_bancos_horas: { Args: never; Returns: boolean }
       pode_ver_regras_contagem: { Args: { p_nivel: string }; Returns: boolean }
       realtime_maintenance: { Args: never; Returns: string }
       registrar_aviso_retroativo: {

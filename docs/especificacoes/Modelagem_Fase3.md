@@ -210,6 +210,14 @@ Efeito no motor (TypeScript, com teste antes):
 - **Classificador:** o banco é candidato quando `inicio_vigencia <= mês <= fim_vigencia`. Depois do fim, as horas vão para o padrão.
 - **Cálculo:** não há resultado depois do fim. O último mês aplica a regra de fim de período (pergunta P1).
 
+**Cadastro na tela Empresas (migration 19, decisão de 23/10/2026):** três funções, com Edição em Parâmetros dos bancos:
+
+- `bancos_horas_criar(banco, escopo, baseline, repasse)`: cria o banco com o escopo e as primeiras vigências numa transação só. Uma falha no meio (conflito de escopo, por exemplo) não deixa banco pela metade, e a tela não apaga bancos. A ordem é a última da empresa e a origem é `manual`.
+- `bancos_horas_inativar(banco, motivo)`: o motivo é obrigatório e vai para a auditoria; grava quando e quem inativou. O gatilho da Fase 1 continua impedindo inativar o padrão com outros bancos ativos.
+- `bancos_horas_nova_vigencia(banco, 'baseline' | 'repasse', desde, valores, motivo)`: numa transação só, fecha a vigência aberta no mês anterior e abre a nova, com motivo. A nova começa no dia 1, depois da aberta, não antes do banco e depois do último mês fechado (D-11).
+
+Editar, reativar, reordenar e mudar o escopo de um banco existente seguem direto nas tabelas, pelas políticas da Fase 1.
+
 ---
 
 ## 5. Regras de contagem
@@ -450,7 +458,8 @@ Cada migration tem antes um teste SQL em bloco `DO` autorreversível, que falha 
 | 16  | `fase3_telas.sql`: anotação interna do reajuste, auditoria lida pelo Controle, DELETE dos ramos, categoria de Produtos e Módulos e status `pulado` (as chaves novas entraram na 13 e na 15) |
 | 17  | `fase3_menu.sql`: `menu_itens`, `menu_aparencia` com os padrões, bucket `menu-logos` e a chave `organizar_menu` (12.1)                                                                      |
 | 18  | `fase3_uso_autoria.sql`: `grupos_aranda_uso()` (coluna Uso do De-para) e `perfis_resumo` liberada para as telas da Fase 3 (decisões de 22/10/2026)                                          |
-| 19  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
+| 19  | `fase3_bancos_cadastro.sql`: `bancos_horas_criar()`, `bancos_horas_inativar()` e `bancos_horas_nova_vigencia()` (seção 4)                                                                   |
+| 20  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
 
 **Situação em 22/10/2026:** as migrations 10 a 17 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
 
