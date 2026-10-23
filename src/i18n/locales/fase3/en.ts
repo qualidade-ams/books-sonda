@@ -7,7 +7,8 @@ import fase3Comum from './en/comum';
 import produtosModulos from './en/produtosModulos';
 import deParaGrupos from './en/deParaGrupos';
 import ramosAtividade from './en/ramosAtividade';
+import regrasContagem from './en/regrasContagem';
 
-const fase3 = { fase3Comum, produtosModulos, deParaGrupos, ramosAtividade };
+const fase3 = { fase3Comum, produtosModulos, deParaGrupos, ramosAtividade, regrasContagem };
 
 export default fase3;

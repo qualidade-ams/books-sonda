@@ -1,0 +1,120 @@
+/** Pantalla Reglas de conteo */
+const regrasContagem = {
+  titulo: 'Reglas de conteo',
+  subtitulo:
+    'Lo que cuenta en los bancos de horas: códigos de resolución y filtros de los registros y tickets de Aranda.',
+  indicadores: {
+    horas: 'Códigos que cuentan horas',
+    tickets: 'Códigos que cuentan tickets',
+    filtros: 'Filtros activos',
+    semRegra: 'Códigos sin regla',
+  },
+  abas: {
+    rotulo: 'Secciones',
+    codigos: 'Códigos de resolución',
+    semRegra: 'Códigos sin regla',
+    filtros: 'Filtros',
+  },
+  carregando: 'Cargando las reglas',
+  erro: 'No fue posible cargar las reglas de conteo',
+  codigos: {
+    titulo: 'Códigos de resolución',
+    novo: 'Nuevo código de resolución',
+    novoPlaceholder: 'Nuevo código, exactamente como en Aranda',
+    adicionar: 'Agregar',
+    repetido: 'Este código ya está en la lista.',
+    ajudaNovo:
+      'Entra contando horas y tickets; ajuste con los interruptores. Los espacios cuentan: "Banco=S |SLA=N" y "Banco=S| SLA=N" son códigos diferentes.',
+    buscar: 'Buscar código',
+    conta: 'Cuenta',
+    horas: 'Horas',
+    tickets: 'Tickets',
+    colunaCodigo: 'Código de resolución',
+    colunaHoras: 'Cuenta horas',
+    colunaTickets: 'Cuenta tickets',
+    colunaUso: 'Uso (6 meses)',
+    uso: '{{apontamentos}} reg. · {{tickets}} tickets',
+    contaHorasDe: '{{codigo}}: cuenta horas',
+    contaTicketsDe: '{{codigo}}: cuenta tickets',
+    sim: 'Sí',
+    nao: 'No',
+    tirar: 'Quitar de la lista',
+    vazioTitulo: 'Ningún código en la lista',
+    vazioDescricao: 'Sin códigos en la lista, ningún registro o ticket cuenta en los bancos.',
+    nenhumEncontrado: 'No se encontró ningún código',
+  },
+  remover: {
+    titulo: '¿Quitar "{{codigo}}" de la lista?',
+    deixamDeContar: 'Los registros y tickets con este código dejan de contar en los bancos',
+    uso: 'En los últimos 6 meses: {{apontamentos}} registros y {{tickets}} tickets',
+    semUso: 'No hay uso en los últimos 6 meses',
+  },
+  semRegra: {
+    aviso:
+      'Códigos que aparecen en los registros o tickets AMS y no están en la lista. Mientras no se agreguen, no cuentan en los bancos. Si no deben contar, no es necesario hacer nada.',
+    rotulo: 'Códigos sin regla',
+    colunaApontamentos: 'Registros (6 meses)',
+    colunaTickets: 'Tickets (6 meses)',
+    colunaPrimeira: 'Primera ocurrencia',
+    incluir: 'Agregar a la lista',
+    incluirCodigo: 'Agregar {{codigo}} a la lista',
+    vazio: 'Todos los códigos usados tienen regla',
+  },
+  filtros: {
+    grupos: 'Grupos de atención que cuentan',
+    itens: 'Ítems de configuración que no cuentan',
+    tipos: 'Tipos de llamado',
+    atividadeETickets: 'Actividad interna y tickets',
+    atividade: 'Actividad interna',
+    tickets: 'Tickets',
+    aplicaAmbos: 'registros y tickets',
+    aplicaApontamentos: 'registros',
+    placeholderGrupo: 'Texto que contiene el grupo (ej.: AMS APL)',
+    placeholderItem: 'Ítem exactamente como en Aranda',
+    incluir: 'Agregar',
+    incluirEm: 'Agregar en {{lista}}',
+    jaNaLista: 'Ya está en la lista.',
+    nenhum: 'Ninguno.',
+    semGrupos: 'Sin ningún grupo, ninguna hora cuenta en los bancos.',
+    semTipos: 'Sin ningún tipo, ningún registro cuenta en los bancos.',
+    tipo: {
+      IM: 'IM · Incidente',
+      RF: 'RF · Solicitud',
+      PM: 'PM · Problema',
+    },
+    atividadeLigada: 'Los registros de actividad interna no cuentan.',
+    atividadeDesligada: 'Atención: los registros de actividad interna pasan a contar.',
+    fechadosLigado: 'Solo cuentan los tickets cerrados, en el mes de la fecha de cierre.',
+    fechadosDesligado: 'Atención: los tickets abiertos pasan a contar, en el mes de apertura.',
+  },
+  mudancas: {
+    incluidos: { um: '{{n}} código agregado', varios: '{{n}} códigos agregados' },
+    retirados: { um: '{{n}} código quitado', varios: '{{n}} códigos quitados' },
+    alterados: { um: '{{n}} código modificado', varios: '{{n}} códigos modificados' },
+    filtros: 'filtros modificados',
+    naoPode: 'Para guardar, deje al menos un grupo y un tipo de llamado en los filtros.',
+  },
+  confirmar: {
+    titulo: '¿Guardar las reglas de conteo?',
+    descricao: 'Las reglas valen para todas las empresas con múltiples bancos.',
+    motivo: 'Motivo del cambio',
+    motivoPlaceholder: 'Ej.: nuevo código creado en Aranda',
+  },
+  dicas: {
+    codigos:
+      'Solo cuentan en el banco los registros y tickets cuyo código de resolución está en esta lista. El código se compara exactamente como viene de Aranda.',
+    contaHoras: 'Los registros con este código descuentan horas del banco.',
+    contaTickets: 'Los tickets cerrados con este código descuentan tickets del banco.',
+    grupos:
+      'El grupo del registro o del ticket debe contener uno de estos textos (sin distinguir mayúsculas). Los demás grupos no cuentan en el banco.',
+    tipos:
+      'Tipos de llamado de los registros que cuentan. Los demás tipos no descuentan del banco.',
+    atividade:
+      'Los registros marcados como actividad interna en Aranda son trabajo de Sonda, no del cliente.',
+    itens:
+      'Los registros y tickets con uno de estos ítems de configuración no cuentan en el banco (ej.: proyectos).',
+    tickets: 'Qué tickets entran en el conteo de tickets de los bancos.',
+  },
+};
+
+export default regrasContagem;

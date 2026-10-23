@@ -592,6 +592,7 @@ const en = {
     productsModules: 'Products and Modules',
     groupMapping: 'Group Mapping',
     businessSectors: 'Business Sectors',
+    countingRules: 'Counting rules',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

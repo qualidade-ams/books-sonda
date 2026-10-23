@@ -18,6 +18,7 @@ import {
   History,
   Boxes,
   GitMerge,
+  ListChecks,
   ListTree,
   Building2,
   Contact,
@@ -108,7 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/historico-books') ||
       path.includes('/geracao-books') ||
       path.includes('/controle-banco-horas') ||
-      path.includes('/ajustes-retroativos')
+      path.includes('/ajustes-retroativos') ||
+      path.includes('/regras-contagem')
     ) {
       return 'comunicacao';
     }
@@ -254,7 +256,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/historico-books') ||
       path.includes('/geracao-books') ||
       path.includes('/controle-banco-horas') ||
-      path.includes('/ajustes-retroativos')
+      path.includes('/ajustes-retroativos') ||
+      path.includes('/regras-contagem')
     ) {
       return 'comunicacao';
     }
@@ -402,6 +405,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.retroactiveAdjustments'),
           path: '/admin/ajustes-retroativos',
           screenKey: 'banco_horas_ajustes_retroativos',
+        },
+        {
+          icon: ListChecks,
+          label: t('nav.countingRules'),
+          path: '/admin/regras-contagem',
+          screenKey: 'regras_contagem',
         },
       ],
     },

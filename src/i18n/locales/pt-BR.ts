@@ -592,6 +592,7 @@ const ptBR = {
     productsModules: 'Produtos e Módulos',
     groupMapping: 'De-para de Grupos',
     businessSectors: 'Ramos de Atividade',
+    countingRules: 'Regras de contagem',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',

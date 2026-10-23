@@ -592,6 +592,7 @@ const es = {
     productsModules: 'Productos y Módulos',
     groupMapping: 'Correspondencia de Grupos',
     businessSectors: 'Ramos de Actividad',
+    countingRules: 'Reglas de conteo',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
     consultantsCoordinators: 'Consultores x Coordinadores',

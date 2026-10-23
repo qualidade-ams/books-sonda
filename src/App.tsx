@@ -31,6 +31,7 @@ import AuditoriaBancoHoras from './pages/admin/AuditoriaBancoHoras';
 import ProdutosModulos from './pages/admin/ProdutosModulos';
 import DeParaGrupos from './pages/admin/DeParaGrupos';
 import RamosAtividade from './pages/admin/RamosAtividade';
+import RegrasContagem from './pages/admin/RegrasContagem';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -223,6 +224,14 @@ const App = () => (
                       element={
                         <ProtectedRoute screenKey="ramos_atividade">
                           <RamosAtividade />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/regras-contagem"
+                      element={
+                        <ProtectedRoute screenKey="regras_contagem">
+                          <RegrasContagem />
                         </ProtectedRoute>
                       }
                     />

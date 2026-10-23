@@ -37,6 +37,7 @@ export function useRegrasContagem() {
     regras: query.data ?? null,
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    recarregar: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
     salvar: salvar.mutateAsync,
     isSalvando: salvar.isPending,
   };

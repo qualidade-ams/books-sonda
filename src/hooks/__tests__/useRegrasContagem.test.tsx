@@ -59,6 +59,15 @@ describe('useRegrasContagem', () => {
     await waitFor(() => expect(result.current.error?.message).toBe('Sem permissão'));
   });
 
+  it('recarregar busca de novo (tentar novamente)', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useRegrasContagem(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(() => result.current.recarregar());
+    expect(service.carregar).toHaveBeenCalledTimes(2);
+  });
+
   it('salvar grava com o motivo, recarrega e avisa', async () => {
     service.salvar.mockResolvedValue(undefined);
     const { wrapper, client } = criarWrapper();
