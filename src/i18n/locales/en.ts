@@ -589,6 +589,7 @@ const en = {
     clientEmails: 'Client Emails Registry',
     responsibleGroups: 'Responsible Groups',
     clientRates: 'Client Rates Registry',
+    productsModules: 'Products and Modules',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

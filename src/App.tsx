@@ -28,6 +28,7 @@ import HistoricoBooks from './pages/admin/HistoricoBooks';
 import GeracaoBooks from './pages/admin/GeracaoBooks';
 import ControleBancoHoras from './pages/admin/ControleBancoHoras';
 import AuditoriaBancoHoras from './pages/admin/AuditoriaBancoHoras';
+import ProdutosModulos from './pages/admin/ProdutosModulos';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -197,6 +198,14 @@ const App = () => (
                       path="/admin/envio-saldo-parcial"
                       element={
                         <Navigate to="/admin/rotinas-automaticas?aba=saldo-parcial" replace />
+                      }
+                    />
+                    <Route
+                      path="/admin/produtos-modulos"
+                      element={
+                        <ProtectedRoute screenKey="produtos_modulos">
+                          <ProdutosModulos />
+                        </ProtectedRoute>
                       }
                     />
                     <Route

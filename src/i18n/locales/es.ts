@@ -589,6 +589,7 @@ const es = {
     clientEmails: 'Registro de Emails Clientes',
     responsibleGroups: 'Grupos Responsables',
     clientRates: 'Registro de Tasas Clientes',
+    productsModules: 'Productos y Módulos',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
     consultantsCoordinators: 'Consultores x Coordinadores',

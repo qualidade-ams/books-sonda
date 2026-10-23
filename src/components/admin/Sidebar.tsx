@@ -16,6 +16,7 @@ import {
   UserCheck,
   UserPlus,
   History,
+  Boxes,
   Building2,
   Contact,
   Send,
@@ -109,7 +110,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     ) {
       return 'comunicacao';
     }
-    if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
+    if (
+      path.includes('/empresas-clientes') ||
+      path.includes('/clientes') ||
+      path.includes('/produtos-modulos')
+    ) {
       return 'clientes';
     }
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
@@ -252,7 +257,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (path.includes('/auditoria')) {
       return 'auditoria';
     }
-    if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
+    if (
+      path.includes('/empresas-clientes') ||
+      path.includes('/clientes') ||
+      path.includes('/produtos-modulos')
+    ) {
       return 'clientes';
     }
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
@@ -417,6 +426,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.companies'),
           path: '/admin/empresas-clientes',
           screenKey: 'empresas_clientes',
+        },
+        {
+          icon: Boxes,
+          label: t('nav.productsModules'),
+          path: '/admin/produtos-modulos',
+          screenKey: 'produtos_modulos',
         },
         {
           icon: Contact,

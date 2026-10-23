@@ -589,6 +589,7 @@ const ptBR = {
     clientEmails: 'Cadastro E-mails Clientes',
     responsibleGroups: 'Grupos Responsáveis',
     clientRates: 'Cadastro Taxas Clientes',
+    productsModules: 'Produtos e Módulos',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',
