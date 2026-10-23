@@ -1,0 +1,118 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
+import { useDePara } from '../useDePara';
+import { deParaService } from '@/services/deParaService';
+
+const toast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+
+vi.mock('@/services/deParaService', () => ({
+  deParaService: {
+    listar: vi.fn(),
+    uso: vi.fn(),
+    naoMapeados: vi.fn(),
+    salvar: vi.fn(),
+    atribuirDestino: vi.fn(),
+    excluir: vi.fn(),
+  },
+}));
+
+const service = deParaService as unknown as Record<string, ReturnType<typeof vi.fn>>;
+
+function criarWrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return { client, wrapper };
+}
+
+const destino = { solucaoId: 's1', produtoId: null, moduloId: null };
+
+describe('useDePara', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service.listar.mockResolvedValue([{ id: 'g1', grupoAranda: 'G1' }]);
+    service.uso.mockResolvedValue({ g1: { apontamentos: 4, tickets: 0, empresasMultiplos: [] } });
+    service.naoMapeados.mockResolvedValue([{ grupoAranda: 'G9' }]);
+  });
+
+  it('carrega mapeamentos, uso e não mapeados', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.mapeamentos).toHaveLength(1);
+    expect(result.current.uso.g1.apontamentos).toBe(4);
+    expect(result.current.naoMapeados).toHaveLength(1);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('expõe o erro de carregamento', async () => {
+    service.naoMapeados.mockRejectedValue(new Error('Sem permissão'));
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await waitFor(() => expect(result.current.error?.message).toBe('Sem permissão'));
+  });
+
+  it('salvar grava, recarrega o de-para e o sino, e avisa', async () => {
+    service.salvar.mockResolvedValue(undefined);
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useDePara(), { wrapper });
+    const input = { grupoAranda: 'G9', grupoBook: 'B', destino };
+
+    await act(() => result.current.salvar(input));
+
+    expect(service.salvar).toHaveBeenCalledWith(input);
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['notificacoes'] });
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Mapeamento salvo' }));
+  });
+
+  it('atribuir em lote conta quantos grupos mudaram', async () => {
+    service.atribuirDestino.mockResolvedValue(undefined);
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() => result.current.atribuirDestino({ ids: ['g1', 'g2'], destino }));
+
+    expect(service.atribuirDestino).toHaveBeenCalledWith(['g1', 'g2'], destino);
+    expect(toast).toHaveBeenCalledWith({ title: 'Destino atribuído a 2 grupos' });
+  });
+
+  it('excluir avisa que o grupo voltou para os não mapeados', async () => {
+    service.excluir.mockResolvedValue(undefined);
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() => result.current.excluir('g1'));
+
+    expect(service.excluir).toHaveBeenCalledWith('g1');
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
+    expect(toast).toHaveBeenCalledWith({
+      title: 'Mapeamento excluído',
+      description: 'O grupo voltou para Grupos não mapeados.',
+    });
+  });
+
+  it('erro ao salvar aparece no aviso', async () => {
+    service.salvar.mockRejectedValue(new Error('Este grupo do Aranda já está no de-para.'));
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() =>
+      result.current.salvar({ grupoAranda: 'G1', grupoBook: 'B', destino }).catch(() => undefined)
+    );
+
+    expect(toast).toHaveBeenCalledWith({
+      title: 'Erro ao salvar o mapeamento',
+      description: 'Este grupo do Aranda já está no de-para.',
+      variant: 'destructive',
+    });
+  });
+});
