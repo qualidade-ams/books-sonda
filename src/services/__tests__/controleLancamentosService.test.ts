@@ -302,3 +302,46 @@ describe('ControleLancamentosService — observações', () => {
     });
   });
 });
+
+describe('ControleLancamentosService.salvarAjustesRequerimentos', () => {
+  function comAjustes() {
+    return criarSupabaseEmMemoria({
+      requerimentos_bancos: [
+        { requerimento_id: 'r1', banco_id: 'b1', motivo: 'Antigo' },
+        { requerimento_id: 'r2', banco_id: 'b2', motivo: 'Antigo' },
+      ],
+    });
+  }
+
+  it('grava a troca de banco com o motivo; nulo volta para o banco automático', async () => {
+    const fake = comAjustes();
+    await new ControleLancamentosService(fake as any).salvarAjustesRequerimentos(
+      [
+        { requerimentoId: 'r1', bancoId: 'b3' },
+        { requerimentoId: 'r2', bancoId: null },
+        { requerimentoId: 'r9', bancoId: 'b1' },
+      ],
+      ' Atendimento do contrato FISCAL '
+    );
+    const porId = Object.fromEntries(
+      fake.tabelas.requerimentos_bancos.map((r) => [r.requerimento_id, r])
+    );
+    expect(Object.keys(porId).sort()).toEqual(['r1', 'r9']);
+    expect(porId.r1).toMatchObject({ banco_id: 'b3', motivo: 'Atendimento do contrato FISCAL' });
+    expect(porId.r9).toMatchObject({ banco_id: 'b1', motivo: 'Atendimento do contrato FISCAL' });
+  });
+
+  it('exige o motivo e ao menos uma alteração', async () => {
+    const fake = comAjustes();
+    const s = new ControleLancamentosService(fake as any);
+    await expect(
+      s.salvarAjustesRequerimentos([{ requerimentoId: 'r1', bancoId: 'b3' }], ' ')
+    ).rejects.toThrow('Informe o motivo da troca de banco.');
+    await expect(s.salvarAjustesRequerimentos([], 'x')).rejects.toThrow(
+      'Nenhum requerimento com banco alterado.'
+    );
+    expect(
+      fake.tabelas.requerimentos_bancos.find((r) => r.requerimento_id === 'r1')!.banco_id
+    ).toBe('b1');
+  });
+});

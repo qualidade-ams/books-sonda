@@ -57,6 +57,79 @@ export interface ObservacaoControle {
   editada: boolean;
 }
 
+export interface RequerimentoControle {
+  id: string;
+  chamado: string;
+  titulo: string;
+  /** requerimentos.modulo (lista fixa) */
+  modulo: string;
+  /** Mês de cobrança */
+  mes: MesAno;
+  /** Funcional + técnico, em minutos (horas de gestor não contam, D-01) */
+  minutos: number;
+  tickets: number;
+  /** enviado: já consome o banco · desenvolvimento: ainda não consome */
+  situacao: 'enviado' | 'desenvolvimento';
+  /** Banco pelo módulo (Produtos e Módulos › Módulos de requerimento) */
+  bancoAutomaticoId: string | null;
+  /** Banco que recebe: o ajuste manual, se o banco participa do mês; senão o automático */
+  bancoId: string | null;
+  ajuste: {
+    bancoId: string;
+    motivo: string;
+    atualizadoEm: string;
+    atualizadoPor: string | null;
+  } | null;
+}
+
+/** bancoId nulo = volta para o banco automático (tira o ajuste) */
+export interface AjusteRequerimento {
+  requerimentoId: string;
+  bancoId: string | null;
+}
+
+/** Aba Histórico: auditoria, versões dos meses fechados e consumo entre bancos */
+export type EventoHistorico =
+  | {
+      tipo: 'alteracao';
+      id: string;
+      em: string;
+      usuarioId: string | null;
+      usuario: string | null;
+      tabela: string;
+      acao: 'insert' | 'update' | 'delete';
+      campos: string[];
+      antes: Record<string, unknown> | null;
+      depois: Record<string, unknown> | null;
+      motivo: string | null;
+      origem: string;
+    }
+  | {
+      tipo: 'versao';
+      id: string;
+      em: string;
+      usuarioId: string | null;
+      usuario: string | null;
+      mes: MesAno;
+      versao: number;
+      vigente: boolean;
+      motivo: 'geracao_book' | 'retificacao';
+      saldoFinalMinutos: number | null;
+      saldoFinalTickets: number | null;
+      excedenteMinutos: number | null;
+    }
+  | {
+      tipo: 'transferencia';
+      id: string;
+      em: string;
+      mes: MesAno;
+      unidade: 'horas' | 'tickets';
+      quantidade: number;
+      /** consumiu: este banco recebeu do outro · cedeu: este banco deu ao outro */
+      papel: 'consumiu' | 'cedeu';
+      outroBanco: string;
+    };
+
 export interface ObservacaoInput {
   /** Ausente = observação nova */
   id?: string;

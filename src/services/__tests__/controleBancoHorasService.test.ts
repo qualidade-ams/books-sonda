@@ -158,3 +158,135 @@ describe('ControleBancoHorasService.empresas', () => {
     ]);
   });
 });
+
+describe('ControleBancoHorasService.requerimentos', () => {
+  const comex: BancoCadastro = {
+    ...banco,
+    bancoId: 'b-comex',
+    nome: 'Banco COMEX',
+    padrao: false,
+    ordem: 2,
+    escopo: [{ produtoId: 'p-ce', moduloId: null }],
+  };
+  // Encerrado em agosto: em outubro não participa
+  const antigo: BancoCadastro = {
+    ...comex,
+    bancoId: 'b-antigo',
+    fimVigencia: { mes: 8, ano: 2026 },
+    escopo: [],
+    filtroIc: { operador: 'igual', valor: 'X' },
+  };
+
+  const linha = (id: string, extra: Record<string, unknown> = {}) => ({
+    requerimento_id: id,
+    chamado: `RF-${id}`,
+    descricao: `Título ${id}`,
+    modulo: 'Comex',
+    produto_id: 'p-ce',
+    modulo_id: null,
+    horas: '2.50',
+    tickets: 0,
+    consome: true,
+    banco_ajustado_id: null,
+    ajuste_motivo: null,
+    ajuste_por: null,
+    ajuste_em: null,
+    ...extra,
+  });
+
+  function servico() {
+    const repo = repoFalso();
+    repo.bancos.mockResolvedValue([banco, comex, antigo]);
+    const fake = criarSupabaseEmMemoria(
+      {},
+      {
+        bancos_horas_requerimentos_controle: ({ p_mes }: { p_mes: number }) =>
+          p_mes === 10
+            ? [
+                linha('r1'),
+                linha('r2', {
+                  modulo: 'Gallery',
+                  produto_id: 'p-gallery',
+                  consome: false,
+                  horas: '4',
+                }),
+                linha('r3', {
+                  banco_ajustado_id: 'b1',
+                  ajuste_motivo: 'Atendimento do FISCAL',
+                  ajuste_por: 'u1',
+                  ajuste_em: '2026-10-10T10:00:00Z',
+                }),
+                linha('r4', {
+                  banco_ajustado_id: 'b-antigo',
+                  ajuste_motivo: 'x',
+                  ajuste_em: '2026-08-01',
+                }),
+              ]
+            : [],
+      }
+    );
+    return { s: new ControleBancoHorasService(fake as any, () => repo), fake };
+  }
+
+  it('cada requerimento vem com o banco automático e o banco que recebe', async () => {
+    const { s, fake } = servico();
+    const lista = await s.requerimentos('e1', [
+      { mes: 9, ano: 2026 },
+      { mes: 10, ano: 2026 },
+    ]);
+    const porId = Object.fromEntries(lista.map((r) => [r.id, r]));
+
+    expect(porId.r1).toEqual({
+      id: 'r1',
+      chamado: 'RF-r1',
+      titulo: 'Título r1',
+      modulo: 'Comex',
+      mes: { mes: 10, ano: 2026 },
+      minutos: 150,
+      tickets: 0,
+      situacao: 'enviado',
+      bancoAutomaticoId: 'b-comex',
+      bancoId: 'b-comex',
+      ajuste: null,
+    });
+    // Sem banco para o produto: o padrão
+    expect(porId.r2).toMatchObject({
+      situacao: 'desenvolvimento',
+      minutos: 240,
+      bancoAutomaticoId: 'b1',
+      bancoId: 'b1',
+    });
+    // Ajuste manual prevalece
+    expect(porId.r3).toMatchObject({
+      bancoAutomaticoId: 'b-comex',
+      bancoId: 'b1',
+      ajuste: {
+        bancoId: 'b1',
+        motivo: 'Atendimento do FISCAL',
+        atualizadoEm: '2026-10-10T10:00:00Z',
+        atualizadoPor: 'u1',
+      },
+    });
+    // Ajuste para banco que não participa do mês não vale
+    expect(porId.r4).toMatchObject({ bancoId: 'b-comex', ajuste: { bancoId: 'b-antigo' } });
+
+    expect(fake.chamadasRpc).toEqual([
+      {
+        nome: 'bancos_horas_requerimentos_controle',
+        args: { p_empresa_id: 'e1', p_ano: 2026, p_mes: 9 },
+      },
+      {
+        nome: 'bancos_horas_requerimentos_controle',
+        args: { p_empresa_id: 'e1', p_ano: 2026, p_mes: 10 },
+      },
+    ]);
+  });
+
+  it('falha com mensagem descritiva', async () => {
+    const { s, fake } = servico();
+    fake.rpc = async () => ({ data: null, error: { message: 'Sem permissão' } });
+    await expect(s.requerimentos('e1', [{ mes: 10, ano: 2026 }])).rejects.toThrow(
+      'Falha ao carregar os requerimentos: Sem permissão'
+    );
+  });
+});

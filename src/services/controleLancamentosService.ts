@@ -7,6 +7,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { MesAno } from '@/services/bancosHoras/calculo';
 import type {
+  AjusteRequerimento,
   NovoReajusteInput,
   ObservacaoControle,
   ObservacaoInput,
@@ -170,6 +171,37 @@ export class ControleLancamentosService {
           .from('bancos_horas_observacoes')
           .insert({ ...campos, banco_id: input.bancoId, origem: 'manual' });
     if (error) throw falha('salvar a observação', error);
+  }
+
+  /**
+   * Troca o banco dos requerimentos, com um motivo para todos (decisão de
+   * 23/10/2026). Banco nulo apaga o ajuste: volta para o banco pelo módulo.
+   */
+  async salvarAjustesRequerimentos(ajustes: AjusteRequerimento[], motivo: string): Promise<void> {
+    const limpo = motivo.trim();
+    if (ajustes.length === 0) throw new Error('Nenhum requerimento com banco alterado.');
+    if (!limpo) throw new Error('Informe o motivo da troca de banco.');
+
+    const voltam = ajustes.filter((a) => a.bancoId === null).map((a) => a.requerimentoId);
+    if (voltam.length > 0) {
+      const { error } = await this.cliente
+        .from('requerimentos_bancos')
+        .delete()
+        .in('requerimento_id', voltam);
+      if (error) throw falha('salvar a troca de banco', error);
+    }
+    const trocados = ajustes.filter((a) => a.bancoId !== null);
+    if (trocados.length > 0) {
+      const { error } = await this.cliente.from('requerimentos_bancos').upsert(
+        trocados.map((a) => ({
+          requerimento_id: a.requerimentoId,
+          banco_id: a.bancoId!,
+          motivo: limpo,
+        })),
+        { onConflict: 'requerimento_id' }
+      );
+      if (error) throw falha('salvar a troca de banco', error);
+    }
   }
 
   /** Sai do Controle; a exclusão fica registrada na auditoria */
