@@ -6303,6 +6303,24 @@ export type Database = {
           tickets: number
         }[]
       }
+      bancos_horas_requerimentos_controle: {
+        Args: { p_ano: number; p_empresa_id: string; p_mes: number }
+        Returns: {
+          ajuste_em: string
+          ajuste_motivo: string
+          ajuste_por: string
+          banco_ajustado_id: string
+          chamado: string
+          consome: boolean
+          descricao: string
+          horas: number
+          modulo: string
+          modulo_id: string
+          produto_id: string
+          requerimento_id: string
+          tickets: number
+        }[]
+      }
       buscar_books_por_periodo: {
         Args: { p_ano: number; p_mes: number }
         Returns: {

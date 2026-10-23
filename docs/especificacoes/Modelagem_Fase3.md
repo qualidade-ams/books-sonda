@@ -278,6 +278,7 @@ Não há tabela nova. A tela usa o motor da Fase 2 no navegador, pelo `repositor
 - **Meses futuros do período:** o quadro os projeta pelo motor, com o consumo que já houver, e marca a coluna como "a começar" (decisão de 23/10/2026).
 - **Empresa em Legado:** a tela abre em modo sombra, só para leitura e sem envio.
 - **Aba Histórico:** lê `auditoria_alteracoes` pelo `banco_id`. A política de SELECT da auditoria passa a liberar também, para quem vê o Controle, as linhas dos bancos. É uma política só, refeita com `DROP POLICY IF EXISTS`. Junto com a auditoria, a aba mostra as versões de cada mês fechado (geração do Book e retificações) e as transferências de consumo entre bancos (decisão de 23/10/2026). O mês aberto não tem versões: é calculado na hora.
+- **Aba Requerimentos (migration 21):** `bancos_horas_requerimentos_controle(empresa, ano, mês)` devolve os requerimentos cobrados no banco de horas no mês, com título, se já consomem (a mesma regra do motor) ou estão em desenvolvimento, e o ajuste de banco com o motivo. Usa a permissão do consumo, porque a tabela `requerimentos` só é lida por quem vê a tela Requerimentos. A troca de banco pede um motivo na confirmação do Salvar, que vale para todos os alterados naquela gravação (decisão de 23/10/2026).
 - **Envio manual do Saldo Parcial:** passa a gravar em `banco_horas_envio_execucoes`, com `origem = 'manual'` e sem agendamento, para aparecer no histórico (seção 11).
 
 ---
@@ -462,7 +463,8 @@ Cada migration tem antes um teste SQL em bloco `DO` autorreversível, que falha 
 | 18  | `fase3_uso_autoria.sql`: `grupos_aranda_uso()` (coluna Uso do De-para) e `perfis_resumo` liberada para as telas da Fase 3 (decisões de 22/10/2026)                                          |
 | 19  | `fase3_bancos_cadastro.sql`: `bancos_horas_criar()`, `bancos_horas_inativar()` e `bancos_horas_nova_vigencia()` (seção 4)                                                                   |
 | 20  | `fase3_retificacao.sql`: observação e reajuste manuais em mês fechado marcam o Book para retificação (seção 7)                                                                              |
-| 21  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
+| 21  | `fase3_requerimentos_controle.sql`: `bancos_horas_requerimentos_controle()` para a aba Requerimentos do Controle (seção 7)                                                                  |
+| 22  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
 
 **Situação em 22/10/2026:** as migrations 10 a 17 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
 
