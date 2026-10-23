@@ -77,6 +77,7 @@ export function useDePara() {
     isLoading: mapeamentosQuery.isLoading || usoQuery.isLoading || naoMapeadosQuery.isLoading,
     error: (mapeamentosQuery.error || usoQuery.error || naoMapeadosQuery.error) as Error | null,
     salvar: salvar.mutateAsync,
+    recarregar,
     atribuirDestino: atribuirDestino.mutateAsync,
     excluir: excluir.mutateAsync,
     isSalvando: salvar.isPending || atribuirDestino.isPending || excluir.isPending,

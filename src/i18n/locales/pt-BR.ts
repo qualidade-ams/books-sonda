@@ -590,6 +590,7 @@ const ptBR = {
     responsibleGroups: 'Grupos Responsáveis',
     clientRates: 'Cadastro Taxas Clientes',
     productsModules: 'Produtos e Módulos',
+    groupMapping: 'De-para de Grupos',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',

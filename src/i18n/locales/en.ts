@@ -590,6 +590,7 @@ const en = {
     responsibleGroups: 'Responsible Groups',
     clientRates: 'Client Rates Registry',
     productsModules: 'Products and Modules',
+    groupMapping: 'Group Mapping',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

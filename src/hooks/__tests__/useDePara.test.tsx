@@ -58,6 +58,16 @@ describe('useDePara', () => {
     await waitFor(() => expect(result.current.error?.message).toBe('Sem permissão'));
   });
 
+  it('recarregar busca de novo (tentar novamente)', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.recarregar());
+    await waitFor(() => expect(service.listar).toHaveBeenCalledTimes(2));
+    expect(service.naoMapeados).toHaveBeenCalledTimes(2);
+  });
+
   it('salvar grava, recarrega o de-para e o sino, e avisa', async () => {
     service.salvar.mockResolvedValue(undefined);
     const { wrapper, client } = criarWrapper();

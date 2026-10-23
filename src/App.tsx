@@ -29,6 +29,7 @@ import GeracaoBooks from './pages/admin/GeracaoBooks';
 import ControleBancoHoras from './pages/admin/ControleBancoHoras';
 import AuditoriaBancoHoras from './pages/admin/AuditoriaBancoHoras';
 import ProdutosModulos from './pages/admin/ProdutosModulos';
+import DeParaGrupos from './pages/admin/DeParaGrupos';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -205,6 +206,14 @@ const App = () => (
                       element={
                         <ProtectedRoute screenKey="produtos_modulos">
                           <ProdutosModulos />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/de-para-grupos"
+                      element={
+                        <ProtectedRoute screenKey="de_para_grupos">
+                          <DeParaGrupos />
                         </ProtectedRoute>
                       }
                     />

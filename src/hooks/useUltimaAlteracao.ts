@@ -16,6 +16,16 @@ export function formatarDataHora(dataIso: string, idioma: string): string {
     .replace(',', '');
 }
 
+/** Dia (YYYY-MM-DD, sem hora) no formato do idioma; lido em UTC para não mudar de dia */
+export function formatarDia(dia: string, idioma: string): string {
+  return new Intl.DateTimeFormat(idioma, {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(`${dia}T00:00:00Z`));
+}
+
 /**
  * "Última alteração em 22/10/2026 12:30 por <nome>" para o subtítulo das edições. Sem o
  * nome (sem permissão, ou alteração da carga), só a data.

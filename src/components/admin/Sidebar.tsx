@@ -17,6 +17,7 @@ import {
   UserPlus,
   History,
   Boxes,
+  GitMerge,
   Building2,
   Contact,
   Send,
@@ -113,7 +114,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (
       path.includes('/empresas-clientes') ||
       path.includes('/clientes') ||
-      path.includes('/produtos-modulos')
+      path.includes('/produtos-modulos') ||
+      path.includes('/de-para-grupos')
     ) {
       return 'clientes';
     }
@@ -260,7 +262,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (
       path.includes('/empresas-clientes') ||
       path.includes('/clientes') ||
-      path.includes('/produtos-modulos')
+      path.includes('/produtos-modulos') ||
+      path.includes('/de-para-grupos')
     ) {
       return 'clientes';
     }
@@ -432,6 +435,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.productsModules'),
           path: '/admin/produtos-modulos',
           screenKey: 'produtos_modulos',
+        },
+        {
+          icon: GitMerge,
+          label: t('nav.groupMapping'),
+          path: '/admin/de-para-grupos',
+          screenKey: 'de_para_grupos',
         },
         {
           icon: Contact,

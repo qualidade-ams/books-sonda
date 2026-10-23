@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useUltimaAlteracao } from '../useUltimaAlteracao';
+import { formatarDia, useUltimaAlteracao } from '../useUltimaAlteracao';
 
 let idioma = 'pt-BR';
 vi.mock('react-i18next', () => ({
@@ -11,6 +11,13 @@ vi.mock('react-i18next', () => ({
 }));
 const nomes: Record<string, string> = { u1: 'Pessoa A' };
 vi.mock('@/hooks/useNomesUsuarios', () => ({ useNomesUsuarios: () => nomes }));
+
+describe('formatarDia', () => {
+  it('dia sem hora, no formato do idioma e sem mudar de dia pelo fuso', () => {
+    expect(formatarDia('2026-10-01', 'pt-BR')).toBe('01/10/2026');
+    expect(formatarDia('2026-10-01', 'en')).toBe('10/01/2026');
+  });
+});
 
 describe('useUltimaAlteracao', () => {
   it('data no horário de Brasília e o nome de quem alterou', () => {
