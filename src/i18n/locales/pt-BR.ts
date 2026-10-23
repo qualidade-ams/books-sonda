@@ -2269,6 +2269,7 @@ const ptBR = {
       erro: 'Erro',
       sem_destinatarios: 'Sem destinatários',
       interrompida: 'Interrompido',
+      pulado: 'Pulado (já recebeu hoje)',
     },
     form: {
       tituloNovo: 'Novo agendamento de Saldo Parcial',

@@ -71,6 +71,7 @@ const COR_STATUS: Record<StatusExecucaoSaldoParcial | StatusAgendamentoSaldoParc
   erro: 'bg-red-100 text-red-800',
   sem_destinatarios: 'bg-yellow-100 text-yellow-800',
   interrompida: 'bg-orange-100 text-orange-800',
+  pulado: 'bg-gray-100 text-gray-700',
 };
 
 // Logo após salvar, o servidor ainda não recalculou: usa a previsão (mesma regra do agendador)

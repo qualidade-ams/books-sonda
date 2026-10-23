@@ -2268,6 +2268,7 @@ const es = {
       erro: 'Error',
       sem_destinatarios: 'Sin destinatarios',
       interrompida: 'Interrumpido',
+      pulado: 'Omitido (ya recibió hoy)',
     },
     form: {
       tituloNovo: 'Nueva programación de Saldo Parcial',

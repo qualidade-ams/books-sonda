@@ -2262,6 +2262,7 @@ const en = {
       erro: 'Error',
       sem_destinatarios: 'No recipients',
       interrompida: 'Interrupted',
+      pulado: 'Skipped (already sent today)',
     },
     form: {
       tituloNovo: 'New Partial Balance schedule',

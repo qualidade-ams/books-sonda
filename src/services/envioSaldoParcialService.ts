@@ -14,6 +14,7 @@ import type {
   AgendamentoSaldoParcialInput,
   ClienteElegivelSaldoParcial,
   ExecucaoSaldoParcial,
+  OrigemEnvioSaldoParcial,
 } from '@/types/envioSaldoParcial';
 import type { RegraRecorrencia } from '@/types/syncAgendamentos';
 import { FINALIDADES_SALDO_PARCIAL } from '@/types/clientBooksTypes';
@@ -24,6 +25,14 @@ const db = supabase as any;
 const TABELA_AGENDAMENTOS = 'banco_horas_envio_agendamentos';
 const TABELA_VINCULOS = 'banco_horas_envio_agendamento_empresas';
 const CODIGO_VIOLACAO_UNICA = '23505';
+
+/** De onde veio o envio, pelas colunas que já existem (Modelagem_Fase3.md, seção 11) */
+export function origemDaExecucao(
+  execucao: Pick<ExecucaoSaldoParcial, 'origem' | 'agendamento_id'>
+): OrigemEnvioSaldoParcial {
+  if (execucao.origem === 'agendado') return 'agendamento';
+  return execucao.agendamento_id ? 'executar_agora' : 'controle';
+}
 
 function erroVinculo(error: { code?: string; message?: string }): Error {
   if (error.code === CODIGO_VIOLACAO_UNICA) {
@@ -73,7 +82,10 @@ class EnvioSaldoParcialService {
     const { error } = await db.from(TABELA_AGENDAMENTOS).update(dados).eq('id', id);
     if (error) throw error;
 
-    const { data: atuais, error: erroAtuais } = await db.from(TABELA_VINCULOS).select('empresa_id').eq('agendamento_id', id);
+    const { data: atuais, error: erroAtuais } = await db
+      .from(TABELA_VINCULOS)
+      .select('empresa_id')
+      .eq('agendamento_id', id);
     if (erroAtuais) throw erroAtuais;
 
     const idsAtuais: string[] = (atuais || []).map((v: { empresa_id: string }) => v.empresa_id);
@@ -111,7 +123,9 @@ class EnvioSaldoParcialService {
   async listarExecucoes(limite = 50): Promise<ExecucaoSaldoParcial[]> {
     const { data, error } = await db
       .from('banco_horas_envio_execucoes')
-      .select('*, agendamento:banco_horas_envio_agendamentos(nome), empresa:empresas_clientes(nome_abreviado)')
+      .select(
+        '*, agendamento:banco_horas_envio_agendamentos(nome), empresa:empresas_clientes(nome_abreviado)'
+      )
       .order('iniciado_em', { ascending: false })
       .limit(limite);
     if (error) throw error;
@@ -148,6 +162,19 @@ class EnvioSaldoParcialService {
     }));
   }
 
+  /** Aba "Sem agendamento": clientes elegíveis que não estão em nenhum agendamento */
+  async listarSemAgendamento(): Promise<ClienteElegivelSaldoParcial[]> {
+    const [elegiveis, vinculos] = await Promise.all([
+      this.listarClientesElegiveis(),
+      db.from(TABELA_VINCULOS).select('empresa_id'),
+    ]);
+    if (vinculos.error) throw vinculos.error;
+    const agendadas = new Set(
+      (vinculos.data || []).map((v: { empresa_id: string }) => v.empresa_id)
+    );
+    return elegiveis.filter((c) => !agendadas.has(c.id));
+  }
+
   /** Dispara o envio do agendamento agora no sync-api; segue mesmo se a tela for fechada */
   async executarAgora(agendamentoId: string): Promise<void> {
     await chamarSyncApi('/api/saldo-parcial/executar', { agendamentoId });
@@ -155,13 +182,19 @@ class EnvioSaldoParcialService {
 
   /** Próximas execuções da regra, calculadas pelo sync-api (mesma lógica do agendador) */
   async preverExecucoes(regra: RegraRecorrencia, n = 5): Promise<string[]> {
-    const { dados } = await chamarSyncApi<{ execucoes: string[] }>('/api/saldo-parcial/proximas-execucoes', { regra, n });
+    const { dados } = await chamarSyncApi<{ execucoes: string[] }>(
+      '/api/saldo-parcial/proximas-execucoes',
+      { regra, n }
+    );
     return dados?.execucoes || [];
   }
 
   /** Agendador ligado (SALDO_PARCIAL_SCHEDULER_ENABLED)? Renderização da imagem configurada (RENDER_IMAGE_URL)? */
   async statusSyncApi(): Promise<{ agendadorAtivo: boolean; renderImagemConfigurado: boolean }> {
-    const { dados } = await chamarSyncApi<{ agendadorAtivo: boolean; renderImagemConfigurado: boolean }>('/api/saldo-parcial/status');
+    const { dados } = await chamarSyncApi<{
+      agendadorAtivo: boolean;
+      renderImagemConfigurado: boolean;
+    }>('/api/saldo-parcial/status');
     return dados;
   }
 }

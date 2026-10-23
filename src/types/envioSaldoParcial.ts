@@ -6,7 +6,15 @@
 
 import type { RegraRecorrencia } from './syncAgendamentos';
 
-export type StatusExecucaoSaldoParcial = 'executando' | 'sucesso' | 'erro' | 'sem_destinatarios' | 'interrompida';
+/** pulado: "Executar agora" de quem já recebeu no dia (Modelagem_Fase3.md, seção 11) */
+export type StatusExecucaoSaldoParcial =
+  'executando' | 'sucesso' | 'erro' | 'sem_destinatarios' | 'interrompida' | 'pulado';
+
+/**
+ * De onde veio o envio, sem coluna nova: agendado = agendamento · manual com
+ * agendamento = "Executar agora" · manual sem agendamento = envio do Controle
+ */
+export type OrigemEnvioSaldoParcial = 'agendamento' | 'executar_agora' | 'controle';
 
 /** Status agregado do último disparo do agendamento */
 export type StatusAgendamentoSaldoParcial = 'executando' | 'sucesso' | 'parcial' | 'erro';
