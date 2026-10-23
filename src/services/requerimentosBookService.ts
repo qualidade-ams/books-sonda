@@ -114,6 +114,54 @@ export async function buscarRequerimentosFaturadosParaBook(
 }
 
 /**
+ * Grava no book o que as abas de requerimentos buscariam em tempo real.
+ * A rota do PDF roda sem login e o RLS de `requerimentos` bloqueia anon, então
+ * sem isso a aba aparece na tela mas some do PDF. Segue a mesma regra dos hooks:
+ * - Compensados: snapshot ausente (book gerado antes da aba existir);
+ * - Em Andamento: snapshot vazio ou ausente.
+ */
+export async function garantirSnapshotRequerimentosBook(bookId: string): Promise<void> {
+  const { data: book, error } = await (supabase as any)
+    .from('books')
+    .select(
+      'empresa_id, mes, ano, dados_requerimentos_faturados, dados_requerimentos_em_desenvolvimento'
+    )
+    .eq('id', bookId)
+    .single();
+
+  if (error) throw error;
+
+  const atualizacao: Record<string, RequerimentoEmDesenvolvimentoData[]> = {};
+
+  if (!Array.isArray(book.dados_requerimentos_faturados)) {
+    atualizacao.dados_requerimentos_faturados = await buscarRequerimentosFaturadosParaBook(
+      book.empresa_id,
+      book.mes,
+      book.ano
+    );
+  }
+
+  const emAndamento = book.dados_requerimentos_em_desenvolvimento;
+  if (!Array.isArray(emAndamento) || emAndamento.length === 0) {
+    const tempoReal = await buscarRequerimentosEmDesenvolvimentoParaBook(
+      book.empresa_id,
+      book.mes,
+      book.ano
+    );
+    if (tempoReal.length > 0) atualizacao.dados_requerimentos_em_desenvolvimento = tempoReal;
+  }
+
+  if (Object.keys(atualizacao).length === 0) return;
+
+  const { error: updateError } = await (supabase as any)
+    .from('books')
+    .update(atualizacao)
+    .eq('id', bookId);
+
+  if (updateError) throw updateError;
+}
+
+/**
  * Requerimentos de Banco de Horas lançados (ainda não enviados para faturamento)
  * com data de envio até o fim do mês do book. Mesma regra do snapshot gravado
  * pelo booksDataCollectorService; usado quando o snapshot do book está vazio.

@@ -1,6 +1,6 @@
 /**
  * Serviço V2 para geração de PDFs de Books usando Puppeteer
- * 
+ *
  * MELHORIAS:
  * - Usa rota dedicada /pdf/book/:id (sem modal)
  * - Layout otimizado para impressão
@@ -10,6 +10,7 @@
  */
 
 import { puppeteerPDFService } from './puppeteerPDFService';
+import { garantirSnapshotRequerimentosBook } from './requerimentosBookService';
 
 class BooksPDFServiceV2 {
   /**
@@ -17,12 +18,23 @@ class BooksPDFServiceV2 {
    */
   async gerarPDF(bookId: string): Promise<Blob> {
     try {
+      // A rota de impressão roda sem login: books antigos precisam do snapshot
+      // gravado aqui (usuário autenticado) para as abas de requerimentos saírem no PDF
+      try {
+        await garantirSnapshotRequerimentosBook(bookId);
+      } catch (snapshotError) {
+        console.error(
+          '⚠️ Não foi possível gravar o snapshot de requerimentos:',
+          snapshotError instanceof Error ? snapshotError.message : (snapshotError as any)?.message
+        );
+      }
+
       // Detectar idioma atual do usuário para passar ao Puppeteer
       const currentLang = localStorage.getItem('books-snd-language') || 'pt-BR';
-      
+
       // URL da rota dedicada de impressão com idioma como query parameter
       const printUrl = `${window.location.origin}/pdf/book/${bookId}?lang=${encodeURIComponent(currentLang)}`;
-      
+
       console.log('📄 Gerando PDF da rota:', printUrl);
       console.log('🌐 Idioma enviado para PDF:', currentLang);
 
@@ -38,9 +50,9 @@ class BooksPDFServiceV2 {
             top: '0mm',
             bottom: '0mm',
             left: '0mm',
-            right: '0mm'
-          }
-        }
+            right: '0mm',
+          },
+        },
       });
 
       console.log('✅ PDF gerado com sucesso!');
@@ -58,7 +70,7 @@ class BooksPDFServiceV2 {
     try {
       const blob = await this.gerarPDF(bookId);
       const filename = nomeArquivo || `book_${bookId}.pdf`;
-      
+
       puppeteerPDFService.baixarPDF(blob, filename);
     } catch (error) {
       console.error('❌ Erro ao baixar PDF:', error);
