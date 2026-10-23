@@ -591,6 +591,7 @@ const en = {
     clientRates: 'Client Rates Registry',
     productsModules: 'Products and Modules',
     groupMapping: 'Group Mapping',
+    businessSectors: 'Business Sectors',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

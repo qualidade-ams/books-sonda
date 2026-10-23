@@ -9,4 +9,12 @@ describe('plural', () => {
     expect(plural(t, 'x.modulos', 0)).toBe('x.modulos.varios:0');
     expect(plural(t, 'x.modulos', 3)).toBe('x.modulos.varios:3');
   });
+
+  it('aceita outros valores junto do n', () => {
+    const comNomes = (chave: string, valores?: Record<string, unknown>) =>
+      `${chave}:${JSON.stringify(valores)}`;
+    expect(plural(comNomes, 'x.inativados', 2, { nomes: 'A, B' })).toBe(
+      'x.inativados.varios:{"n":2,"nomes":"A, B"}'
+    );
+  });
 });

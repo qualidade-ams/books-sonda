@@ -591,6 +591,7 @@ const ptBR = {
     clientRates: 'Cadastro Taxas Clientes',
     productsModules: 'Produtos e Módulos',
     groupMapping: 'De-para de Grupos',
+    businessSectors: 'Ramos de Atividade',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',

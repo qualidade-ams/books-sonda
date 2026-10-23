@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { ramosAtividadeService } from '@/services/ramosAtividadeService';
-import type { RamoRascunho } from '@/types/ramosAtividade';
+import type { RamoAtividade, RamoRascunho } from '@/types/ramosAtividade';
 
 const CHAVE = ['ramos-atividade'];
+/** Sempre a mesma lista vazia: a tela sincroniza o rascunho com `ramos` num efeito */
+const NENHUM: RamoAtividade[] = [];
 
 /** Tela Ramos de Atividade: lista com o uso nas empresas, salva como rascunho */
 export function useRamosAtividade() {
@@ -26,10 +28,11 @@ export function useRamosAtividade() {
   });
 
   return {
-    ramos: query.data?.ramos ?? [],
+    ramos: query.data?.ramos ?? NENHUM,
     totalEmpresas: query.data?.totalEmpresas ?? 0,
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    recarregar: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
     salvar: salvar.mutateAsync,
     isSalvando: salvar.isPending,
   };

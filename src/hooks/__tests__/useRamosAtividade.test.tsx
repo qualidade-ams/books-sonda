@@ -38,6 +38,24 @@ describe('useRamosAtividade', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('enquanto carrega, a lista vazia é sempre a mesma (a tela sincroniza o rascunho com ela)', () => {
+    service.listar.mockReturnValue(new Promise(() => undefined));
+    const { wrapper } = criarWrapper();
+    const { result, rerender } = renderHook(() => useRamosAtividade(), { wrapper });
+    const primeira = result.current.ramos;
+    rerender();
+    expect(result.current.ramos).toBe(primeira);
+  });
+
+  it('recarregar busca de novo (tentar novamente)', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useRamosAtividade(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(() => result.current.recarregar());
+    expect(service.listar).toHaveBeenCalledTimes(2);
+  });
+
   it('salvar grava o rascunho, recarrega e avisa', async () => {
     service.salvar.mockResolvedValue(undefined);
     const { wrapper, client } = criarWrapper();

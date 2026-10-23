@@ -18,6 +18,7 @@ import {
   History,
   Boxes,
   GitMerge,
+  ListTree,
   Building2,
   Contact,
   Send,
@@ -115,7 +116,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/empresas-clientes') ||
       path.includes('/clientes') ||
       path.includes('/produtos-modulos') ||
-      path.includes('/de-para-grupos')
+      path.includes('/de-para-grupos') ||
+      path.includes('/ramos-atividade')
     ) {
       return 'clientes';
     }
@@ -263,7 +265,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/empresas-clientes') ||
       path.includes('/clientes') ||
       path.includes('/produtos-modulos') ||
-      path.includes('/de-para-grupos')
+      path.includes('/de-para-grupos') ||
+      path.includes('/ramos-atividade')
     ) {
       return 'clientes';
     }
@@ -441,6 +444,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.groupMapping'),
           path: '/admin/de-para-grupos',
           screenKey: 'de_para_grupos',
+        },
+        {
+          icon: ListTree,
+          label: t('nav.businessSectors'),
+          path: '/admin/ramos-atividade',
+          screenKey: 'ramos_atividade',
         },
         {
           icon: Contact,

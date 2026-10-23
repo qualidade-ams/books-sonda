@@ -591,6 +591,7 @@ const es = {
     clientRates: 'Registro de Tasas Clientes',
     productsModules: 'Productos y Módulos',
     groupMapping: 'Correspondencia de Grupos',
+    businessSectors: 'Ramos de Actividad',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
     consultantsCoordinators: 'Consultores x Coordinadores',
