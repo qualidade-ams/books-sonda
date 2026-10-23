@@ -15,15 +15,23 @@ import { botaoVidro } from '@/components/ds/estilos';
 import { IdentidadeEmpresa } from '@/components/admin/empresas/IdentidadeEmpresa';
 import { EdicaoAmsProjetos } from '@/components/admin/empresas/EdicaoAmsProjetos';
 import { AbaInformacoes } from '@/components/admin/empresas/AbaInformacoes';
+import { AbaBancos } from '@/components/admin/empresas/AbaBancos';
+import { EdicaoBanco } from '@/components/admin/empresas/EdicaoBanco';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
 import { useEmpresaCadastro } from '@/hooks/useEmpresasCadastro';
 import { useEmpresaAnexos } from '@/hooks/useEmpresaAnexos';
 import { useRamosAtividade } from '@/hooks/useRamosAtividade';
+import { useBancosHorasCadastro } from '@/hooks/useBancosHorasCadastro';
+import { useCatalogo } from '@/hooks/useCatalogo';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import { TELA_ATUAL_EMPRESAS } from '@/utils/empresasTela';
 import type { Anexo, ModeloEmpresa } from '@/types/empresas';
+import type { BancoCadastro } from '@/types/bancosHorasCadastro';
+import type { Catalogo } from '@/types/catalogo';
 import type { EmpresaAnexo } from '@/services/empresaAnexosService';
+
+type Edicao = { tipo: 'ams' } | { tipo: 'banco'; banco: BancoCadastro | null } | null;
 
 /** Rótulo do campo (traduzido) → chave do texto do "i" */
 const DICAS: [string, string][] = [
@@ -50,6 +58,31 @@ const DICAS: [string, string][] = [
   ['empresasCadastro.informacoes.horasAtendimento', 'horasAtendimento'],
   ['empresasCadastro.informacoes.horasMonitoramento', 'horasMonitoramento'],
   ['empresasCadastro.informacoes.bancoDados', 'bancoDados'],
+  ['empresasCadastro.bancos.baseline', 'baseline'],
+  ['empresasCadastro.bancos.repasse', 'repasse'],
+  ['empresasCadastro.edicaoBanco.nome', 'nomeBanco'],
+  ['empresasCadastro.edicaoBanco.descricao', 'descricaoBanco'],
+  ['empresasCadastro.edicaoBanco.tipoContrato', 'tipoContrato'],
+  ['empresasCadastro.edicaoBanco.periodoApuracao', 'periodoApuracao'],
+  ['empresasCadastro.edicaoBanco.inicioVigencia', 'inicioVigencia'],
+  ['empresasCadastro.edicaoBanco.fimVigencia', 'fimVigencia'],
+  ['empresasCadastro.edicaoBanco.diaInicio', 'diaInicio'],
+  ['empresasCadastro.edicaoBanco.diaFim', 'diaFim'],
+  ['empresasCadastro.edicaoBanco.regras', 'regras'],
+  ['empresasCadastro.edicaoBanco.baseline', 'baseline'],
+  ['empresasCadastro.edicaoBanco.repasse', 'repasse'],
+  ['empresasCadastro.edicaoBanco.credito', 'credito'],
+  ['empresasCadastro.edicaoBanco.repassePorPeriodo', 'repassePorPeriodo'],
+  ['empresasCadastro.edicaoBanco.mesesPorPeriodo', 'mesesPorPeriodo'],
+  ['empresasCadastro.edicaoBanco.periodosAteZerar', 'periodosAteZerar'],
+  ['empresasCadastro.edicaoBanco.dentroPeriodo', 'dentroPeriodo'],
+  ['empresasCadastro.edicaoBanco.entrePeriodos', 'entrePeriodos'],
+  ['empresasCadastro.edicaoBanco.taxa', 'taxa'],
+  ['empresasCadastro.edicaoBanco.tipoHora', 'tipoHora'],
+  ['empresasCadastro.edicaoBanco.escopo', 'escopo'],
+  ['empresasCadastro.edicaoBanco.itemConfiguracao', 'itemConfiguracao'],
+  ['empresasCadastro.edicaoBanco.valor', 'valor'],
+  ['empresasCadastro.edicaoBanco.consome', 'consome'],
 ];
 
 const TOM_DO_MODELO: Record<ModeloEmpresa, 'neutral' | 'warning' | 'info'> = {
@@ -95,9 +128,15 @@ export default function EmpresaDetalhe() {
   const { empresa, isLoading, error, salvarSolucoes, salvarInformacoes } =
     useEmpresaCadastro(empresaId);
   const { ramos } = useRamosAtividade();
+  const bancosHook = useBancosHorasCadastro(empresaId);
+  const { solucoes, produtos, modulos } = useCatalogo();
+  const catalogo = useMemo<Catalogo>(
+    () => ({ solucoes, produtos, modulos }),
+    [solucoes, produtos, modulos]
+  );
   // Só o download: sem id, o hook não busca a lista de anexos
   const { downloadAnexo } = useEmpresaAnexos();
-  const [editando, setEditando] = useState<'ams' | null>(null);
+  const [editando, setEditando] = useState<Edicao>(null);
   const [aba, setAba] = useState('informacoes');
 
   const dicas = useMemo(
@@ -150,12 +189,28 @@ export default function EmpresaDetalhe() {
       );
 
     // Um nível a mais: a edição ocupa a tela; "voltar" retorna para a empresa
-    if (editando === 'ams')
+    if (editando?.tipo === 'ams')
       return (
         <EdicaoAmsProjetos
           empresa={empresa}
           onFechar={() => setEditando(null)}
           onSalvar={salvarSolucoes}
+        />
+      );
+    if (editando?.tipo === 'banco')
+      return (
+        <EdicaoBanco
+          key={editando.banco?.id ?? 'novo'}
+          empresa={empresa}
+          banco={editando.banco}
+          bancos={bancosHook.bancos}
+          catalogo={catalogo}
+          onFechar={() => setEditando(null)}
+          onCriar={async (input) => {
+            await bancosHook.criar(input);
+          }}
+          onSalvar={(bancoId, parametros) => bancosHook.salvar({ bancoId, parametros })}
+          onNovaVigencia={bancosHook.novaVigencia}
         />
       );
 
@@ -206,7 +261,7 @@ export default function EmpresaDetalhe() {
         <IdentidadeEmpresa
           empresa={empresa}
           podeEditar={podeEditarEmpresa}
-          onEditarAms={() => setEditando('ams')}
+          onEditarAms={() => setEditando({ tipo: 'ams' })}
           onBaixarAnexo={baixar}
         />
 
@@ -214,18 +269,41 @@ export default function EmpresaDetalhe() {
           <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
             <SegmentedTabs
               rotulo={t('empresasCadastro.detalhe.abas')}
-              itens={[{ valor: 'informacoes', rotulo: t('empresasCadastro.abas.informacoes') }]}
+              itens={[
+                { valor: 'informacoes', rotulo: t('empresasCadastro.abas.informacoes') },
+                {
+                  valor: 'bancos',
+                  rotulo: t('empresasCadastro.abas.bancos'),
+                  contador: bancosHook.bancos.filter((b) => b.ativo).length,
+                },
+              ]}
               valor={aba}
               onChange={setAba}
             />
           </div>
           <div key={aba} className="ds-surgir">
-            <AbaInformacoes
-              empresa={empresa}
-              ramos={ramos}
-              podeEditar={podeEditarEmpresa}
-              onSalvar={salvarInformacoes}
-            />
+            {aba === 'bancos' ? (
+              <AbaBancos
+                bancos={bancosHook.bancos}
+                catalogo={catalogo}
+                carregando={bancosHook.isLoading}
+                erro={bancosHook.error}
+                podeEditar={podeEditarBancos}
+                onNovo={() => setEditando({ tipo: 'banco', banco: null })}
+                onEditar={(banco) => setEditando({ tipo: 'banco', banco })}
+                onReordenar={bancosHook.reordenar}
+                onInativar={(banco, motivo) => bancosHook.inativar({ bancoId: banco.id, motivo })}
+                onReativar={(banco) => bancosHook.reativar(banco.id)}
+                onTentarNovamente={bancosHook.recarregar}
+              />
+            ) : (
+              <AbaInformacoes
+                empresa={empresa}
+                ramos={ramos}
+                podeEditar={podeEditarEmpresa}
+                onSalvar={salvarInformacoes}
+              />
+            )}
           </div>
         </div>
       </>

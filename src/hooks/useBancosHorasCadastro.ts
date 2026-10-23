@@ -83,6 +83,7 @@ export function useBancosHorasCadastro(empresaId: string | undefined) {
     bancos: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    recarregar,
     criar: criar.mutateAsync,
     salvar: salvar.mutateAsync,
     reordenar: reordenar.mutateAsync,

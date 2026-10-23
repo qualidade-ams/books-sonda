@@ -50,6 +50,15 @@ describe('useBancosHorasCadastro', () => {
     expect(service.listar).toHaveBeenCalledWith('e1');
   });
 
+  it('recarregar busca os bancos de novo (tentar novamente)', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useBancosHorasCadastro('e1'), { wrapper });
+    await waitFor(() => expect(result.current.bancos).toHaveLength(1));
+
+    act(() => result.current.recarregar());
+    await waitFor(() => expect(service.listar).toHaveBeenCalledTimes(2));
+  });
+
   it('criar banco recarrega os bancos e a empresa, e avisa', async () => {
     service.criar.mockResolvedValue('b-novo');
     const { wrapper, client } = criarWrapper();

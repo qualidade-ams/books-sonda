@@ -108,6 +108,53 @@ vi.mock('@/hooks/useEmpresaAnexos', () => ({ useEmpresaAnexos: () => ({ download
 vi.mock('@/hooks/useRamosAtividade', () => ({
   useRamosAtividade: () => ({ ramos: [{ id: 'r1', nome: 'Agronegócio', ativo: true }] }),
 }));
+const BANCO_PADRAO = {
+  id: 'bp',
+  empresaId: 'alfa',
+  ordem: 1,
+  ativo: true,
+  visivelCliente: true,
+  espelhaLegado: false,
+  nome: 'Banco padrão',
+  descricao: null,
+  padrao: true,
+  tipoContrato: 'horas',
+  periodoApuracao: 1,
+  inicioVigencia: '2026-01-01',
+  fimVigencia: null,
+  diaInicioApuracao: 1,
+  diaFimApuracao: 0,
+  taxaProduto: 'OUTROS',
+  taxaTipoHora: 'excedente',
+  repasseEspecial: 'nenhum',
+  duracaoPeriodoMeses: null,
+  periodosAteZerar: null,
+  consomeOutrosBancos: false,
+  filtroIc: null,
+  escopo: [],
+  baselines: [],
+  repasses: [],
+  atualizadoEm: '2026-10-22T12:00:00Z',
+  atualizadoPor: null,
+};
+const bancosHook = {
+  bancos: [BANCO_PADRAO],
+  isLoading: false,
+  error: null,
+  criar: vi.fn(async () => 'novo'),
+  salvar: vi.fn(async () => undefined),
+  reordenar: vi.fn(async () => undefined),
+  inativar: vi.fn(async () => undefined),
+  reativar: vi.fn(async () => undefined),
+  novaVigencia: vi.fn(async () => undefined),
+  recarregar: vi.fn(),
+  isSalvando: false,
+};
+vi.mock('@/hooks/useBancosHorasCadastro', () => ({ useBancosHorasCadastro: () => bancosHook }));
+vi.mock('@/hooks/useNomesUsuarios', () => ({ useNomesUsuarios: () => ({}) }));
+vi.mock('@/hooks/useCatalogo', () => ({
+  useCatalogo: () => ({ solucoes: [], produtos: [], modulos: [], isLoading: false, error: null }),
+}));
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({
     hasPermission: (tela: string, nivel: string) => permissoes.includes(`${tela}:${nivel}`),
@@ -204,6 +251,47 @@ describe('Empresas (detalhe)', () => {
         expect.objectContaining({ organizacoes: ['ALFA SA'] })
       )
     );
+  });
+
+  it('aba Bancos de Horas: editar o banco salva pelo hook e volta para a empresa', async () => {
+    renderizar('/admin/empresas/alfa');
+    fireEvent.click(screen.getByRole('tab', { name: /empresasCadastro.abas.bancos/ }));
+    expect(screen.getByRole('article', { name: 'Banco padrão' })).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'empresasCadastro.bancos.editarBanco {"nome":"Banco padrão"}',
+      })
+    );
+    fireEvent.change(
+      screen.getByLabelText(/empresasCadastro.edicaoBanco.descricao/, { selector: 'input' }),
+      {
+        target: { value: 'Recebe o resto' },
+      }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'ds.formulario.salvar' }));
+    await waitFor(() =>
+      expect(bancosHook.salvar).toHaveBeenCalledWith({
+        bancoId: 'bp',
+        parametros: expect.objectContaining({
+          descricao: 'Recebe o resto',
+          padrao: true,
+          escopo: [],
+        }),
+      })
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('article', { name: 'Banco padrão' })).toBeInTheDocument()
+    );
+  });
+
+  it('sem Edição nos bancos, a aba só mostra', () => {
+    permissoes = ['empresas:edit'];
+    renderizar('/admin/empresas/alfa');
+    fireEvent.click(screen.getByRole('tab', { name: /empresasCadastro.abas.bancos/ }));
+    expect(screen.queryByRole('button', { name: /editarBanco/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'empresasCadastro.bancos.novo' })
+    ).not.toBeInTheDocument();
   });
 
   it('baixar anexo usa o download dos anexos da empresa', () => {
