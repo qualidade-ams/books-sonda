@@ -41,6 +41,14 @@ describe('useMenuOrganizado', () => {
     await waitFor(() => expect(result.current.menu).toEqual(salvo));
   });
 
+  it('recarregar lê de novo', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useMenuOrganizado(), { wrapper });
+    await waitFor(() => expect(result.current.menu).toEqual(salvo));
+    await act(() => result.current.recarregar());
+    expect(service.carregar).toHaveBeenCalledTimes(2);
+  });
+
   it('salvar grava, recarrega para todos e avisa', async () => {
     service.salvar.mockResolvedValue(undefined);
     const { wrapper, client } = criarWrapper();

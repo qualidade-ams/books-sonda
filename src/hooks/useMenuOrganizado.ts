@@ -52,6 +52,7 @@ export function useMenuOrganizado() {
     menu: query.data ?? null,
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    recarregar: () => query.refetch(),
     salvar: salvar.mutateAsync,
     enviarLogo: enviarLogo.mutateAsync,
     isSalvando: salvar.isPending || enviarLogo.isPending,

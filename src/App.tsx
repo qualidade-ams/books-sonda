@@ -37,6 +37,7 @@ import EmpresaDetalhe from './pages/admin/EmpresaDetalhe';
 import ControleBancosHoras from './pages/admin/ControleBancosHoras';
 import ApontamentosRetroativos from './pages/admin/ApontamentosRetroativos';
 import AuditoriaBancosHoras from './pages/admin/AuditoriaBancosHoras';
+import OrganizarMenu from './pages/admin/OrganizarMenu';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -269,6 +270,14 @@ const App = () => (
                       element={
                         <ProtectedRoute screenKey="bancos_horas_auditoria">
                           <AuditoriaBancosHoras />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/organizar-menu"
+                      element={
+                        <ProtectedRoute screenKey="organizar_menu">
+                          <OrganizarMenu />
                         </ProtectedRoute>
                       }
                     />

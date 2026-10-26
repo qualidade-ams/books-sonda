@@ -597,6 +597,7 @@ const en = {
     bankHoursNew: 'Hour Bank Control (new)',
     retroactiveNew: 'Retroactive Time Entries (new)',
     bankHoursAuditNew: 'Hour Bank Audit (new)',
+    organizeMenu: 'Organize Menu',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

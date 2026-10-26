@@ -597,6 +597,7 @@ const es = {
     bankHoursNew: 'Control de Bancos de Horas (nuevo)',
     retroactiveNew: 'Registros Retroactivos (nuevo)',
     bankHoursAuditNew: 'Auditoría del Banco de Horas (nuevo)',
+    organizeMenu: 'Organizar Menú',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
     consultantsCoordinators: 'Consultores x Coordinadores',

@@ -597,6 +597,7 @@ const ptBR = {
     bankHoursNew: 'Controle de Bancos de Horas (novo)',
     retroactiveNew: 'Apontamentos Retroativos (novo)',
     bankHoursAuditNew: 'Auditoria do Banco de Horas (novo)',
+    organizeMenu: 'Organizar Menu',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',

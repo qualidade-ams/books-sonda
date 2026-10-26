@@ -132,6 +132,7 @@ export const MENU_PADRAO: NoMenu[] = [
       'DatabaseZap',
       'sincronizacao_sql_server'
     ),
+    tela('/admin/organizar-menu', 'nav.organizeMenu', 'ListOrdered', 'organizar_menu'),
     tela('/admin/design-system', 'nav.designSystem', 'Palette', 'design_system'),
   ]),
 ];
