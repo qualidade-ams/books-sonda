@@ -3,51 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Home,
-  Mail,
-  User,
-  LogOut,
-  Users,
-  UserCheck,
-  UserPlus,
-  History,
-  FileClock,
-  Boxes,
-  GitMerge,
-  ListChecks,
-  ListTree,
-  Building2,
-  Contact,
-  Send,
-  UsersRound,
-  BarChart3,
-  DatabaseZap,
-  Award,
-  MessageSquare,
-  Speech,
-  Settings,
-  Shield,
-  FileText,
-  DollarSign,
-  Heart,
-  ThumbsUp,
-  ClipboardCheck,
-  Eye,
-  Palette,
-  Clock,
-  AlertTriangle,
-  RefreshCw,
-  Network,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
+import { useMenuOrganizado } from '@/hooks/useMenuOrganizado';
+import { MENU_PADRAO } from '@/config/menuPadrao';
+import { aplicarOrdemSalva } from '@/services/menuOrganizadoService';
+import { menuDaRota, menuVisivel } from '@/utils/menuLateral';
+import { iconeDoMenu } from './iconesMenu';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -64,14 +29,6 @@ const itemClasses =
 const activeItemClasses =
   'bg-ds-shell-active-bg text-ds-shell-active-fg shadow-[inset_2px_0_0_var(--ds-shell-active-fg)] hover:bg-ds-shell-active-bg hover:text-ds-shell-active-fg';
 
-interface MenuItem {
-  icon: React.ComponentType<any>;
-  label: string;
-  path?: string;
-  screenKey?: string;
-  children?: MenuItem[];
-}
-
 const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed: isCollapsedProp,
   onToggle,
@@ -86,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { menu } = useMenuOrganizado();
 
   // Referência para preservar scroll
   const navRef = useRef<HTMLElement>(null);
@@ -99,51 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const submenuRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Função para determinar qual seção deve estar expandida baseada na rota atual
-  const getCurrentSection = () => {
-    const path = location.pathname;
-    if (path.includes('/requerimentos')) {
-      return 'requerimentos';
-    }
-    if (
-      path.includes('/controle-disparos') ||
-      path.includes('/historico-books') ||
-      path.includes('/geracao-books') ||
-      path.includes('/controle-banco-horas') ||
-      path === '/admin/bancos-horas' ||
-      path.includes('/ajustes-retroativos') ||
-      path.includes('/apontamentos-retroativos') ||
-      path.includes('/auditoria-bancos-horas') ||
-      path.includes('/regras-contagem')
-    ) {
-      return 'comunicacao';
-    }
-    if (
-      path.includes('/empresas-clientes') ||
-      path.includes('/clientes') ||
-      path.includes('/admin/empresas') ||
-      path.includes('/produtos-modulos') ||
-      path.includes('/de-para-grupos') ||
-      path.includes('/ramos-atividade')
-    ) {
-      return 'clientes';
-    }
-    if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
-      return 'configuracoes';
-    }
-    if (
-      path.includes('/grupos') ||
-      path.includes('/usuarios') ||
-      path.includes('/audit-logs') ||
-      path.includes('/monitoramento-vigencias') ||
-      path.includes('/rotinas-automaticas')
-    ) {
-      return 'administracao';
-    }
-    return null;
-  };
-
-  // Estado para controlar quais seções estão expandidas
+  // Estado para controlar quais seções estão expandidas (pela chave do menu)
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
     // Verificar se é uma nova sessão (sem estado salvo de seções expandidas)
     const hasSessionState = sessionStorage.getItem('sidebar-session-initialized');
@@ -167,6 +81,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     // Estado padrão: todas as seções fechadas
     return [];
   });
+
+  // O menu do código com a ordem salva em Organizar Menu, só com as telas que o usuário vê
+  const menuItems = menuVisivel(aplicarOrdemSalva(MENU_PADRAO, menu?.itens ?? []), (screenKey) =>
+    hasPermission(screenKey, 'view')
+  );
 
   const handleLogout = async () => {
     try {
@@ -223,8 +142,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       sessionStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString());
     }
 
-    // Determinar qual seção deve estar expandida para esta rota
-    const targetSection = getCurrentSectionForPath(path);
+    // O menu da tela de destino fica expandido
+    const targetSection = menuDaRota(menuItems, path);
 
     if (targetSection) {
       setExpandedSections((prev) => {
@@ -250,362 +169,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       preventScrollRef.current = false;
     }, 500);
   };
-
-  // Função auxiliar para determinar a seção baseada no path
-  const getCurrentSectionForPath = (path: string) => {
-    if (path.includes('/requerimentos')) {
-      return 'requerimentos';
-    }
-    if (
-      path.includes('/controle-disparos') ||
-      path.includes('/historico-books') ||
-      path.includes('/geracao-books') ||
-      path.includes('/controle-banco-horas') ||
-      path === '/admin/bancos-horas' ||
-      path.includes('/ajustes-retroativos') ||
-      path.includes('/apontamentos-retroativos') ||
-      path.includes('/auditoria-bancos-horas') ||
-      path.includes('/regras-contagem')
-    ) {
-      return 'comunicacao';
-    }
-    if (path.includes('/auditoria')) {
-      return 'auditoria';
-    }
-    if (
-      path.includes('/empresas-clientes') ||
-      path.includes('/clientes') ||
-      path.includes('/admin/empresas') ||
-      path.includes('/produtos-modulos') ||
-      path.includes('/de-para-grupos') ||
-      path.includes('/ramos-atividade')
-    ) {
-      return 'clientes';
-    }
-    if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
-      return 'configuracoes';
-    }
-    if (
-      path.includes('/grupos') ||
-      path.includes('/usuarios') ||
-      path.includes('/audit-logs') ||
-      path.includes('/monitoramento-vigencias') ||
-      path.includes('/rotinas-automaticas')
-    ) {
-      return 'administracao';
-    }
-    return null;
-  };
-
-  const menuStructure: MenuItem[] = [
-    {
-      icon: Home,
-      label: t('nav.dashboard'),
-      path: '/admin/dashboard',
-      screenKey: 'dashboard',
-    },
-    {
-      icon: Award,
-      label: t('nav.surveys'),
-      children: [],
-    },
-    {
-      icon: FileText,
-      label: t('nav.requirements'),
-      children: [
-        {
-          icon: FileText,
-          label: t('nav.registerRequirements'),
-          path: '/admin/lancar-requerimentos',
-          screenKey: 'lancar_requerimentos',
-        },
-        {
-          icon: DollarSign,
-          label: t('nav.billingRequirements'),
-          path: '/admin/faturar-requerimentos',
-          screenKey: 'faturar_requerimentos',
-        },
-      ],
-    },
-    {
-      icon: MessageSquare,
-      label: t('nav.surveys'),
-      children: [
-        {
-          icon: FileText,
-          label: t('nav.registerSurveys'),
-          path: '/admin/lancar-pesquisas',
-          screenKey: 'lancar_pesquisas',
-        },
-        {
-          icon: ClipboardCheck,
-          label: t('nav.actionPlan'),
-          path: '/admin/plano-acao',
-          screenKey: 'plano_acao',
-        },
-        {
-          icon: Eye,
-          label: t('nav.viewSurveys'),
-          path: '/admin/visualizar-pesquisas',
-          screenKey: 'visualizar_pesquisas',
-        },
-        {
-          icon: BarChart3,
-          label: t('nav.monthlySurveyAMS'),
-          path: '/admin/pesquisa-mensal-ams',
-          screenKey: 'pesquisa_mensal_ams',
-        },
-      ],
-    },
-    {
-      icon: ThumbsUp,
-      label: t('nav.compliments'),
-      children: [
-        {
-          icon: Heart,
-          label: t('nav.registerCompliments'),
-          path: '/admin/lancar-elogios',
-          screenKey: 'lancar_elogios',
-        },
-        {
-          icon: Send,
-          label: t('nav.sendCompliments'),
-          path: '/admin/enviar-elogios',
-          screenKey: 'lancar_elogios',
-        },
-      ],
-    },
-    {
-      icon: Speech,
-      label: t('nav.books'),
-      children: [
-        {
-          icon: Send,
-          label: t('nav.controlShoots'),
-          path: '/admin/controle-disparos',
-          screenKey: 'controle_disparos',
-        },
-        {
-          icon: Send,
-          label: t('nav.customShoots'),
-          path: '/admin/disparos-personalizados',
-          screenKey: 'controle_disparos',
-        },
-        {
-          icon: BarChart3,
-          label: t('nav.historyBooks'),
-          path: '/admin/historico-books',
-          screenKey: 'historico_books',
-        },
-        {
-          icon: FileText,
-          label: t('nav.generateBooks'),
-          path: '/admin/geracao-books',
-          screenKey: 'geracao_books',
-        },
-        {
-          icon: Clock,
-          label: t('nav.bankHours'),
-          path: '/admin/controle-banco-horas',
-          screenKey: 'controle_banco_horas',
-        },
-        {
-          icon: Clock,
-          label: t('nav.bankHoursNew'),
-          path: '/admin/bancos-horas',
-          screenKey: 'bancos_horas_controle',
-        },
-        {
-          icon: AlertTriangle,
-          label: t('nav.retroactiveAdjustments'),
-          path: '/admin/ajustes-retroativos',
-          screenKey: 'banco_horas_ajustes_retroativos',
-        },
-        {
-          icon: AlertTriangle,
-          label: t('nav.retroactiveNew'),
-          path: '/admin/apontamentos-retroativos',
-          screenKey: 'bancos_horas_retroativos',
-        },
-        {
-          icon: FileClock,
-          label: t('nav.bankHoursAuditNew'),
-          path: '/admin/auditoria-bancos-horas',
-          screenKey: 'bancos_horas_auditoria',
-        },
-        {
-          icon: ListChecks,
-          label: t('nav.countingRules'),
-          path: '/admin/regras-contagem',
-          screenKey: 'regras_contagem',
-        },
-      ],
-    },
-    {
-      icon: AlertTriangle,
-      label: t('nav.auditLogs'),
-      children: [
-        {
-          icon: AlertTriangle,
-          label: t('nav.inconsistencies'),
-          path: '/admin/auditoria/inconsistencia-chamados',
-          screenKey: 'inconsistencia_chamados',
-        },
-        {
-          icon: RefreshCw,
-          label: t('nav.ticketMonitoring'),
-          path: '/admin/auditoria/monitoramento-chamados',
-          screenKey: 'troca_codigo_resolucao',
-        },
-      ],
-    },
-    {
-      icon: Building2,
-      label: t('nav.clients'),
-      children: [
-        {
-          icon: Building2,
-          label: t('nav.companies'),
-          path: '/admin/empresas-clientes',
-          screenKey: 'empresas_clientes',
-        },
-        {
-          icon: Building2,
-          label: t('nav.companiesNew'),
-          path: '/admin/empresas',
-          screenKey: 'empresas',
-        },
-        {
-          icon: Boxes,
-          label: t('nav.productsModules'),
-          path: '/admin/produtos-modulos',
-          screenKey: 'produtos_modulos',
-        },
-        {
-          icon: GitMerge,
-          label: t('nav.groupMapping'),
-          path: '/admin/de-para-grupos',
-          screenKey: 'de_para_grupos',
-        },
-        {
-          icon: ListTree,
-          label: t('nav.businessSectors'),
-          path: '/admin/ramos-atividade',
-          screenKey: 'ramos_atividade',
-        },
-        {
-          icon: Contact,
-          label: t('nav.clientEmails'),
-          path: '/admin/clientes',
-          screenKey: 'clientes',
-        },
-        {
-          icon: DollarSign,
-          label: t('nav.clientRates'),
-          path: '/admin/cadastro-taxas-clientes',
-          screenKey: 'cadastro_taxas_clientes',
-        },
-      ],
-    },
-    {
-      icon: Settings,
-      label: t('nav.emailConfig'),
-      children: [
-        {
-          icon: UsersRound,
-          label: t('nav.responsibleGroups'),
-          path: '/admin/grupos-responsaveis',
-          screenKey: 'grupos_responsaveis',
-        },
-        {
-          icon: Mail,
-          label: t('nav.emailConfig'),
-          path: '/admin/email-config',
-          screenKey: 'email-config',
-        },
-      ],
-    },
-    {
-      icon: Shield,
-      label: t('nav.administration'),
-      children: [
-        {
-          icon: Users,
-          label: t('nav.groups'),
-          path: '/admin/grupos',
-          screenKey: 'grupos',
-        },
-        {
-          icon: UserPlus,
-          label: t('nav.userManagement'),
-          path: '/admin/cadastro-usuarios',
-          screenKey: 'cadastro-usuarios',
-        },
-        {
-          icon: UserCheck,
-          label: t('nav.userGroups'),
-          path: '/admin/usuarios-grupos',
-          screenKey: 'usuarios-grupos',
-        },
-        {
-          icon: History,
-          label: t('nav.auditLogs'),
-          path: '/admin/audit-logs',
-          screenKey: 'audit-logs',
-        },
-        {
-          icon: BarChart3,
-          label: t('nav.monitoringTerms'),
-          path: '/admin/monitoramento-vigencias',
-          screenKey: 'monitoramento_vigencias',
-        },
-        {
-          icon: Network,
-          label: t('nav.consultantsCoordinators'),
-          path: '/admin/consultores-coordenadores',
-          screenKey: 'consultores_coordenadores',
-        },
-        {
-          icon: DatabaseZap,
-          label: t('nav.automatedRoutines'),
-          path: '/admin/rotinas-automaticas',
-          screenKey: 'sincronizacao_sql_server',
-        },
-        {
-          icon: Palette,
-          label: t('nav.designSystem'),
-          path: '/admin/design-system',
-          screenKey: 'design_system',
-        },
-      ],
-    },
-  ];
-
-  // Filtrar itens baseado nas permissões
-  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
-    return items.filter((item) => {
-      // Se tem screenKey, verificar permissão
-      if (item.screenKey) {
-        return hasPermission(item.screenKey, 'view');
-      }
-
-      // Se tem filhos, filtrar os filhos
-      if (item.children) {
-        const filteredChildren = filterMenuItems(item.children);
-        // Só mostrar a seção se tiver pelo menos um filho com permissão
-        if (filteredChildren.length > 0) {
-          item.children = filteredChildren;
-          return true;
-        }
-        return false;
-      }
-
-      // Itens sem screenKey nem filhos (como separadores)
-      return true;
-    });
-  };
-
-  const menuItems = filterMenuItems(menuStructure);
 
   // Effect para restaurar posição de scroll
   useLayoutEffect(() => {
@@ -760,21 +323,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
       >
         {menuItems.map((item, index) => {
-          const Icon = item.icon;
-          const sectionKey = item.label
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-            .replace(/\s+/g, '-');
+          const Icon = iconeDoMenu(item.icone);
+          const label = t(item.rotuloI18n);
+          const sectionKey = item.chave;
           const isExpanded = expandedSections.includes(sectionKey);
 
-          // Se é um item simples (sem filhos)
-          if (!item.children || item.children.length === 0) {
-            const isActive = item.path && location.pathname === item.path;
+          // Tela solta no primeiro nível (sem filhos)
+          if (item.tipo === 'tela') {
+            const isActive = location.pathname === item.chave;
 
             const buttonContent = (
               <Button
-                key={item.path || index}
+                key={item.chave}
                 variant="ghost"
                 className={cn(
                   'w-full min-w-0 flex-shrink-0',
@@ -782,19 +342,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                   isCollapsed ? 'justify-center px-2' : 'justify-start px-3',
                   isActive && activeItemClasses
                 )}
-                onClick={() => item.path && handleNavigation(item.path)}
+                onClick={() => handleNavigation(item.chave)}
               >
                 <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {!isCollapsed && <span className="truncate">{label}</span>}
               </Button>
             );
 
             if (isCollapsed) {
               return (
-                <Tooltip key={item.path || index}>
+                <Tooltip key={item.chave}>
                   <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>{item.label}</p>
+                    <p>{label}</p>
                   </TooltipContent>
                 </Tooltip>
               );
@@ -803,6 +363,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             return buttonContent;
           }
 
+          const filhos = item.filhos ?? [];
           // Se é uma seção com filhos
           const sectionButton = (
             <Button
@@ -817,9 +378,9 @@ const Sidebar: React.FC<SidebarProps> = ({
               onMouseLeave={handleMouseLeaveSection}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
-              {!isCollapsed && <span className="truncate flex-shrink">{item.label}</span>}
+              {!isCollapsed && <span className="truncate flex-shrink">{label}</span>}
               {!isCollapsed &&
-                item.children.length > 0 &&
+                filhos.length > 0 &&
                 (isExpanded ? (
                   <ChevronUp className="h-3 w-3 flex-shrink-0" />
                 ) : (
@@ -835,7 +396,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Tooltip>
                   <TooltipTrigger asChild>{sectionButton}</TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>{item.label}</p>
+                    <p>{label}</p>
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -845,13 +406,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               {/* Itens filhos (quando não está colapsado) */}
               {!isCollapsed &&
                 isExpanded &&
-                item.children.map((child, childIndex) => {
-                  const ChildIcon = child.icon;
-                  const isChildActive = child.path && location.pathname === child.path;
+                filhos.map((child) => {
+                  const ChildIcon = iconeDoMenu(child.icone);
+                  const isChildActive = location.pathname === child.chave;
 
                   return (
                     <Button
-                      key={child.path || childIndex}
+                      key={child.chave}
                       variant="ghost"
                       className={cn(
                         'w-full ml-4 min-w-0 flex-shrink-0',
@@ -859,10 +420,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                         'justify-start px-3 text-sm',
                         isChildActive && activeItemClasses
                       )}
-                      onClick={() => child.path && handleNavigation(child.path)}
+                      onClick={() => handleNavigation(child.chave)}
                     >
                       <ChildIcon className="h-3 w-3 mr-3 flex-shrink-0" />
-                      <span className="truncate">{child.label}</span>
+                      <span className="truncate">{t(child.rotuloI18n)}</span>
                     </Button>
                   );
                 })}
@@ -950,28 +511,22 @@ const Sidebar: React.FC<SidebarProps> = ({
           onMouseLeave={handleMouseLeaveSubmenu}
         >
           {menuItems.map((item) => {
-            const sectionKey = item.label
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/\s+/g, '-');
-
-            if (sectionKey === hoveredSection && item.children && item.children.length > 0) {
+            if (item.chave === hoveredSection && item.filhos && item.filhos.length > 0) {
               return (
-                <div key={sectionKey} className="space-y-0.5">
+                <div key={item.chave} className="space-y-0.5">
                   {/* Título da seção */}
                   <div className="px-2 py-1.5 text-ds-shell-fg font-semibold text-sm border-b border-ds-shell-border mb-1">
-                    {item.label}
+                    {t(item.rotuloI18n)}
                   </div>
 
                   {/* Itens do submenu */}
-                  {item.children.map((child, childIndex) => {
-                    const ChildIcon = child.icon;
-                    const isChildActive = child.path && location.pathname === child.path;
+                  {item.filhos.map((child) => {
+                    const ChildIcon = iconeDoMenu(child.icone);
+                    const isChildActive = location.pathname === child.chave;
 
                     return (
                       <Button
-                        key={child.path || childIndex}
+                        key={child.chave}
                         variant="ghost"
                         className={cn(
                           'w-full justify-start px-2 py-1.5 h-8 text-sm gap-2',
@@ -979,15 +534,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                           isChildActive && activeItemClasses
                         )}
                         onClick={() => {
-                          if (child.path) {
-                            handleNavigation(child.path);
-                            setHoveredSection(null);
-                            setSubmenuPosition(null);
-                          }
+                          handleNavigation(child.chave);
+                          setHoveredSection(null);
+                          setSubmenuPosition(null);
                         }}
                       >
                         <ChildIcon className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{child.label}</span>
+                        <span className="truncate">{t(child.rotuloI18n)}</span>
                       </Button>
                     );
                   })}

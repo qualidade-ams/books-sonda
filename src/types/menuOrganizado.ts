@@ -14,6 +14,8 @@ export interface NoMenu {
   rotuloI18n: string;
   /** Nome do ícone do lucide */
   icone: string | null;
+  /** Só em tela: a permissão que a mostra (screens) */
+  screenKey?: string;
   /** Só em menu */
   filhos?: NoMenu[];
 }

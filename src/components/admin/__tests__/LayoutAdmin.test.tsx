@@ -22,6 +22,8 @@ vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({ hasPermission: () => true }),
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+// Sem ordem salva: o menu do código
+vi.mock('@/hooks/useMenuOrganizado', () => ({ useMenuOrganizado: () => ({ menu: null }) }));
 vi.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({ resolvedTheme: 'light', toggleTheme: vi.fn() }),
 }));
