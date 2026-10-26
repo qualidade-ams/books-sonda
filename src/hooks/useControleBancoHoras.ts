@@ -178,5 +178,6 @@ export function useHistoricoControle(bancoId: string | undefined) {
     eventos: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    recarregar: query.refetch,
   };
 }

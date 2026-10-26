@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   ajustesDosRequerimentos,
+  camposAlterados,
   indiceReferencia,
   mesesComSituacao,
   resultadoDoBanco,
@@ -121,5 +122,24 @@ describe('ajustesDosRequerimentos', () => {
       { requerimentoId: 'r4', bancoId: 'bC' },
     ]);
     expect(ajustesDosRequerimentos(LISTA, {})).toEqual([]);
+  });
+});
+
+describe('camposAlterados', () => {
+  it('antes e depois de cada campo alterado, sem os campos de controle', () => {
+    expect(
+      camposAlterados({
+        campos: ['minutos', 'justificativa', 'updated_at', 'updated_by'],
+        antes: { minutos: 30, justificativa: null, updated_at: 'x' },
+        depois: { minutos: 60, justificativa: 'Revisão', updated_at: 'y' },
+      })
+    ).toEqual([
+      { campo: 'minutos', antes: '30', depois: '60' },
+      { campo: 'justificativa', antes: '—', depois: 'Revisão' },
+    ]);
+  });
+
+  it('inclusão e exclusão não listam campos', () => {
+    expect(camposAlterados({ campos: [], antes: null, depois: { a: 1 } })).toEqual([]);
   });
 });

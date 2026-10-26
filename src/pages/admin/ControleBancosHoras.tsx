@@ -23,6 +23,7 @@ import { QuadroControle } from '@/components/admin/controle/QuadroControle';
 import { AbaReajustes } from '@/components/admin/controle/AbaReajustes';
 import { LancarReajuste } from '@/components/admin/controle/LancarReajuste';
 import { AbaObservacoes } from '@/components/admin/controle/AbaObservacoes';
+import { AbaHistorico } from '@/components/admin/controle/AbaHistorico';
 import {
   AbaRequerimentos,
   BarraAjustesRequerimentos,
@@ -33,6 +34,7 @@ import {
   useControleEmpresas,
   useLancamentosControle,
   useRequerimentosControle,
+  useHistoricoControle,
   useQuadroControle,
 } from '@/hooks/useControleBancoHoras';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -113,6 +115,8 @@ export default function ControleBancosHoras() {
   const [lancando, setLancando] = useState<{ mes?: MesAno } | null>(null);
   const lancamentos = useLancamentosControle(banco?.bancoId, meses);
   const reqs = useRequerimentosControle(empresaId, meses);
+  // Até 500 alterações: só busca com a aba aberta
+  const historico = useHistoricoControle(secao === 'historico' ? banco?.bancoId : undefined);
   // Trocas de banco dos requerimentos ainda não salvas; valem para a empresa e o período em que
   // foram feitas (trocar qualquer um dos dois descarta)
   const chaveRascunho = `${empresaId}|${rotuloPeriodo}`;
@@ -231,6 +235,7 @@ export default function ControleBancosHoras() {
                     },
                     { valor: 'reajustes', rotulo: c('secoes.reajustes') },
                     { valor: 'observacoes', rotulo: c('secoes.observacoes') },
+                    { valor: 'historico', rotulo: c('secoes.historico') },
                   ]}
                   valor={secao}
                   onChange={setSecao}
@@ -288,6 +293,13 @@ export default function ControleBancosHoras() {
                     await lancamentos.excluirObservacao(o.id);
                   }}
                   onTentarNovamente={() => void lancamentos.recarregar()}
+                />
+              ) : secao === 'historico' ? (
+                <AbaHistorico
+                  eventos={historico.eventos}
+                  carregando={historico.isLoading}
+                  erro={historico.error}
+                  onTentarNovamente={() => void historico.recarregar()}
                 />
               ) : carregandoQuadro ? (
                 <div

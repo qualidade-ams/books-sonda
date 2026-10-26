@@ -79,6 +79,7 @@ const requerimentos = {
   error: null,
   salvarAjustes: vi.fn(async () => undefined),
 };
+const historicoPedido: string[] = [];
 let permissoes: string[] = [];
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({
@@ -92,6 +93,10 @@ window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 vi.mock('@/hooks/useControleBancoHoras', () => ({
   useLancamentosControle: () => lancamentos,
   useRequerimentosControle: () => requerimentos,
+  useHistoricoControle: (bancoId: string) => {
+    historicoPedido.push(bancoId);
+    return { eventos: [], isLoading: false, error: null, recarregar: vi.fn() };
+  },
   useControleEmpresas: () => empresas,
   useControleBancos: (empresaId: string) => ({
     bancos: bancosPorEmpresa[empresaId] ?? [],
@@ -249,5 +254,12 @@ describe('ControleBancosHoras', () => {
         screen.queryByText(/controleBancoHoras.requerimentos.alterados/)
       ).not.toBeInTheDocument()
     );
+  });
+
+  it('aba Histórico do banco escolhido', () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.historico/ }));
+    expect(screen.getByText('controleBancoHoras.historico.vazio')).toBeInTheDocument();
+    expect(historicoPedido).toContain('b1');
   });
 });

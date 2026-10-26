@@ -91,3 +91,29 @@ export function ajustesDosRequerimentos(
     ];
   });
 }
+
+/** Campos de controle que toda alteração muda; não interessam no histórico */
+const CAMPOS_DE_CONTROLE = new Set(['created_at', 'created_by', 'updated_at', 'updated_by']);
+
+const valorTexto = (v: unknown) =>
+  v === null || v === undefined || v === ''
+    ? '—'
+    : typeof v === 'object'
+      ? JSON.stringify(v)
+      : String(v);
+
+/** O que mudou numa alteração auditada: antes → depois de cada campo */
+export function camposAlterados(evento: {
+  campos: string[];
+  antes: Record<string, unknown> | null;
+  depois: Record<string, unknown> | null;
+}): { campo: string; antes: string; depois: string }[] {
+  if (!evento.antes || !evento.depois) return [];
+  return evento.campos
+    .filter((campo) => !CAMPOS_DE_CONTROLE.has(campo))
+    .map((campo) => ({
+      campo,
+      antes: valorTexto(evento.antes[campo]),
+      depois: valorTexto(evento.depois[campo]),
+    }));
+}

@@ -123,6 +123,17 @@ describe('leituras do Controle', () => {
 });
 
 describe('gravações do Controle', () => {
+  it('tentar de novo busca o histórico outra vez', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useHistoricoControle('b1'), { wrapper });
+    await waitFor(() => expect(result.current.eventos).toHaveLength(1));
+    historico.historico.mockClear();
+
+    await act(() => result.current.recarregar());
+
+    expect(historico.historico).toHaveBeenCalledTimes(1);
+  });
+
   it('tentar de novo busca os requerimentos outra vez', async () => {
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useRequerimentosControle('e1', meses), { wrapper });
