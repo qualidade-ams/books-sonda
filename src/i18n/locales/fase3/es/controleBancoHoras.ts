@@ -308,6 +308,38 @@ const controleBancoHoras = {
     total: 'Total',
     arquivo: 'Consumo por banco - {{empresa}} - {{data}}.xlsx',
   },
+  enviarSaldo: {
+    botao: 'Enviar Saldo Parcial',
+    titulo: 'Enviar Saldo Parcial',
+    secaoEmail: 'Correo',
+    destinatarios: 'Destinatarios',
+    novoDestinatario: 'Agregar destinatario',
+    adicionar: 'Agregar',
+    semDestinatario: 'Ningún destinatario.',
+    emailInvalido: 'Correo inválido.',
+    copia: 'Con copia',
+    copiaPlaceholder: 'Separe los correos con ;',
+    assunto: 'Asunto',
+    texto: 'Texto de apertura',
+    idioma: 'Idioma del correo: {{idioma}}',
+    idiomas: {
+      'pt-BR': 'portugués',
+      en: 'inglés',
+    },
+    excel:
+      'Consumo por banco (Excel), generado en el envío: una hoja de resumen y una hoja por banco, con los llamados.',
+    secaoPrevia: 'Vista previa',
+    previa: 'Vista previa del correo',
+    semBancos: 'Ningún banco de esta empresa aparece para el cliente.',
+    erro: 'No fue posible armar el Saldo Parcial',
+    enviar: 'Enviar',
+    confirmarTitulo: '¿Enviar el Saldo Parcial ahora?',
+    confirmarDestinatarios: {
+      um: '{{n}} destinatario, un correo con todos los bancos',
+      varios: '{{n}} destinatarios, un correo con todos los bancos',
+    },
+    confirmarHistorico: 'El envío queda en el historial de envíos del Saldo Parcial',
+  },
 };
 
 export default controleBancoHoras;

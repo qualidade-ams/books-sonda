@@ -10,7 +10,10 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
-    i18n: { language: 'pt-BR' },
+    i18n: {
+      language: 'pt-BR',
+      getFixedT: (idioma: string) => (chave: string) => `${idioma}:${chave}`,
+    },
   }),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
@@ -80,6 +83,33 @@ const requerimentos = {
   salvarAjustes: vi.fn(async () => undefined),
 };
 const historicoPedido: string[] = [];
+const saldoPedido: [string, boolean][] = [];
+const saldo = {
+  bancos: [
+    {
+      bancoId: 'b1',
+      nome: 'BANCO COMEX',
+      tipoContrato: 'horas',
+      consomeOutrosBancos: false,
+      meses: [{ mes: { ano: 2026, mes: 10 }, chave: '2026-10', situacao: 'aberto' }],
+      requerimentos: [],
+      reajustes: [],
+      observacoes: [],
+    },
+  ],
+  idioma: 'en',
+  isLoading: false,
+  error: null,
+  recarregar: vi.fn(),
+  enviar: vi.fn(async () => undefined),
+  isEnviando: false,
+};
+vi.mock('@/hooks/useClientes', () => ({
+  useEmailsClientesPorFinalidade: (empresaId: string | undefined) => ({
+    emails: empresaId ? ['contato@alfa.com'] : [],
+    isLoading: false,
+  }),
+}));
 let permissoes: string[] = [];
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({
@@ -93,6 +123,10 @@ window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 vi.mock('@/hooks/useControleBancoHoras', () => ({
   useLancamentosControle: () => lancamentos,
   useRequerimentosControle: () => requerimentos,
+  useSaldoParcialControle: (empresaId: string, aberto: boolean) => {
+    saldoPedido.push([empresaId, aberto]);
+    return saldo;
+  },
   useHistoricoControle: (bancoId: string) => {
     historicoPedido.push(bancoId);
     return { eventos: [], isLoading: false, error: null, recarregar: vi.fn() };
@@ -122,6 +156,8 @@ beforeEach(() => {
   mesesPedidos.length = 0;
   permissoes = ['bancos_horas_controle:edit'];
   lancamentos.lancarReajuste.mockClear();
+  saldo.enviar.mockClear();
+  saldoPedido.length = 0;
 });
 
 const renderizar = (rota = '/admin/bancos-horas') =>
@@ -261,5 +297,49 @@ describe('ControleBancosHoras', () => {
     fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.historico/ }));
     expect(screen.getByText('controleBancoHoras.historico.vazio')).toBeInTheDocument();
     expect(historicoPedido).toContain('b1');
+  });
+
+  it('Enviar Saldo Parcial: abre a tela, com os contatos, e envia com os dados da empresa', async () => {
+    renderizar();
+    expect(saldoPedido.every(([, aberto]) => !aberto)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' }));
+    expect(saldoPedido.at(-1)).toEqual(['alfa', true]);
+    expect(screen.getByText('contato@alfa.com')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.enviarSaldo.enviar' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'controleBancoHoras.enviarSaldo.enviar',
+      })
+    );
+    await waitFor(() =>
+      expect(saldo.enviar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          empresaId: 'alfa',
+          empresaNome: 'ALFA',
+          bancos: saldo.bancos,
+          destinatarios: ['contato@alfa.com'],
+          copia: [],
+          idioma: 'en',
+        })
+      )
+    );
+    // Os textos do e-mail no idioma do template, não no da tela
+    const [envio] = saldo.enviar.mock.calls[0] as unknown as [{ t: (c: string) => string }];
+    expect(envio.t('x')).toBe('en:x');
+    expect(await screen.findByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+  });
+
+  it('sem o botão de envio: quem só vê e a empresa ainda no cálculo atual', () => {
+    permissoes = ['bancos_horas_controle:view'];
+    const { unmount } = renderizar();
+    expect(
+      screen.queryByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' })
+    ).not.toBeInTheDocument();
+    unmount();
+    permissoes = ['bancos_horas_controle:edit'];
+    renderizar('/admin/bancos-horas?empresa=beta');
+    expect(
+      screen.queryByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' })
+    ).not.toBeInTheDocument();
   });
 });

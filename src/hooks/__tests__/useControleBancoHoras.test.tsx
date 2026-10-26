@@ -9,10 +9,13 @@ import {
   useLancamentosControle,
   useQuadroControle,
   useRequerimentosControle,
+  useSaldoParcialControle,
 } from '../useControleBancoHoras';
 import { controleBancoHorasService } from '@/services/controleBancoHorasService';
 import { controleLancamentosService } from '@/services/controleLancamentosService';
 import { controleHistoricoService } from '@/services/controleHistoricoService';
+import { controleSaldoParcialService } from '@/services/controleSaldoParcialService';
+import { enviarSaldoParcialControle } from '@/services/saldoParcial/envioControle';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
@@ -37,6 +40,10 @@ vi.mock('@/services/controleLancamentosService', () => ({
     salvarAjustesRequerimentos: vi.fn(),
   },
 }));
+vi.mock('@/services/controleSaldoParcialService', () => ({
+  controleSaldoParcialService: { bancos: vi.fn(), idiomaDoEmail: vi.fn() },
+}));
+vi.mock('@/services/saldoParcial/envioControle', () => ({ enviarSaldoParcialControle: vi.fn() }));
 vi.mock('@/services/controleHistoricoService', () => ({
   controleHistoricoService: { historico: vi.fn() },
 }));
@@ -218,6 +225,48 @@ describe('gravações do Controle', () => {
     expect(toast).toHaveBeenCalledWith({
       title: 'Erro ao lançar o reajuste',
       description: 'Informe o motivo do reajuste.',
+      variant: 'destructive',
+    });
+  });
+});
+
+describe('useSaldoParcialControle', () => {
+  const saldo = controleSaldoParcialService as unknown as Record<string, ReturnType<typeof vi.fn>>;
+  const enviar = vi.mocked(enviarSaldoParcialControle);
+
+  it('só busca com a tela de envio aberta; traz os bancos e o idioma do e-mail', async () => {
+    saldo.bancos.mockResolvedValue([{ bancoId: 'b1' }]);
+    saldo.idiomaDoEmail.mockResolvedValue('en');
+    const { wrapper } = criarWrapper();
+    renderHook(() => useSaldoParcialControle('e1', false), { wrapper });
+    expect(saldo.bancos).not.toHaveBeenCalled();
+
+    const { result } = renderHook(() => useSaldoParcialControle('e1', true), { wrapper });
+    await waitFor(() => expect(result.current.bancos).toHaveLength(1));
+    expect(result.current.idioma).toBe('en');
+    expect(saldo.bancos).toHaveBeenCalledWith(
+      'e1',
+      expect.objectContaining({ ano: expect.any(Number) })
+    );
+  });
+
+  it('enviar avisa o sucesso e o erro', async () => {
+    saldo.bancos.mockResolvedValue([]);
+    saldo.idiomaDoEmail.mockResolvedValue('pt-BR');
+    enviar.mockResolvedValueOnce(undefined);
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useSaldoParcialControle('e1', true), { wrapper });
+    const input = { empresaId: 'e1' } as any;
+
+    await act(() => result.current.enviar(input));
+    expect(enviar).toHaveBeenCalledWith(input);
+    expect(toast).toHaveBeenCalledWith({ title: 'Saldo Parcial enviado' });
+
+    enviar.mockRejectedValueOnce(new Error('Servidor de e-mail fora'));
+    await act(() => result.current.enviar(input).catch(() => undefined));
+    expect(toast).toHaveBeenCalledWith({
+      title: 'Erro ao enviar o Saldo Parcial',
+      description: 'Servidor de e-mail fora',
       variant: 'destructive',
     });
   });

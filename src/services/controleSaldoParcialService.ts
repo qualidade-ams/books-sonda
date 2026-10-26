@@ -30,6 +30,7 @@ import {
   type ControleLancamentosService,
 } from '@/services/controleLancamentosService';
 import { mesesComSituacao, type MesDoQuadro } from '@/utils/controleTela';
+import { isEnglishTemplateByName } from '@/utils/bancoHorasI18n';
 import type {
   ObservacaoParaCliente,
   ReajusteParaCliente,
@@ -292,6 +293,31 @@ export class ControleSaldoParcialService {
       }
     }
     return itens;
+  }
+
+  /**
+   * Idioma do e-mail: o do template padrão da empresa ('ingles', ou um template cadastrado com
+   * nome em inglês, como no legado); sem template, português
+   */
+  async idiomaDoEmail(empresaId: string): Promise<'pt-BR' | 'en'> {
+    const cliente = this.cliente as unknown as ClienteSupabase;
+    const { data: empresa, error } = await cliente
+      .from('empresas')
+      .select('template_padrao')
+      .eq('id', empresaId)
+      .maybeSingle();
+    if (error) throw falha('carregar o idioma do e-mail', error);
+    const template = (empresa as Linha | null)?.template_padrao as string | null;
+    if (!template || template === 'portugues') return 'pt-BR';
+    if (template === 'ingles') return 'en';
+
+    const { data: cadastrado, error: erroTemplate } = await cliente
+      .from('email_templates')
+      .select('nome')
+      .eq('id', template)
+      .maybeSingle();
+    if (erroTemplate) throw falha('carregar o idioma do e-mail', erroTemplate);
+    return isEnglishTemplateByName((cadastrado as Linha | null)?.nome) ? 'en' : 'pt-BR';
   }
 
   /**

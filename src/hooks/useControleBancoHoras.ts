@@ -3,6 +3,15 @@ import { useToast } from '@/hooks/use-toast';
 import { chaveMes, controleBancoHorasService } from '@/services/controleBancoHorasService';
 import { controleLancamentosService } from '@/services/controleLancamentosService';
 import { controleHistoricoService } from '@/services/controleHistoricoService';
+import {
+  controleSaldoParcialService,
+  type SaldoParcialBanco,
+} from '@/services/controleSaldoParcialService';
+import {
+  enviarSaldoParcialControle,
+  type EnvioControleInput,
+} from '@/services/saldoParcial/envioControle';
+import { mesAtual } from '@/services/bancosHoras/periodos';
 import type { MesAno } from '@/services/bancosHoras/calculo';
 import type {
   AjusteRequerimento,
@@ -179,5 +188,39 @@ export function useHistoricoControle(bancoId: string | undefined) {
     isLoading: query.isLoading,
     error: query.error as Error | null,
     recarregar: query.refetch,
+  };
+}
+
+const SEM_BANCOS: SaldoParcialBanco[] = [];
+
+/** Envio do Saldo Parcial pelo Controle: os bancos que o cliente vê e o idioma do e-mail */
+export function useSaldoParcialControle(empresaId: string | undefined, aberto: boolean) {
+  const { toast, avisarErro } = useAvisos();
+  const query = useQuery({
+    queryKey: [CHAVE, 'saldo-parcial', empresaId],
+    queryFn: async () => {
+      const [bancos, idioma] = await Promise.all([
+        controleSaldoParcialService.bancos(empresaId!, mesAtual()),
+        controleSaldoParcialService.idiomaDoEmail(empresaId!),
+      ]);
+      return { bancos, idioma };
+    },
+    enabled: !!empresaId && aberto,
+    staleTime: UM_MINUTO,
+  });
+  const enviar = useMutation({
+    mutationFn: (input: EnvioControleInput) => enviarSaldoParcialControle(input),
+    onSuccess: () => toast({ title: 'Saldo Parcial enviado' }),
+    onError: avisarErro('Erro ao enviar o Saldo Parcial'),
+  });
+
+  return {
+    bancos: query.data?.bancos ?? SEM_BANCOS,
+    idioma: query.data?.idioma ?? ('pt-BR' as const),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    recarregar: query.refetch,
+    enviar: enviar.mutateAsync,
+    isEnviando: enviar.isPending,
   };
 }

@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Send } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { DsPage } from '@/components/ds/DsPage';
 import { FaixaPagina } from '@/components/ds/FaixaPagina';
@@ -36,8 +36,13 @@ import {
   useRequerimentosControle,
   useHistoricoControle,
   useQuadroControle,
+  useSaldoParcialControle,
 } from '@/hooks/useControleBancoHoras';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEmailsClientesPorFinalidade } from '@/hooks/useClientes';
+import { FINALIDADES_SALDO_PARCIAL } from '@/types/clientBooksTypes';
+import { EnviarSaldoParcial } from '@/components/admin/controle/EnviarSaldoParcial';
+import { botaoVidro } from '@/components/ds/estilos';
 import { mesAtual, periodosDoBanco } from '@/services/bancosHoras/periodos';
 import type { MesAno } from '@/services/bancosHoras/calculo';
 import {
@@ -117,6 +122,15 @@ export default function ControleBancosHoras() {
   const reqs = useRequerimentosControle(empresaId, meses);
   // Até 500 alterações: só busca com a aba aberta
   const historico = useHistoricoControle(secao === 'historico' ? banco?.bancoId : undefined);
+  // Outro nível: envio do Saldo Parcial da empresa (todos os bancos que o cliente vê)
+  const [enviandoSaldo, setEnviandoSaldo] = useState(false);
+  const saldo = useSaldoParcialControle(empresaId, enviandoSaldo);
+  const { emails: contatosSaldo } = useEmailsClientesPorFinalidade(
+    enviandoSaldo ? empresaId : undefined,
+    FINALIDADES_SALDO_PARCIAL
+  );
+  // O e-mail sai no idioma do template da empresa, não no da tela
+  const tEmail = useMemo(() => i18n.getFixedT(saldo.idioma), [i18n, saldo.idioma]);
   // Trocas de banco dos requerimentos ainda não salvas; valem para a empresa e o período em que
   // foram feitas (trocar qualquer um dos dois descarta)
   const chaveRascunho = `${empresaId}|${rotuloPeriodo}`;
@@ -323,6 +337,37 @@ export default function ControleBancosHoras() {
     );
   };
 
+  if (enviandoSaldo && empresa)
+    return (
+      <AdminLayout>
+        <div className="min-h-screen bg-ds-bg-page">
+          <DsPage className="px-4 py-4 md:px-6">
+            <EnviarSaldoParcial
+              empresaNome={empresa.nome}
+              bancos={saldo.bancos}
+              idioma={saldo.idioma}
+              tEmail={tEmail}
+              carregando={saldo.isLoading}
+              erro={saldo.error}
+              destinatariosPadrao={contatosSaldo}
+              onTentarNovamente={() => void saldo.recarregar()}
+              onFechar={() => setEnviandoSaldo(false)}
+              onEnviar={(dados) =>
+                saldo.enviar({
+                  ...dados,
+                  empresaId: empresa.id,
+                  empresaNome: empresa.nome,
+                  bancos: saldo.bancos,
+                  idioma: saldo.idioma,
+                  t: tEmail,
+                })
+              }
+            />
+          </DsPage>
+        </div>
+      </AdminLayout>
+    );
+
   if (lancando && banco)
     return (
       <AdminLayout>
@@ -389,6 +434,15 @@ export default function ControleBancosHoras() {
                       )}
                       {c(`modelo.${empresa.modelo}`)}
                     </span>
+                  )}
+                  {podeEditar && bancos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setEnviandoSaldo(true)}
+                      className={cn(botaoVidro, 'h-9 sm:ml-auto md:h-8')}
+                    >
+                      <Send className="h-4 w-4" /> {c('enviarSaldo.botao')}
+                    </button>
                   )}
                 </div>
               )}

@@ -336,3 +336,39 @@ describe('ControleSaldoParcialService.registrarEnvio', () => {
     );
   });
 });
+
+describe('ControleSaldoParcialService.idiomaDoEmail', () => {
+  const servico = (
+    empresas: Record<string, unknown>[],
+    templates: Record<string, unknown>[] = []
+  ) => {
+    const { controle, lancamentos, repo } = colaboradores();
+    return new ControleSaldoParcialService(
+      criarSupabaseEmMemoria({ empresas, email_templates: templates }) as any,
+      controle as any,
+      lancamentos as any,
+      () => repo as any
+    );
+  };
+
+  it('pelo template padrão da empresa, como no legado', async () => {
+    const s = servico(
+      [
+        { id: 'pt', template_padrao: 'portugues' },
+        { id: 'en', template_padrao: 'ingles' },
+        { id: 'sem', template_padrao: null },
+        { id: 'tpl-en', template_padrao: 't1' },
+        { id: 'tpl-pt', template_padrao: 't2' },
+      ],
+      [
+        { id: 't1', nome: 'Book English' },
+        { id: 't2', nome: 'Book Qualidade' },
+      ]
+    );
+    expect(await s.idiomaDoEmail('pt')).toBe('pt-BR');
+    expect(await s.idiomaDoEmail('en')).toBe('en');
+    expect(await s.idiomaDoEmail('sem')).toBe('pt-BR');
+    expect(await s.idiomaDoEmail('tpl-en')).toBe('en');
+    expect(await s.idiomaDoEmail('tpl-pt')).toBe('pt-BR');
+  });
+});

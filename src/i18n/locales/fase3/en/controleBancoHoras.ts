@@ -311,6 +311,38 @@ const controleBancoHoras = {
     total: 'Total',
     arquivo: 'Usage by bank - {{empresa}} - {{data}}.xlsx',
   },
+  enviarSaldo: {
+    botao: 'Send Partial Balance',
+    titulo: 'Send Partial Balance',
+    secaoEmail: 'E-mail',
+    destinatarios: 'Recipients',
+    novoDestinatario: 'Add recipient',
+    adicionar: 'Add',
+    semDestinatario: 'No recipient.',
+    emailInvalido: 'Invalid e-mail.',
+    copia: 'Cc',
+    copiaPlaceholder: 'Separate the e-mails with ;',
+    assunto: 'Subject',
+    texto: 'Opening text',
+    idioma: 'E-mail language: {{idioma}}',
+    idiomas: {
+      'pt-BR': 'Portuguese',
+      en: 'English',
+    },
+    excel:
+      'Usage by bank (Excel), generated on sending: a summary sheet and one sheet per bank, with the tickets.',
+    secaoPrevia: 'Preview',
+    previa: 'E-mail preview',
+    semBancos: 'No bank of this company is visible to the client.',
+    erro: 'Could not build the Partial Balance',
+    enviar: 'Send',
+    confirmarTitulo: 'Send the Partial Balance now?',
+    confirmarDestinatarios: {
+      um: '{{n}} recipient, one e-mail with all banks',
+      varios: '{{n}} recipients, one e-mail with all banks',
+    },
+    confirmarHistorico: 'The sending stays in the Partial Balance sending history',
+  },
 };
 
 export default controleBancoHoras;
