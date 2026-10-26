@@ -74,6 +74,51 @@ const apontamentosRetroativos = {
     aprovarPlaceholder: 'E.g.: service confirmed with the client',
     descartarPlaceholder: 'E.g.: consultant will repost in the current month',
   },
+  selecao: {
+    todos: 'Select the not yet notified time entries of {{empresa}} · {{banco}}',
+    item: 'Select {{chamado}}',
+    selecionados: {
+      um: '{{n}} time entry selected',
+      varios: '{{n}} time entries selected',
+    },
+    limpar: 'Clear selection',
+    pedir: 'Request correction',
+  },
+  regularizacao: {
+    titulo: 'Request correction from consultants',
+    subtitulo: '{{apontamentos}} · {{consultores}}',
+    consultores: {
+      um: '{{n}} consultant',
+      varios: '{{n}} consultants',
+    },
+    emails: {
+      um: 'Send {{n}} e-mail',
+      varios: 'Send {{n}} e-mails',
+    },
+    secaoEnvio: 'Sending',
+    copia: 'Cc',
+    copiaPlaceholder: 'Separate the e-mails with ;',
+    emailInvalido: 'Invalid e-mail.',
+    semEmailTitulo: {
+      um: '{{n}} consultant without registered e-mail',
+      varios: '{{n}} consultants without registered e-mail',
+    },
+    semEmailTexto:
+      '{{nomes}}: the e-mail will not be sent. Register the e-mail in Specialists or notify through another channel.',
+    semConsultor: 'No consultant',
+    semEmail: 'no e-mail',
+    secaoMensagem: 'Message',
+    assunto: 'Subject',
+    avisados: 'The notified time entries stay marked on the screen for the whole team.',
+    confirmarTitulo: {
+      um: 'Send {{n}} e-mail?',
+      varios: 'Send {{n}} e-mails?',
+    },
+    umPorConsultor: 'One e-mail per consultant',
+    ficamMarcados: 'The time entries are marked as notified, with the date and who sent',
+    enviar: 'Send',
+    carregandoEmails: "Looking up the consultants' e-mails",
+  },
 };
 
 export default apontamentosRetroativos;

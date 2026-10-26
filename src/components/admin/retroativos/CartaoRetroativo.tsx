@@ -2,7 +2,7 @@
 // com os retroativos e a diferença; aberto, os apontamentos e tickets que chegaram depois.
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, ChevronDown, ExternalLink, Mail, XCircle } from 'lucide-react';
+import { Check, CheckCircle2, ChevronDown, ExternalLink, Mail, XCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/ds/StatusBadge';
 import { Button } from '@/components/ds/Button';
 import { HoursValue } from '@/components/ds/HoursValue';
@@ -31,6 +31,42 @@ function dataCurta(valor: string | null, idioma: string) {
   }).format(new Date(valor));
 }
 
+function CaixaMarcar({
+  marcado,
+  parcial,
+  rotulo,
+  onClick,
+}: {
+  marcado: boolean;
+  parcial?: boolean;
+  rotulo: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={parcial ? 'mixed' : marcado}
+      aria-label={rotulo}
+      onClick={onClick}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'grid h-4 w-4 place-items-center rounded border transition',
+          marcado || parcial
+            ? 'border-ds-accent bg-ds-accent text-ds-fg-on-accent'
+            : 'border-ds-border-strong bg-ds-bg-surface'
+        )}
+      >
+        {marcado && <Check className="h-3 w-3" strokeWidth={3} />}
+        {parcial && !marcado && <span className="h-0.5 w-2 rounded bg-current" />}
+      </span>
+    </button>
+  );
+}
+
 export function CartaoRetroativo({
   retroativo: r,
   aberto,
@@ -38,6 +74,8 @@ export function CartaoRetroativo({
   podeEditar,
   onAprovar,
   onDescartar,
+  selecionados = [],
+  onSelecionar,
 }: {
   retroativo: Retroativo;
   aberto: boolean;
@@ -45,6 +83,9 @@ export function CartaoRetroativo({
   podeEditar: boolean;
   onAprovar: () => void;
   onDescartar: () => void;
+  /** Ids das linhas marcadas para pedir a regularização aos consultores */
+  selecionados?: string[];
+  onSelecionar?: (ids: string[], marcar: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
   const a = (chave: string, valores?: Record<string, unknown>) =>
@@ -53,6 +94,10 @@ export function CartaoRetroativo({
   const nomes = { empresa: r.empresa, banco: r.banco };
   const comTickets = r.consumoAntesTickets !== 0 || r.consumoDepoisTickets !== 0;
   const todosAvisados = r.itens.length > 0 && r.itens.every((i) => i.aviso);
+  // Pedir a regularização: só no pendente, só quem edita e só o que ainda não foi avisado
+  const podeSelecionar = podeEditar && r.situacao === 'pendente' && !!onSelecionar;
+  const elegiveis = podeSelecionar ? r.itens.filter((i) => !i.aviso).map((i) => i.id) : [];
+  const marcados = elegiveis.filter((id) => selecionados.includes(id));
   const quantidade = (i: Pick<ItemRetroativo, 'tipo' | 'minutos' | 'tickets'>) =>
     i.tipo === 'ticket' ? (
       a('cartao.ticketsN', { n: i.tickets })
@@ -170,7 +215,16 @@ export function CartaoRetroativo({
             <table className="w-full text-sm">
               <thead className="bg-ds-bg-subtle text-left text-xs font-medium uppercase tracking-[0.04em] text-ds-fg-muted">
                 <tr>
-                  <th className="w-10 px-3 py-2" aria-hidden />
+                  <th className="w-10 px-3 py-2">
+                    {elegiveis.length > 0 && (
+                      <CaixaMarcar
+                        marcado={marcados.length === elegiveis.length}
+                        parcial={marcados.length > 0 && marcados.length < elegiveis.length}
+                        rotulo={a('selecao.todos', nomes)}
+                        onClick={() => onSelecionar!(elegiveis, marcados.length < elegiveis.length)}
+                      />
+                    )}
+                  </th>
                   <th className="px-3 py-2">{a('colunas.chamado')}</th>
                   <th className="px-3 py-2">{a('colunas.dataAtividade')}</th>
                   <th className="px-3 py-2">{a('colunas.dataSistema')}</th>
@@ -183,6 +237,15 @@ export function CartaoRetroativo({
                 {r.itens.map((i) => (
                   <tr key={i.id}>
                     <td className="px-3 py-2">
+                      {elegiveis.includes(i.id) && (
+                        <CaixaMarcar
+                          marcado={selecionados.includes(i.id)}
+                          rotulo={a('selecao.item', {
+                            chamado: [i.chamado, i.tarefa].filter(Boolean).join(' · '),
+                          })}
+                          onClick={() => onSelecionar!([i.id], !selecionados.includes(i.id))}
+                        />
+                      )}
                       {i.aviso && (
                         <Mail className="mx-auto h-4 w-4 text-ds-fg-accent" aria-hidden />
                       )}

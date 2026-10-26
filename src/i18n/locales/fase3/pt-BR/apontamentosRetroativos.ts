@@ -73,6 +73,51 @@ const apontamentosRetroativos = {
     aprovarPlaceholder: 'Ex.: atendimento confirmado com o cliente',
     descartarPlaceholder: 'Ex.: consultor vai relançar no mês vigente',
   },
+  selecao: {
+    todos: 'Selecionar os apontamentos ainda não avisados de {{empresa}} · {{banco}}',
+    item: 'Selecionar {{chamado}}',
+    selecionados: {
+      um: '{{n}} apontamento selecionado',
+      varios: '{{n}} apontamentos selecionados',
+    },
+    limpar: 'Limpar seleção',
+    pedir: 'Pedir regularização',
+  },
+  regularizacao: {
+    titulo: 'Pedir regularização aos consultores',
+    subtitulo: '{{apontamentos}} · {{consultores}}',
+    consultores: {
+      um: '{{n}} consultor',
+      varios: '{{n}} consultores',
+    },
+    emails: {
+      um: 'Enviar {{n}} e-mail',
+      varios: 'Enviar {{n}} e-mails',
+    },
+    secaoEnvio: 'Envio',
+    copia: 'Com cópia',
+    copiaPlaceholder: 'Separe os e-mails com ;',
+    emailInvalido: 'E-mail inválido.',
+    semEmailTitulo: {
+      um: '{{n}} consultor sem e-mail cadastrado',
+      varios: '{{n}} consultores sem e-mail cadastrado',
+    },
+    semEmailTexto:
+      '{{nomes}}: o e-mail não será enviado. Cadastre o e-mail em Especialistas ou avise por outro canal.',
+    semConsultor: 'Sem consultor',
+    semEmail: 'sem e-mail',
+    secaoMensagem: 'Mensagem',
+    assunto: 'Assunto',
+    avisados: 'Os apontamentos avisados ficam marcados na tela para toda a equipe.',
+    confirmarTitulo: {
+      um: 'Enviar {{n}} e-mail?',
+      varios: 'Enviar {{n}} e-mails?',
+    },
+    umPorConsultor: 'Um e-mail por consultor',
+    ficamMarcados: 'Os apontamentos ficam marcados como avisados, com a data e quem enviou',
+    enviar: 'Enviar',
+    carregandoEmails: 'Buscando o e-mail dos consultores',
+  },
 };
 
 export default apontamentosRetroativos;

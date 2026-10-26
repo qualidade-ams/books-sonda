@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useRetroativos } from '../useRetroativos';
+import { useEmailsConsultores, useRetroativos } from '../useRetroativos';
+import { pedirRegularizacao } from '@/services/retroativos/envioRegularizacao';
 import { retroativosService } from '@/services/retroativosService';
 
 const toast = vi.fn();
@@ -16,6 +17,9 @@ vi.mock('@/services/retroativosService', () => ({
     emailsDosConsultores: vi.fn(),
   },
 }));
+
+vi.mock('@/services/retroativos/envioRegularizacao', () => ({ pedirRegularizacao: vi.fn() }));
+const pedir = vi.mocked(pedirRegularizacao);
 
 const service = retroativosService as unknown as Record<string, ReturnType<typeof vi.fn>>;
 
@@ -127,5 +131,43 @@ describe('useRetroativos', () => {
       description: 'Só o pendente é aprovado ou descartado.',
       variant: 'destructive',
     });
+  });
+
+  it('pedir regularização: avisa quem recebeu e quem ficou de fora, e recarrega', async () => {
+    pedir.mockResolvedValue({
+      enviados: ['Ana Souza', 'Bruno Lima'],
+      semEmail: ['Carla Dias'],
+      falhas: [{ consultor: 'Davi Reis', erro: 'Caixa cheia' }],
+    });
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useRetroativos(), { wrapper });
+    const input = { envelopes: [], copia: [] };
+
+    await act(() => result.current.pedirRegularizacao(input));
+
+    expect(pedir).toHaveBeenCalledWith(input);
+    expect(toast).toHaveBeenCalledWith({
+      title: 'E-mails enviados a 2 consultores',
+    });
+    expect(toast).toHaveBeenCalledWith({
+      title: 'Alguns consultores não receberam',
+      description: 'Carla Dias: sem e-mail no cadastro de especialistas · Davi Reis: Caixa cheia',
+      variant: 'destructive',
+    });
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['retroativos-bh'] });
+  });
+});
+
+describe('useEmailsConsultores', () => {
+  it('só busca com a tela de envio aberta', async () => {
+    service.emailsDosConsultores.mockResolvedValue({ 'Ana Souza': 'ana@sonda.com' });
+    const { wrapper } = criarWrapper();
+    renderHook(() => useEmailsConsultores(['Ana Souza'], false), { wrapper });
+    expect(service.emailsDosConsultores).not.toHaveBeenCalled();
+
+    const { result } = renderHook(() => useEmailsConsultores(['Ana Souza'], true), { wrapper });
+    await waitFor(() => expect(result.current.emails).toEqual({ 'Ana Souza': 'ana@sonda.com' }));
+    expect(service.emailsDosConsultores).toHaveBeenCalledWith(['Ana Souza']);
   });
 });

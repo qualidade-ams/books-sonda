@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   SEM_FILTRO_RETROATIVOS,
   filtrarRetroativos,
+  montarEnvelopes,
   opcoesDosRetroativos,
 } from '../retroativosTela';
 import type { ItemRetroativo, Retroativo } from '@/types/retroativos';
@@ -104,5 +105,32 @@ describe('opcoesDosRetroativos', () => {
       ],
       consultores: ['Ana Souza', 'Bruno Lima'],
     });
+  });
+});
+
+describe('montarEnvelopes', () => {
+  const sel = (id: string, consultor: string | null) => ({
+    id,
+    retroativoId: 'r1',
+    itemId: `ap-${id}`,
+    empresa: 'ALFA',
+    chamado: `CH-${id}`,
+    tarefa: null,
+    consultor,
+    minutos: 60,
+    mes: { ano: 2026, mes: 9 },
+  });
+
+  it('um envelope por consultor, com o e-mail do cadastro; sem consultor, sem e-mail', () => {
+    const envelopes = montarEnvelopes(
+      [sel('1', 'Bruno Lima'), sel('2', 'Ana Souza'), sel('3', 'Ana Souza'), sel('4', null)],
+      { 'Ana Souza': 'ana@sonda.com', 'Bruno Lima': null },
+      'Sem consultor'
+    );
+    expect(envelopes.map((e) => [e.consultor, e.email, e.itens.map((i) => i.itemId)])).toEqual([
+      ['Ana Souza', 'ana@sonda.com', ['ap-2', 'ap-3']],
+      ['Bruno Lima', null, ['ap-1']],
+      ['Sem consultor', null, ['ap-4']],
+    ]);
   });
 });

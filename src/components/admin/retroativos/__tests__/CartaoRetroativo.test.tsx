@@ -173,4 +173,47 @@ describe('CartaoRetroativo', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/apontamentosRetroativos.cartao.aplicado/)).toBeInTheDocument();
   });
+
+  it('quem edita seleciona os apontamentos ainda não avisados do pendente', () => {
+    const onSelecionar = vi.fn();
+    const { rerender } = renderizar(
+      <CartaoRetroativo {...props} aberto selecionados={[]} onSelecionar={onSelecionar} />
+    );
+    // O item já avisado não entra na seleção
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /apontamentosRetroativos.selecao.item .*CH-1/ })
+    );
+    expect(onSelecionar).toHaveBeenCalledWith(['1'], true);
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /apontamentosRetroativos.selecao.todos/ })
+    );
+    expect(onSelecionar).toHaveBeenLastCalledWith(['1'], true);
+
+    rerender(
+      <MemoryRouter>
+        <CartaoRetroativo {...props} aberto selecionados={['1']} onSelecionar={onSelecionar} />
+      </MemoryRouter>
+    );
+    expect(
+      screen.getByRole('checkbox', { name: /apontamentosRetroativos.selecao.todos/ })
+    ).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /apontamentosRetroativos.selecao.todos/ })
+    );
+    expect(onSelecionar).toHaveBeenLastCalledWith(['1'], false);
+
+    rerender(
+      <MemoryRouter>
+        <CartaoRetroativo
+          {...props}
+          aberto
+          podeEditar={false}
+          selecionados={[]}
+          onSelecionar={onSelecionar}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
 });

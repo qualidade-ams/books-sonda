@@ -3,6 +3,7 @@
  * da lista (dentro da aba de cada situação) e as opções dos filtros.
  */
 import type { Retroativo, SituacaoRetroativo } from '@/types/retroativos';
+import type { EnvelopeRegularizacao } from '@/services/retroativos/envioRegularizacao';
 
 export interface FiltroRetroativos {
   busca: string;
@@ -56,4 +57,37 @@ export function opcoesDosRetroativos(lista: Retroativo[]) {
       .sort((a, b) => a.rotulo.localeCompare(b.rotulo)),
     consultores: [...consultores].sort((a, b) => a.localeCompare(b)),
   };
+}
+
+/**
+ * Itens selecionados → um envelope por consultor, com o e-mail do cadastro de especialistas.
+ * Sem consultor no Aranda não há para quem mandar: o envelope fica sem e-mail, por último.
+ */
+export function montarEnvelopes(
+  itens: (EnvelopeRegularizacao['itens'][number] & { id: string })[],
+  emails: Record<string, string | null>,
+  rotuloSemConsultor: string
+): EnvelopeRegularizacao[] {
+  const grupos = new Map<string | null, EnvelopeRegularizacao['itens']>();
+  for (const i of itens) {
+    // Sem o id da linha da tela: o envelope leva o que o e-mail e o aviso usam
+    const item = {
+      retroativoId: i.retroativoId,
+      itemId: i.itemId,
+      empresa: i.empresa,
+      chamado: i.chamado,
+      tarefa: i.tarefa,
+      consultor: i.consultor,
+      minutos: i.minutos,
+      mes: i.mes,
+    };
+    grupos.set(i.consultor, [...(grupos.get(i.consultor) ?? []), item]);
+  }
+  return [...grupos]
+    .sort(([a], [b]) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b)))
+    .map(([consultor, doConsultor]) => ({
+      consultor: consultor ?? rotuloSemConsultor,
+      email: consultor ? (emails[consultor] ?? null) : null,
+      itens: doConsultor,
+    }));
 }

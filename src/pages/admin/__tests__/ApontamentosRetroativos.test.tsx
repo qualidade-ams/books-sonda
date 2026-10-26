@@ -38,7 +38,24 @@ const retroativo = (id: string, extra: Partial<Retroativo> = {}): Retroativo => 
 
 const estado = {
   retroativos: [
-    retroativo('r1'),
+    retroativo('r1', {
+      itens: [
+        {
+          id: 'i1',
+          tipo: 'apontamento',
+          itemId: 'ap1',
+          chamado: 'CH-1',
+          tarefa: 'T-1',
+          consultor: 'Ana Souza',
+          dataAtividade: '2026-09-10',
+          lancadoEm: '2026-10-05T12:00:00Z',
+          statusChamado: 'Closed',
+          minutos: 60,
+          tickets: 0,
+          aviso: null,
+        },
+      ],
+    }),
     retroativo('r2', { empresaId: 'e2', empresa: 'BETA', banco: 'Banco padrão' }),
     retroativo('r3', { empresa: 'GAMA', situacao: 'aprovado' }),
   ],
@@ -49,9 +66,18 @@ const estado = {
   decidir: vi.fn(async () => undefined),
   registrarAviso: vi.fn(async () => undefined),
   emailsDosConsultores: vi.fn(async () => ({})),
+  pedirRegularizacao: vi.fn(async () => undefined),
   isSalvando: false,
 };
-vi.mock('@/hooks/useRetroativos', () => ({ useRetroativos: () => estado }));
+const emailsPedidos: [string[], boolean][] = [];
+vi.mock('@/hooks/useRetroativos', () => ({
+  useRetroativos: () => estado,
+  useEmailsConsultores: (nomes: string[], aberto: boolean) => {
+    emailsPedidos.push([nomes, aberto]);
+    return { emails: { 'Ana Souza': 'ana@sonda.com' }, isLoading: false, error: null };
+  },
+}));
+window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 let permissoes: string[] = [];
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({
@@ -64,6 +90,8 @@ beforeEach(() => {
   estado.error = null;
   estado.decidir.mockClear();
   estado.recarregar.mockClear();
+  estado.pedirRegularizacao.mockClear();
+  emailsPedidos.length = 0;
 });
 
 const renderizar = () =>
@@ -143,5 +171,65 @@ describe('ApontamentosRetroativos', () => {
     expect(screen.getByText('apontamentosRetroativos.erro')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.tentarNovamente' }));
     expect(estado.recarregar).toHaveBeenCalled();
+  });
+
+  it('seleciona apontamentos e pede a regularização aos consultores', async () => {
+    renderizar();
+    fireEvent.click(
+      lista().getAllByRole('button', { name: /apontamentosRetroativos.cartao.ver/ })[0]
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: /apontamentosRetroativos.selecao.item/ }));
+    expect(
+      screen.getByText('apontamentosRetroativos.selecao.selecionados.um {"n":1}')
+    ).toBeInTheDocument();
+    // Os e-mails só são buscados com a tela de envio aberta
+    expect(emailsPedidos.every(([, aberto]) => !aberto)).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: /apontamentosRetroativos.selecao.pedir/ }));
+    expect(emailsPedidos.at(-1)).toEqual([['Ana Souza'], true]);
+    expect(screen.getByText('ana@sonda.com')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'apontamentosRetroativos.regularizacao.emails.um {"n":1}',
+      })
+    );
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'apontamentosRetroativos.regularizacao.enviar',
+      })
+    );
+    await waitFor(() =>
+      expect(estado.pedirRegularizacao).toHaveBeenCalledWith({
+        envelopes: [
+          {
+            consultor: 'Ana Souza',
+            email: 'ana@sonda.com',
+            itens: [
+              expect.objectContaining({ retroativoId: 'r1', itemId: 'ap1', empresa: 'ALFA' }),
+            ],
+          },
+        ],
+        copia: [],
+      })
+    );
+    // Volta à lista, sem a seleção
+    expect(
+      await screen.findByRole('list', { name: 'apontamentosRetroativos.lista' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('apontamentosRetroativos.selecao.selecionados.um {"n":1}')
+    ).not.toBeInTheDocument();
+  });
+
+  it('limpar a seleção tira a barra', () => {
+    renderizar();
+    fireEvent.click(
+      lista().getAllByRole('button', { name: /apontamentosRetroativos.cartao.ver/ })[0]
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: /apontamentosRetroativos.selecao.item/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'apontamentosRetroativos.selecao.limpar' }));
+    expect(
+      screen.queryByText('apontamentosRetroativos.selecao.selecionados.um {"n":1}')
+    ).not.toBeInTheDocument();
   });
 });

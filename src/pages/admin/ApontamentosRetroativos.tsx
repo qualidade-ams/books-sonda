@@ -1,13 +1,13 @@
 // Tela Apontamentos Retroativos, nova (Especificação v2.0, seção 5.8; Modelagem_Fase3.md, seção 8):
 // o que chegou do Aranda depois do fechamento do mês, por banco. Aprovar não muda o mês na hora:
 // o ajuste entra quando o Book do mês for retificado (D-09); nada é apagado.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CheckCircle2, Clock, Radar, Search, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Mail, Radar, Search, XCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { DsPage } from '@/components/ds/DsPage';
 import { FaixaPagina } from '@/components/ds/FaixaPagina';
-import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
+import { BarraRodape, Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
 import { EmptyState } from '@/components/ds/EmptyState';
 import { Callout } from '@/components/ds/Callout';
@@ -17,7 +17,9 @@ import { BotaoLimparFiltros, FiltroMultiplo } from '@/components/ds/Filtros';
 import { formatarHoras } from '@/components/ds/horas';
 import { campo } from '@/components/ds/estilos';
 import { CartaoRetroativo } from '@/components/admin/retroativos/CartaoRetroativo';
-import { useRetroativos } from '@/hooks/useRetroativos';
+import { PedirRegularizacao } from '@/components/admin/retroativos/PedirRegularizacao';
+import { plural } from '@/utils/plural';
+import { useEmailsConsultores, useRetroativos } from '@/hooks/useRetroativos';
 import { usePermissions } from '@/hooks/usePermissions';
 import { rotuloMesLocal } from '@/utils/controleTela';
 import {
@@ -37,7 +39,8 @@ export default function ApontamentosRetroativos() {
     t(`apontamentosRetroativos.${chave}`, valores);
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('bancos_horas_retroativos', 'edit');
-  const { retroativos, contagem, isLoading, error, recarregar, decidir } = useRetroativos();
+  const { retroativos, contagem, isLoading, error, recarregar, decidir, pedirRegularizacao } =
+    useRetroativos();
 
   const [aba, setAba] = useState<SituacaoRetroativo>('pendente');
   const [filtro, setFiltro] = useState<FiltroRetroativos>(SEM_FILTRO_RETROATIVOS);
@@ -47,6 +50,33 @@ export default function ApontamentosRetroativos() {
     acao: 'aprovar' | 'descartar';
   } | null>(null);
   const [decidindo, setDecidindo] = useState(false);
+  // Apontamentos marcados para pedir a regularização aos consultores (ids das linhas)
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [pedindo, setPedindo] = useState(false);
+  const itensSelecionados = useMemo(
+    () =>
+      retroativos.flatMap((rt) =>
+        rt.itens
+          .filter((i) => selecionados.includes(i.id))
+          .map((i) => ({
+            id: i.id,
+            retroativoId: rt.id,
+            itemId: i.itemId,
+            empresa: rt.empresa,
+            chamado: i.chamado,
+            tarefa: i.tarefa,
+            consultor: i.consultor,
+            minutos: i.minutos,
+            mes: rt.mes,
+          }))
+      ),
+    [retroativos, selecionados]
+  );
+  const consultores = useMemo(
+    () => [...new Set(itensSelecionados.map((i) => i.consultor).filter(Boolean))] as string[],
+    [itensSelecionados]
+  );
+  const emails = useEmailsConsultores(consultores, pedindo);
 
   const opcoes = opcoesDosRetroativos(retroativos);
   const visiveis = filtrarRetroativos(retroativos, aba, filtro);
@@ -134,6 +164,12 @@ export default function ApontamentosRetroativos() {
             podeEditar={podeEditar}
             onAprovar={() => setDecisao({ retroativo: r, acao: 'aprovar' })}
             onDescartar={() => setDecisao({ retroativo: r, acao: 'descartar' })}
+            selecionados={selecionados}
+            onSelecionar={(ids, marcar) =>
+              setSelecionados((s) =>
+                marcar ? [...new Set([...s, ...ids])] : s.filter((x) => !ids.includes(x))
+              )
+            }
           />
         ))}
       </ul>
@@ -142,6 +178,26 @@ export default function ApontamentosRetroativos() {
 
   const r = decisao?.retroativo;
   const mesDecisao = r ? rotuloMesLocal(r.mes, i18n.language) : '';
+
+  if (pedindo)
+    return (
+      <AdminLayout>
+        <div className="min-h-screen bg-ds-bg-page">
+          <DsPage className="px-4 py-4 md:px-6">
+            <PedirRegularizacao
+              itens={itensSelecionados}
+              emails={emails.emails}
+              carregandoEmails={emails.isLoading}
+              onFechar={() => setPedindo(false)}
+              onEnviar={async (input) => {
+                await pedirRegularizacao(input);
+                setSelecionados([]);
+              }}
+            />
+          </DsPage>
+        </div>
+      </AdminLayout>
+    );
 
   return (
     <AdminLayout>
@@ -224,6 +280,24 @@ export default function ApontamentosRetroativos() {
 
             {conteudo()}
           </div>
+
+          {itensSelecionados.length > 0 && (
+            <BarraRodape>
+              <span className="text-sm font-medium text-ds-fg">
+                {plural(
+                  t,
+                  'apontamentosRetroativos.selecao.selecionados',
+                  itensSelecionados.length
+                )}
+              </span>
+              <div className="flex gap-2">
+                <Button onClick={() => setSelecionados([])}>{a('selecao.limpar')}</Button>
+                <Button variante="primario" onClick={() => setPedindo(true)}>
+                  <Mail /> {a('selecao.pedir')}
+                </Button>
+              </div>
+            </BarraRodape>
+          )}
 
           <ConfirmDialog
             aberto={!!decisao}

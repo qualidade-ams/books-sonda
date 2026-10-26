@@ -74,6 +74,51 @@ const apontamentosRetroativos = {
     aprovarPlaceholder: 'Ej.: atención confirmada con el cliente',
     descartarPlaceholder: 'Ej.: el consultor va a registrar de nuevo en el mes vigente',
   },
+  selecao: {
+    todos: 'Seleccionar los registros aún no avisados de {{empresa}} · {{banco}}',
+    item: 'Seleccionar {{chamado}}',
+    selecionados: {
+      um: '{{n}} registro seleccionado',
+      varios: '{{n}} registros seleccionados',
+    },
+    limpar: 'Limpiar selección',
+    pedir: 'Pedir regularización',
+  },
+  regularizacao: {
+    titulo: 'Pedir regularización a los consultores',
+    subtitulo: '{{apontamentos}} · {{consultores}}',
+    consultores: {
+      um: '{{n}} consultor',
+      varios: '{{n}} consultores',
+    },
+    emails: {
+      um: 'Enviar {{n}} correo',
+      varios: 'Enviar {{n}} correos',
+    },
+    secaoEnvio: 'Envío',
+    copia: 'Con copia',
+    copiaPlaceholder: 'Separe los correos con ;',
+    emailInvalido: 'Correo inválido.',
+    semEmailTitulo: {
+      um: '{{n}} consultor sin correo registrado',
+      varios: '{{n}} consultores sin correo registrado',
+    },
+    semEmailTexto:
+      '{{nomes}}: el correo no será enviado. Registre el correo en Especialistas o avise por otro canal.',
+    semConsultor: 'Sin consultor',
+    semEmail: 'sin correo',
+    secaoMensagem: 'Mensaje',
+    assunto: 'Asunto',
+    avisados: 'Los registros avisados quedan marcados en la pantalla para todo el equipo.',
+    confirmarTitulo: {
+      um: '¿Enviar {{n}} correo?',
+      varios: '¿Enviar {{n}} correos?',
+    },
+    umPorConsultor: 'Un correo por consultor',
+    ficamMarcados: 'Los registros quedan marcados como avisados, con la fecha y quién envió',
+    enviar: 'Enviar',
+    carregandoEmails: 'Buscando el correo de los consultores',
+  },
 };
 
 export default apontamentosRetroativos;
