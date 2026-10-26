@@ -15,25 +15,49 @@ import { Callout } from '@/components/ds/Callout';
 import { EmptyState } from '@/components/ds/EmptyState';
 import { TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
+import { DicasContext } from '@/components/ds/Dicas';
 import { ListaBancosControle } from '@/components/admin/controle/ListaBancosControle';
 import { NavegadorPeriodo } from '@/components/admin/controle/NavegadorPeriodo';
 import { IndicadoresControle } from '@/components/admin/controle/IndicadoresControle';
 import { QuadroControle } from '@/components/admin/controle/QuadroControle';
+import { AbaReajustes } from '@/components/admin/controle/AbaReajustes';
+import { LancarReajuste } from '@/components/admin/controle/LancarReajuste';
 import { usePeriodoTexto } from '@/components/admin/empresas/periodoTexto';
 import {
   useControleBancos,
   useControleEmpresas,
+  useLancamentosControle,
   useQuadroControle,
 } from '@/hooks/useControleBancoHoras';
+import { usePermissions } from '@/hooks/usePermissions';
 import { mesAtual, periodosDoBanco } from '@/services/bancosHoras/periodos';
+import type { MesAno } from '@/services/bancosHoras/calculo';
 import { mesesComSituacao, resultadoDoBanco, rotuloPeriodoLocal } from '@/utils/controleTela';
 import { cn } from '@/lib/utils';
+
+// Rótulo do campo → chave da dica (controleBancoHoras.dicas.*)
+const DICAS: [string, string][] = [
+  ['controleBancoHoras.lancar.mes', 'mes'],
+  ['controleBancoHoras.lancar.efeito', 'efeito'],
+  ['controleBancoHoras.lancar.horas', 'horas'],
+  ['controleBancoHoras.lancar.tickets', 'tickets'],
+  ['controleBancoHoras.lancar.motivo', 'motivo'],
+  ['controleBancoHoras.lancar.anotacao', 'anotacao'],
+];
 
 export default function ControleBancosHoras() {
   const { t, i18n } = useTranslation();
   const c = (chave: string, valores?: Record<string, unknown>) =>
     t(`controleBancoHoras.${chave}`, valores);
   const periodoTexto = usePeriodoTexto();
+  const { hasPermission } = usePermissions();
+  const dicas = useMemo(
+    () =>
+      Object.fromEntries(
+        DICAS.map(([rotulo, dica]) => [t(rotulo), t(`controleBancoHoras.dicas.${dica}`)])
+      ),
+    [t]
+  );
   const [parametros, setParametros] = useSearchParams();
   const hoje = useMemo(() => mesAtual(), []);
 
@@ -71,8 +95,12 @@ export default function ControleBancosHoras() {
 
   // Empresa ainda no cálculo atual: o novo aparece só para conferir, sem editar
   const sombra = !!empresa && empresa.modelo !== 'liberada';
+  const podeEditar = hasPermission('bancos_horas_controle', 'edit') && !sombra;
   const erro = erroEmpresas || erroBancos || erroQuadro;
   const [secao, setSecao] = useState('quadro');
+  // Nível a mais na tela: lançamento de reajuste, no mês do quadro ou no de referência
+  const [lancando, setLancando] = useState<{ mes?: MesAno } | null>(null);
+  const lancamentos = useLancamentosControle(banco?.bancoId, meses);
 
   const avisoSombra =
     sombra && empresa ? (
@@ -171,7 +199,10 @@ export default function ControleBancosHoras() {
                 </div>
                 <SegmentedTabs
                   rotulo={c('secoes.rotulo')}
-                  itens={[{ valor: 'quadro', rotulo: c('secoes.quadro') }]}
+                  itens={[
+                    { valor: 'quadro', rotulo: c('secoes.quadro') },
+                    { valor: 'reajustes', rotulo: c('secoes.reajustes') },
+                  ]}
                   valor={secao}
                   onChange={setSecao}
                 />
@@ -184,7 +215,23 @@ export default function ControleBancosHoras() {
               onIndice={(i) => setPeriodoPorBanco((p) => ({ ...p, [banco.bancoId]: i }))}
             />
             <div key={`${banco.bancoId}-${indice}-${secao}`}>
-              {carregandoQuadro ? (
+              {secao === 'reajustes' ? (
+                <AbaReajustes
+                  reajustes={lancamentos.reajustes}
+                  tipoContrato={banco.tipoContrato}
+                  carregando={lancamentos.isLoading}
+                  erro={lancamentos.error}
+                  podeEditar={podeEditar}
+                  mesesFechados={mesesDoQuadro
+                    .filter((m) => m.situacao === 'fechado')
+                    .map((m) => m.chave)}
+                  onLancar={() => setLancando({})}
+                  onInativar={async (r, motivo) => {
+                    await lancamentos.inativarReajuste({ reajusteId: r.id, motivo });
+                  }}
+                  onTentarNovamente={() => void lancamentos.recarregar()}
+                />
+              ) : carregandoQuadro ? (
                 <div
                   className="h-96 animate-pulse rounded-xl bg-ds-bg-surface"
                   role="status"
@@ -195,9 +242,8 @@ export default function ControleBancosHoras() {
                   banco={banco}
                   meses={mesesDoQuadro}
                   rotuloPeriodo={rotuloPeriodo}
-                  // O lançamento de reajuste entra na próxima parte da tela
-                  podeEditar={false}
-                  onReajuste={() => undefined}
+                  podeEditar={podeEditar}
+                  onReajuste={(mes) => setLancando({ mes })}
                 />
               )}
             </div>
@@ -206,6 +252,28 @@ export default function ControleBancosHoras() {
       </>
     );
   };
+
+  if (lancando && banco)
+    return (
+      <AdminLayout>
+        <DicasContext.Provider value={dicas}>
+          <div className="min-h-screen bg-ds-bg-page">
+            <DsPage className="px-4 py-4 md:px-6">
+              <LancarReajuste
+                banco={banco}
+                meses={mesesDoQuadro}
+                rotuloPeriodo={rotuloPeriodo}
+                mesInicial={lancando.mes}
+                onFechar={() => setLancando(null)}
+                onLancar={async (input) => {
+                  await lancamentos.lancarReajuste(input);
+                }}
+              />
+            </DsPage>
+          </div>
+        </DicasContext.Provider>
+      </AdminLayout>
+    );
 
   return (
     <AdminLayout>

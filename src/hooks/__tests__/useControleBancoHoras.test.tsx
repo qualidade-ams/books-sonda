@@ -138,6 +138,19 @@ describe('gravações do Controle', () => {
     expect(toast).toHaveBeenCalledWith({ title: 'Reajuste lançado' });
   });
 
+  it('tentar de novo busca os reajustes e as observações outra vez', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useLancamentosControle('b1', meses), { wrapper });
+    await waitFor(() => expect(result.current.reajustes).toHaveLength(1));
+    lancamentos.reajustes.mockClear();
+    lancamentos.observacoes.mockClear();
+
+    await act(() => result.current.recarregar());
+
+    expect(lancamentos.reajustes).toHaveBeenCalledTimes(1);
+    expect(lancamentos.observacoes).toHaveBeenCalledTimes(1);
+  });
+
   it('inativar reajuste, salvar e excluir observação', async () => {
     for (const m of ['inativarReajuste', 'salvarObservacao', 'excluirObservacao']) {
       lancamentos[m].mockResolvedValue(undefined);

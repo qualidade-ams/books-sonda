@@ -153,6 +153,7 @@ export function useLancamentosControle(bancoId: string | undefined, meses: MesAn
     observacoes: observacoes.data ?? [],
     isLoading: reajustes.isLoading || observacoes.isLoading,
     error: (reajustes.error || observacoes.error) as Error | null,
+    recarregar: () => Promise.all([reajustes.refetch(), observacoes.refetch()]),
     lancarReajuste: lancarReajuste.mutateAsync,
     inativarReajuste: inativarReajuste.mutateAsync,
     salvarObservacao: salvarObservacao.mutateAsync,

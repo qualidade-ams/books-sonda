@@ -31,6 +31,7 @@ const controleBancoHoras = {
   secoes: {
     rotulo: 'Bank sections',
     quadro: 'Board',
+    reajustes: 'Adjustments',
   },
   periodo: {
     rotulo: 'Calculation period',
@@ -92,6 +93,73 @@ const controleBancoHoras = {
     porTicket: '{{valor}}/ticket',
     ticketsN: '{{n}} tickets',
     legendaProjecao: 'The months after {{mes}} are projected by the calculation.',
+  },
+  reajustes: {
+    rotulo: 'Adjustments of the period',
+    lancar: 'Post adjustment',
+    colunaMes: 'Month',
+    colunaReajuste: 'Adjustment',
+    colunaMotivo: 'Reason',
+    colunaPor: 'Posted by',
+    colunaSituacao: 'Status',
+    somaConsumo: 'adds to usage',
+    abateConsumo: 'subtracts from usage',
+    anotacaoInterna: 'Internal note',
+    inativo: 'Inactive',
+    aguardando: 'Awaiting correction',
+    aplicado: 'Applied',
+    origem: {
+      manual: 'Manual',
+      ajuste_retroativo: 'Retroactive adjustment',
+      carga_legado: 'Load from the current calculation',
+    },
+    acoesDe: 'Actions of the adjustment of {{mes}}',
+    inativar: 'Inactivate',
+    vazio: 'No adjustment in this period',
+    erro: 'Could not load the adjustments',
+    inativarTitulo: 'Inactivate the adjustment?',
+    inativarRecalcula:
+      'The adjustment stops counting and the month is recalculated until the end of the period',
+    inativarHistorico:
+      'Nothing is deleted: the adjustment and the previous version stay in the history',
+    inativarFechado: 'In a closed month, the change awaits the Book correction',
+    motivo: 'Reason',
+    motivoPlaceholder: 'E.g.: posted twice',
+    inativadoPor: 'Inactivated: {{motivo}}',
+  },
+  lancar: {
+    titulo: 'Post adjustment',
+    secao: 'Adjustment',
+    mes: 'Adjustment month',
+    fechado: 'closed',
+    futuro: 'not started',
+    efeito: 'Effect',
+    abater: 'Subtract from usage',
+    somar: 'Add to usage',
+    horas: 'Hours',
+    tickets: 'Tickets',
+    motivo: 'Reason',
+    motivoPlaceholder: 'E.g.: on-site support not logged in Aranda.',
+    anotacao: 'Internal notes',
+    anotacaoPlaceholder: 'E.g.: agreed with the contract manager at the 10/05 meeting.',
+    efeitoTitulo: 'Effect on the balance',
+    efeitoTexto:
+      'The balance of {{mes}} goes from {{de}} to {{para}}, and the carry-over of the following months is recalculated.',
+    fechadoTitulo: '{{mes}} is already closed',
+    fechadoTexto:
+      'The Book of {{mes}} was already generated. The adjustment awaits the Book correction of that month and, once done, counts until the end of the period.',
+    futuroTexto:
+      '{{mes}} has not started yet; the adjustment enters the calculation when the month opens.',
+  },
+  dicas: {
+    mes: 'Month the adjustment enters. In a closed month (Book already generated), it awaits the Book correction of that month.',
+    efeito:
+      'Adding increases the month usage (and decreases the balance); subtracting does the opposite.',
+    horas: 'Amount of hours of the adjustment, in HH:MM.',
+    tickets: 'Amount of tickets of the adjustment.',
+    motivo: 'Required. It becomes the month note and shows in the version history.',
+    anotacao:
+      'Optional. Only for the Sonda team: shows in the Control and the audit, never in the Book, the Partial Balance or e-mails.',
   },
 };
 

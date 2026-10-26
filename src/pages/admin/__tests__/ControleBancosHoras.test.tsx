@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterAll, beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
@@ -49,7 +49,26 @@ const bancosPorEmpresa: Record<string, BancoCadastro[]> = {
   beta: [],
 };
 const mesesPedidos: string[][] = [];
+const lancamentos = {
+  reajustes: [],
+  observacoes: [],
+  isLoading: false,
+  error: null,
+  lancarReajuste: vi.fn(async () => undefined),
+  inativarReajuste: vi.fn(async () => undefined),
+};
+let permissoes: string[] = [];
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    hasPermission: (tela: string, nivel: string) => permissoes.includes(`${tela}:${nivel}`),
+  }),
+}));
+vi.mock('@/hooks/useNomesUsuarios', () => ({ useNomesUsuarios: () => ({}) }));
+// Desktop: o quadro mostra o período inteiro, não um mês por vez
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => true }));
+window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 vi.mock('@/hooks/useControleBancoHoras', () => ({
+  useLancamentosControle: () => lancamentos,
   useControleEmpresas: () => empresas,
   useControleBancos: (empresaId: string) => ({
     bancos: bancosPorEmpresa[empresaId] ?? [],
@@ -73,6 +92,8 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 beforeEach(() => {
   mesesPedidos.length = 0;
+  permissoes = ['bancos_horas_controle:edit'];
+  lancamentos.lancarReajuste.mockClear();
 });
 
 const renderizar = (rota = '/admin/bancos-horas') =>
@@ -113,5 +134,45 @@ describe('ControleBancosHoras', () => {
     await userEvent.click(screen.getByRole('combobox', { name: 'controleBancoHoras.empresa' }));
     await userEvent.click(screen.getByRole('option', { name: 'ALFA' }));
     expect(screen.getByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+  });
+
+  it('o botão do quadro abre o lançamento no mês escolhido e volta ao lançar', async () => {
+    renderizar();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'controleBancoHoras.quadro.lancarReajuste {"mes":"Nov/2026"}',
+      })
+    );
+    expect(
+      screen.getByRole('combobox', { name: /controleBancoHoras.lancar.mes/ })
+    ).toHaveTextContent('Nov/2026');
+    fireEvent.change(
+      screen.getByLabelText(/controleBancoHoras.lancar.horas/, { selector: 'input' }),
+      { target: { value: '02:00' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/controleBancoHoras.lancar.motivo/, { selector: 'textarea' }),
+      { target: { value: 'Atendimento' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.lancar.titulo' }));
+    await waitFor(() =>
+      expect(lancamentos.lancarReajuste).toHaveBeenCalledWith(
+        expect.objectContaining({ bancoId: 'b1', mes: { ano: 2026, mes: 11 }, minutos: 120 })
+      )
+    );
+    expect(await screen.findByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+  });
+
+  it('aba Reajustes; quem só vê não lança, nem pelo quadro', () => {
+    permissoes = ['bancos_horas_controle:view'];
+    renderizar();
+    expect(
+      screen.queryByRole('button', { name: /controleBancoHoras.quadro.lancarReajuste/ })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'controleBancoHoras.secoes.reajustes' }));
+    expect(screen.getByText('controleBancoHoras.reajustes.vazio')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'controleBancoHoras.reajustes.lancar' })
+    ).not.toBeInTheDocument();
   });
 });
