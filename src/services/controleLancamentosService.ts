@@ -11,7 +11,9 @@ import type {
   NovoReajusteInput,
   ObservacaoControle,
   ObservacaoInput,
+  ObservacaoParaCliente,
   ReajusteControle,
+  ReajusteParaCliente,
 } from '@/types/controleBancoHoras';
 
 type Cliente = typeof supabase;
@@ -32,10 +34,61 @@ export class ControleLancamentosService {
 
   /** Reajustes do banco no período, inclusive os inativos, com a pendência de retificação */
   async reajustes(bancoId: string, meses: MesAno[]): Promise<ReajusteControle[]> {
+    const { linhas, aguardando } = await this.lerReajustes(bancoId, meses, '*');
+    return linhas.map((r) => ({
+      id: r.id,
+      bancoId: r.banco_id,
+      mes: { mes: r.mes, ano: r.ano },
+      tipo: r.tipo,
+      minutos: r.minutos,
+      tickets: r.tickets,
+      justificativa: r.justificativa,
+      anotacaoInterna: r.anotacao_interna ?? null,
+      origem: r.origem,
+      ativo: r.ativo,
+      motivoInativacao: r.motivo_inativacao ?? null,
+      inativadoEm: r.inativado_em ?? null,
+      criadoEm: r.created_at,
+      criadoPor: r.created_by,
+      aguardandoRetificacao: aguardando(r),
+    }));
+  }
+
+  /**
+   * Reajustes que o cliente vê no Saldo Parcial: ativos e já valendo (sem os que aguardam a
+   * retificação do Book). A anotação interna e o autor nem são lidos (D-08).
+   */
+  async reajustesParaCliente(bancoId: string, meses: MesAno[]): Promise<ReajusteParaCliente[]> {
+    const { linhas, aguardando } = await this.lerReajustes(
+      bancoId,
+      meses,
+      'id, mes, ano, tipo, minutos, tickets, justificativa, ativo'
+    );
+    return linhas
+      .filter((r) => r.ativo && !aguardando(r))
+      .sort((a, b) => a.ano * 12 + a.mes - (b.ano * 12 + b.mes))
+      .map((r) => ({
+        mes: { mes: r.mes, ano: r.ano },
+        tipo: r.tipo,
+        minutos: r.minutos,
+        tickets: r.tickets,
+        justificativa: r.justificativa,
+      }));
+  }
+
+  /**
+   * Reajustes do banco no período e quem aguarda a retificação: no mês fechado, o ativo que não
+   * está no Book e o inativo que ainda está
+   */
+  private async lerReajustes(
+    bancoId: string,
+    meses: MesAno[],
+    colunas: string
+  ): Promise<{ linhas: Linha[]; aguardando: (r: Linha) => boolean }> {
     const [reajustes, fechamentos] = await Promise.all([
       this.cliente
         .from('bancos_horas_reajustes')
-        .select('*')
+        .select(colunas)
         .eq('banco_id', bancoId)
         .in('ano', anosDoPeriodo(meses))
         .order('created_at'),
@@ -63,28 +116,14 @@ export class ControleLancamentosService {
     }
 
     const doPeriodo = chavesDoPeriodo(meses);
-    return (reajustes.data as Linha[])
-      .filter((r) => doPeriodo.has(chave(r.mes, r.ano)))
-      .map((r) => {
-        const fechado = fechamentoDoMes.has(chave(r.mes, r.ano));
-        return {
-          id: r.id,
-          bancoId: r.banco_id,
-          mes: { mes: r.mes, ano: r.ano },
-          tipo: r.tipo,
-          minutos: r.minutos,
-          tickets: r.tickets,
-          justificativa: r.justificativa,
-          anotacaoInterna: r.anotacao_interna ?? null,
-          origem: r.origem,
-          ativo: r.ativo,
-          motivoInativacao: r.motivo_inativacao ?? null,
-          inativadoEm: r.inativado_em ?? null,
-          criadoEm: r.created_at,
-          criadoPor: r.created_by,
-          aguardandoRetificacao: fechado && (r.ativo ? !noBook.has(r.id) : noBook.has(r.id)),
-        };
-      });
+    return {
+      linhas: (reajustes.data as unknown as Linha[]).filter((r) =>
+        doPeriodo.has(chave(r.mes, r.ano))
+      ),
+      aguardando: (r) =>
+        fechamentoDoMes.has(chave(r.mes, r.ano)) &&
+        (r.ativo ? !noBook.has(r.id) : noBook.has(r.id)),
+    };
   }
 
   async lancarReajuste(input: NovoReajusteInput): Promise<void> {
@@ -124,6 +163,30 @@ export class ControleLancamentosService {
       .update({ ativo: false, motivo_inativacao: limpo, inativado_em: new Date().toISOString() })
       .eq('id', reajusteId);
     if (error) throw falha('inativar o reajuste', error);
+  }
+
+  /**
+   * Observações que o cliente vê no Saldo Parcial: só mês e texto, sem autor (D-08). As de
+   * reajuste ficam de fora porque repetem o motivo, que já vai na lista de reajustes.
+   */
+  async observacoesParaCliente(bancoId: string, meses: MesAno[]): Promise<ObservacaoParaCliente[]> {
+    const { data, error } = await this.cliente
+      .from('bancos_horas_observacoes')
+      .select('mes, ano, texto, origem, created_at')
+      .eq('banco_id', bancoId)
+      .eq('ativo', true)
+      .in('ano', anosDoPeriodo(meses));
+    if (error) throw falha('carregar as observações', error);
+
+    const doPeriodo = chavesDoPeriodo(meses);
+    return (data as Linha[])
+      .filter((o) => o.origem !== 'ajuste' && doPeriodo.has(chave(o.mes, o.ano)))
+      .sort(
+        (a, b) =>
+          a.ano * 12 + a.mes - (b.ano * 12 + b.mes) ||
+          String(a.created_at).localeCompare(b.created_at)
+      )
+      .map((o) => ({ mes: { mes: o.mes, ano: o.ano }, texto: o.texto }));
   }
 
   /** Observações ativas do banco no período, das mais recentes */

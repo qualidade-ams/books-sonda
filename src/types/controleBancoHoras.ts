@@ -130,6 +130,21 @@ export type EventoHistorico =
       outroBanco: string;
     };
 
+/** Saldo Parcial: o reajuste como o cliente vê, sem anotação interna nem autor (D-08) */
+export interface ReajusteParaCliente {
+  mes: MesAno;
+  tipo: 'entrada' | 'saida';
+  minutos: number;
+  tickets: number;
+  justificativa: string;
+}
+
+/** Saldo Parcial: a observação como o cliente vê, só mês e texto (D-08) */
+export interface ObservacaoParaCliente {
+  mes: MesAno;
+  texto: string;
+}
+
 export interface ObservacaoInput {
   /** Ausente = observação nova */
   id?: string;

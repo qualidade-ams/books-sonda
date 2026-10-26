@@ -345,3 +345,72 @@ describe('ControleLancamentosService.salvarAjustesRequerimentos', () => {
     ).toBe('b1');
   });
 });
+
+describe('ControleLancamentosService — o que vai ao cliente (Saldo Parcial)', () => {
+  /** O falso devolve a linha inteira: registra as colunas pedidas para conferir */
+  function comColunas() {
+    const fake = cenario();
+    const colunas: Record<string, string[]> = {};
+    const from = fake.from.bind(fake);
+    fake.from = (tabela: string) => {
+      const consulta = from(tabela);
+      const select = consulta.select.bind(consulta);
+      consulta.select = (lista?: string) => {
+        (colunas[tabela] ??= []).push(lista ?? '*');
+        return select(lista);
+      };
+      return consulta;
+    };
+    return { fake, colunas };
+  }
+
+  it('reajustes ativos e já valendo, sem anotação interna nem autor', async () => {
+    const { fake, colunas } = comColunas();
+    const lista = await new ControleLancamentosService(fake as any).reajustesParaCliente(
+      'b1',
+      periodo
+    );
+    expect(lista).toEqual([
+      {
+        mes: { mes: 8, ano: 2026 },
+        tipo: 'entrada',
+        minutos: 60,
+        tickets: 0,
+        justificativa: 'Atendimento presencial',
+      },
+      {
+        mes: { mes: 10, ano: 2026 },
+        tipo: 'entrada',
+        minutos: 45,
+        tickets: 0,
+        justificativa: 'Mês aberto',
+      },
+    ]);
+    const pedidas = colunas.bancos_horas_reajustes.join(',');
+    expect(pedidas).not.toMatch(/\*|anotacao_interna|created_by/);
+  });
+
+  it('observações ativas do período, só mês e texto, sem as de reajuste', async () => {
+    const { fake, colunas } = comColunas();
+    fake.tabelas.bancos_horas_observacoes.push({
+      id: 'ob4',
+      banco_id: 'b1',
+      mes: 8,
+      ano: 2026,
+      texto: 'Atendimento presencial',
+      origem: 'ajuste',
+      reajuste_id: 'rj-ago',
+      ativo: true,
+      ...criado,
+    });
+    const lista = await new ControleLancamentosService(fake as any).observacoesParaCliente(
+      'b1',
+      periodo
+    );
+    expect(lista).toEqual([
+      { mes: { mes: 9, ano: 2026 }, texto: '01:00 horas consumidas do Banco FISCAL' },
+      { mes: { mes: 10, ano: 2026 }, texto: 'Janela de atualização' },
+    ]);
+    expect(colunas.bancos_horas_observacoes.join(',')).not.toMatch(/\*|created_by/);
+  });
+});
