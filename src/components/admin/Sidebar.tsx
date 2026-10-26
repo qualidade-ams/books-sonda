@@ -111,6 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/controle-banco-horas') ||
       path === '/admin/bancos-horas' ||
       path.includes('/ajustes-retroativos') ||
+      path.includes('/apontamentos-retroativos') ||
       path.includes('/regras-contagem')
     ) {
       return 'comunicacao';
@@ -260,6 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       path.includes('/controle-banco-horas') ||
       path === '/admin/bancos-horas' ||
       path.includes('/ajustes-retroativos') ||
+      path.includes('/apontamentos-retroativos') ||
       path.includes('/regras-contagem')
     ) {
       return 'comunicacao';
@@ -415,6 +417,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.retroactiveAdjustments'),
           path: '/admin/ajustes-retroativos',
           screenKey: 'banco_horas_ajustes_retroativos',
+        },
+        {
+          icon: AlertTriangle,
+          label: t('nav.retroactiveNew'),
+          path: '/admin/apontamentos-retroativos',
+          screenKey: 'bancos_horas_retroativos',
         },
         {
           icon: ListChecks,

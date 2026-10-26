@@ -10,6 +10,7 @@ import ramosAtividade from './pt-BR/ramosAtividade';
 import regrasContagem from './pt-BR/regrasContagem';
 import empresasCadastro from './pt-BR/empresasCadastro';
 import controleBancoHoras from './pt-BR/controleBancoHoras';
+import apontamentosRetroativos from './pt-BR/apontamentosRetroativos';
 
 const fase3 = {
   fase3Comum,
@@ -19,6 +20,7 @@ const fase3 = {
   regrasContagem,
   empresasCadastro,
   controleBancoHoras,
+  apontamentosRetroativos,
 };
 
 export default fase3;

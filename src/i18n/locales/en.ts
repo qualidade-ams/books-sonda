@@ -595,6 +595,7 @@ const en = {
     businessSectors: 'Business Sectors',
     countingRules: 'Counting rules',
     bankHoursNew: 'Hour Bank Control (new)',
+    retroactiveNew: 'Retroactive Time Entries (new)',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

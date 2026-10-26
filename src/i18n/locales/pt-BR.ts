@@ -595,6 +595,7 @@ const ptBR = {
     businessSectors: 'Ramos de Atividade',
     countingRules: 'Regras de contagem',
     bankHoursNew: 'Controle de Bancos de Horas (novo)',
+    retroactiveNew: 'Apontamentos Retroativos (novo)',
     auditLogs: 'Auditoria',
     monitoringTerms: 'Monitoramento Vigências',
     consultantsCoordinators: 'Consultores x Coordenadores',

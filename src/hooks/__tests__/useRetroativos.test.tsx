@@ -57,6 +57,17 @@ describe('useRetroativos', () => {
     await waitFor(() => expect(result.current.error?.message).toBe('Sem permissão'));
   });
 
+  it('tentar de novo busca a lista outra vez', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useRetroativos(), { wrapper });
+    await waitFor(() => expect(result.current.retroativos).toHaveLength(3));
+    service.listar.mockClear();
+
+    await act(() => result.current.recarregar());
+
+    expect(service.listar).toHaveBeenCalledTimes(1);
+  });
+
   it('aprovar recarrega a lista e o sino, e avisa', async () => {
     service.decidir.mockResolvedValue(undefined);
     const { wrapper, client } = criarWrapper();

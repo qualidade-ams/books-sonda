@@ -81,6 +81,8 @@ export function useRetroativos() {
     contagem,
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    /** Tentar de novo depois de erro ao carregar */
+    recarregar: query.refetch,
     decidir: decidir.mutateAsync,
     registrarAviso: registrarAviso.mutateAsync,
     emailsDosConsultores: (nomes: string[]) => retroativosService.emailsDosConsultores(nomes),

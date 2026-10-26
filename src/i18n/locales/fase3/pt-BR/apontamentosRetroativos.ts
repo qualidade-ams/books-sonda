@@ -1,0 +1,78 @@
+/** Tela Apontamentos Retroativos (nova) */
+const apontamentosRetroativos = {
+  titulo: 'Apontamentos Retroativos',
+  subtitulo: 'Apontamentos lançados no Aranda depois do fechamento do mês, por banco.',
+  situacoes: {
+    pendente: 'Pendente',
+    aprovado: 'Aguardando retificação',
+    aplicado: 'Aplicado',
+    descartado: 'Descartado',
+  },
+  abas: {
+    rotulo: 'Situação',
+    pendente: 'Pendentes',
+    aprovado: 'Aguardando retificação',
+    aplicado: 'Aplicados',
+    descartado: 'Descartados',
+  },
+  deteccao:
+    'A detecção roda a cada sincronização com o Aranda, nos meses fechados do período aberto de cada banco.',
+  buscar: 'Buscar empresa, banco, chamado ou tarefa',
+  filtroEmpresa: 'Empresa',
+  filtroConsultor: 'Consultor',
+  lista: 'Apontamentos retroativos',
+  carregando: 'Carregando os apontamentos retroativos',
+  erro: 'Não foi possível carregar os apontamentos retroativos',
+  vazio: {
+    pendente: 'Nenhum apontamento retroativo pendente',
+    pendenteDescricao: 'Todos os meses fechados estão em dia com o Aranda.',
+    outros: 'Nenhum apontamento retroativo em "{{aba}}"',
+    filtro: 'Nenhum apontamento retroativo atende aos filtros',
+  },
+  cartao: {
+    ver: 'Ver os apontamentos de {{empresa}} · {{banco}}',
+    fechar: 'Fechar os apontamentos de {{empresa}} · {{banco}}',
+    apontamentos: {
+      um: '{{n}} apontamento',
+      varios: '{{n}} apontamentos',
+    },
+    detectadoEm: 'detectado em {{data}}',
+    noFechamento: 'No fechamento',
+    comRetroativos: 'Com os retroativos',
+    diferenca: 'Diferença',
+    ticketsN: '{{n}} tickets',
+    consultoresAvisados: 'Consultores avisados',
+    aprovar: 'Aprovar',
+    descartar: 'Descartar',
+    aprovadoPor: 'Aprovado por {{nome}} em {{data}}:',
+    descartadoPor: 'Descartado por {{nome}} em {{data}}:',
+    aplicado: 'aplicado na retificação do Book em {{data}}',
+    aguardando: 'conta quando o Book de {{mes}} for retificado',
+    verNoControle: 'Ver {{banco}} no Controle',
+    semNome: 'usuário sem cadastro',
+  },
+  colunas: {
+    chamado: 'Chamado · tarefa',
+    dataAtividade: 'Data da atividade',
+    dataSistema: 'Lançado no Aranda',
+    consultor: 'Consultor',
+    status: 'Status do chamado',
+    quantidade: 'Horas / tickets',
+  },
+  avisadoEm: 'avisado em {{data}}',
+  decidir: {
+    aprovarTitulo: 'Aprovar o ajuste de {{empresa}} · {{banco}}?',
+    descartarTitulo: 'Descartar o ajuste de {{empresa}} · {{banco}}?',
+    descricao: '{{mes}}: consumo de {{de}} para {{para}}.',
+    aprovarAguarda: 'Fica aguardando a retificação do Book de {{mes}}; até lá, o mês não muda',
+    aprovarRecalcula:
+      'Na retificação, o mês e os seguintes do período são recalculados (nova versão, nada é apagado)',
+    descartarNaoMuda: 'O consumo do mês não muda',
+    descartarNaoVolta: 'Estes apontamentos não voltam a ser detectados',
+    justificativa: 'Justificativa',
+    aprovarPlaceholder: 'Ex.: atendimento confirmado com o cliente',
+    descartarPlaceholder: 'Ex.: consultor vai relançar no mês vigente',
+  },
+};
+
+export default apontamentosRetroativos;
