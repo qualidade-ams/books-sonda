@@ -56,6 +56,8 @@ const lancamentos = {
   error: null,
   lancarReajuste: vi.fn(async () => undefined),
   inativarReajuste: vi.fn(async () => undefined),
+  salvarObservacao: vi.fn(async () => undefined),
+  excluirObservacao: vi.fn(async () => undefined),
 };
 let permissoes: string[] = [];
 vi.mock('@/hooks/usePermissions', () => ({
@@ -174,5 +176,23 @@ describe('ControleBancosHoras', () => {
     expect(
       screen.queryByRole('button', { name: 'controleBancoHoras.reajustes.lancar' })
     ).not.toBeInTheDocument();
+  });
+
+  it('aba Observações grava no banco escolhido', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('tab', { name: 'controleBancoHoras.secoes.observacoes' }));
+    expect(screen.getByText('controleBancoHoras.observacoes.vazio')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.observacoes.nova' }));
+    fireEvent.change(screen.getByLabelText(/controleBancoHoras.observacoes.texto/), {
+      target: { value: 'Cliente pediu revisão' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.salvar' }));
+    await waitFor(() =>
+      expect(lancamentos.salvarObservacao).toHaveBeenCalledWith({
+        bancoId: 'b1',
+        mes: { ano: 2026, mes: 10 },
+        texto: 'Cliente pediu revisão',
+      })
+    );
   });
 });

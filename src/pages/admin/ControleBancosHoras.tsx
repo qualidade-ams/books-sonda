@@ -22,6 +22,7 @@ import { IndicadoresControle } from '@/components/admin/controle/IndicadoresCont
 import { QuadroControle } from '@/components/admin/controle/QuadroControle';
 import { AbaReajustes } from '@/components/admin/controle/AbaReajustes';
 import { LancarReajuste } from '@/components/admin/controle/LancarReajuste';
+import { AbaObservacoes } from '@/components/admin/controle/AbaObservacoes';
 import { usePeriodoTexto } from '@/components/admin/empresas/periodoTexto';
 import {
   useControleBancos,
@@ -202,6 +203,7 @@ export default function ControleBancosHoras() {
                   itens={[
                     { valor: 'quadro', rotulo: c('secoes.quadro') },
                     { valor: 'reajustes', rotulo: c('secoes.reajustes') },
+                    { valor: 'observacoes', rotulo: c('secoes.observacoes') },
                   ]}
                   valor={secao}
                   onChange={setSecao}
@@ -228,6 +230,21 @@ export default function ControleBancosHoras() {
                   onLancar={() => setLancando({})}
                   onInativar={async (r, motivo) => {
                     await lancamentos.inativarReajuste({ reajusteId: r.id, motivo });
+                  }}
+                  onTentarNovamente={() => void lancamentos.recarregar()}
+                />
+              ) : secao === 'observacoes' ? (
+                <AbaObservacoes
+                  observacoes={lancamentos.observacoes}
+                  meses={mesesDoQuadro}
+                  carregando={lancamentos.isLoading}
+                  erro={lancamentos.error}
+                  podeEditar={podeEditar}
+                  onSalvar={async (input) => {
+                    await lancamentos.salvarObservacao({ ...input, bancoId: banco.bancoId });
+                  }}
+                  onExcluir={async (o) => {
+                    await lancamentos.excluirObservacao(o.id);
                   }}
                   onTentarNovamente={() => void lancamentos.recarregar()}
                 />

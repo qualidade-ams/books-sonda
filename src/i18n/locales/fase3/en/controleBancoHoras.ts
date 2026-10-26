@@ -32,6 +32,7 @@ const controleBancoHoras = {
     rotulo: 'Bank sections',
     quadro: 'Board',
     reajustes: 'Adjustments',
+    observacoes: 'Notes',
   },
   periodo: {
     rotulo: 'Calculation period',
@@ -160,6 +161,28 @@ const controleBancoHoras = {
     motivo: 'Required. It becomes the month note and shows in the version history.',
     anotacao:
       'Optional. Only for the Sonda team: shows in the Control and the audit, never in the Book, the Partial Balance or e-mails.',
+  },
+  observacoes: {
+    rotulo: 'Notes of the period',
+    nova: 'New note',
+    mes: 'Note month',
+    texto: 'Note',
+    cancelar: 'Cancel',
+    vazio: 'No note in this period',
+    erro: 'Could not load the notes',
+    origem: {
+      manual: 'Manual',
+      ajuste: 'Adjustment',
+      consumo_entre_bancos: 'Automatic',
+      faturamento: 'Billing',
+    },
+    editada: 'edited',
+    acoesDe: 'Actions of the note of {{mes}}',
+    excluir: 'Delete',
+    excluirTitulo: 'Delete the note?',
+    excluirAuditoria: 'It leaves the Control; the deletion is recorded in the audit',
+    somenteManuais:
+      'Adjustment and automatic notes are not edited here: they change with the adjustment or the recalculation.',
   },
 };
 

@@ -32,6 +32,7 @@ const controleBancoHoras = {
     rotulo: 'Secciones del banco',
     quadro: 'Cuadro',
     reajustes: 'Reajustes',
+    observacoes: 'Observaciones',
   },
   periodo: {
     rotulo: 'Período de apuración',
@@ -156,6 +157,28 @@ const controleBancoHoras = {
     motivo: 'Obligatorio. Se vuelve la observación del mes y aparece en el historial de versiones.',
     anotacao:
       'Opcional. Solo para el equipo Sonda: aparece en el Control y en la auditoría, nunca en el Book, el Saldo Parcial o los e-mails.',
+  },
+  observacoes: {
+    rotulo: 'Observaciones del período',
+    nova: 'Nueva observación',
+    mes: 'Mes de la observación',
+    texto: 'Observación',
+    cancelar: 'Cancelar',
+    vazio: 'Ninguna observación en este período',
+    erro: 'No fue posible cargar las observaciones',
+    origem: {
+      manual: 'Manual',
+      ajuste: 'Reajuste',
+      consumo_entre_bancos: 'Automática',
+      faturamento: 'Facturación',
+    },
+    editada: 'editada',
+    acoesDe: 'Acciones de la observación de {{mes}}',
+    excluir: 'Eliminar',
+    excluirTitulo: '¿Eliminar la observación?',
+    excluirAuditoria: 'Sale del Control; la eliminación queda registrada en la auditoría',
+    somenteManuais:
+      'Las observaciones de reajuste y las automáticas no se editan aquí: cambian con el reajuste o con el recálculo.',
   },
 };
 
