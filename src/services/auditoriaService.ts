@@ -20,24 +20,25 @@ const TAMANHO_PAGINA = 100;
 const UTC_MEIA_NOITE_BRASILIA = 'T03:00:00Z';
 const AUTORIA = new Set(['id', 'created_at', 'created_by', 'updated_at', 'updated_by']);
 
+/** Chave da área (o nome vem da tradução) → tabelas */
 const TABELAS_POR_AREA: Record<string, string[]> = {
-  'Bancos de horas': ['bancos_horas'],
-  'Escopo do banco': ['bancos_horas_escopo'],
-  'Baseline do banco': ['bancos_horas_baseline'],
-  'Repasse do banco': ['bancos_horas_repasse'],
-  Reajustes: ['bancos_horas_reajustes'],
-  Observações: ['bancos_horas_observacoes'],
-  'Requerimentos do banco': ['requerimentos_bancos'],
-  'Fechamentos do mês': ['bancos_horas_fechamentos'],
-  'Apontamentos retroativos': ['bancos_horas_retroativos', 'bancos_horas_retroativos_itens'],
-  Empresas: ['empresas', 'empresas_solucoes'],
-  'Organizações do Aranda': ['empresas_organizacoes_aranda'],
-  'Contrato FISCAL': ['empresas_informacoes_contrato'],
-  'De-para de grupos': ['grupos_aranda'],
-  'Produtos e módulos': ['solucoes', 'produtos', 'produto_modulos', 'modulos_requerimento_produto'],
-  'Regras de contagem': ['regras_contagem', 'codigos_resolucao_banco'],
-  'Ramos de atividade': ['ramos_atividade'],
-  'Organizar Menu': ['menu_itens', 'menu_aparencia'],
+  bancos: ['bancos_horas'],
+  escopo: ['bancos_horas_escopo'],
+  baseline: ['bancos_horas_baseline'],
+  repasse: ['bancos_horas_repasse'],
+  reajustes: ['bancos_horas_reajustes'],
+  observacoes: ['bancos_horas_observacoes'],
+  requerimentos: ['requerimentos_bancos'],
+  fechamentos: ['bancos_horas_fechamentos'],
+  retroativos: ['bancos_horas_retroativos', 'bancos_horas_retroativos_itens'],
+  empresas: ['empresas', 'empresas_solucoes'],
+  organizacoes: ['empresas_organizacoes_aranda'],
+  contratoFiscal: ['empresas_informacoes_contrato'],
+  deParaGrupos: ['grupos_aranda'],
+  produtosModulos: ['solucoes', 'produtos', 'produto_modulos', 'modulos_requerimento_produto'],
+  regrasContagem: ['regras_contagem', 'codigos_resolucao_banco'],
+  ramosAtividade: ['ramos_atividade'],
+  organizarMenu: ['menu_itens', 'menu_aparencia'],
 };
 
 export const AREAS = Object.keys(TABELAS_POR_AREA);
@@ -93,8 +94,9 @@ export class AuditoriaService {
     if (filtros.ate)
       consulta = consulta.lt('created_at', `${proximoDia(filtros.ate)}${UTC_MEIA_NOITE_BRASILIA}`);
     if (filtros.antesDe) consulta = consulta.lt('created_at', filtros.antesDe);
-    if (filtros.empresaId) consulta = consulta.eq('empresa_id', filtros.empresaId);
-    if (filtros.bancoId) consulta = consulta.eq('banco_id', filtros.bancoId);
+    if (filtros.registroId) consulta = consulta.eq('registro_id', filtros.registroId);
+    if (filtros.empresaIds?.length) consulta = consulta.in('empresa_id', filtros.empresaIds);
+    if (filtros.bancoIds?.length) consulta = consulta.in('banco_id', filtros.bancoIds);
     if (filtros.areas?.length) {
       consulta = consulta.in(
         'tabela',
@@ -103,7 +105,7 @@ export class AuditoriaService {
     }
     if (filtros.acoes?.length) consulta = consulta.in('acao', filtros.acoes);
     if (filtros.origens?.length) consulta = consulta.in('origem', filtros.origens);
-    if (filtros.usuarioId) consulta = consulta.eq('usuario_id', filtros.usuarioId);
+    if (filtros.usuarioIds?.length) consulta = consulta.in('usuario_id', filtros.usuarioIds);
 
     // Um a mais para saber se há outra página
     const { data, error } = await consulta

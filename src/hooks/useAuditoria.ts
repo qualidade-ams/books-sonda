@@ -24,6 +24,7 @@ export function useAuditoria(filtros: FiltrosAuditoria) {
     registros,
     temMais: !!query.hasNextPage,
     carregarMais: () => query.fetchNextPage(),
+    recarregar: () => query.refetch(),
     isCarregandoMais: query.isFetchingNextPage,
     isLoading: query.isLoading,
     error: query.error as Error | null,

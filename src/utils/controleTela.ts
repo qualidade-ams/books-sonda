@@ -95,7 +95,7 @@ export function ajustesDosRequerimentos(
 /** Campos de controle que toda alteração muda; não interessam no histórico */
 const CAMPOS_DE_CONTROLE = new Set(['created_at', 'created_by', 'updated_at', 'updated_by']);
 
-const valorTexto = (v: unknown) =>
+export const valorTexto = (v: unknown) =>
   v === null || v === undefined || v === ''
     ? '—'
     : typeof v === 'object'

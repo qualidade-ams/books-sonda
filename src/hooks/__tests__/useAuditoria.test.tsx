@@ -61,4 +61,12 @@ describe('useAuditoria', () => {
       expect(result.current.error?.message).toBe('Falha ao carregar a auditoria: sem rede')
     );
   });
+
+  it('recarregar busca de novo', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useAuditoria({}), { wrapper });
+    await waitFor(() => expect(result.current.registros).toHaveLength(2));
+    await act(() => result.current.recarregar());
+    expect(service.buscar).toHaveBeenCalledTimes(2);
+  });
 });

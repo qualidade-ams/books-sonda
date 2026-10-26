@@ -37,12 +37,12 @@ function cenario(quantidade = 3, rpcs: Record<string, (args: any) => any> = {}) 
 }
 
 describe('áreas da auditoria', () => {
-  it('agrupa as tabelas pelo nome da tela', () => {
-    expect(areaDaTabela('bancos_horas_baseline')).toBe('Baseline do banco');
-    expect(areaDaTabela('produto_modulos')).toBe('Produtos e módulos');
-    expect(areaDaTabela('empresas_solucoes')).toBe('Empresas');
+  it('agrupa as tabelas pela chave da tela', () => {
+    expect(areaDaTabela('bancos_horas_baseline')).toBe('baseline');
+    expect(areaDaTabela('produto_modulos')).toBe('produtosModulos');
+    expect(areaDaTabela('empresas_solucoes')).toBe('empresas');
     expect(areaDaTabela('tabela_nova')).toBe('tabela_nova');
-    expect(AREAS).toContain('Regras de contagem');
+    expect(AREAS).toContain('regrasContagem');
   });
 });
 
@@ -88,7 +88,7 @@ describe('AuditoriaService.buscar', () => {
       usuario: 'Pessoa A',
       origem: 'app',
       tabela: 'bancos_horas_reajustes',
-      area: 'Reajustes',
+      area: 'reajustes',
       registroId: 'r3',
       empresaId: 'e1',
       empresa: 'EMPRESA ALFA',
@@ -137,11 +137,12 @@ describe('AuditoriaService.buscar', () => {
       (await s.buscar({ desde: '2026-10-01', ate: '2026-10-01', ...f })).registros.map((r) => r.id);
 
     expect(await ids({})).toEqual([4, 3, 2]);
-    expect(await ids({ areas: ['Ramos de atividade'] })).toEqual([3]);
+    expect(await ids({ areas: ['ramosAtividade'] })).toEqual([3]);
     expect(await ids({ acoes: ['insert'] })).toEqual([4]);
     expect(await ids({ origens: ['app'] })).toEqual([3, 2]);
-    expect(await ids({ usuarioId: 'u1' })).toEqual([3, 2]);
-    expect(await ids({ empresaId: 'e1', bancoId: 'b1' })).toEqual([4, 2]);
+    expect(await ids({ usuarioIds: ['u1', 'u9'] })).toEqual([3, 2]);
+    expect(await ids({ empresaIds: ['e1'], bancoIds: ['b1', 'b9'] })).toEqual([4, 2]);
+    expect(await ids({ registroId: 'r4' })).toEqual([4]);
   });
 
   it('sem permissão para nomes, mostra os registros sem eles', async () => {

@@ -20,7 +20,7 @@ export interface RegistroAuditoria {
   usuario: string | null;
   origem: OrigemAuditoria;
   tabela: string;
-  /** Agrupamento das tabelas mostrado na tela */
+  /** Chave do agrupamento das tabelas na tela; tabela sem área vem pelo próprio nome */
   area: string;
   registroId: string;
   empresaId: string | null;
@@ -38,12 +38,15 @@ export interface FiltrosAuditoria {
   /** AAAA-MM-DD, inclusive, no horário de Brasília */
   desde?: string;
   ate?: string;
-  empresaId?: string;
-  bancoId?: string;
+  empresaIds?: string[];
+  bancoIds?: string[];
+  /** Chaves das áreas (AREAS do service) */
   areas?: string[];
   acoes?: AcaoAuditoria[];
   origens?: OrigemAuditoria[];
-  usuarioId?: string;
+  usuarioIds?: string[];
+  /** Todo o histórico de um registro */
+  registroId?: string;
   /** Paginação: só registros anteriores a este momento (o "em" do último da página) */
   antesDe?: string;
 }

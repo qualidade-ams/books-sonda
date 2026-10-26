@@ -596,6 +596,7 @@ const en = {
     countingRules: 'Counting rules',
     bankHoursNew: 'Hour Bank Control (new)',
     retroactiveNew: 'Retroactive Time Entries (new)',
+    bankHoursAuditNew: 'Hour Bank Audit (new)',
     auditLogs: 'Audit',
     monitoringTerms: 'Term Monitoring',
     consultantsCoordinators: 'Consultants x Coordinators',

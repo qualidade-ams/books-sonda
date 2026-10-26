@@ -11,6 +11,7 @@ import regrasContagem from './es/regrasContagem';
 import empresasCadastro from './es/empresasCadastro';
 import controleBancoHoras from './es/controleBancoHoras';
 import apontamentosRetroativos from './es/apontamentosRetroativos';
+import auditoriaBancosHoras from './es/auditoriaBancosHoras';
 
 const fase3 = {
   fase3Comum,
@@ -21,6 +22,7 @@ const fase3 = {
   empresasCadastro,
   controleBancoHoras,
   apontamentosRetroativos,
+  auditoriaBancosHoras,
 };
 
 export default fase3;

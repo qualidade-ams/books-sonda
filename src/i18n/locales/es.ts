@@ -596,6 +596,7 @@ const es = {
     countingRules: 'Reglas de conteo',
     bankHoursNew: 'Control de Bancos de Horas (nuevo)',
     retroactiveNew: 'Registros Retroactivos (nuevo)',
+    bankHoursAuditNew: 'Auditoría del Banco de Horas (nuevo)',
     auditLogs: 'Auditoría',
     monitoringTerms: 'Monitoreo de Vigencias',
     consultantsCoordinators: 'Consultores x Coordinadores',

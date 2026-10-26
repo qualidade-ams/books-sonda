@@ -16,6 +16,7 @@ import {
   UserCheck,
   UserPlus,
   History,
+  FileClock,
   Boxes,
   GitMerge,
   ListChecks,
@@ -112,6 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       path === '/admin/bancos-horas' ||
       path.includes('/ajustes-retroativos') ||
       path.includes('/apontamentos-retroativos') ||
+      path.includes('/auditoria-bancos-horas') ||
       path.includes('/regras-contagem')
     ) {
       return 'comunicacao';
@@ -262,6 +264,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       path === '/admin/bancos-horas' ||
       path.includes('/ajustes-retroativos') ||
       path.includes('/apontamentos-retroativos') ||
+      path.includes('/auditoria-bancos-horas') ||
       path.includes('/regras-contagem')
     ) {
       return 'comunicacao';
@@ -423,6 +426,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav.retroactiveNew'),
           path: '/admin/apontamentos-retroativos',
           screenKey: 'bancos_horas_retroativos',
+        },
+        {
+          icon: FileClock,
+          label: t('nav.bankHoursAuditNew'),
+          path: '/admin/auditoria-bancos-horas',
+          screenKey: 'bancos_horas_auditoria',
         },
         {
           icon: ListChecks,
