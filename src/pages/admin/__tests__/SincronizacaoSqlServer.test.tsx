@@ -23,8 +23,19 @@ vi.mock('@/hooks/usePermissions', () => ({
 
 vi.mock('@/components/admin/sincronizacao/AbaSaldoParcial', () => ({
   SCREEN_KEY_SALDO_PARCIAL: 'envio_saldo_parcial',
-  AbaSaldoParcial: ({ novoAberto }: any) => (
-    <div data-novo-aberto={String(novoAberto)}>aba-saldo-parcial</div>
+  AbaSaldoParcial: ({ onEditar }: any) => (
+    <div>
+      aba-saldo-parcial
+      <button onClick={() => onEditar({ id: 'ag-1' })}>editar-agendamento</button>
+    </div>
+  ),
+}));
+vi.mock('@/components/admin/saldoParcial/EdicaoAgendamento', () => ({
+  EdicaoAgendamento: ({ agendamento, onFechar }: any) => (
+    <div>
+      edicao-saldo-parcial {agendamento?.id ?? 'novo'}
+      <button onClick={onFechar}>voltar-edicao</button>
+    </div>
   ),
 }));
 
@@ -458,13 +469,25 @@ describe('SincronizacaoSqlServer', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('novo agendamento do topo abre o formulário da aba', () => {
+    it('novo agendamento do topo abre a edição no lugar da tela; voltar retorna à aba', () => {
       renderTela();
       fireEvent.mouseDown(abaSaldoParcial()!);
 
-      expect(screen.getByText('aba-saldo-parcial')).toHaveAttribute('data-novo-aberto', 'false');
       fireEvent.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-      expect(screen.getByText('aba-saldo-parcial')).toHaveAttribute('data-novo-aberto', 'true');
+      expect(screen.getByText(/edicao-saldo-parcial novo/)).toBeInTheDocument();
+      expect(screen.queryByText(/aba-saldo-parcial/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'voltar-edicao' }));
+      expect(screen.getByText(/aba-saldo-parcial/)).toBeInTheDocument();
+      expect(abaSaldoParcial()).toHaveAttribute('data-state', 'active');
+    });
+
+    it('editar um agendamento na aba abre a edição dele', () => {
+      renderTela();
+      fireEvent.mouseDown(abaSaldoParcial()!);
+
+      fireEvent.click(screen.getByRole('button', { name: 'editar-agendamento' }));
+      expect(screen.getByText(/edicao-saldo-parcial ag-1/)).toBeInTheDocument();
     });
 
     it('abre direto na aba pelo link ?aba=saldo-parcial (menu antigo e notificações)', () => {

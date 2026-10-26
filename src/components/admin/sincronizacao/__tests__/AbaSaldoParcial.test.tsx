@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { AbaSaldoParcial } from '../AbaSaldoParcial';
 import * as hooks from '@/hooks/useEnvioSaldoParcial';
 
@@ -31,12 +31,10 @@ vi.mock('@/hooks/useEnvioSaldoParcial', () => ({
   useExecucoesSaldoParcial: vi.fn(),
   useClientesElegiveisSaldoParcial: vi.fn(),
   useSemAgendamentoSaldoParcial: vi.fn(),
-  useSalvarAgendamentoSaldoParcial: vi.fn(),
   useAlternarAgendamentoSaldoParcial: vi.fn(),
   useExcluirAgendamentoSaldoParcial: vi.fn(),
   useExecutarSaldoParcialAgora: vi.fn(),
   useStatusSaldoParcial: vi.fn(),
-  usePreverExecucoesSaldoParcial: vi.fn(),
 }));
 
 const agendamento = {
@@ -80,23 +78,13 @@ const mutacao = (fn = vi.fn().mockResolvedValue(undefined)) => ({
   isPending: false,
 });
 
-let salvar: ReturnType<typeof mutacao>;
 let executar: ReturnType<typeof mutacao>;
 let alternar: ReturnType<typeof mutacao>;
 let excluir: ReturnType<typeof mutacao>;
 
-// O botão "Novo agendamento" fica no cabeçalho da tela Rotinas Automáticas
-function Tela() {
-  const [novoAberto, setNovoAberto] = useState(false);
-  return (
-    <>
-      <button onClick={() => setNovoAberto(true)}>envioSaldoParcial.novoAgendamento</button>
-      <AbaSaldoParcial novoAberto={novoAberto} onNovoAbertoChange={setNovoAberto} />
-    </>
-  );
-}
-
-const renderAba = () => render(<Tela />);
+// A edição abre no lugar da tela Rotinas Automáticas, que recebe o pedido
+const onEditar = vi.fn();
+const renderAba = () => render(<AbaSaldoParcial onEditar={onEditar} />);
 const cartao = (nome: string) => screen.getByText(nome).closest('li')!;
 const abrirAcoes = async (user: ReturnType<typeof userEvent.setup>, nome = agendamento.nome) =>
   user.click(screen.getByRole('button', { name: `fase3Comum.acoesDe {"nome":"${nome}"}` }));
@@ -105,7 +93,6 @@ describe('AbaSaldoParcial', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     permissao.edicao = true;
-    salvar = mutacao();
     executar = mutacao();
     alternar = mutacao();
     excluir = mutacao();
@@ -150,18 +137,12 @@ describe('AbaSaldoParcial', () => {
       isLoading: false,
       error: null,
     });
-    (hooks.useSalvarAgendamentoSaldoParcial as any).mockReturnValue(salvar);
     (hooks.useAlternarAgendamentoSaldoParcial as any).mockReturnValue(alternar);
     (hooks.useExcluirAgendamentoSaldoParcial as any).mockReturnValue(excluir);
     (hooks.useExecutarSaldoParcialAgora as any).mockReturnValue(executar);
     (hooks.useStatusSaldoParcial as any).mockReturnValue({
       agendadorAtivo: true,
       renderImagemConfigurado: true,
-    });
-    (hooks.usePreverExecucoesSaldoParcial as any).mockReturnValue({
-      previsao: [],
-      isFetching: false,
-      error: null,
     });
   });
 
@@ -411,123 +392,26 @@ describe('AbaSaldoParcial', () => {
     expect(screen.getByText('rotinasSaldoParcial.erro')).toBeInTheDocument();
   });
 
-  // Formulário de criação e edição (o modal atual, até a edição em nível a mais)
-
-  it('cria um agendamento com os clientes selecionados e o CC', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-    await user.type(screen.getByLabelText('envioSaldoParcial.form.nome'), 'Parcial semanal');
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
-    await user.type(screen.getByLabelText('envioSaldoParcial.form.emailsCc'), '; cc@sonda.com');
-    await user.click(screen.getByRole('button', { name: 'envioSaldoParcial.form.salvar' }));
-
-    await waitFor(() => expect(salvar.mutateAsync).toHaveBeenCalled());
-    const { id, dados } = salvar.mutateAsync.mock.calls[0][0];
-    expect(id).toBeUndefined();
-    expect(dados).toMatchObject({
-      nome: 'Parcial semanal',
-      empresaIds: ['e3'],
-      emails_cc: ['gestor.c@sonda.com', 'cc@sonda.com'],
-    });
-  });
-
-  it('fecha o formulário depois de salvar um novo agendamento', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-    await user.type(screen.getByLabelText('envioSaldoParcial.form.nome'), 'Parcial semanal');
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
-    await user.click(screen.getByRole('button', { name: 'envioSaldoParcial.form.salvar' }));
-
-    await waitFor(() =>
-      expect(screen.queryByLabelText('envioSaldoParcial.form.nome')).not.toBeInTheDocument()
-    );
-  });
-
-  it('editar abre o formulário com o agendamento e salva com o id dele', async () => {
+  it('editar pede a edição do agendamento à tela', async () => {
     const user = userEvent.setup();
     renderAba();
 
     await abrirAcoes(user);
     await user.click(screen.getByRole('menuitem', { name: /rotinasSaldoParcial.cartao.editar/ }));
-    expect(screen.getByLabelText('envioSaldoParcial.form.nome')).toHaveValue(
-      'Parcial dias 15 e 25'
-    );
-    await user.click(screen.getByRole('button', { name: 'envioSaldoParcial.form.salvar' }));
-
-    await waitFor(() => expect(salvar.mutateAsync).toHaveBeenCalled());
-    expect(salvar.mutateAsync.mock.calls[0][0].id).toBe('ag-1');
+    expect(onEditar).toHaveBeenCalledWith(expect.objectContaining({ id: 'ag-1' }));
   });
 
-  it('ao marcar um cliente pré-preenche o CC com o e-mail do gestor dele, sem repetir', async () => {
+  it('sem agendamentos, quem edita cria o primeiro dali mesmo', async () => {
+    (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
+      agendamentos: [],
+      isLoading: false,
+      error: null,
+    });
     const user = userEvent.setup();
     renderAba();
 
+    expect(screen.getByText('rotinasSaldoParcial.vazio.titulo')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-    const cc = screen.getByLabelText('envioSaldoParcial.form.emailsCc');
-    await user.type(cc, 'qualidade@sonda.com');
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE A/ }));
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE B/ }));
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
-
-    expect(cc).toHaveValue('qualidade@sonda.com; gestor.ab@sonda.com; gestor.c@sonda.com');
-  });
-
-  it('ao desmarcar um cliente tira o gestor do CC só se nenhum outro cliente marcado tiver o mesmo gestor', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-    const cc = screen.getByLabelText('envioSaldoParcial.form.emailsCc');
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE A/ }));
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE B/ }));
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
-
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE C/ }));
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE A/ }));
-    expect(cc).toHaveValue('gestor.ab@sonda.com');
-
-    await user.click(screen.getByRole('checkbox', { name: /CLIENTE B/ }));
-    expect(cc).toHaveValue('');
-  });
-
-  it('ao colar e-mails no CC remove o nome e os <> e mantém só os endereços', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-    const cc = screen.getByLabelText('envioSaldoParcial.form.emailsCc');
-    await user.type(cc, 'qualidade@sonda.com');
-    await user.paste(
-      'Rafael Viegas <rafael.viegas@sonda.com>; Giselle Lobo <giselle.lobo@sonda.com>; qualidade@sonda.com'
-    );
-
-    expect(cc).toHaveValue('qualidade@sonda.com; rafael.viegas@sonda.com; giselle.lobo@sonda.com');
-  });
-
-  it('no formulário mostra quais clientes não têm contatos de Saldo Parcial', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-
-    const clienteB = screen.getByRole('checkbox', { name: /CLIENTE B/ }).closest('label')!;
-    expect(within(clienteB).getByText('envioSaldoParcial.form.semContatos')).toBeInTheDocument();
-  });
-
-  it('a lista de clientes do formulário contém os próprios elementos (evita espaço em branco no fim do modal)', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
-
-    const lista = screen
-      .getByRole('checkbox', { name: /CLIENTE A/ })
-      .closest('label')!.parentElement!;
-    expect(lista.className).toContain('overflow-y-auto');
-    expect(lista.className).toContain('relative');
+    expect(onEditar).toHaveBeenCalledWith(null);
   });
 });

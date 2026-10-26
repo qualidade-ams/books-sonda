@@ -6,13 +6,14 @@
  * dispara execuções manuais e acompanha o histórico. Destinatários: contatos do cliente
  * marcados como "Saldo Parcial" ou "Ambos" em Gerenciamento de Clientes, mais o CC.
  *
- * O botão "Novo agendamento" fica no cabeçalho da tela, que controla `novoAberto`.
+ * Criar e editar abrem a edição em nível a mais, no lugar da tela: a aba só pede (`onEditar`).
+ * O botão "Novo agendamento" fica no cabeçalho da tela.
  * Permissão própria: tela `envio_saldo_parcial` (a mesma das políticas RLS das tabelas).
  */
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Building2, CalendarClock, Send } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarClock, Plus, Send } from 'lucide-react';
 import { DsPage } from '@/components/ds/DsPage';
 import { Indicador } from '@/components/ds/Formulario';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
@@ -20,7 +21,6 @@ import { EmptyState } from '@/components/ds/EmptyState';
 import { Callout } from '@/components/ds/Callout';
 import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
-import { AgendamentoSaldoParcialFormModal } from '@/components/admin/banco-horas/AgendamentoSaldoParcialFormModal';
 import { CartaoAgendamento } from '@/components/admin/saldoParcial/CartaoAgendamento';
 import { HistoricoEnvios } from '@/components/admin/saldoParcial/HistoricoEnvios';
 import { useToast } from '@/hooks/use-toast';
@@ -33,16 +33,12 @@ import {
   useExcluirAgendamentoSaldoParcial,
   useExecucoesSaldoParcial,
   useExecutarSaldoParcialAgora,
-  useSalvarAgendamentoSaldoParcial,
   useSemAgendamentoSaldoParcial,
   useStatusSaldoParcial,
 } from '@/hooks/useEnvioSaldoParcial';
 import { plural } from '@/utils/plural';
 import { ordenarAgendamentos, receberamHoje, totaisSaldoParcial } from '@/utils/saldoParcialTela';
-import type {
-  AgendamentoSaldoParcial,
-  AgendamentoSaldoParcialInput,
-} from '@/types/envioSaldoParcial';
+import type { AgendamentoSaldoParcial } from '@/types/envioSaldoParcial';
 
 export const SCREEN_KEY_SALDO_PARCIAL = 'envio_saldo_parcial';
 
@@ -51,12 +47,11 @@ type Secao = 'agendamentos' | 'historico' | 'sem';
 const LIMITE_HISTORICO = 200;
 
 interface AbaSaldoParcialProps {
-  /** Formulário de novo agendamento aberto (botão no cabeçalho da tela) */
-  novoAberto: boolean;
-  onNovoAbertoChange: (aberto: boolean) => void;
+  /** Abre a edição no lugar da tela; nulo é um agendamento novo */
+  onEditar: (agendamento: AgendamentoSaldoParcial | null) => void;
 }
 
-export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParcialProps) {
+export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
   const { t } = useTranslation();
   const s = (chave: string, valores?: Record<string, unknown>) =>
     t(`rotinasSaldoParcial.${chave}`, valores);
@@ -77,19 +72,16 @@ export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParc
   // undefined = ainda sem resposta do sync-api; só avisamos com false confirmado
   const { agendadorAtivo, renderImagemConfigurado } = useStatusSaldoParcial();
   const agendadorDesligado = agendadorAtivo === false;
-  const salvar = useSalvarAgendamentoSaldoParcial();
   const alternar = useAlternarAgendamentoSaldoParcial();
   const excluir = useExcluirAgendamentoSaldoParcial();
   const executar = useExecutarSaldoParcialAgora();
 
   const [secao, setSecao] = useState<Secao>('agendamentos');
-  const [editando, setEditando] = useState<AgendamentoSaldoParcial | null>(null);
   const [executando, setExecutando] = useState<AgendamentoSaldoParcial | null>(null);
   const [desativando, setDesativando] = useState<AgendamentoSaldoParcial | null>(null);
   const [excluindo, setExcluindo] = useState<AgendamentoSaldoParcial | null>(null);
   const [processando, setProcessando] = useState(false);
 
-  const modalAberto = novoAberto || !!editando;
   const ordenados = useMemo(
     () => ordenarAgendamentos(agendamentos, agendadorDesligado),
     [agendamentos, agendadorDesligado]
@@ -114,22 +106,6 @@ export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParc
     } finally {
       setProcessando(false);
       fechar();
-    }
-  };
-
-  const fecharModal = (aberto: boolean) => {
-    if (aberto) return;
-    setEditando(null);
-    onNovoAbertoChange(false);
-  };
-
-  const handleSalvar = async (dados: AgendamentoSaldoParcialInput) => {
-    try {
-      await salvar.mutateAsync({ id: editando?.id, dados });
-      toast({ title: t('envioSaldoParcial.toasts.salvo') });
-      fecharModal(false);
-    } catch (e) {
-      avisarErro('envioSaldoParcial.toasts.erroSalvar', e);
     }
   };
 
@@ -196,6 +172,13 @@ export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParc
             icone={<CalendarClock />}
             titulo={s('vazio.titulo')}
             descricao={s('vazio.descricao')}
+            acao={
+              podeEditar ? (
+                <Button variante="primario" onClick={() => onEditar(null)}>
+                  <Plus /> {t('envioSaldoParcial.novoAgendamento')}
+                </Button>
+              ) : undefined
+            }
           />
         </div>
       );
@@ -215,7 +198,7 @@ export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParc
             onAtivo={() =>
               agendamento.ativo ? setDesativando(agendamento) : mudarAtivo(agendamento, true)
             }
-            onEditar={() => setEditando(agendamento)}
+            onEditar={() => onEditar(agendamento)}
             onExecutar={() => setExecutando(agendamento)}
             onExcluir={() => setExcluindo(agendamento)}
           />
@@ -323,14 +306,6 @@ export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParc
       ) : (
         agendamentosConteudo()
       )}
-
-      <AgendamentoSaldoParcialFormModal
-        open={modalAberto}
-        onOpenChange={fecharModal}
-        agendamento={editando}
-        onSalvar={handleSalvar}
-        salvando={salvar.isPending}
-      />
 
       <ConfirmDialog
         aberto={!!executando}
