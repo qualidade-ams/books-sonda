@@ -23,17 +23,27 @@ import { QuadroControle } from '@/components/admin/controle/QuadroControle';
 import { AbaReajustes } from '@/components/admin/controle/AbaReajustes';
 import { LancarReajuste } from '@/components/admin/controle/LancarReajuste';
 import { AbaObservacoes } from '@/components/admin/controle/AbaObservacoes';
+import {
+  AbaRequerimentos,
+  BarraAjustesRequerimentos,
+} from '@/components/admin/controle/AbaRequerimentos';
 import { usePeriodoTexto } from '@/components/admin/empresas/periodoTexto';
 import {
   useControleBancos,
   useControleEmpresas,
   useLancamentosControle,
+  useRequerimentosControle,
   useQuadroControle,
 } from '@/hooks/useControleBancoHoras';
 import { usePermissions } from '@/hooks/usePermissions';
 import { mesAtual, periodosDoBanco } from '@/services/bancosHoras/periodos';
 import type { MesAno } from '@/services/bancosHoras/calculo';
-import { mesesComSituacao, resultadoDoBanco, rotuloPeriodoLocal } from '@/utils/controleTela';
+import {
+  ajustesDosRequerimentos,
+  mesesComSituacao,
+  resultadoDoBanco,
+  rotuloPeriodoLocal,
+} from '@/utils/controleTela';
 import { cn } from '@/lib/utils';
 
 // Rótulo do campo → chave da dica (controleBancoHoras.dicas.*)
@@ -102,6 +112,17 @@ export default function ControleBancosHoras() {
   // Nível a mais na tela: lançamento de reajuste, no mês do quadro ou no de referência
   const [lancando, setLancando] = useState<{ mes?: MesAno } | null>(null);
   const lancamentos = useLancamentosControle(banco?.bancoId, meses);
+  const reqs = useRequerimentosControle(empresaId, meses);
+  // Trocas de banco dos requerimentos ainda não salvas; valem para a empresa e o período em que
+  // foram feitas (trocar qualquer um dos dois descarta)
+  const chaveRascunho = `${empresaId}|${rotuloPeriodo}`;
+  const [rascunho, setRascunho] = useState<{ chave: string; escolhas: Record<string, string> }>({
+    chave: '',
+    escolhas: {},
+  });
+  const escolhas = rascunho.chave === chaveRascunho ? rascunho.escolhas : {};
+  const ajustes = podeEditar ? ajustesDosRequerimentos(reqs.requerimentos, escolhas) : [];
+  const descartarAjustes = () => setRascunho({ chave: '', escolhas: {} });
 
   const avisoSombra =
     sombra && empresa ? (
@@ -202,6 +223,12 @@ export default function ControleBancosHoras() {
                   rotulo={c('secoes.rotulo')}
                   itens={[
                     { valor: 'quadro', rotulo: c('secoes.quadro') },
+                    {
+                      valor: 'requerimentos',
+                      rotulo: c('secoes.requerimentos'),
+                      contador: reqs.requerimentos.filter((r) => r.bancoId === banco.bancoId)
+                        .length,
+                    },
                     { valor: 'reajustes', rotulo: c('secoes.reajustes') },
                     { valor: 'observacoes', rotulo: c('secoes.observacoes') },
                   ]}
@@ -232,6 +259,20 @@ export default function ControleBancosHoras() {
                     await lancamentos.inativarReajuste({ reajusteId: r.id, motivo });
                   }}
                   onTentarNovamente={() => void lancamentos.recarregar()}
+                />
+              ) : secao === 'requerimentos' ? (
+                <AbaRequerimentos
+                  requerimentos={reqs.requerimentos}
+                  bancos={bancos}
+                  bancoAtualId={banco.bancoId}
+                  carregando={reqs.isLoading}
+                  erro={reqs.error}
+                  podeEditar={podeEditar}
+                  escolhas={escolhas}
+                  onEscolher={(id, bancoId) =>
+                    setRascunho({ chave: chaveRascunho, escolhas: { ...escolhas, [id]: bancoId } })
+                  }
+                  onTentarNovamente={() => void reqs.recarregar()}
                 />
               ) : secao === 'observacoes' ? (
                 <AbaObservacoes
@@ -343,6 +384,16 @@ export default function ControleBancosHoras() {
           </FaixaPagina>
 
           {corpo()}
+          {ajustes.length > 0 && (
+            <BarraAjustesRequerimentos
+              quantidade={ajustes.length}
+              onDescartar={descartarAjustes}
+              onSalvar={async (motivo) => {
+                await reqs.salvarAjustes({ ajustes, motivo });
+                descartarAjustes();
+              }}
+            />
+          )}
         </DsPage>
       </div>
     </AdminLayout>

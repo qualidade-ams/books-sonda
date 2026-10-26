@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterAll, beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
@@ -59,6 +59,26 @@ const lancamentos = {
   salvarObservacao: vi.fn(async () => undefined),
   excluirObservacao: vi.fn(async () => undefined),
 };
+const requerimentos = {
+  requerimentos: [
+    {
+      id: 'rq1',
+      chamado: 'CH-1',
+      titulo: 'Ajuste fiscal',
+      modulo: 'Comex',
+      mes: { ano: 2026, mes: 10 },
+      minutos: 60,
+      tickets: 0,
+      situacao: 'enviado',
+      bancoAutomaticoId: 'b1',
+      bancoId: 'b1',
+      ajuste: null,
+    },
+  ],
+  isLoading: false,
+  error: null,
+  salvarAjustes: vi.fn(async () => undefined),
+};
 let permissoes: string[] = [];
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({
@@ -71,6 +91,7 @@ vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => true }));
 window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 vi.mock('@/hooks/useControleBancoHoras', () => ({
   useLancamentosControle: () => lancamentos,
+  useRequerimentosControle: () => requerimentos,
   useControleEmpresas: () => empresas,
   useControleBancos: (empresaId: string) => ({
     bancos: bancosPorEmpresa[empresaId] ?? [],
@@ -193,6 +214,40 @@ describe('ControleBancosHoras', () => {
         mes: { ano: 2026, mes: 10 },
         texto: 'Cliente pediu revisão',
       })
+    );
+  });
+
+  it('aba Requerimentos: troca o banco e salva na barra, com um motivo', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.requerimentos/ }));
+    await userEvent.click(
+      screen.getByRole('combobox', {
+        name: 'controleBancoHoras.requerimentos.bancoDe {"chamado":"CH-1"}',
+      })
+    );
+    await userEvent.click(screen.getByRole('option', { name: 'Banco padrão' }));
+    // A barra fica mesmo trocando de aba
+    fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.quadro/ }));
+    expect(
+      screen.getByText('controleBancoHoras.requerimentos.alterados.um {"n":1}')
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.salvar' }));
+    fireEvent.change(screen.getByLabelText(/controleBancoHoras.requerimentos.motivo/), {
+      target: { value: 'Projeto' },
+    });
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'fase3Comum.salvar' })
+    );
+    await waitFor(() =>
+      expect(requerimentos.salvarAjustes).toHaveBeenCalledWith({
+        ajustes: [{ requerimentoId: 'rq1', bancoId: 'bp' }],
+        motivo: 'Projeto',
+      })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/controleBancoHoras.requerimentos.alterados/)
+      ).not.toBeInTheDocument()
     );
   });
 });

@@ -7,6 +7,7 @@ import { chaveMes, type QuadroEmpresa } from '@/services/controleBancoHorasServi
 import { situacaoDoMes, type SituacaoMes } from '@/services/bancosHoras/periodos';
 import type { MesAno, TipoContrato, Unidade } from '@/services/bancosHoras/calculo';
 import type { ResultadoBancoMes } from '@/services/bancosHoras/motorBancosHoras';
+import type { AjusteRequerimento, RequerimentoControle } from '@/types/controleBancoHoras';
 
 /** A unidade que a tela mostra primeiro: tickets só no banco de tickets */
 export const unidadePrincipal = (tipo: TipoContrato): Unidade =>
@@ -70,4 +71,23 @@ export function rotuloPeriodoLocal(meses: MesAno[], idioma: string): string {
   if (primeiro.ano === ultimo.ano)
     return `${mesCurto(primeiro.mes, idioma)} – ${rotuloMesLocal(ultimo, idioma)}`;
   return `${rotuloMesLocal(primeiro, idioma)} – ${rotuloMesLocal(ultimo, idioma)}`;
+}
+
+/**
+ * Escolhas de banco da aba Requerimentos → ajustes a gravar. Só entra o que muda o banco;
+ * escolher o banco do módulo tira o ajuste (bancoId nulo).
+ */
+export function ajustesDosRequerimentos(
+  requerimentos: Pick<RequerimentoControle, 'id' | 'bancoId' | 'bancoAutomaticoId'>[],
+  escolhas: Record<string, string>
+): AjusteRequerimento[] {
+  const vistos = new Set<string>();
+  return requerimentos.flatMap((r) => {
+    const escolhido = escolhas[r.id];
+    if (vistos.has(r.id) || escolhido === undefined || escolhido === r.bancoId) return [];
+    vistos.add(r.id);
+    return [
+      { requerimentoId: r.id, bancoId: escolhido === r.bancoAutomaticoId ? null : escolhido },
+    ];
+  });
 }

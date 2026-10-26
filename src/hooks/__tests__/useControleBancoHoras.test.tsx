@@ -123,6 +123,17 @@ describe('leituras do Controle', () => {
 });
 
 describe('gravações do Controle', () => {
+  it('tentar de novo busca os requerimentos outra vez', async () => {
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useRequerimentosControle('e1', meses), { wrapper });
+    await waitFor(() => expect(result.current.requerimentos).toHaveLength(1));
+    controle.requerimentos.mockClear();
+
+    await act(() => result.current.recarregar());
+
+    expect(controle.requerimentos).toHaveBeenCalledTimes(1);
+  });
+
   it('lançar reajuste recalcula o Controle inteiro e avisa', async () => {
     lancamentos.lancarReajuste.mockResolvedValue(undefined);
     const { wrapper, client } = criarWrapper();

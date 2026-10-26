@@ -98,6 +98,7 @@ export function useRequerimentosControle(empresaId: string | undefined, meses: M
     requerimentos: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    recarregar: query.refetch,
     salvarAjustes: salvarAjustes.mutateAsync,
     isSalvando: salvarAjustes.isPending,
   };

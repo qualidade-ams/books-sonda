@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ajustesDosRequerimentos,
   indiceReferencia,
   mesesComSituacao,
   resultadoDoBanco,
@@ -8,6 +9,7 @@ import {
   unidadePrincipal,
 } from '../controleTela';
 import type { QuadroEmpresa } from '@/services/controleBancoHorasService';
+import type { RequerimentoControle } from '@/types/controleBancoHoras';
 
 const resultado = (ano: number, mes: number, bancoId: string, fechado: boolean) => ({
   empresaId: 'e1',
@@ -97,5 +99,27 @@ describe('rótulos de mês no idioma', () => {
       'Nov/2026 – Jan/2027'
     );
     expect(rotuloPeriodoLocal([m(2026, 10)], 'pt-BR')).toBe('Out/2026');
+  });
+});
+
+describe('ajustesDosRequerimentos', () => {
+  const req = (id: string, bancoId: string | null, bancoAutomaticoId: string | null) =>
+    ({ id, bancoId, bancoAutomaticoId }) as RequerimentoControle;
+  const LISTA = [
+    req('r1', 'bA', 'bA'),
+    req('r2', 'bB', 'bA'),
+    req('r3', 'bA', 'bA'),
+    req('r4', null, null),
+  ];
+
+  it('só as escolhas que mudam o banco; voltar ao banco do módulo tira o ajuste', () => {
+    expect(
+      ajustesDosRequerimentos(LISTA, { r1: 'bB', r2: 'bA', r3: 'bA', r4: 'bC', fora: 'bB' })
+    ).toEqual([
+      { requerimentoId: 'r1', bancoId: 'bB' },
+      { requerimentoId: 'r2', bancoId: null },
+      { requerimentoId: 'r4', bancoId: 'bC' },
+    ]);
+    expect(ajustesDosRequerimentos(LISTA, {})).toEqual([]);
   });
 });

@@ -33,6 +33,7 @@ const controleBancoHoras = {
     quadro: 'Quadro',
     reajustes: 'Reajustes',
     observacoes: 'Observações',
+    requerimentos: 'Requerimentos',
   },
   periodo: {
     rotulo: 'Período de apuração',
@@ -179,6 +180,39 @@ const controleBancoHoras = {
     excluirAuditoria: 'Ela sai do Controle; a exclusão fica registrada na auditoria',
     somenteManuais:
       'As observações de reajuste e as automáticas não são editadas aqui: mudam com o reajuste ou com o recálculo.',
+  },
+  requerimentos: {
+    rotulo: 'Requerimentos do período',
+    soDeste: 'Só deste banco',
+    colunaRequerimento: 'Requerimento',
+    colunaModulo: 'Módulo',
+    colunaCobranca: 'Cobrança',
+    colunaSituacao: 'Situação',
+    colunaHoras: 'Horas',
+    colunaBanco: 'Banco',
+    colunaClassificacao: 'Classificação',
+    enviado: 'Enviado',
+    desenvolvimento: 'Em desenvolvimento',
+    naoConsome: 'não consome até ir para faturamento',
+    bancoDe: 'Banco do {{chamado}}',
+    semBanco: 'Sem banco',
+    peloModulo: 'Pelo módulo',
+    ajustada: 'Ajustada',
+    alterado: 'Alterado, falta salvar',
+    origemBanco:
+      'O banco vem do módulo do requerimento (Produtos e Módulos › Módulos de requerimento).',
+    vazio: 'Nenhum requerimento neste banco no período',
+    vazioTodos: 'Nenhum requerimento no período',
+    erro: 'Não foi possível carregar os requerimentos',
+    alterados: {
+      um: '{{n}} requerimento com banco alterado',
+      varios: '{{n}} requerimentos com banco alterado',
+    },
+    valeProximo: 'vale a partir do próximo recálculo; meses fechados não mudam.',
+    salvarTitulo: 'Trocar o banco dos requerimentos?',
+    motivoTodos: 'O motivo vale para todos os requerimentos alterados e fica no histórico',
+    motivo: 'Motivo',
+    motivoPlaceholder: 'Ex.: requerimento do projeto cobrado no banco do contrato.',
   },
 };
 
