@@ -292,3 +292,47 @@ describe('ControleSaldoParcialService.chamados', () => {
     expect(chamados.b2).toEqual([]);
   });
 });
+
+describe('ControleSaldoParcialService.registrarEnvio', () => {
+  it('registra o envio manual pela função do banco (o app não grava direto na tabela)', async () => {
+    const fake = criarSupabaseEmMemoria(
+      {},
+      { registrar_envio_saldo_parcial_controle: () => 'ex1' }
+    );
+    const { controle, lancamentos, repo } = colaboradores();
+    const s = new ControleSaldoParcialService(
+      fake as any,
+      controle as any,
+      lancamentos as any,
+      () => repo as any
+    );
+
+    await s.registrarEnvio('e1', { sucesso: false, destinatarios: 3, erro: 'Falha no envio' });
+
+    expect(fake.chamadasRpc).toEqual([
+      {
+        nome: 'registrar_envio_saldo_parcial_controle',
+        args: {
+          p_empresa_id: 'e1',
+          p_sucesso: false,
+          p_qtd_destinatarios: 3,
+          p_erro: 'Falha no envio',
+        },
+      },
+    ]);
+  });
+
+  it('erro do banco vira mensagem clara', async () => {
+    const fake = criarSupabaseEmMemoria();
+    const { controle, lancamentos, repo } = colaboradores();
+    const s = new ControleSaldoParcialService(
+      fake as any,
+      controle as any,
+      lancamentos as any,
+      () => repo as any
+    );
+    await expect(s.registrarEnvio('e1', { sucesso: true, destinatarios: 1 })).rejects.toThrow(
+      /Falha ao registrar o envio/
+    );
+  });
+});

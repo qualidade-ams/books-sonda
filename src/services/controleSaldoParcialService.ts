@@ -294,6 +294,26 @@ export class ControleSaldoParcialService {
     return itens;
   }
 
+  /**
+   * Registra o envio no histórico de envios do Saldo Parcial (manual, sem agendamento). O app
+   * não grava direto na tabela: a função do banco confere a permissão e o modelo da empresa.
+   */
+  async registrarEnvio(
+    empresaId: string,
+    envio: { sucesso: boolean; destinatarios: number; erro?: string }
+  ): Promise<void> {
+    const { error } = await (this.cliente as unknown as ClienteSupabase).rpc(
+      'registrar_envio_saldo_parcial_controle',
+      {
+        p_empresa_id: empresaId,
+        p_sucesso: envio.sucesso,
+        p_qtd_destinatarios: envio.destinatarios,
+        p_erro: envio.erro ?? null,
+      }
+    );
+    if (error) throw falha('registrar o envio do Saldo Parcial', error);
+  }
+
   /** Dados de cada chamado, pela fonte e pelo id do item */
   private async detalhes(
     itens: ItemDoBanco[]
