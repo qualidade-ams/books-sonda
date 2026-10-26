@@ -8,10 +8,12 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
-import { useMenuOrganizado } from '@/hooks/useMenuOrganizado';
+import { useLogoMenu, useMenuOrganizado } from '@/hooks/useMenuOrganizado';
+import { useTemaDoDocumento } from '@/hooks/useTemaDoDocumento';
 import { MENU_PADRAO } from '@/config/menuPadrao';
 import { aplicarOrdemSalva } from '@/services/menuOrganizadoService';
 import { menuDaRota, menuVisivel } from '@/utils/menuLateral';
+import { logoClaroSobre } from '@/utils/aparenciaMenu';
 import { iconeDoMenu } from './iconesMenu';
 
 interface SidebarProps {
@@ -23,11 +25,17 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
-// Classes do Design System v2 (tokens em src/styles/ds-v2.css)
-const itemClasses =
-  'text-ds-shell-fg hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:ring-ds-focus';
+// Classes do Design System v2 (tokens em src/styles/ds-v2.css). As cores de item, subitem, hover e
+// selecionado vêm de Organizar Menu; sem nada salvo, seguem o shell do tema.
+const hoverClasses =
+  'hover:bg-ds-shell-hover hover:text-[var(--ds-shell-hover-fg)] focus-visible:ring-ds-focus';
+const itemClasses = cn('bg-[var(--ds-menu-item-bg)] text-[var(--ds-menu-item-fg)]', hoverClasses);
+const subitemClasses = cn(
+  'bg-[var(--ds-menu-subitem-bg)] text-[var(--ds-menu-subitem-fg)]',
+  hoverClasses
+);
 const activeItemClasses =
-  'bg-ds-shell-active-bg text-ds-shell-active-fg shadow-[inset_2px_0_0_var(--ds-shell-active-fg)] hover:bg-ds-shell-active-bg hover:text-ds-shell-active-fg';
+  'bg-[var(--ds-menu-selecionado-bg)] text-[var(--ds-menu-selecionado-fg)] shadow-[inset_2px_0_0_var(--ds-menu-selecionado-fg)] hover:bg-[var(--ds-menu-selecionado-bg)] hover:text-[var(--ds-menu-selecionado-fg)]';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed: isCollapsedProp,
@@ -44,6 +52,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { toast } = useToast();
   const { t } = useTranslation();
   const { menu } = useMenuOrganizado();
+  // Logo próprio do tema em uso; sem ele, o da Sonda
+  const tema = useTemaDoDocumento();
+  const aparencia = menu?.aparencia?.[tema];
+  const logo = useLogoMenu(aparencia?.logoPath ?? null);
+  const logoRecolhido = useLogoMenu(aparencia?.logoRecolhidoPath ?? null);
 
   // Referência para preservar scroll
   const navRef = useRef<HTMLElement>(null);
@@ -280,21 +293,32 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Header com Logo */}
       <div className="p-4 border-b border-ds-shell-border relative">
         <div className="flex items-center justify-center">
-          {/* Logo branco: no tema claro vira preto (brightness-0) até chegar a versão para fundo claro */}
-          {!isCollapsed && (
-            <img
-              src="/images/logo-sonda.png"
-              alt="Sonda Logo"
-              className="h-12 w-auto brightness-0 dark:brightness-100"
-            />
-          )}
-          {isCollapsed && (
-            <img
-              src="/images/logo-sonda-16x16.png"
-              alt="Sonda Logo"
-              className="h-6 w-6 bg-white rounded p-1"
-            />
-          )}
+          {!isCollapsed &&
+            (logo ? (
+              <img src={logo} alt="Logo" className="h-12 w-auto max-w-full object-contain" />
+            ) : (
+              /* Logo branco: sobre fundo claro vira preto (brightness-0). Sem cor salva, pelo tema */
+              <img
+                src="/images/logo-sonda.png"
+                alt="Sonda Logo"
+                className={cn(
+                  'h-12 w-auto',
+                  aparencia?.menuFundo
+                    ? !logoClaroSobre(aparencia.menuFundo) && 'brightness-0'
+                    : 'brightness-0 dark:brightness-100'
+                )}
+              />
+            ))}
+          {isCollapsed &&
+            (logoRecolhido ? (
+              <img src={logoRecolhido} alt="Logo" className="h-6 w-6 object-contain" />
+            ) : (
+              <img
+                src="/images/logo-sonda-16x16.png"
+                alt="Sonda Logo"
+                className="h-6 w-6 bg-white rounded p-1"
+              />
+            ))}
         </div>
         {variant === 'fixed' && (
           <Button
@@ -416,7 +440,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       variant="ghost"
                       className={cn(
                         'w-full ml-4 min-w-0 flex-shrink-0',
-                        itemClasses,
+                        subitemClasses,
                         'justify-start px-3 text-sm',
                         isChildActive && activeItemClasses
                       )}
@@ -530,7 +554,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         variant="ghost"
                         className={cn(
                           'w-full justify-start px-2 py-1.5 h-8 text-sm gap-2',
-                          itemClasses,
+                          subitemClasses,
                           isChildActive && activeItemClasses
                         )}
                         onClick={() => {

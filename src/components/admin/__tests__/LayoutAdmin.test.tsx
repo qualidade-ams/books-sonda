@@ -23,7 +23,14 @@ vi.mock('@/hooks/usePermissions', () => ({
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 // Sem ordem salva: o menu do código
-vi.mock('@/hooks/useMenuOrganizado', () => ({ useMenuOrganizado: () => ({ menu: null }) }));
+vi.mock('@/hooks/useMenuOrganizado', () => ({
+  useMenuOrganizado: () => ({ menu: null }),
+  useLogoMenu: () => null,
+}));
+const aplicarAparencia = vi.fn();
+vi.mock('@/hooks/useAplicarAparenciaMenu', () => ({
+  useAplicarAparenciaMenu: () => aplicarAparencia(),
+}));
 vi.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({ resolvedTheme: 'light', toggleTheme: vi.fn() }),
 }));
@@ -70,6 +77,11 @@ describe('AdminLayout', () => {
     it('renderiza o conteúdo da página', () => {
       renderLayout();
       expect(screen.getByText('conteúdo da página')).toBeInTheDocument();
+    });
+
+    it('aplica as cores do menu salvas em Organizar Menu', () => {
+      renderLayout();
+      expect(aplicarAparencia).toHaveBeenCalled();
     });
   });
 

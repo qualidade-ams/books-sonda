@@ -59,6 +59,16 @@
   --ds-shell-active-fg: #006f7d;
   --ds-shell-border: #dde1e6;
 
+  /* Menu lateral: as cores de Organizar Menu substituem estas (useAplicarAparenciaMenu).
+     Sem nada salvo, seguem o shell do tema (as variáveis se resolvem no tema em uso). */
+  --ds-shell-hover-fg: var(--ds-shell-fg);
+  --ds-menu-item-bg: transparent;
+  --ds-menu-item-fg: var(--ds-shell-fg);
+  --ds-menu-subitem-bg: transparent;
+  --ds-menu-subitem-fg: var(--ds-shell-fg);
+  --ds-menu-selecionado-bg: var(--ds-shell-active-bg);
+  --ds-menu-selecionado-fg: var(--ds-shell-active-fg);
+
   /* Faixa do topo: petróleo escuro no claro, para diminuir o salto de contraste */
   --ds-faixa-bg: #0f1d24;
 

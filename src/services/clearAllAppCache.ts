@@ -47,6 +47,8 @@ const LOCAL_STORAGE_KEYS = [
   // Sidebar / UI
   'sidebar-expanded-sections',
   'admin-sidebar-collapsed',
+  // Cores do menu salvas em Organizar Menu (useAplicarAparenciaMenu)
+  'menu-aparencia-css',
 
   // Tema
   'theme',
@@ -122,8 +124,7 @@ export function clearAllAppCache(
     const allLocalKeys = Object.keys(localStorage);
     for (const key of allLocalKeys) {
       const shouldRemove =
-        LOCAL_STORAGE_PREFIXES.some(prefix => key.startsWith(prefix)) ||
-        key.includes('_cache');
+        LOCAL_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix)) || key.includes('_cache');
       if (shouldRemove) {
         localStorage.removeItem(key);
       }

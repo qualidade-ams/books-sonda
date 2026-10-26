@@ -4,6 +4,7 @@ import { useSidebar } from '@/hooks/useSidebar';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useAplicarAparenciaMenu } from '@/hooks/useAplicarAparenciaMenu';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './Sidebar';
@@ -40,6 +41,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Sistema de persistência de sessão
   useSessionPersistence();
+
+  // Cores do menu e destaque do sistema salvos em Organizar Menu
+  useAplicarAparenciaMenu();
 
   // Fecha a gaveta ao trocar de tela
   useEffect(() => {

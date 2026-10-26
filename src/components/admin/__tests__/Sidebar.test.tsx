@@ -14,11 +14,15 @@ vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({ hasPermission: (k: string) => permitidas.telas.includes(k) }),
 }));
 
-const salvo = { itens: [] as ItemMenuSalvo[] };
+const salvo = { itens: [] as ItemMenuSalvo[], aparencia: null as Record<string, unknown> | null };
 vi.mock('@/hooks/useMenuOrganizado', () => ({
   useMenuOrganizado: () => ({
-    menu: salvo.itens.length ? { itens: salvo.itens, aparencia: {} } : null,
+    menu:
+      salvo.itens.length || salvo.aparencia
+        ? { itens: salvo.itens, aparencia: salvo.aparencia ?? {} }
+        : null,
   }),
+  useLogoMenu: (caminho: string | null) => (caminho ? `https://storage/${caminho}` : null),
 }));
 
 function Rota() {
@@ -48,6 +52,7 @@ describe('Sidebar', () => {
     localStorage.clear();
     sessionStorage.clear();
     salvo.itens = [];
+    salvo.aparencia = null;
     permitidas.telas = ['dashboard', 'empresas', 'clientes', 'grupos'];
   });
 
@@ -124,5 +129,35 @@ describe('Sidebar', () => {
     fireEvent.mouseEnter(botoes[1]);
     expect(screen.getByRole('button', { name: 'nav.companiesNew' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'nav.groups' })).not.toBeInTheDocument();
+  });
+
+  it('logo próprio do tema em uso; sem ele, o da Sonda', () => {
+    const tema = (logoPath: string | null, logoRecolhidoPath: string | null) => ({
+      menuFundo: '#1C1C1C',
+      logoPath,
+      logoRecolhidoPath,
+    });
+    salvo.aparencia = {
+      claro: tema('claro/aberto.png', 'claro/recolhido.png'),
+      escuro: tema(null, null),
+    };
+
+    const { unmount } = renderizar();
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://storage/claro/aberto.png');
+    unmount();
+
+    renderizar({ isCollapsed: true });
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://storage/claro/recolhido.png');
+  });
+
+  it('sem logo próprio, o da Sonda; claro sobre o fundo escuro do menu', () => {
+    salvo.aparencia = {
+      claro: { menuFundo: '#1C1C1C', logoPath: null, logoRecolhidoPath: null },
+      escuro: { menuFundo: '#1C1C1C', logoPath: null, logoRecolhidoPath: null },
+    };
+    renderizar();
+    const logo = screen.getByRole('img');
+    expect(logo).toHaveAttribute('src', '/images/logo-sonda.png');
+    expect(logo.className).not.toContain('brightness-0');
   });
 });
