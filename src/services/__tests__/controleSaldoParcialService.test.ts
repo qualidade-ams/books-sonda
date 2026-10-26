@@ -20,6 +20,7 @@ const banco = (bancoId: string, extra: Partial<BancoCadastro> = {}) =>
     padrao: false,
     ativo: true,
     visivelCliente: true,
+    consomeOutrosBancos: false,
     tipoContrato: 'horas',
     periodoApuracao: 3,
     inicioVigencia: { mes: 8, ano: 2026 },
@@ -33,7 +34,11 @@ const banco = (bancoId: string, extra: Partial<BancoCadastro> = {}) =>
 
 const CADASTROS = [
   banco('b2', { ordem: 2, escopo: [{ produtoId: 'FISCAL', moduloId: null }] }),
-  banco('b1', { ordem: 1, escopo: [{ produtoId: 'COMEX', moduloId: null }] }),
+  banco('b1', {
+    ordem: 1,
+    consomeOutrosBancos: true,
+    escopo: [{ produtoId: 'COMEX', moduloId: null }],
+  }),
   banco('interno', { visivelCliente: false, padrao: true }),
   banco('inativo', { ativo: false }),
 ];
@@ -110,6 +115,7 @@ describe('ControleSaldoParcialService.bancos', () => {
     const bancos = await s.bancos('e1', HOJE);
 
     expect(bancos.map((b) => b.bancoId)).toEqual(['b1', 'b2']);
+    expect(bancos.map((b) => b.consomeOutrosBancos)).toEqual([true, false]);
     const b1 = bancos[0];
     expect(b1.meses.map((m) => [m.chave, m.situacao])).toEqual([
       ['2026-08', 'fechado'],

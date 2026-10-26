@@ -53,6 +53,8 @@ export interface SaldoParcialBanco {
   bancoId: string;
   nome: string;
   tipoContrato: TipoContrato;
+  /** O saldo negativo pode ser coberto pelos outros bancos no fim do período */
+  consomeOutrosBancos: boolean;
   /** Período atual do banco, com a situação e o resultado de cada mês */
   meses: MesDoQuadro[];
   requerimentos: RequerimentoParaCliente[];
@@ -148,6 +150,7 @@ export class ControleSaldoParcialService {
           bancoId: b.bancoId,
           nome: b.nome,
           tipoContrato: b.tipoContrato,
+          consomeOutrosBancos: b.consomeOutrosBancos,
           meses: mesesComSituacao(meses, quadro, b.bancoId, hoje),
           requerimentos: requerimentos
             .filter((r) => r.bancoId === b.bancoId && doPeriodo.has(chaveMes(r.mes)))

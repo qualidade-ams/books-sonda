@@ -7,7 +7,11 @@
  * espaço ou texto aqui altera o e-mail enviado aos clientes.
  */
 
-import { gerarTabelaBancoHoras, gerarTabelaRequerimentos, gerarSecaoObservacoes } from '@/services/bancoHorasTableService';
+import {
+  gerarTabelaBancoHoras,
+  gerarTabelaRequerimentos,
+  gerarSecaoObservacoes,
+} from '@/services/bancoHorasTableService';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 
@@ -59,11 +63,16 @@ const formatadorSaoPaulo = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
   month: 'numeric',
   day: 'numeric',
-  hour: 'numeric'
+  hour: 'numeric',
 });
 
 /** Data e hora de um instante no fuso de São Paulo */
-export function partesDataSaoPaulo(instante: Date): { ano: number; mes: number; dia: number; hora: number } {
+export function partesDataSaoPaulo(instante: Date): {
+  ano: number;
+  mes: number;
+  dia: number;
+  hora: number;
+} {
   const p: Record<string, number> = {};
   for (const parte of formatadorSaoPaulo.formatToParts(instante)) {
     if (parte.type !== 'literal') p[parte.type] = Number(parte.value);
@@ -104,7 +113,11 @@ export function getTextoPadraoParcial(isEnglish: boolean, agora: Date = new Date
  * Assunto: "{Empresa} - Saldo Parcial DD.MM".
  * Mês corrente → data de ontem; outro mês → último dia daquele mês.
  */
-export function gerarAssuntoSaldoParcial(empresaNome: string, mesAno: MesAno, agora: Date = new Date()): string {
+export function gerarAssuntoSaldoParcial(
+  empresaNome: string,
+  mesAno: MesAno,
+  agora: Date = new Date()
+): string {
   const hoje = partesDataSaoPaulo(agora);
   const isMesAtual = mesAno.mes === hoje.mes && mesAno.ano === hoje.ano;
 
@@ -135,25 +148,55 @@ export function gerarHtmlTabelasSaldoParcial(dados: DadosEmailSaldoParcial): str
 function gerarSecoes(dados: DadosEmailSaldoParcial) {
   const { isEnglish } = dados;
   return {
-    tabelaBancoHoras: gerarTabelaBancoHoras(dados.calculos, dados.tipoCobranca, dados.percentualRepasse, dados.nomePeriodo, dados.diaInicioApuracao, dados.diaFimApuracao, isEnglish),
-    tabelaReqPeriodo: gerarTabelaRequerimentos(dados.requerimentos, isEnglish ? 'Period Requirements' : 'Requerimentos do Período', '#2563eb', false, isEnglish),
-    tabelaReqDesenv: gerarTabelaRequerimentos(dados.requerimentosEmDesenvolvimento, isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento', '#ea580c', true, isEnglish),
-    secaoObs: gerarSecaoObservacoes(dados.observacoes, isEnglish)
+    tabelaBancoHoras: gerarTabelaBancoHoras(
+      dados.calculos,
+      dados.tipoCobranca,
+      dados.percentualRepasse,
+      dados.nomePeriodo,
+      dados.diaInicioApuracao,
+      dados.diaFimApuracao,
+      isEnglish
+    ),
+    tabelaReqPeriodo: gerarTabelaRequerimentos(
+      dados.requerimentos,
+      isEnglish ? 'Period Requirements' : 'Requerimentos do Período',
+      '#2563eb',
+      false,
+      isEnglish
+    ),
+    tabelaReqDesenv: gerarTabelaRequerimentos(
+      dados.requerimentosEmDesenvolvimento,
+      isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento',
+      '#ea580c',
+      true,
+      isEnglish
+    ),
+    secaoObs: gerarSecaoObservacoes(dados.observacoes, isEnglish),
   };
 }
 
 /** Converte o texto (linhas e "•" de lista) em parágrafos HTML */
 function textoParaHtml(texto: string, isEnglish: boolean, agora: Date): string {
   const saudacao = getSaudacao(isEnglish, agora);
-  const paragrafos = texto.split('\n').filter(l => l.trim()).map(linha => {
-    if (linha.startsWith('•')) {
-      return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha.substring(1).trim()}</li>`;
-    }
-    // Linhas de excedente ficam em negrito
-    const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:') || linha.startsWith('Surplus Hours:') || linha.startsWith('Surplus Rate/Hour:') || linha.startsWith('Total Surplus Amount:');
-    const isBold = linha === saudacao || isExcedente;
-    return `<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;${isBold ? 'font-weight:700;' : ''}">${linha}</p>`;
-  }).join('\n');
+  const paragrafos = texto
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((linha) => {
+      if (linha.startsWith('•')) {
+        return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha.substring(1).trim()}</li>`;
+      }
+      // Linhas de excedente ficam em negrito
+      const isExcedente =
+        linha.startsWith('Horas Excedentes:') ||
+        linha.startsWith('Valor Hora Excedentes:') ||
+        linha.startsWith('Valor total dos Excedentes:') ||
+        linha.startsWith('Surplus Hours:') ||
+        linha.startsWith('Surplus Rate/Hour:') ||
+        linha.startsWith('Total Surplus Amount:');
+      const isBold = linha === saudacao || isExcedente;
+      return `<p style="font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;margin-bottom:12px;${isBold ? 'font-weight:700;' : ''}">${linha}</p>`;
+    })
+    .join('\n');
 
   // Verificar se tem itens de lista e envolver em <ul>
   return paragrafos.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
@@ -166,15 +209,33 @@ function textosEncerramento(isEnglish: boolean) {
     disposicao: isEnglish
       ? 'We remain at your disposal should you have any questions.'
       : 'Ficamos à disposição em caso de dúvidas.',
-    encerramento: isEnglish ? 'Best regards' : 'Atenciosamente'
+    encerramento: isEnglish ? 'Best regards' : 'Atenciosamente',
   };
 }
 
 /** E-mail completo em HTML (texto + tabelas em HTML), também usado como preview */
-export function gerarHtmlCorpoSaldoParcial(texto: string, dados: DadosEmailSaldoParcial, agora: Date = new Date()): string {
+export function gerarHtmlCorpoSaldoParcial(
+  texto: string,
+  dados: DadosEmailSaldoParcial,
+  agora: Date = new Date()
+): string {
   const { tabelaBancoHoras, tabelaReqPeriodo, tabelaReqDesenv, secaoObs } = gerarSecoes(dados);
-  const htmlTexto = textoParaHtml(texto, dados.isEnglish, agora);
-  const { disposicao, encerramento: textoEncerramento } = textosEncerramento(dados.isEnglish);
+  // Mesmo espaçamento entre as tabelas de antes: o HTML do legado não muda (caracterização)
+  const htmlTabelas = [tabelaBancoHoras, tabelaReqPeriodo, tabelaReqDesenv, secaoObs].join(
+    '\n        '
+  );
+  return gerarHtmlCorpoComTabelas(texto, dados.isEnglish, htmlTabelas, agora);
+}
+
+/** Texto, tabelas já montadas, encerramento e assinatura (também o Saldo Parcial por banco) */
+export function gerarHtmlCorpoComTabelas(
+  texto: string,
+  isEnglish: boolean,
+  htmlTabelas: string,
+  agora: Date = new Date()
+): string {
+  const htmlTexto = textoParaHtml(texto, isEnglish, agora);
+  const { disposicao, encerramento: textoEncerramento } = textosEncerramento(isEnglish);
 
   const encerramento = `
         <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">${disposicao}</p>
@@ -186,10 +247,7 @@ export function gerarHtmlCorpoSaldoParcial(texto: string, dados: DadosEmailSaldo
       <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;color:#1F497D;font-size:12pt;text-align:left;">
         ${htmlTexto}
 
-        ${tabelaBancoHoras}
-        ${tabelaReqPeriodo}
-        ${tabelaReqDesenv}
-        ${secaoObs}
+        ${htmlTabelas}
 
         ${encerramento}
       </div>
@@ -220,7 +278,12 @@ export function gerarHtmlRenderizacaoTabelas(htmlTabelas: string): string {
 }
 
 /** E-mail final com as tabelas como imagem (evita distorção no Outlook) */
-export function gerarHtmlEnvioComImagem(texto: string, isEnglish: boolean, imgSrc: string, agora: Date = new Date()): string {
+export function gerarHtmlEnvioComImagem(
+  texto: string,
+  isEnglish: boolean,
+  imgSrc: string,
+  agora: Date = new Date()
+): string {
   const htmlTexto = textoParaHtml(texto, isEnglish, agora);
   const { disposicao, encerramento: textoEncerramento } = textosEncerramento(isEnglish);
 

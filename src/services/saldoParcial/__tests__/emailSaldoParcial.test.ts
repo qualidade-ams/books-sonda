@@ -5,14 +5,15 @@ import {
   gerarAssuntoSaldoParcial,
   gerarHtmlTabelasSaldoParcial,
   gerarHtmlCorpoSaldoParcial,
+  gerarHtmlCorpoComTabelas,
   gerarHtmlRenderizacaoTabelas,
   gerarHtmlEnvioComImagem,
-  type DadosEmailSaldoParcial
+  type DadosEmailSaldoParcial,
 } from '../emailSaldoParcial';
 import {
   calculosFixture,
   requerimentosFixture,
-  observacoesFixture
+  observacoesFixture,
 } from '@/components/admin/banco-horas/__tests__/fixturesSaldoParcial';
 
 const dados: DadosEmailSaldoParcial = {
@@ -25,7 +26,7 @@ const dados: DadosEmailSaldoParcial = {
   observacoes: observacoesFixture,
   diaInicioApuracao: 1,
   diaFimApuracao: 0,
-  isEnglish: false
+  isEnglish: false,
 };
 
 /** Cria um instante a partir do horário de São Paulo (UTC-3) */
@@ -53,7 +54,9 @@ describe('emailSaldoParcial', () => {
       const texto = getTextoPadraoParcial(false, emSaoPaulo(2026, 10, 2, 9));
       expect(texto.startsWith('Bom dia!\n\nSegue abaixo a previsão parcial')).toBe(true);
       expect(texto).toContain('• Apontamentos automáticos;');
-      expect(texto).toContain('• Requerimentos em desenvolvimento, ainda não contabilizados no quadro de consumo;');
+      expect(texto).toContain(
+        '• Requerimentos em desenvolvimento, ainda não contabilizados no quadro de consumo;'
+      );
     });
 
     it('tem versão em inglês', () => {
@@ -64,20 +67,24 @@ describe('emailSaldoParcial', () => {
 
   describe('gerarAssuntoSaldoParcial', () => {
     it('no mês corrente usa a data de ontem', () => {
-      expect(gerarAssuntoSaldoParcial('EMPRESA', { mes: 10, ano: 2026 }, emSaoPaulo(2026, 10, 15, 9)))
-        .toBe('EMPRESA - Saldo Parcial 14.10');
+      expect(
+        gerarAssuntoSaldoParcial('EMPRESA', { mes: 10, ano: 2026 }, emSaoPaulo(2026, 10, 15, 9))
+      ).toBe('EMPRESA - Saldo Parcial 14.10');
     });
 
     it('no dia 1 do mês corrente a data de ontem é do mês anterior', () => {
-      expect(gerarAssuntoSaldoParcial('EMPRESA', { mes: 10, ano: 2026 }, emSaoPaulo(2026, 10, 1, 9)))
-        .toBe('EMPRESA - Saldo Parcial 30.09');
+      expect(
+        gerarAssuntoSaldoParcial('EMPRESA', { mes: 10, ano: 2026 }, emSaoPaulo(2026, 10, 1, 9))
+      ).toBe('EMPRESA - Saldo Parcial 30.09');
     });
 
     it('em outro mês usa o último dia daquele mês', () => {
-      expect(gerarAssuntoSaldoParcial('EMPRESA', { mes: 9, ano: 2026 }, emSaoPaulo(2026, 10, 15, 9)))
-        .toBe('EMPRESA - Saldo Parcial 30.09');
-      expect(gerarAssuntoSaldoParcial('EMPRESA', { mes: 2, ano: 2028 }, emSaoPaulo(2026, 10, 15, 9)))
-        .toBe('EMPRESA - Saldo Parcial 29.02');
+      expect(
+        gerarAssuntoSaldoParcial('EMPRESA', { mes: 9, ano: 2026 }, emSaoPaulo(2026, 10, 15, 9))
+      ).toBe('EMPRESA - Saldo Parcial 30.09');
+      expect(
+        gerarAssuntoSaldoParcial('EMPRESA', { mes: 2, ano: 2028 }, emSaoPaulo(2026, 10, 15, 9))
+      ).toBe('EMPRESA - Saldo Parcial 29.02');
     });
   });
 
@@ -90,12 +97,31 @@ describe('emailSaldoParcial', () => {
     });
 
     it('o corpo combina o texto, as tabelas, o encerramento e a assinatura', () => {
-      const html = gerarHtmlCorpoSaldoParcial('Bom dia!\n\nTexto livre\n• item', dados, emSaoPaulo(2026, 10, 2, 9));
+      const html = gerarHtmlCorpoSaldoParcial(
+        'Bom dia!\n\nTexto livre\n• item',
+        dados,
+        emSaoPaulo(2026, 10, 2, 9)
+      );
       expect(html).toContain('font-weight:700;">Bom dia!</p>');
       expect(html).toContain('<ul');
-      expect(html).toContain('<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">item</li>');
+      expect(html).toContain(
+        '<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">item</li>'
+      );
       expect(html).toContain('RF-0001');
       expect(html).toContain('Ficamos à disposição em caso de dúvidas.');
+      expect(html).toContain('assinatura_nova.png');
+    });
+
+    it('o corpo aceita tabelas já montadas (Saldo Parcial por banco)', () => {
+      const html = gerarHtmlCorpoComTabelas(
+        'Good morning!\n\nFree text',
+        true,
+        '<table id="bancos"></table>',
+        emSaoPaulo(2026, 10, 2, 9)
+      );
+      expect(html).toContain('font-weight:700;">Good morning!</p>');
+      expect(html).toContain('<table id="bancos"></table>');
+      expect(html).toContain('We remain at your disposal should you have any questions.');
       expect(html).toContain('assinatura_nova.png');
     });
 
@@ -107,7 +133,11 @@ describe('emailSaldoParcial', () => {
     });
 
     it('o e-mail com imagem usa a imagem no lugar das tabelas', () => {
-      const html = gerarHtmlEnvioComImagem('Bom dia!\n\nTexto', false, 'https://exemplo.test/img.png');
+      const html = gerarHtmlEnvioComImagem(
+        'Bom dia!\n\nTexto',
+        false,
+        'https://exemplo.test/img.png'
+      );
       expect(html).toContain('<img src="https://exemplo.test/img.png"');
       expect(html).not.toContain('RF-0001');
       expect(html).toContain('Ficamos à disposição em caso de dúvidas.');
