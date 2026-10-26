@@ -17,6 +17,11 @@ vi.mock('@/components/auth', () => ({
   ProtectedAction: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+const permissao = { edicao: true };
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({ hasPermission: () => permissao.edicao }),
+}));
+
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 vi.mock('@/hooks/useApiStatus', () => ({ useApiStatus: () => ({ data: true }) }));
@@ -25,6 +30,7 @@ vi.mock('@/hooks/useEnvioSaldoParcial', () => ({
   useAgendamentosSaldoParcial: vi.fn(),
   useExecucoesSaldoParcial: vi.fn(),
   useClientesElegiveisSaldoParcial: vi.fn(),
+  useSemAgendamentoSaldoParcial: vi.fn(),
   useSalvarAgendamentoSaldoParcial: vi.fn(),
   useAlternarAgendamentoSaldoParcial: vi.fn(),
   useExcluirAgendamentoSaldoParcial: vi.fn(),
@@ -53,6 +59,22 @@ const agendamento = {
   ultimo_status: null,
 };
 
+const execucao = {
+  id: 'x1',
+  agendamento_id: 'ag-1',
+  empresa_id: 'e1',
+  origem: 'agendado',
+  status: 'sem_destinatarios',
+  qtd_destinatarios: 0,
+  qtd_emails: 0,
+  erro: null,
+  iniciado_em: '2026-10-15T10:00:05Z',
+  finalizado_em: '2026-10-15T10:00:06Z',
+  executado_para: '2026-10-15T10:00:00Z',
+  agendamento: { nome: 'Parcial dias 15 e 25' },
+  empresa: { nome_abreviado: 'CLIENTE A' },
+};
+
 const mutacao = (fn = vi.fn().mockResolvedValue(undefined)) => ({
   mutateAsync: fn,
   isPending: false,
@@ -60,6 +82,8 @@ const mutacao = (fn = vi.fn().mockResolvedValue(undefined)) => ({
 
 let salvar: ReturnType<typeof mutacao>;
 let executar: ReturnType<typeof mutacao>;
+let alternar: ReturnType<typeof mutacao>;
+let excluir: ReturnType<typeof mutacao>;
 
 // O botão "Novo agendamento" fica no cabeçalho da tela Rotinas Automáticas
 function Tela() {
@@ -73,34 +97,25 @@ function Tela() {
 }
 
 const renderAba = () => render(<Tela />);
+const cartao = (nome: string) => screen.getByText(nome).closest('li')!;
+const abrirAcoes = async (user: ReturnType<typeof userEvent.setup>, nome = agendamento.nome) =>
+  user.click(screen.getByRole('button', { name: `fase3Comum.acoesDe {"nome":"${nome}"}` }));
 
 describe('AbaSaldoParcial', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    permissao.edicao = true;
     salvar = mutacao();
     executar = mutacao();
+    alternar = mutacao();
+    excluir = mutacao();
     (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
       agendamentos: [agendamento],
       isLoading: false,
       error: null,
     });
     (hooks.useExecucoesSaldoParcial as any).mockReturnValue({
-      execucoes: [
-        {
-          id: 'x1',
-          empresa_id: 'e1',
-          origem: 'agendado',
-          status: 'sem_destinatarios',
-          qtd_destinatarios: 0,
-          qtd_emails: 0,
-          erro: null,
-          iniciado_em: '2026-10-15T10:00:05Z',
-          finalizado_em: '2026-10-15T10:00:06Z',
-          executado_para: '2026-10-15T10:00:00Z',
-          agendamento: { nome: 'Parcial dias 15 e 25' },
-          empresa: { nome_abreviado: 'CLIENTE A' },
-        },
-      ],
+      execucoes: [execucao],
       isLoading: false,
       error: null,
     });
@@ -127,11 +142,22 @@ describe('AbaSaldoParcial', () => {
       ],
       isLoading: false,
     });
+    (hooks.useSemAgendamentoSaldoParcial as any).mockReturnValue({
+      empresas: [
+        { id: 'e3', nome: 'CLIENTE C', qtdContatosSaldoParcial: 1, emailGestor: null },
+        { id: 'e4', nome: 'CLIENTE D', qtdContatosSaldoParcial: 0, emailGestor: null },
+      ],
+      isLoading: false,
+      error: null,
+    });
     (hooks.useSalvarAgendamentoSaldoParcial as any).mockReturnValue(salvar);
-    (hooks.useAlternarAgendamentoSaldoParcial as any).mockReturnValue(mutacao());
-    (hooks.useExcluirAgendamentoSaldoParcial as any).mockReturnValue(mutacao());
+    (hooks.useAlternarAgendamentoSaldoParcial as any).mockReturnValue(alternar);
+    (hooks.useExcluirAgendamentoSaldoParcial as any).mockReturnValue(excluir);
     (hooks.useExecutarSaldoParcialAgora as any).mockReturnValue(executar);
-    (hooks.useStatusSaldoParcial as any).mockReturnValue({ agendadorAtivo: true });
+    (hooks.useStatusSaldoParcial as any).mockReturnValue({
+      agendadorAtivo: true,
+      renderImagemConfigurado: true,
+    });
     (hooks.usePreverExecucoesSaldoParcial as any).mockReturnValue({
       previsao: [],
       isFetching: false,
@@ -139,14 +165,15 @@ describe('AbaSaldoParcial', () => {
     });
   });
 
-  it('lista os agendamentos com a quantidade de clientes e os e-mails em cópia', () => {
+  it('mostra cada agendamento num cartão, com a recorrência, as empresas e a cópia', () => {
     renderAba();
 
-    const linha = screen.getByText('Parcial dias 15 e 25').closest('tr')!;
+    const c = cartao('Parcial dias 15 e 25');
     expect(
-      within(linha).getByText(/envioSaldoParcial.agendamentos.qtdClientes.*"count":2/)
+      within(c).getByText(/rotinasSaldoParcial.cartao.empresas.varios.*"n":2/)
     ).toBeInTheDocument();
-    expect(within(linha).getByText('qualidade@sonda.com')).toBeInTheDocument();
+    expect(within(c).getByText(/qualidade@sonda.com/)).toBeInTheDocument();
+    expect(within(c).getByText(/sincronizacaoSql.recorrencia/)).toBeInTheDocument();
   });
 
   it('ordena os agendamentos pelo próximo envio mais próximo, deixando os sem data por último', () => {
@@ -180,35 +207,211 @@ describe('AbaSaldoParcial', () => {
     renderAba();
 
     const nomes = ['Inativo', 'Dia 25', 'Dia 12 B', 'Dia 12 A', 'Dia 7'];
-    const ordem = screen
-      .getAllByRole('row')
-      .map((linha) => nomes.find((n) => within(linha).queryByText(n)))
-      .filter(Boolean);
+    const ordem = within(
+      screen.getByRole('list', { name: 'rotinasSaldoParcial.abas.agendamentos' })
+    )
+      .getAllByRole('listitem')
+      .map((li) => nomes.find((n) => within(li).queryByText(n)));
     expect(ordem).toEqual(['Dia 7', 'Dia 12 A', 'Dia 12 B', 'Dia 25', 'Inativo']);
   });
 
-  it('avisa quando um cliente do agendamento não tem contatos de Saldo Parcial', () => {
+  it('avisa quantas empresas do agendamento não têm contato de Saldo Parcial', () => {
     renderAba();
-
-    const linha = screen.getByText('Parcial dias 15 e 25').closest('tr')!;
     expect(
-      within(linha).getByText(/envioSaldoParcial.agendamentos.clientesSemContato.*"count":1/)
+      within(cartao('Parcial dias 15 e 25')).getByText(
+        /rotinasSaldoParcial.cartao.semContato.*"n":1/
+      )
     ).toBeInTheDocument();
   });
 
-  it('"Executar agora" dispara o envio do agendamento', async () => {
+  it('indicadores de agendamentos ativos e empresas agendadas', () => {
+    // Sem animação: o número aparece direto
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      ...original(q),
+      matches: q.includes('prefers-reduced-motion'),
+    })) as typeof window.matchMedia;
+    try {
+      renderAba();
+      const ativos = screen.getByText('rotinasSaldoParcial.indicadores.ativos').parentElement!;
+      expect(within(ativos).getByText('1')).toBeInTheDocument();
+      const empresas = screen.getByText('rotinasSaldoParcial.indicadores.empresas').parentElement!;
+      expect(within(empresas).getByText('2')).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it('"Executar agora" pede confirmação, avisa quem já recebeu hoje e dispara o envio', async () => {
+    (hooks.useExecucoesSaldoParcial as any).mockReturnValue({
+      execucoes: [{ ...execucao, status: 'sucesso', iniciado_em: new Date().toISOString() }],
+      isLoading: false,
+      error: null,
+    });
     const user = userEvent.setup();
     renderAba();
 
-    await user.click(screen.getByTitle('envioSaldoParcial.agendamentos.executarAgora'));
+    await abrirAcoes(user);
+    await user.click(screen.getByRole('menuitem', { name: /rotinasSaldoParcial.cartao.executar/ }));
+    const dialogo = await screen.findByRole('alertdialog');
+    expect(
+      within(dialogo).getByText(/rotinasSaldoParcial.executar.recebeuHoje.um.*CLIENTE A/)
+    ).toBeInTheDocument();
     await user.click(
-      await screen.findByRole('button', {
-        name: 'envioSaldoParcial.agendamentos.confirmarExecutar',
-      })
+      within(dialogo).getByRole('button', { name: 'rotinasSaldoParcial.executar.confirmar' })
     );
 
     await waitFor(() => expect(executar.mutateAsync).toHaveBeenCalledWith('ag-1'));
   });
+
+  it('desativar pede confirmação; ativar não', async () => {
+    (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
+      agendamentos: [agendamento, { ...agendamento, id: 'ag-2', nome: 'Parado', ativo: false }],
+      isLoading: false,
+      error: null,
+    });
+    const user = userEvent.setup();
+    renderAba();
+
+    await user.click(
+      screen.getByRole('switch', { name: /rotinasSaldoParcial.cartao.ativo.*Parado/ })
+    );
+    await waitFor(() =>
+      expect(alternar.mutateAsync).toHaveBeenCalledWith({ id: 'ag-2', ativo: true })
+    );
+
+    await user.click(
+      screen.getByRole('switch', { name: /rotinasSaldoParcial.cartao.ativo.*Parcial dias/ })
+    );
+    const dialogo = await screen.findByRole('alertdialog');
+    await user.click(
+      within(dialogo).getByRole('button', { name: 'rotinasSaldoParcial.desativar.confirmar' })
+    );
+    await waitFor(() =>
+      expect(alternar.mutateAsync).toHaveBeenCalledWith({ id: 'ag-1', ativo: false })
+    );
+  });
+
+  it('excluir pede confirmação', async () => {
+    const user = userEvent.setup();
+    renderAba();
+
+    await abrirAcoes(user);
+    await user.click(screen.getByRole('menuitem', { name: /rotinasSaldoParcial.cartao.excluir/ }));
+    const dialogo = await screen.findByRole('alertdialog');
+    await user.click(
+      within(dialogo).getByRole('button', { name: 'rotinasSaldoParcial.excluir.confirmar' })
+    );
+    await waitFor(() => expect(excluir.mutateAsync).toHaveBeenCalledWith('ag-1'));
+  });
+
+  it('só quem edita vê as ações', () => {
+    permissao.edicao = false;
+    renderAba();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /fase3Comum.acoesDe/ })).not.toBeInTheDocument();
+  });
+
+  it('lista as empresas sem agendamento, com quem não tem contato', async () => {
+    const user = userEvent.setup();
+    renderAba();
+
+    await user.click(screen.getByRole('tab', { name: /rotinasSaldoParcial.abas.sem/ }));
+    const lista = screen.getByRole('list', { name: 'rotinasSaldoParcial.abas.sem' });
+    expect(within(lista).getByText('CLIENTE C')).toBeInTheDocument();
+    const d = within(lista).getByText('CLIENTE D').closest('li')!;
+    expect(within(d).getByText('rotinasSaldoParcial.sem.semContato')).toBeInTheDocument();
+  });
+
+  it('mostra o histórico com a origem, a situação e os destinatários, e filtra pela situação', async () => {
+    (hooks.useExecucoesSaldoParcial as any).mockReturnValue({
+      execucoes: [
+        execucao,
+        {
+          ...execucao,
+          id: 'x2',
+          origem: 'manual',
+          agendamento_id: null,
+          status: 'erro',
+          erro: 'Caixa cheia',
+          empresa: { nome_abreviado: 'CLIENTE B' },
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+    const user = userEvent.setup();
+    renderAba();
+
+    await user.click(screen.getByRole('tab', { name: /rotinasSaldoParcial.abas.historico/ }));
+    const lista = screen.getByRole('list', { name: 'rotinasSaldoParcial.historico.lista' });
+    const a = within(lista).getByText('CLIENTE A').closest('li')!;
+    expect(
+      within(a).getByText('rotinasSaldoParcial.situacoes.sem_destinatarios')
+    ).toBeInTheDocument();
+    expect(within(a).getByText('Parcial dias 15 e 25')).toBeInTheDocument();
+    const b = within(lista).getByText('CLIENTE B').closest('li')!;
+    expect(within(b).getByText('rotinasSaldoParcial.historico.controle')).toBeInTheDocument();
+    expect(within(b).getByText('Caixa cheia')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: /rotinasSaldoParcial.historico.situacao/ })
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'rotinasSaldoParcial.situacoes.erro' }));
+    expect(within(lista).queryByText('CLIENTE A')).not.toBeInTheDocument();
+    expect(within(lista).getByText('CLIENTE B')).toBeInTheDocument();
+  });
+
+  it('mostra o próximo envio na hora, mesmo antes de o agendador do servidor recalcular', () => {
+    (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
+      agendamentos: [{ ...agendamento, proxima_execucao: null }],
+      isLoading: false,
+      error: null,
+    });
+
+    renderAba();
+
+    expect(
+      within(cartao('Parcial dias 15 e 25')).getByText(/\d{2}\/\d{2}\/\d{4}/)
+    ).toBeInTheDocument();
+  });
+
+  it('avisa quando o sync-api está sem a RENDER_IMAGE_URL (nenhum e-mail sai sem a imagem)', () => {
+    (hooks.useStatusSaldoParcial as any).mockReturnValue({
+      agendadorAtivo: true,
+      renderImagemConfigurado: false,
+    });
+    renderAba();
+    expect(screen.getByText('rotinasSaldoParcial.servico.semImagem')).toBeInTheDocument();
+  });
+
+  it('avisa quando o agendador está desligado no servidor; ligado, diz que está ligado', () => {
+    (hooks.useStatusSaldoParcial as any).mockReturnValue({ agendadorAtivo: false });
+    const { unmount } = renderAba();
+    expect(screen.getByText('rotinasSaldoParcial.servico.desligado')).toBeInTheDocument();
+    unmount();
+
+    (hooks.useStatusSaldoParcial as any).mockReturnValue({
+      agendadorAtivo: true,
+      renderImagemConfigurado: true,
+    });
+    renderAba();
+    expect(screen.getByText('rotinasSaldoParcial.servico.ligado')).toBeInTheDocument();
+    expect(screen.queryByText('rotinasSaldoParcial.servico.semImagem')).not.toBeInTheDocument();
+  });
+
+  it('erro ao carregar os agendamentos', () => {
+    (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
+      agendamentos: [],
+      isLoading: false,
+      error: new Error('sem rede'),
+      refetch: vi.fn(),
+    });
+    renderAba();
+    expect(screen.getByText('rotinasSaldoParcial.erro')).toBeInTheDocument();
+  });
+
+  // Formulário de criação e edição (o modal atual, até a edição em nível a mais)
 
   it('cria um agendamento com os clientes selecionados e o CC', async () => {
     const user = userEvent.setup();
@@ -248,7 +451,8 @@ describe('AbaSaldoParcial', () => {
     const user = userEvent.setup();
     renderAba();
 
-    await user.click(screen.getByTitle('envioSaldoParcial.agendamentos.editar'));
+    await abrirAcoes(user);
+    await user.click(screen.getByRole('menuitem', { name: /rotinasSaldoParcial.cartao.editar/ }));
     expect(screen.getByLabelText('envioSaldoParcial.form.nome')).toHaveValue(
       'Parcial dias 15 e 25'
     );
@@ -314,36 +518,6 @@ describe('AbaSaldoParcial', () => {
     expect(within(clienteB).getByText('envioSaldoParcial.form.semContatos')).toBeInTheDocument();
   });
 
-  it('mostra o histórico por cliente com o status e a quantidade de destinatários', async () => {
-    const user = userEvent.setup();
-    renderAba();
-
-    await user.click(screen.getByRole('tab', { name: 'envioSaldoParcial.tabs.historico' }));
-
-    const linha = (await screen.findByText('CLIENTE A')).closest('tr')!;
-    expect(
-      within(linha).getByText('envioSaldoParcial.status.sem_destinatarios')
-    ).toBeInTheDocument();
-    // destinatários e e-mails enviados
-    expect(within(linha).getAllByText('0')).toHaveLength(2);
-  });
-
-  it('mostra o próximo envio na hora, mesmo antes de o agendador do servidor recalcular', () => {
-    (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
-      agendamentos: [{ ...agendamento, proxima_execucao: null }],
-      isLoading: false,
-      error: null,
-    });
-
-    renderAba();
-
-    const linha = screen.getByText('Parcial dias 15 e 25').closest('tr')!;
-    expect(
-      within(linha).queryByText('envioSaldoParcial.agendamentos.calculando')
-    ).not.toBeInTheDocument();
-    expect(within(linha).getByText(/\d{2}\/\d{2}\/\d{4}/)).toBeInTheDocument();
-  });
-
   it('a lista de clientes do formulário contém os próprios elementos (evita espaço em branco no fim do modal)', async () => {
     const user = userEvent.setup();
     renderAba();
@@ -355,37 +529,5 @@ describe('AbaSaldoParcial', () => {
       .closest('label')!.parentElement!;
     expect(lista.className).toContain('overflow-y-auto');
     expect(lista.className).toContain('relative');
-  });
-
-  it('avisa quando o sync-api está sem a RENDER_IMAGE_URL (nenhum e-mail sai sem a imagem)', () => {
-    (hooks.useStatusSaldoParcial as any).mockReturnValue({
-      agendadorAtivo: true,
-      renderImagemConfigurado: false,
-    });
-
-    renderAba();
-
-    expect(screen.getByText('envioSaldoParcial.renderImagemNaoConfigurado')).toBeInTheDocument();
-  });
-
-  it('não mostra o aviso de imagem quando está configurada', () => {
-    (hooks.useStatusSaldoParcial as any).mockReturnValue({
-      agendadorAtivo: true,
-      renderImagemConfigurado: true,
-    });
-
-    renderAba();
-
-    expect(
-      screen.queryByText('envioSaldoParcial.renderImagemNaoConfigurado')
-    ).not.toBeInTheDocument();
-  });
-
-  it('avisa quando o agendador está desligado no servidor', () => {
-    (hooks.useStatusSaldoParcial as any).mockReturnValue({ agendadorAtivo: false });
-
-    renderAba();
-
-    expect(screen.getByText('envioSaldoParcial.agendadorDesligado')).toBeInTheDocument();
   });
 });

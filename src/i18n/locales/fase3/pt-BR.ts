@@ -12,6 +12,7 @@ import empresasCadastro from './pt-BR/empresasCadastro';
 import controleBancoHoras from './pt-BR/controleBancoHoras';
 import apontamentosRetroativos from './pt-BR/apontamentosRetroativos';
 import auditoriaBancosHoras from './pt-BR/auditoriaBancosHoras';
+import rotinasSaldoParcial from './pt-BR/rotinasSaldoParcial';
 
 const fase3 = {
   fase3Comum,
@@ -23,6 +24,7 @@ const fase3 = {
   controleBancoHoras,
   apontamentosRetroativos,
   auditoriaBancosHoras,
+  rotinasSaldoParcial,
 };
 
 export default fase3;

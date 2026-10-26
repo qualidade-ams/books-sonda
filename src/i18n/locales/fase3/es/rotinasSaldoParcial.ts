@@ -1,0 +1,118 @@
+/** Textos da aba Saldo Parcial de Rotinas Automáticas (Modelagem_Fase3.md, seção 11) */
+const rotinasSaldoParcial = {
+  indicadores: {
+    ativos: 'Programaciones activas',
+    empresas: 'Empresas programadas',
+    enviados: 'Enviados (7 días)',
+    falhas: 'Fallas (7 días)',
+  },
+  servico: {
+    ligado: 'Servicio de envío encendido',
+    desligado: 'Servicio de envío apagado',
+    desligadoTexto: 'Las programaciones no se están ejecutando. Avise al equipo de desarrollo.',
+    semImagem: 'Imagen de las tablas no configurada',
+    semImagemTexto:
+      'Ningún correo de Saldo Parcial sale sin la imagen de las tablas. Avise al equipo de desarrollo.',
+  },
+  abas: {
+    rotulo: 'Secciones',
+    agendamentos: 'Programaciones',
+    historico: 'Historial',
+    sem: 'Empresas sin programación',
+  },
+  cartao: {
+    inativo: 'Inactivo',
+    empresas: {
+      um: '{{n}} empresa',
+      varios: '{{n}} empresas',
+    },
+    semContato: {
+      um: '{{n}} sin contacto',
+      varios: '{{n}} sin contacto',
+    },
+    copia: 'copia para {{emails}}',
+    proximo: 'Próximo envío',
+    ultimo: 'Último envío',
+    aguardandoServico: 'Esperando el servicio',
+    ativo: '{{nome}} activo',
+    editar: 'Editar',
+    executar: 'Ejecutar ahora',
+    excluir: 'Eliminar',
+  },
+  vazio: {
+    titulo: 'Ninguna programación',
+    descricao:
+      'Cree una programación para que las empresas reciban el Saldo Parcial automáticamente.',
+  },
+  erro: 'No fue posible cargar el envío de Saldo Parcial',
+  carregando: 'Cargando las programaciones',
+  sem: {
+    aviso:
+      'Empresas activas con AMS que no están en ninguna programación: no reciben el Saldo Parcial automático. El envío manual sigue en el Control.',
+    contatos: {
+      um: '{{n}} contacto',
+      varios: '{{n}} contactos',
+    },
+    semContato: 'sin contacto de Saldo Parcial',
+    vazio: 'Todas las empresas con AMS están en alguna programación.',
+  },
+  historico: {
+    lista: 'Historial de envíos',
+    buscar: 'Buscar empresa',
+    situacao: 'Situación',
+    origem: 'Origen',
+    colunas: {
+      quando: 'Cuándo',
+      empresa: 'Empresa',
+      origem: 'Origen',
+      situacao: 'Situación',
+      destinatarios: 'Destinatarios',
+      emails: 'Correos',
+    },
+    origens: {
+      agendamento: 'Programación',
+      executar_agora: 'Ejecutar ahora',
+      controle: 'Envío manual (Control)',
+    },
+    executadoAgora: '{{nome}} · ejecutado ahora',
+    controle: 'Envío manual en el Control',
+    vazio: 'Ningún envío encontrado',
+  },
+  situacoes: {
+    executando: 'Enviando',
+    sucesso: 'Enviado',
+    erro: 'Falló',
+    sem_destinatarios: 'Sin destinatarios',
+    interrompida: 'Interrumpido',
+    pulado: 'Omitido',
+    parcial: 'Con fallas',
+  },
+  executar: {
+    titulo: '¿Ejecutar "{{nome}}" ahora?',
+    empresas: {
+      um: '{{n}} empresa de esta programación.',
+      varios: '{{n}} empresas de esta programación.',
+    },
+    recebeuHoje: {
+      um: '{{empresas}} ya recibió el Saldo Parcial hoy y será omitida, para no duplicar',
+      varios: '{{empresas}} ya recibieron el Saldo Parcial hoy y serán omitidas, para no duplicar',
+    },
+    semContato: 'Las empresas sin contacto de Saldo Parcial se omiten',
+    historico: 'El envío queda en el historial, con usted como autor',
+    confirmar: 'Ejecutar ahora',
+  },
+  desativar: {
+    titulo: '¿Desactivar "{{nome}}"?',
+    deixam: 'Sus empresas dejan de recibir el Saldo Parcial automático hasta reactivarla',
+    manual: 'El envío manual en el Control sigue disponible',
+    confirmar: 'Desactivar',
+  },
+  excluir: {
+    titulo: '¿Eliminar "{{nome}}"?',
+    semAgendamento: 'Sus empresas quedan sin programación',
+    historico: 'El historial de envíos se mantiene',
+    confirmar: 'Eliminar',
+  },
+};
+
+export default rotinasSaldoParcial;

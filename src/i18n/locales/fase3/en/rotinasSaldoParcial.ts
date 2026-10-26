@@ -1,0 +1,118 @@
+/** Textos da aba Saldo Parcial de Rotinas Automáticas (Modelagem_Fase3.md, seção 11) */
+const rotinasSaldoParcial = {
+  indicadores: {
+    ativos: 'Active schedules',
+    empresas: 'Scheduled companies',
+    enviados: 'Sent (7 days)',
+    falhas: 'Failures (7 days)',
+  },
+  servico: {
+    ligado: 'Sending service on',
+    desligado: 'Sending service off',
+    desligadoTexto: 'Schedules are not running. Let the development team know.',
+    semImagem: 'Table image not configured',
+    semImagemTexto:
+      'No Partial Balance e-mail goes out without the table image. Let the development team know.',
+  },
+  abas: {
+    rotulo: 'Sections',
+    agendamentos: 'Schedules',
+    historico: 'History',
+    sem: 'Companies without a schedule',
+  },
+  cartao: {
+    inativo: 'Inactive',
+    empresas: {
+      um: '{{n}} company',
+      varios: '{{n}} companies',
+    },
+    semContato: {
+      um: '{{n}} without contact',
+      varios: '{{n}} without contact',
+    },
+    copia: 'copy to {{emails}}',
+    proximo: 'Next send',
+    ultimo: 'Last send',
+    aguardandoServico: 'Waiting for the service',
+    ativo: '{{nome}} active',
+    editar: 'Edit',
+    executar: 'Run now',
+    excluir: 'Delete',
+  },
+  vazio: {
+    titulo: 'No schedules',
+    descricao: 'Create a schedule so companies receive the Partial Balance automatically.',
+  },
+  erro: 'Could not load the Partial Balance sending',
+  carregando: 'Loading the schedules',
+  sem: {
+    aviso:
+      'Active companies with AMS that are not in any schedule: they do not receive the automatic Partial Balance. Manual sending is still available in the Control screen.',
+    contatos: {
+      um: '{{n}} contact',
+      varios: '{{n}} contacts',
+    },
+    semContato: 'no Partial Balance contact',
+    vazio: 'All companies with AMS are in a schedule.',
+  },
+  historico: {
+    lista: 'Sending history',
+    buscar: 'Search company',
+    situacao: 'Status',
+    origem: 'Source',
+    colunas: {
+      quando: 'When',
+      empresa: 'Company',
+      origem: 'Source',
+      situacao: 'Status',
+      destinatarios: 'Recipients',
+      emails: 'E-mails',
+    },
+    origens: {
+      agendamento: 'Schedule',
+      executar_agora: 'Run now',
+      controle: 'Manual sending (Control)',
+    },
+    executadoAgora: '{{nome}} · run now',
+    controle: 'Manual sending in the Control screen',
+    vazio: 'No sending found',
+  },
+  situacoes: {
+    executando: 'Sending',
+    sucesso: 'Sent',
+    erro: 'Failed',
+    sem_destinatarios: 'No recipients',
+    interrompida: 'Interrupted',
+    pulado: 'Skipped',
+    parcial: 'With failures',
+  },
+  executar: {
+    titulo: 'Run "{{nome}}" now?',
+    empresas: {
+      um: '{{n}} company in this schedule.',
+      varios: '{{n}} companies in this schedule.',
+    },
+    recebeuHoje: {
+      um: '{{empresas}} already received the Partial Balance today and will be skipped, to avoid duplicates',
+      varios:
+        '{{empresas}} already received the Partial Balance today and will be skipped, to avoid duplicates',
+    },
+    semContato: 'Companies without a Partial Balance contact are skipped',
+    historico: 'The sending goes into the history, with you as the author',
+    confirmar: 'Run now',
+  },
+  desativar: {
+    titulo: 'Deactivate "{{nome}}"?',
+    deixam: 'Its companies stop receiving the automatic Partial Balance until it is reactivated',
+    manual: 'Manual sending in the Control screen is still available',
+    confirmar: 'Deactivate',
+  },
+  excluir: {
+    titulo: 'Delete "{{nome}}"?',
+    semAgendamento: 'Its companies are left without a schedule',
+    historico: 'The sending history is kept',
+    confirmar: 'Delete',
+  },
+};
+
+export default rotinasSaldoParcial;

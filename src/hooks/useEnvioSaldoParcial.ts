@@ -14,7 +14,9 @@ const CHAVE_EXECUCOES = ['envio-saldo-parcial', 'execucoes'];
 const CHAVE_CLIENTES = ['clientes', 'elegiveis-saldo-parcial'];
 
 /** Enquanto houver envio em andamento, o histórico é atualizado a cada 3s */
-export function intervaloPollingExecucoesSaldoParcial(execucoes: ExecucaoSaldoParcial[] | undefined): number | false {
+export function intervaloPollingExecucoesSaldoParcial(
+  execucoes: ExecucaoSaldoParcial[] | undefined
+): number | false {
   return execucoes?.some((e) => e.status === 'executando') ? 3000 : false;
 }
 
@@ -22,12 +24,19 @@ export function intervaloPollingExecucoesSaldoParcial(execucoes: ExecucaoSaldoPa
  * Após salvar, o banco zera proxima_execucao e o sync-api recalcula no ciclo seguinte (até 60s):
  * enquanto algum agendamento ativo estiver sem ela, a lista é consultada a cada 5s.
  */
-export function intervaloPollingAgendamentosSaldoParcial(agendamentos: AgendamentoSaldoParcial[] | undefined): number {
+export function intervaloPollingAgendamentosSaldoParcial(
+  agendamentos: AgendamentoSaldoParcial[] | undefined
+): number {
   return agendamentos?.some((a) => a.ativo && !a.proxima_execucao) ? 5000 : 60_000;
 }
 
 export function useAgendamentosSaldoParcial() {
-  const { data: agendamentos = [], isLoading, error, refetch } = useQuery<AgendamentoSaldoParcial[]>({
+  const {
+    data: agendamentos = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<AgendamentoSaldoParcial[]>({
     queryKey: CHAVE_AGENDAMENTOS,
     queryFn: () => envioSaldoParcialService.listarAgendamentos(),
     refetchInterval: (query) => intervaloPollingAgendamentosSaldoParcial(query.state.data),
@@ -37,7 +46,12 @@ export function useAgendamentosSaldoParcial() {
 }
 
 export function useExecucoesSaldoParcial(limite = 50) {
-  const { data: execucoes = [], isLoading, error, refetch } = useQuery<ExecucaoSaldoParcial[]>({
+  const {
+    data: execucoes = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<ExecucaoSaldoParcial[]>({
     queryKey: [...CHAVE_EXECUCOES, limite],
     queryFn: () => envioSaldoParcialService.listarExecucoes(limite),
     refetchInterval: (query) => intervaloPollingExecucoesSaldoParcial(query.state.data) || 60_000,
@@ -47,7 +61,11 @@ export function useExecucoesSaldoParcial(limite = 50) {
 }
 
 export function useClientesElegiveisSaldoParcial() {
-  const { data: clientes = [], isLoading, error } = useQuery<ClienteElegivelSaldoParcial[]>({
+  const {
+    data: clientes = [],
+    isLoading,
+    error,
+  } = useQuery<ClienteElegivelSaldoParcial[]>({
     queryKey: CHAVE_CLIENTES,
     queryFn: () => envioSaldoParcialService.listarClientesElegiveis(),
     staleTime: 5 * 60 * 1000,
@@ -56,12 +74,29 @@ export function useClientesElegiveisSaldoParcial() {
   return { clientes, isLoading, error };
 }
 
+/** Empresas elegíveis fora de qualquer agendamento; sob a chave dos agendamentos, recarrega ao salvar */
+export function useSemAgendamentoSaldoParcial() {
+  const {
+    data: empresas = [],
+    isLoading,
+    error,
+  } = useQuery<ClienteElegivelSaldoParcial[]>({
+    queryKey: [...CHAVE_AGENDAMENTOS, 'sem-agendamento'],
+    queryFn: () => envioSaldoParcialService.listarSemAgendamento(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return { empresas, isLoading, error };
+}
+
 export function useSalvarAgendamentoSaldoParcial() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, dados }: { id?: string; dados: AgendamentoSaldoParcialInput }) =>
-      id ? envioSaldoParcialService.atualizarAgendamento(id, dados) : envioSaldoParcialService.criarAgendamento(dados),
+      id
+        ? envioSaldoParcialService.atualizarAgendamento(id, dados)
+        : envioSaldoParcialService.criarAgendamento(dados),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVE_AGENDAMENTOS }),
   });
 }
@@ -70,7 +105,8 @@ export function useAlternarAgendamentoSaldoParcial() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) => envioSaldoParcialService.alternarAtivo(id, ativo),
+    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) =>
+      envioSaldoParcialService.alternarAtivo(id, ativo),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVE_AGENDAMENTOS }),
   });
 }
@@ -102,7 +138,10 @@ export function useStatusSaldoParcial() {
     retry: false,
   });
 
-  return { agendadorAtivo: data?.agendadorAtivo, renderImagemConfigurado: data?.renderImagemConfigurado };
+  return {
+    agendadorAtivo: data?.agendadorAtivo,
+    renderImagemConfigurado: data?.renderImagemConfigurado,
+  };
 }
 
 /** Pré-visualização das próximas execuções de uma regra ainda não salva */
@@ -119,7 +158,11 @@ export function usePreverExecucoesSaldoParcial(regra: RegraRecorrencia, habilita
     hora_fim: regra.hora_fim,
   };
 
-  const { data: previsao = [], isFetching, error } = useQuery<string[]>({
+  const {
+    data: previsao = [],
+    isFetching,
+    error,
+  } = useQuery<string[]>({
     queryKey: [...CHAVE_AGENDAMENTOS, 'previsao', chaveRegra],
     queryFn: () => envioSaldoParcialService.preverExecucoes(chaveRegra, 48),
     enabled: habilitado,
