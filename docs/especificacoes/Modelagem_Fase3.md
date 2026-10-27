@@ -465,7 +465,7 @@ Cada migration tem antes um teste SQL em bloco `DO` autorreversível, que falha 
 | 20  | `fase3_retificacao.sql`: observação e reajuste manuais em mês fechado marcam o Book para retificação (seção 7)                                                                              |
 | 21  | `fase3_requerimentos_controle.sql`: `bancos_horas_requerimentos_controle()` para a aba Requerimentos do Controle (seção 7)                                                                  |
 | 22  | `fase3_envio_saldo_parcial_controle.sql`: `registrar_envio_saldo_parcial_controle()` grava o envio manual do Controle no histórico (seções 7 e 11)                                          |
-| 23  | Ativação, aplicada junto com a publicação das telas: agenda a rotina diária do aviso de grupos não mapeados (pg_cron)                                                                       |
+| 23  | `fase3_ativacao.sql` (20261027000002), aplicada junto com a publicação das telas: agenda no pg_cron, às 8h de Brasília, a rotina diária do aviso de grupos não mapeados                     |
 
 **Situação em 22/10/2026:** as migrations 10 a 17 foram aplicadas em produção, antes da publicação das telas. Nada nelas é usado pelas telas atuais. Daqui em diante, o que for visível ao usuário (avisos no sino, por exemplo) fica na migration de ativação.
 
