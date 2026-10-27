@@ -89,3 +89,13 @@ export interface ModuloInput {
   descricao: string | null;
   ativo: boolean;
 }
+
+/** Linha da importação do catálogo: produto e módulo pelo nome, dentro da solução */
+export interface LinhaImportacaoCatalogo {
+  solucaoId: string;
+  produto: string;
+  /** null: a linha é do produto */
+  modulo: string | null;
+  /** null: a descrição que existe não muda */
+  descricao: string | null;
+}

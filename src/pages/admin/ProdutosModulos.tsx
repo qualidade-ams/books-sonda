@@ -16,6 +16,7 @@ import { DicasContext } from '@/components/ds/Dicas';
 import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
 import { MenuExportar } from '@/components/ds/MenuExportar';
+import { BotaoImportar, TelaImportacao } from '@/components/ds/TelaImportacao';
 import { botaoPrimarioTopo, botaoVidro } from '@/components/ds/estilos';
 import { ArvoreCatalogo, type SelecaoCatalogo } from '@/components/admin/catalogo/ArvoreCatalogo';
 import { MoverModulo, PainelProduto, PainelSolucao } from '@/components/admin/catalogo/Paineis';
@@ -33,6 +34,8 @@ import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import {
   bancosDoProduto,
+  catalogoImportado,
+  conferirCatalogo,
   destinoAoDesvincular,
   destinoDoAlvo,
   exportacaoCatalogo,
@@ -102,6 +105,7 @@ export default function ProdutosModulos() {
     reordenarProdutos,
     salvarModulo,
     moverModulo,
+    importar,
     isSalvando,
   } = useCatalogo();
   const requerimentos = useModulosRequerimento();
@@ -115,6 +119,7 @@ export default function ProdutosModulos() {
   const [escolhida, setEscolhida] = useState<SelecaoCatalogo | null>(null);
   const [soSemGrupo, setSoSemGrupo] = useState(false);
   const [editando, setEditando] = useState<Edicao>(null);
+  const [importando, setImportando] = useState(false);
   const [alterarStatus, setAlterarStatus] = useState<AlterarStatus | null>(null);
   const [movendo, setMovendo] = useState<Modulo | null>(null);
 
@@ -208,6 +213,42 @@ export default function ProdutosModulos() {
   };
 
   const edicao = () => {
+    if (importando)
+      return (
+        <TelaImportacao
+          voltarPara={t('produtosModulos.titulo')}
+          titulo={t('produtosModulos.importar.titulo')}
+          colunas={[
+            {
+              id: 'solucao',
+              rotulo: t('produtosModulos.exportar.colunas.solucao'),
+              obrigatoria: true,
+            },
+            {
+              id: 'produto',
+              rotulo: t('produtosModulos.exportar.colunas.produto'),
+              obrigatoria: true,
+            },
+            { id: 'modulo', rotulo: t('produtosModulos.exportar.colunas.modulo') },
+            { id: 'descricao', rotulo: t('produtosModulos.exportar.colunas.descricao') },
+          ]}
+          regras={[
+            t('produtosModulos.importar.regras.solucao'),
+            t('produtosModulos.importar.regras.semModulo'),
+            t('produtosModulos.importar.regras.ordem'),
+          ]}
+          modelo={{
+            arquivo: t('produtosModulos.importar.modelo'),
+            exemplo: [
+              { solucao: 'COMEX', produto: 'CE PLUS', modulo: '', descricao: '' },
+              { solucao: 'COMEX', produto: 'CE PLUS', modulo: 'Câmbio', descricao: '' },
+            ],
+          }}
+          conferir={(linhas) => conferirCatalogo(linhas, catalogo, t)}
+          onImportar={(linhas) => importar(catalogoImportado(linhas, catalogo))}
+          onFechar={() => setImportando(false)}
+        />
+      );
     if (editando?.tipo === 'solucao')
       return (
         <EdicaoSolucao
@@ -370,6 +411,9 @@ export default function ProdutosModulos() {
                   </button>
                 )}
               </>
+            )}
+            {podeEditar && (
+              <BotaoImportar onClick={() => setImportando(true)} desabilitado={isLoading} />
             )}
             <MenuExportar
               descricao={t('produtosModulos.exportar.descricao')}

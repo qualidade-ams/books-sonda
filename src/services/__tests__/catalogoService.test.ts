@@ -375,3 +375,39 @@ describe('CatalogoService — módulos de requerimento', () => {
     });
   });
 });
+
+describe('CatalogoService.importar', () => {
+  it('na ordem das linhas: cria produto e módulo, atualiza a descrição, e o que está igual fica', async () => {
+    const fake = cenario();
+    await new CatalogoService(fake as any).importar([
+      { solucaoId: 's2', produto: 'COMPLY', modulo: null, descricao: 'Obrigações fiscais' },
+      { solucaoId: 's2', produto: 'comply', modulo: 'ETL', descricao: 'Extração e carga' },
+      { solucaoId: 's1', produto: 'ce plus', modulo: 'câmbio', descricao: 'Câmbio e remessas' },
+      { solucaoId: 's1', produto: 'CE PLUS', modulo: null, descricao: null },
+    ]);
+    const { produtos, produto_modulos: modulos } = fake.tabelas;
+    const comply = produtos.find((p) => p.nome === 'COMPLY')!;
+    expect(comply).toMatchObject({
+      solucao_id: 's2',
+      descricao: 'Obrigações fiscais',
+      ativo: true,
+    });
+    expect(modulos.find((m) => m.nome === 'ETL')).toMatchObject({
+      produto_id: comply.id,
+      descricao: 'Extração e carga',
+    });
+    expect(modulos.find((m) => m.id === 'm1')!.descricao).toBe('Câmbio e remessas');
+    expect(produtos.find((p) => p.id === 'p1')!.descricao).toBe('Comércio exterior');
+    expect(produtos).toHaveLength(4);
+    expect(modulos).toHaveLength(5);
+  });
+
+  it('erro numa linha diz o produto e o módulo', async () => {
+    const fake = comErro(cenario(), 'produto_modulos', { message: 'sem permissão' });
+    await expect(
+      new CatalogoService(fake as any).importar([
+        { solucaoId: 's1', produto: 'CE PLUS', modulo: 'Novo', descricao: null },
+      ])
+    ).rejects.toThrow(/^CE PLUS › Novo: /);
+  });
+});

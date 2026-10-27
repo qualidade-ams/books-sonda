@@ -27,6 +27,11 @@ const avisos = {
     erroMoverModulo: 'Could not move the module',
     correspondenciaSalva: 'Mapping saved',
     erroCorrespondencia: 'Could not save the mapping',
+    importados: {
+      um: '{{n}} catalog row imported',
+      varios: '{{n}} catalog rows imported',
+    },
+    erroImportar: 'Could not import the catalog',
   },
   coordenadores: {
     atualizado: 'Coordinator updated',

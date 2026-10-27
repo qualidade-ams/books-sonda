@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { matrizDaAba } from '@/utils/exportarTabela';
 import {
   bancosDoProduto,
+  catalogoImportado,
+  conferirCatalogo,
   destinoAoDesvincular,
   destinoDoAlvo,
   exportacaoCatalogo,
@@ -251,6 +253,49 @@ describe('exportacaoCatalogo', () => {
       ['COMEX', 'ce', 'cambio', '', 'fase3Comum.ativo'],
       ['COMEX', 'ce', 'antigo', '', 'fase3Comum.inativo'],
       ['FISCAIS', 'comply', '', '', 'fase3Comum.ativo'],
+    ]);
+  });
+});
+
+describe('importação do catálogo', () => {
+  const t = (chave: string, valores?: Record<string, unknown>) =>
+    valores ? `${chave} ${JSON.stringify(valores)}` : chave;
+  const linha = (n: number, solucao: string, produto: string, modulo = '', descricao = '') => ({
+    linha: n,
+    valores: { solucao, produto, modulo, descricao },
+  });
+  const LINHAS = [
+    linha(2, 'FISCAIS', 'comply', 'ETL', 'Extração'),
+    linha(3, 'COMEX', 'ce'),
+    linha(4, 'COMEX', 'ce', 'cambio', 'Câmbio e remessas'),
+    linha(5, 'FINANCEIRAS', 'FC'),
+    linha(6, 'comex', 'NOVO', '', 'Novo produto'),
+    linha(7, '', 'X'),
+    linha(8, 'COMEX', '', 'm'),
+    linha(9, 'FISCAIS', 'COMPLY', 'etl'),
+  ];
+
+  it('confere: a solução precisa existir; produto e módulo novos são criados', () => {
+    expect(conferirCatalogo(LINHAS, CATALOGO, t).map((l) => [l.situacao, l.erros])).toEqual([
+      ['novo', undefined],
+      ['igual', undefined],
+      ['atualiza', undefined],
+      ['erro', ['produtosModulos.importar.erros.solucaoNaoExiste {"nome":"FINANCEIRAS"}']],
+      ['novo', undefined],
+      ['erro', ['produtosModulos.importar.erros.solucaoVazia']],
+      ['erro', ['produtosModulos.importar.erros.produtoVazio']],
+      ['erro', ['produtosModulos.importar.erros.repetido {"linha":2}']],
+    ]);
+  });
+
+  it('o que gravar: a solução pelo id; descrição vazia não muda a que existe', () => {
+    const validas = conferirCatalogo(LINHAS, CATALOGO, t).filter(
+      (l) => l.situacao === 'novo' || l.situacao === 'atualiza'
+    );
+    expect(catalogoImportado(validas, CATALOGO)).toEqual([
+      { solucaoId: 's2', produto: 'comply', modulo: 'ETL', descricao: 'Extração' },
+      { solucaoId: 's1', produto: 'ce', modulo: 'cambio', descricao: 'Câmbio e remessas' },
+      { solucaoId: 's1', produto: 'NOVO', modulo: null, descricao: 'Novo produto' },
     ]);
   });
 });

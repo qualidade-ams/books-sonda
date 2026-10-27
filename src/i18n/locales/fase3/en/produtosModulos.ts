@@ -211,6 +211,22 @@ const produtosModulos = {
       descricao: 'Description',
     },
   },
+  importar: {
+    titulo: 'Import products and modules',
+    modelo: 'products-and-modules-template',
+    regras: {
+      solucao: 'The solution must exist. Products and modules that do not exist are created.',
+      semModulo:
+        'A row without a module creates or updates only the product. An empty description does not change the existing one.',
+      ordem: 'The order of the rows becomes the order of the new products and modules.',
+    },
+    erros: {
+      solucaoVazia: 'Empty solution.',
+      solucaoNaoExiste: 'Solution "{{nome}}" does not exist.',
+      produtoVazio: 'Empty product.',
+      repetido: 'Repeated in the spreadsheet (row {{linha}}).',
+    },
+  },
 };
 
 export default produtosModulos;

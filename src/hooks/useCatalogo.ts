@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { catalogoService } from '@/services/catalogoService';
-import type { ModuloInput, ProdutoInput, SolucaoInput } from '@/types/catalogo';
+import type {
+  LinhaImportacaoCatalogo,
+  ModuloInput,
+  ProdutoInput,
+  SolucaoInput,
+} from '@/types/catalogo';
+import { plural } from '@/utils/plural';
 
 const CHAVE = ['catalogo'];
 /** Os grupos do Aranda acompanham o módulo movido (ON UPDATE CASCADE) */
@@ -81,7 +87,17 @@ export function useCatalogo() {
     onError: avisarErro(t('avisos.catalogo.erroMoverModulo')),
   });
 
+  const importar = useMutation({
+    mutationFn: (linhas: LinhaImportacaoCatalogo[]) => catalogoService.importar(linhas),
+    onSuccess: (_r, linhas) =>
+      toast({ title: plural(t, 'avisos.catalogo.importados', linhas.length) }),
+    onError: avisarErro(t('avisos.catalogo.erroImportar')),
+    // No erro, parte pode ter sido gravada
+    onSettled: recarregar,
+  });
+
   return {
+    importar: importar.mutateAsync,
     solucoes: catalogoQuery.data?.solucoes ?? [],
     produtos: catalogoQuery.data?.produtos ?? [],
     modulos: catalogoQuery.data?.modulos ?? [],

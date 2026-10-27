@@ -6,6 +6,7 @@ import ProdutosModulos from '../ProdutosModulos';
 import type { Catalogo } from '@/types/catalogo';
 import type { MapeamentoGrupo } from '@/types/dePara';
 import { exportarTabela, matrizDaAba } from '@/utils/exportarTabela';
+import { lerPlanilha } from '@/utils/importarPlanilha';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -16,6 +17,10 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/utils/exportarTabela', async (original) => ({
   ...(await original<typeof import('@/utils/exportarTabela')>()),
   exportarTabela: vi.fn(async () => undefined),
+}));
+vi.mock('@/utils/importarPlanilha', async (original) => ({
+  ...(await original<typeof import('@/utils/importarPlanilha')>()),
+  lerPlanilha: vi.fn(),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -79,6 +84,7 @@ const catalogo = {
   reordenarProdutos: vi.fn(async () => undefined),
   salvarModulo: vi.fn(async () => undefined),
   moverModulo: vi.fn(async () => ({ provisorioInativado: true })),
+  importar: vi.fn(async () => undefined),
   isSalvando: false,
 };
 const requerimentos = {
@@ -263,5 +269,43 @@ describe('ProdutosModulos', () => {
     expect(formato).toBe('pdf');
     // 3 produtos e 2 módulos, depois do cabeçalho
     expect(matrizDaAba(exportacao.abas[0])).toHaveLength(6);
+  });
+
+  it('importa o catálogo: produto e módulo novos na solução que existe', async () => {
+    vi.mocked(lerPlanilha).mockResolvedValue([
+      [
+        'produtosModulos.exportar.colunas.solucao',
+        'produtosModulos.exportar.colunas.produto',
+        'produtosModulos.exportar.colunas.modulo',
+        'produtosModulos.exportar.colunas.descricao',
+      ],
+      ['COMEX', 'CE PLUS', 'Drawback', ''],
+      ['COMEX', 'CE PLUS', 'Câmbio', ''],
+    ]);
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: 'ds.importar.botao' }));
+    expect(
+      screen.getByRole('heading', { name: 'produtosModulos.importar.titulo' })
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/ds.importar.escolher/), {
+      target: { files: [new File(['x'], 'catalogo.xlsx')] },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'ds.importar.importarN.um {"n":1}' })
+    );
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ds.importar.botao' })
+    );
+    await waitFor(() =>
+      expect(catalogo.importar).toHaveBeenCalledWith([
+        { solucaoId: 's1', produto: 'CE PLUS', modulo: 'Drawback', descricao: null },
+      ])
+    );
+  });
+
+  it('só visualiza: sem importar', () => {
+    permissoes = ['produtos_modulos:view'];
+    renderizar();
+    expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
   });
 });

@@ -4,9 +4,16 @@
  * ao vincular e desvincular.
  */
 
-import type { Catalogo, Modulo, Produto, UsoEmBanco } from '@/types/catalogo';
+import type {
+  Catalogo,
+  LinhaImportacaoCatalogo,
+  Modulo,
+  Produto,
+  UsoEmBanco,
+} from '@/types/catalogo';
 import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
+import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
 /** Onde se vincula um grupo na tela */
 export interface AlvoGrupo {
@@ -158,3 +165,64 @@ export function exportacaoCatalogo(catalogo: Catalogo, t: Traduzir): Exportacao 
     ],
   };
 }
+
+const chaveNome = (texto: string) => texto.trim().toLowerCase();
+
+/** Solução da planilha pelo nome ou pelo código */
+const solucaoDaLinha = (nome: string, catalogo: Catalogo) =>
+  catalogo.solucoes.find(
+    (s) => chaveNome(s.nome) === chaveNome(nome) || chaveNome(s.codigo) === chaveNome(nome)
+  );
+
+/**
+ * Importação do catálogo: a solução precisa existir; produto e módulo que não existem são
+ * criados. Só a descrição preenchida e diferente conta como mudança
+ */
+export function conferirCatalogo(
+  linhas: LinhaPlanilha[],
+  catalogo: Catalogo,
+  t: Traduzir
+): LinhaImportacao[] {
+  const erro = (chave: string, valores?: Record<string, unknown>) =>
+    t(`produtosModulos.importar.erros.${chave}`, valores);
+  const primeira = new Map<string, number>();
+  return linhas.map((l) => {
+    const { solucao, produto, modulo, descricao } = l.valores;
+    const erros: string[] = [];
+    const s = solucao ? solucaoDaLinha(solucao, catalogo) : undefined;
+    if (!solucao) erros.push(erro('solucaoVazia'));
+    else if (!s) erros.push(erro('solucaoNaoExiste', { nome: solucao }));
+    if (!produto) erros.push(erro('produtoVazio'));
+    if (solucao && produto) {
+      const chave = [solucao, produto, modulo].map(chaveNome).join('|');
+      const repetido = primeira.get(chave);
+      if (repetido) erros.push(erro('repetido', { linha: repetido }));
+      else primeira.set(chave, l.linha);
+    }
+    if (erros.length) return { ...l, situacao: 'erro', erros };
+
+    const muda = (atual: string | null) => !!descricao && descricao !== (atual ?? '');
+    const p = catalogo.produtos.find(
+      (x) => x.solucaoId === s.id && chaveNome(x.nome) === chaveNome(produto)
+    );
+    if (!p) return { ...l, situacao: 'novo' };
+    if (!modulo) return { ...l, situacao: muda(p.descricao) ? 'atualiza' : 'igual' };
+    const m = catalogo.modulos.find(
+      (x) => x.produtoId === p.id && chaveNome(x.nome) === chaveNome(modulo)
+    );
+    if (!m) return { ...l, situacao: 'novo' };
+    return { ...l, situacao: muda(m.descricao) ? 'atualiza' : 'igual' };
+  });
+}
+
+/** O que gravar, na ordem da planilha; descrição vazia não muda a que existe */
+export const catalogoImportado = (
+  linhas: LinhaImportacao[],
+  catalogo: Catalogo
+): LinhaImportacaoCatalogo[] =>
+  linhas.map((l) => ({
+    solucaoId: solucaoDaLinha(l.valores.solucao, catalogo)!.id,
+    produto: l.valores.produto,
+    modulo: l.valores.modulo || null,
+    descricao: l.valores.descricao || null,
+  }));

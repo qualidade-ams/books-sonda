@@ -24,6 +24,7 @@ vi.mock('@/services/catalogoService', () => ({
     reordenarProdutos: vi.fn(),
     salvarModulo: vi.fn(),
     moverModulo: vi.fn(),
+    importar: vi.fn(),
     modulosRequerimento: vi.fn(),
     salvarModuloRequerimento: vi.fn(),
   },
@@ -151,6 +152,44 @@ describe('useCatalogo', () => {
     expect(toast).toHaveBeenCalledWith({
       title: 'avisos.catalogo.moduloMovido',
       description: 'avisos.catalogo.aClassificarInativado',
+    });
+  });
+
+  it('importar grava as linhas, recarrega e dá um aviso só', async () => {
+    service.carregar.mockResolvedValue(catalogo);
+    service.usosEmBancos.mockResolvedValue([]);
+    service.importar.mockResolvedValue(undefined);
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useCatalogo(), { wrapper });
+    const linhas = [{ solucaoId: 's1', produto: 'FC', modulo: null, descricao: null }];
+
+    await act(() => result.current.importar(linhas));
+
+    expect(service.importar).toHaveBeenCalledWith(linhas);
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['catalogo'] });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.catalogo.importados.um {"n":1}' });
+  });
+
+  it('erro ao importar avisa e recarrega (parte pode ter sido gravada)', async () => {
+    service.carregar.mockResolvedValue(catalogo);
+    service.usosEmBancos.mockResolvedValue([]);
+    service.importar.mockRejectedValue(new Error('FC: sem permissão'));
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useCatalogo(), { wrapper });
+
+    await act(() =>
+      result.current
+        .importar([{ solucaoId: 's1', produto: 'FC', modulo: null, descricao: null }])
+        .catch(() => undefined)
+    );
+
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['catalogo'] });
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.catalogo.erroImportar',
+      description: 'FC: sem permissão',
+      variant: 'destructive',
     });
   });
 });

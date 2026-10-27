@@ -10,6 +10,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type {
   Catalogo,
+  LinhaImportacaoCatalogo,
   Modulo,
   ModuloInput,
   ModuloRequerimento,
@@ -144,6 +145,79 @@ export class CatalogoService {
       ordem: proximaOrdem(data.filter((p) => p.solucao_id === input.solucaoId)),
     });
     if (error) throw falha('salvar o produto', error);
+  }
+
+  /**
+   * Importação em lote, na ordem das linhas (vira a ordem dos novos): acha o produto pelo nome
+   * na solução, e o módulo no produto, sem diferenciar maiúsculas; o que não existe é criado.
+   * Sem transação: no erro, as linhas anteriores ficam gravadas e a mensagem diz qual linha
+   */
+  async importar(linhas: LinhaImportacaoCatalogo[]): Promise<void> {
+    for (const linha of linhas) {
+      try {
+        await this.importarLinha(linha);
+      } catch (erro) {
+        const rotulo = linha.modulo
+          ? `${linha.produto.trim()} › ${linha.modulo.trim()}`
+          : linha.produto.trim();
+        throw new Error(`${rotulo}: ${(erro as Error).message}`);
+      }
+    }
+  }
+
+  private async importarLinha(l: LinhaImportacaoCatalogo): Promise<void> {
+    const mesmoNome = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+    const buscarProduto = async () => {
+      const { data, error } = await this.cliente
+        .from('produtos')
+        .select('id, nome, descricao, ativo')
+        .eq('solucao_id', l.solucaoId);
+      if (error) throw falha('importar o produto', error);
+      return data.find((p) => mesmoNome(p.nome, l.produto));
+    };
+
+    let produto = await buscarProduto();
+    if (!produto) {
+      await this.salvarProduto({
+        solucaoId: l.solucaoId,
+        nome: l.produto,
+        descricao: l.modulo ? null : l.descricao,
+        ativo: true,
+      });
+      produto = await buscarProduto();
+    } else if (!l.modulo && l.descricao && l.descricao !== produto.descricao) {
+      await this.salvarProduto({
+        id: produto.id,
+        solucaoId: l.solucaoId,
+        nome: produto.nome,
+        descricao: l.descricao,
+        ativo: produto.ativo,
+      });
+    }
+    if (!l.modulo) return;
+
+    const { data: modulos, error } = await this.cliente
+      .from('produto_modulos')
+      .select('id, nome, descricao, ativo')
+      .eq('produto_id', produto.id);
+    if (error) throw falha('importar o módulo', error);
+    const modulo = modulos.find((m) => mesmoNome(m.nome, l.modulo));
+    if (!modulo) {
+      await this.salvarModulo({
+        produtoId: produto.id,
+        nome: l.modulo,
+        descricao: l.descricao,
+        ativo: true,
+      });
+    } else if (l.descricao && l.descricao !== modulo.descricao) {
+      await this.salvarModulo({
+        id: modulo.id,
+        produtoId: produto.id,
+        nome: modulo.nome,
+        descricao: l.descricao,
+        ativo: modulo.ativo,
+      });
+    }
   }
 
   /** Grava a ordem dos produtos de uma solução, na sequência recebida */

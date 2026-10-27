@@ -208,6 +208,22 @@ const produtosModulos = {
       descricao: 'Descripción',
     },
   },
+  importar: {
+    titulo: 'Importar productos y módulos',
+    modelo: 'modelo-productos-y-modulos',
+    regras: {
+      solucao: 'La solución debe existir. Los productos y módulos que no existen se crean.',
+      semModulo:
+        'Una fila sin módulo crea o actualiza solo el producto. Una descripción vacía no cambia la existente.',
+      ordem: 'El orden de las filas se convierte en el orden de los productos y módulos nuevos.',
+    },
+    erros: {
+      solucaoVazia: 'Solución vacía.',
+      solucaoNaoExiste: 'La solución "{{nome}}" no existe.',
+      produtoVazio: 'Producto vacío.',
+      repetido: 'Repetido en la planilla (fila {{linha}}).',
+    },
+  },
 };
 
 export default produtosModulos;

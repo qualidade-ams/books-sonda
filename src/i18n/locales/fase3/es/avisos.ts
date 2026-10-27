@@ -27,6 +27,11 @@ const avisos = {
     erroMoverModulo: 'No fue posible mover el módulo',
     correspondenciaSalva: 'Correspondencia guardada',
     erroCorrespondencia: 'No fue posible guardar la correspondencia',
+    importados: {
+      um: '{{n}} fila del catálogo importada',
+      varios: '{{n}} filas del catálogo importadas',
+    },
+    erroImportar: 'No fue posible importar el catálogo',
   },
   coordenadores: {
     atualizado: 'Coordinador actualizado',
