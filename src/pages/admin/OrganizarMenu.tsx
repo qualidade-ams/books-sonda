@@ -196,7 +196,7 @@ export default function OrganizarMenu() {
 
             <div
               className={cn(
-                'ds-surgir relative mx-auto -mt-16 grid items-start gap-4 md:-mt-20',
+                'ds-surgir relative mx-auto !-mt-16 grid items-start gap-4 md:!-mt-20',
                 comPrevia ? 'max-w-6xl lg:grid-cols-[minmax(0,1fr)_280px]' : 'max-w-3xl'
               )}
             >

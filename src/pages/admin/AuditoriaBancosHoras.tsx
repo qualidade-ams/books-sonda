@@ -259,7 +259,7 @@ export default function AuditoriaBancosHoras() {
             </div>
           </FaixaPagina>
 
-          <div className="relative -mt-16 grid grid-cols-2 gap-3 md:-mt-20 lg:grid-cols-4">
+          <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
             <Indicador
               rotulo={a('indicadores.alteracoes')}
               valor={totais.alteracoes}

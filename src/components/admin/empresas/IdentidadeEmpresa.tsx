@@ -71,7 +71,7 @@ export function IdentidadeEmpresa({
 
   return (
     <section
-      className="ds-surgir relative -mt-16 rounded-xl border border-ds-border bg-ds-bg-surface p-4 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] md:-mt-20 md:p-5"
+      className="ds-surgir relative !-mt-16 rounded-xl border border-ds-border bg-ds-bg-surface p-4 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] md:!-mt-20 md:p-5"
       aria-labelledby="titulo-identidade"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

@@ -128,7 +128,7 @@ export function IndicadoresControle({
   const variacao = u && uAnterior ? u.consumoTotal - uAnterior.consumoTotal : null;
 
   return (
-    <div className="relative -mt-16 grid grid-cols-2 gap-3 md:-mt-20 lg:grid-cols-4">
+    <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
       <Kpi
         rotulo={k('baseline')}
         icone={<Wallet />}

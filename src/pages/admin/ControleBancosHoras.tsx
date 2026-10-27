@@ -172,7 +172,7 @@ export default function ControleBancosHoras() {
     if (carregandoEmpresas || carregandoBancos)
       return (
         <div
-          className="relative -mt-16 grid grid-cols-2 gap-3 md:-mt-20 lg:grid-cols-4"
+          className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4"
           role="status"
           aria-label={c('carregando')}
         >
@@ -187,7 +187,7 @@ export default function ControleBancosHoras() {
     if (!banco)
       return (
         <>
-          <div className="ds-surgir relative -mt-16 rounded-xl border border-ds-border bg-ds-bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] md:-mt-20">
+          <div className="ds-surgir relative !-mt-16 rounded-xl border border-ds-border bg-ds-bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] md:!-mt-20">
             <EmptyState
               icone={<Clock />}
               titulo={empresas.length ? c('vazioTitulo') : c('semEmpresas')}
