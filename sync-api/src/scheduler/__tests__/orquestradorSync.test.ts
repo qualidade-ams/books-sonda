@@ -422,4 +422,84 @@ describe('orquestradorSync', () => {
       expect(orq.emExecucao()).toBe(false);
     });
   });
+
+  describe('verificação do banco réplica', () => {
+    const pool = { fake: 'pool' } as any;
+
+    function criarComReplica(verificarReplica: any) {
+      const etapas = criarEtapas();
+      const orq = criarOrquestradorSync({
+        supabase: fake.cliente,
+        abrirPool: async () => ({ pool, fechar }),
+        etapas,
+        verificarReplica,
+        gerarBooks: vi.fn(async () => ({ mes: 9, ano: 2026, total: 0, gerados: 0, erros: 0, pulados: 0, empresas: [] })),
+        intervaloGravacaoLogsMs: 0,
+      });
+      return { orq, etapas };
+    }
+
+    const ultimoUpdate = () => {
+      const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+      return updates[updates.length - 1];
+    };
+
+    async function executar(orq: ReturnType<typeof criarOrquestradorSync>, extra: any = {}) {
+      const inicio = await orq.iniciar({ tabelas: { pesquisas: true }, origem: 'agendado', ...extra });
+      if (inicio.status === 'iniciada') await inicio.conclusao;
+    }
+
+    it('verifica a réplica com o pool antes das etapas e registra o resultado sem mudar o status', async () => {
+      const ordem: string[] = [];
+      const verificarReplica = vi.fn(async () => {
+        ordem.push('replica');
+        return { atrasada: true, mensagem: 'Apontamentos: sem atualização há 3h10min', tabelas: [{ tabela: 'apontamentos' }] };
+      });
+      const { orq, etapas } = criarComReplica(verificarReplica);
+      (etapas.pesquisas as any).mockImplementation(async () => {
+        ordem.push('pesquisas');
+        return ok();
+      });
+
+      await executar(orq);
+
+      expect(verificarReplica).toHaveBeenCalledWith(pool);
+      expect(ordem).toEqual(['replica', 'pesquisas']);
+      const final = ultimoUpdate();
+      expect(final.status).toBe('sucesso');
+      expect(final.resultado.verificacaoReplica).toMatchObject({ atrasada: true, tabelas: [{ tabela: 'apontamentos' }] });
+      expect(final.logs.some((l: any) => l.nivel === 'erro' && /Banco réplica desatualizado/.test(l.mensagem))).toBe(true);
+    });
+
+    it('réplica em dia fica só no log informativo', async () => {
+      const { orq } = criarComReplica(vi.fn(async () => ({ atrasada: false, mensagem: null, tabelas: [] })));
+
+      await executar(orq);
+
+      const final = ultimoUpdate();
+      expect(final.status).toBe('sucesso');
+      expect(final.logs.some((l: any) => l.nivel === 'info' && /Banco réplica em dia/.test(l.mensagem))).toBe(true);
+    });
+
+    it('falha na verificação não interrompe a sincronização', async () => {
+      const { orq, etapas } = criarComReplica(vi.fn(async () => { throw new Error('Invalid column name'); }));
+
+      await executar(orq);
+
+      expect(etapas.pesquisas).toHaveBeenCalled();
+      const final = ultimoUpdate();
+      expect(final.status).toBe('sucesso');
+      expect(final.resultado.verificacaoReplica).toMatchObject({ erro: 'Invalid column name' });
+      expect(final.logs.some((l: any) => l.nivel === 'erro' && /Verificação do banco réplica falhou/.test(l.mensagem))).toBe(true);
+    });
+
+    it('não verifica na geração de books', async () => {
+      const verificarReplica = vi.fn();
+      const { orq } = criarComReplica(verificarReplica);
+
+      await executar(orq, { tipo: 'books' });
+
+      expect(verificarReplica).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -29,6 +29,7 @@ import { criarExecutorSaldoParcial } from './services/envioSaldoParcialService';
 import { criarExecutorGeracaoBooks, criarGeradorPdfBook } from './services/geracaoBooksService';
 import { criarRenderizadorImagem } from './services/renderImagemService';
 import { criarEnviadorWebhook } from './services/webhookEmailService';
+import { criarVerificadorReplica } from './services/verificacaoReplicaService';
 import { hostDeEscuta } from './utils/rede';
 import { criarSqlConfig } from './config/sqlConfig';
 
@@ -4075,6 +4076,7 @@ try {
 const orquestradorSync = criarOrquestradorSync({
   supabase,
   gerarBooks,
+  verificarReplica: criarVerificadorReplica({ supabase }),
   // Pool próprio: os handlers antigos fecham o pool global do mssql
   abrirPool: async () => {
     const pool = await new sql.ConnectionPool(sqlConfig).connect();
