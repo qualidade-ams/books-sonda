@@ -8,6 +8,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   ClassificacaoGrupo,
   DestinoGrupo,
@@ -26,9 +27,13 @@ const MESES_NAO_MAPEADOS = 12;
 
 function falha(contexto: string, error: ErroBanco): Error {
   if (error.code === '23505' && error.message.includes('grupos_aranda_grupo_aranda_key')) {
-    return new Error('Este grupo do Aranda já está no de-para.');
+    return new ErroTraduzivel(
+      'erros.dePara.grupoJaMapeado',
+      {},
+      'Este grupo do Aranda já está no de-para.'
+    );
   }
-  return new Error(`Falha ao ${contexto}: ${error.message}`);
+  return falhaDoBanco(contexto, error);
 }
 
 /** A classificação vem do nível mais fundo do destino */
@@ -135,7 +140,11 @@ export class DeParaService {
       try {
         await this.salvar(input);
       } catch (erro) {
-        throw new Error(`${input.grupoAranda.trim()}: ${(erro as Error).message}`);
+        throw new ErroTraduzivel(
+          'erros.daLinha',
+          { linha: input.grupoAranda.trim(), erro },
+          `${input.grupoAranda.trim()}: ${(erro as Error).message}`
+        );
       }
     }
   }

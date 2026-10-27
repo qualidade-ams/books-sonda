@@ -8,6 +8,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   Catalogo,
   LinhaImportacaoCatalogo,
@@ -25,18 +26,22 @@ type Cliente = typeof supabase;
 type ErroBanco = { message: string; code?: string };
 
 /** Unicidades violadas que têm mensagem própria */
-const DUPLICADOS: Record<string, string> = {
-  solucoes_nome_uq: 'Já existe uma solução com este nome.',
-  solucoes_codigo_key: 'Já existe uma solução com este código.',
-  produto_modulos_nome_uq: 'Já existe um módulo com este nome no produto.',
+const DUPLICADOS: Record<string, [chave: string, mensagem: string]> = {
+  solucoes_nome_uq: ['erros.catalogo.solucaoRepetida', 'Já existe uma solução com este nome.'],
+  solucoes_codigo_key: ['erros.catalogo.codigoRepetido', 'Já existe uma solução com este código.'],
+  produto_modulos_nome_uq: [
+    'erros.catalogo.moduloRepetido',
+    'Já existe um módulo com este nome no produto.',
+  ],
 };
 
 function falha(contexto: string, error: ErroBanco): Error {
   if (error.code === '23505') {
     const restricao = Object.keys(DUPLICADOS).find((r) => error.message.includes(r));
-    if (restricao) return new Error(DUPLICADOS[restricao]);
+    if (restricao)
+      return new ErroTraduzivel(DUPLICADOS[restricao][0], {}, DUPLICADOS[restricao][1]);
   }
-  return new Error(`Falha ao ${contexto}: ${error.message}`);
+  return falhaDoBanco(contexto, error);
 }
 
 const textoOuNulo = (texto: string | null) => texto?.trim() || null;
@@ -160,7 +165,11 @@ export class CatalogoService {
         const rotulo = linha.modulo
           ? `${linha.produto.trim()} › ${linha.modulo.trim()}`
           : linha.produto.trim();
-        throw new Error(`${rotulo}: ${(erro as Error).message}`);
+        throw new ErroTraduzivel(
+          'erros.daLinha',
+          { linha: rotulo, erro },
+          `${rotulo}: ${(erro as Error).message}`
+        );
       }
     }
   }

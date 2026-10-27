@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { notificacoesService } from '@/services/notificacoesService';
 
 const QUERY_KEY = ['notificacoes'];
@@ -41,7 +42,7 @@ export function useNotificacoes() {
     onError: (err: Error) => {
       toast({
         title: t('avisos.notificacoes.erroMarcarLida'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       });
     },

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { deParaService } from '@/services/deParaService';
 import type { DestinoGrupo, MapeamentoInput } from '@/types/dePara';
 import { plural } from '@/utils/plural';
@@ -38,7 +39,7 @@ export function useDePara() {
     queryClient.invalidateQueries({ queryKey: CHAVE_SINO });
   };
   const avisarErro = (titulo: string) => (err: Error) =>
-    toast({ title: titulo, description: err.message, variant: 'destructive' });
+    toast({ title: titulo, description: textoDoErro(err, t), variant: 'destructive' });
 
   const salvar = useMutation({
     mutationFn: (input: MapeamentoInput) => deParaService.salvar(input),

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { empresasService, totaisEmpresas } from '@/services/empresasService';
 import type { SalvarInformacoesInput, SolucaoAmsInput } from '@/types/empresas';
 
@@ -42,7 +43,7 @@ export function useEmpresaCadastro(empresaId: string | undefined) {
   // A gravação é feita em partes: com erro, parte pode ter sido gravada
   const recarregar = () => queryClient.invalidateQueries({ queryKey: CHAVE });
   const avisarErro = (titulo: string) => (err: Error) =>
-    toast({ title: titulo, description: err.message, variant: 'destructive' });
+    toast({ title: titulo, description: textoDoErro(err, t), variant: 'destructive' });
 
   const salvarSolucoes = useMutation({
     mutationFn: (solucoes: SolucaoAmsInput[]) => empresasService.salvarSolucoes(solucoes),

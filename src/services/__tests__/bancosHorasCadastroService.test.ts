@@ -291,9 +291,11 @@ describe('BancosHorasCadastroService.criar', () => {
     };
     await expect(
       s.criar({ ...novo, escopo: [{ produtoId: 'p-edocs', moduloId: null }] })
-    ).rejects.toThrow(
-      'Conflito de escopo: o banco "FISCAL – e-DOCS" já cobre este produto ou módulo.'
-    );
+    ).rejects.toMatchObject({
+      message: 'Conflito de escopo: o banco "FISCAL – e-DOCS" já cobre este produto ou módulo.',
+      chave: 'erros.bancos.conflitoEscopo',
+      valores: { banco: 'FISCAL – e-DOCS' },
+    });
     expect(fake.chamadasRpc).toHaveLength(0);
     // p-ce está só no banco inativo
     await expect(s.criar(novo)).resolves.toBe('b-novo');
@@ -363,7 +365,7 @@ describe('BancosHorasCadastroService — ordem, situação e vigências', () => 
     const fake = cenario();
     await expect(
       new BancosHorasCadastroService(fake as any).inativar('b-edocs', ' ')
-    ).rejects.toThrow('Informe o motivo da alteração.');
+    ).rejects.toMatchObject({ message: 'Informe o motivo da alteração.', chave: 'erros.motivo' });
     expect(fake.chamadasRpc).toHaveLength(0);
   });
 
@@ -446,5 +448,32 @@ describe('BancosHorasCadastroService — ordem, situação e vigências', () => 
         motivo: 'x',
       })
     ).rejects.toThrow('O mês 12/2026 está fechado: a vigência nova começa depois dele.');
+  });
+});
+
+describe('validarParametros — chave de tradução', () => {
+  const capturar = (fn: () => unknown) => {
+    try {
+      fn();
+    } catch (erro) {
+      return erro;
+    }
+    return null;
+  };
+
+  it('cada validação leva a chave e os valores para a tela traduzir', () => {
+    expect(capturar(() => validarParametros({ ...PARAMETROS, nome: '  ' }))).toMatchObject({
+      chave: 'erros.bancos.nome',
+    });
+    expect(
+      capturar(() =>
+        validarParametros({
+          ...PARAMETROS,
+          repasseEspecial: 'por_periodo',
+          duracaoPeriodoMeses: 2,
+          periodosAteZerar: 2,
+        })
+      )
+    ).toMatchObject({ chave: 'erros.bancos.duracaoPeriodos', valores: { meses: 3 } });
   });
 });

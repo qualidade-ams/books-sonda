@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { menuOrganizadoService } from '@/services/menuOrganizadoService';
 import type { AparenciaMenu, NoMenu, TemaMenu } from '@/types/menuOrganizado';
 
@@ -35,7 +36,7 @@ export function useMenuOrganizado() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.menu.erroSalvar'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
   });
@@ -51,7 +52,11 @@ export function useMenuOrganizado() {
       arquivo: File;
     }) => menuOrganizadoService.enviarLogo(tema, tipo, arquivo),
     onError: (err: Error) =>
-      toast({ title: t('avisos.menu.erroLogo'), description: err.message, variant: 'destructive' }),
+      toast({
+        title: t('avisos.menu.erroLogo'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
   });
 
   return {

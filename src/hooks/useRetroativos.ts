@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { retroativosService } from '@/services/retroativosService';
 import {
   pedirRegularizacao,
@@ -65,7 +66,7 @@ export function useRetroativos() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.retroativos.erroDecidir'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
     onSettled: recarregar,
@@ -77,7 +78,7 @@ export function useRetroativos() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.retroativos.erroAviso'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
@@ -104,7 +105,7 @@ export function useRetroativos() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.retroativos.erroRegularizacao'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),

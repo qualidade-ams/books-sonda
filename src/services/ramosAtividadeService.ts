@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type { RamoRascunho, RamosAtividade } from '@/types/ramosAtividade';
 
 type Cliente = typeof supabase;
@@ -14,9 +15,9 @@ type ErroBanco = { message: string; code?: string };
 
 function falha(contexto: string, error: ErroBanco): Error {
   if (error.code === '23505' && error.message.includes('ramos_atividade_nome_uq')) {
-    return new Error('Já existe um ramo com este nome.');
+    return new ErroTraduzivel('erros.ramos.nomeRepetido', {}, 'Já existe um ramo com este nome.');
   }
-  return new Error(`Falha ao ${contexto}: ${error.message}`);
+  return falhaDoBanco(contexto, error);
 }
 
 export class RamosAtividadeService {
@@ -53,7 +54,8 @@ export class RamosAtividadeService {
 
   /** Grava o rascunho inteiro: a posição na lista é a ordem; o que saiu é excluído */
   async salvar(rascunho: RamoRascunho[]): Promise<void> {
-    if (rascunho.some((r) => !r.nome.trim())) throw new Error('Digite o nome do ramo.');
+    if (rascunho.some((r) => !r.nome.trim()))
+      throw new ErroTraduzivel('erros.ramos.nomeVazio', {}, 'Digite o nome do ramo.');
 
     const { data: salvos, error: erroLista } = await this.cliente
       .from('ramos_atividade')
@@ -64,7 +66,11 @@ export class RamosAtividadeService {
     for (const ramo of salvos.filter((s) => !mantidos.has(s.id))) {
       const { error } = await this.cliente.from('ramos_atividade').delete().eq('id', ramo.id);
       if (error?.code === '23503') {
-        throw new Error(`O ramo ${ramo.nome} está em uso nas empresas: inative em vez de excluir.`);
+        throw new ErroTraduzivel(
+          'erros.ramos.emUso',
+          { ramo: ramo.nome },
+          `O ramo ${ramo.nome} está em uso nas empresas: inative em vez de excluir.`
+        );
       }
       if (error) throw falha('excluir o ramo', error);
     }

@@ -105,7 +105,11 @@ describe('RamosAtividadeService.salvar', () => {
         { id: 'r2', nome: 'Energia', ativo: true },
         { id: 'r3', nome: 'Têxtil', ativo: false },
       ])
-    ).rejects.toThrow('O ramo Automotivo está em uso nas empresas: inative em vez de excluir.');
+    ).rejects.toMatchObject({
+      message: 'O ramo Automotivo está em uso nas empresas: inative em vez de excluir.',
+      chave: 'erros.ramos.emUso',
+      valores: { ramo: 'Automotivo' },
+    });
   });
 
   it('traduz nome repetido', async () => {
@@ -122,14 +126,17 @@ describe('RamosAtividadeService.salvar', () => {
         { id: 'r3', nome: 'Têxtil', ativo: false },
         { nome: 'energia', ativo: true },
       ])
-    ).rejects.toThrow('Já existe um ramo com este nome.');
+    ).rejects.toMatchObject({
+      message: 'Já existe um ramo com este nome.',
+      chave: 'erros.ramos.nomeRepetido',
+    });
   });
 
   it('recusa nome vazio antes de gravar', async () => {
     const fake = cenario();
     await expect(
       new RamosAtividadeService(fake as any).salvar([{ nome: '  ', ativo: true }])
-    ).rejects.toThrow('Digite o nome do ramo.');
+    ).rejects.toMatchObject({ message: 'Digite o nome do ramo.', chave: 'erros.ramos.nomeVazio' });
     expect(fake.tabelas.ramos_atividade).toHaveLength(3);
   });
 });

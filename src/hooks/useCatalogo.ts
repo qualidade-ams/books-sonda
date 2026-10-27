@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { catalogoService } from '@/services/catalogoService';
 import type {
   LinhaImportacaoCatalogo,
@@ -34,7 +35,7 @@ export function useCatalogo() {
 
   const recarregar = () => queryClient.invalidateQueries({ queryKey: CHAVE });
   const avisarErro = (titulo: string) => (err: Error) =>
-    toast({ title: titulo, description: err.message, variant: 'destructive' });
+    toast({ title: titulo, description: textoDoErro(err, t), variant: 'destructive' });
 
   const salvarSolucao = useMutation({
     mutationFn: (input: SolucaoInput) => catalogoService.salvarSolucao(input),
@@ -148,7 +149,7 @@ export function useModulosRequerimento() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.catalogo.erroCorrespondencia'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
   });

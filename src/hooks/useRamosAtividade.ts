@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { ramosAtividadeService } from '@/services/ramosAtividadeService';
 import type { RamoAtividade, RamoRascunho } from '@/types/ramosAtividade';
 
@@ -26,7 +27,7 @@ export function useRamosAtividade() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.ramos.erroSalvar'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
     // A gravação é feita linha a linha: com erro, parte pode ter sido gravada

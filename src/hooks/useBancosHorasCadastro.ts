@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { bancosHorasCadastroService } from '@/services/bancosHorasCadastroService';
 import type {
   NovaVigenciaInput,
@@ -32,7 +33,7 @@ export function useBancosHorasCadastro(empresaId: string | undefined) {
     queryClient.invalidateQueries({ queryKey: CHAVE_EMPRESAS });
   };
   const avisarErro = (titulo: string) => (err: Error) =>
-    toast({ title: titulo, description: err.message, variant: 'destructive' });
+    toast({ title: titulo, description: textoDoErro(err, t), variant: 'destructive' });
 
   const criar = useMutation({
     mutationFn: (input: NovoBancoInput) => bancosHorasCadastroService.criar(input),

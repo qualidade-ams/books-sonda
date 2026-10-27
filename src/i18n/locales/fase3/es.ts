@@ -15,6 +15,7 @@ import auditoriaBancosHoras from './es/auditoriaBancosHoras';
 import rotinasSaldoParcial from './es/rotinasSaldoParcial';
 import organizarMenu from './es/organizarMenu';
 import avisos from './es/avisos';
+import erros from './es/erros';
 
 const fase3 = {
   fase3Comum,
@@ -29,6 +30,7 @@ const fase3 = {
   rotinasSaldoParcial,
   organizarMenu,
   avisos,
+  erros,
 };
 
 export default fase3;

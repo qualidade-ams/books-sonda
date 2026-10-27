@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { regrasContagemService } from '@/services/regrasContagemService';
 import type { SalvarRegrasInput } from '@/types/regrasContagem';
 
@@ -30,7 +31,7 @@ export function useRegrasContagem() {
     onError: (err: Error) =>
       toast({
         title: t('avisos.regras.erroSalvar'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       }),
   });

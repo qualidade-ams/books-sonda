@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   ContratoFiscal,
   EmpresaDetalhe,
@@ -20,14 +21,12 @@ import type {
 } from '@/types/empresas';
 
 type Cliente = typeof supabase;
-type ErroBanco = { message: string; code?: string };
 type Linha = Record<string, any>;
 
 const LIMITE_JUSTIFICATIVA = 200;
 const LIMITE_DESCRICAO = 500;
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 const chaveNome = (nome: string) => nome.trim().toLowerCase();
 const textoOuNulo = (texto: string | null | undefined) => texto?.trim() || null;
@@ -148,16 +147,32 @@ const informacoesParaBanco = (empresaId: string, i: InformacoesContrato) => ({
 
 function validarInformacoes(i: InformacoesContrato) {
   if (i.ramoId && i.ramoSecundarioId === i.ramoId) {
-    throw new Error('O ramo secundário precisa ser diferente do principal.');
+    throw new ErroTraduzivel(
+      'erros.empresas.ramoSecundarioIgual',
+      {},
+      'O ramo secundário precisa ser diferente do principal.'
+    );
   }
   if ((i.descricaoAtividade?.trim().length ?? 0) > LIMITE_DESCRICAO) {
-    throw new Error(`A descrição da atividade passa de ${LIMITE_DESCRICAO} caracteres.`);
+    throw new ErroTraduzivel(
+      'erros.empresas.descricaoLonga',
+      { limite: LIMITE_DESCRICAO },
+      `A descrição da atividade passa de ${LIMITE_DESCRICAO} caracteres.`
+    );
   }
   if (i.fiscal.atualizacoesPorAno !== null && i.fiscal.atualizacoesPorAno < 1) {
-    throw new Error('Informe ao menos uma atualização por ano.');
+    throw new ErroTraduzivel(
+      'erros.empresas.atualizacoesPorAno',
+      {},
+      'Informe ao menos uma atualização por ano.'
+    );
   }
   if ((i.fiscal.minutosAtendimento ?? 0) < 0 || (i.fiscal.minutosMonitoramento ?? 0) < 0) {
-    throw new Error('As horas de DBA não podem ser negativas.');
+    throw new ErroTraduzivel(
+      'erros.empresas.dbaNegativo',
+      {},
+      'As horas de DBA não podem ser negativas.'
+    );
   }
 }
 
@@ -357,9 +372,18 @@ export class EmpresasService {
     for (const s of solucoes) {
       if (!s.emProjeto) continue;
       const justificativa = s.justificativaProjeto?.trim() ?? '';
-      if (!justificativa) throw new Error('Explique brevemente o projeto.');
+      if (!justificativa)
+        throw new ErroTraduzivel(
+          'erros.empresas.justificativaVazia',
+          {},
+          'Explique brevemente o projeto.'
+        );
       if (justificativa.length > LIMITE_JUSTIFICATIVA) {
-        throw new Error(`A justificativa do projeto passa de ${LIMITE_JUSTIFICATIVA} caracteres.`);
+        throw new ErroTraduzivel(
+          'erros.empresas.justificativaLonga',
+          { limite: LIMITE_JUSTIFICATIVA },
+          `A justificativa do projeto passa de ${LIMITE_JUSTIFICATIVA} caracteres.`
+        );
       }
     }
     for (const s of solucoes) {
@@ -444,11 +468,17 @@ export class EmpresasService {
       (o) => chaveNome(o.nome_organizacao) === chaveNome(nome)
     );
     const empresa = umOuNulo<Linha>(dona?.empresas)?.nome_abreviado;
-    return new Error(
-      empresa
-        ? `A organização ${nome} já pertence à ${empresa}.`
-        : `A organização ${nome} já pertence a outra empresa.`
-    );
+    return empresa
+      ? new ErroTraduzivel(
+          'erros.empresas.organizacaoDeOutra',
+          { organizacao: nome, empresa },
+          `A organização ${nome} já pertence à ${empresa}.`
+        )
+      : new ErroTraduzivel(
+          'erros.empresas.organizacaoDeOutraEmpresa',
+          { organizacao: nome },
+          `A organização ${nome} já pertence a outra empresa.`
+        );
   }
 }
 

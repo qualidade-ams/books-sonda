@@ -158,7 +158,11 @@ describe('CatalogoService.carregar', () => {
 
   it('falha com mensagem descritiva', async () => {
     const s = new CatalogoService(comErro(cenario(), 'produtos', { message: 'sem rede' }) as any);
-    await expect(s.carregar()).rejects.toThrow('Falha ao carregar o catálogo: sem rede');
+    await expect(s.carregar()).rejects.toMatchObject({
+      message: 'Falha ao carregar o catálogo: sem rede',
+      chave: 'erros.falhas.carregarOCatalogo',
+      valores: { detalhe: 'sem rede' },
+    });
   });
 });
 
@@ -319,7 +323,10 @@ describe('CatalogoService.salvarModulo', () => {
     );
     await expect(
       s.salvarModulo({ produtoId: 'p1', nome: 'Câmbio', descricao: null, ativo: true })
-    ).rejects.toThrow('Já existe um módulo com este nome no produto.');
+    ).rejects.toMatchObject({
+      message: 'Já existe um módulo com este nome no produto.',
+      chave: 'erros.catalogo.moduloRepetido',
+    });
   });
 });
 

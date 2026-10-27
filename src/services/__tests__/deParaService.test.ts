@@ -213,7 +213,10 @@ describe('DeParaService.salvar', () => {
         grupoBook: 'Y',
         destino: { solucaoId: null, produtoId: null, moduloId: null },
       })
-    ).rejects.toThrow('Este grupo do Aranda já está no de-para.');
+    ).rejects.toMatchObject({
+      message: 'Este grupo do Aranda já está no de-para.',
+      chave: 'erros.dePara.grupoJaMapeado',
+    });
   });
 });
 
@@ -286,6 +289,10 @@ describe('DeParaService.importar', () => {
           destino: { solucaoId: null, produtoId: null, moduloId: null },
         },
       ])
-    ).rejects.toThrow('AMS APL - CAMBIO - N2: Falha ao salvar o mapeamento: sem permissão');
+    ).rejects.toMatchObject({
+      message: 'AMS APL - CAMBIO - N2: Falha ao salvar o mapeamento: sem permissão',
+      chave: 'erros.daLinha',
+      valores: { linha: 'AMS APL - CAMBIO - N2' },
+    });
   });
 });

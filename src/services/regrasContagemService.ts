@@ -5,16 +5,15 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type { FiltrosContagem, RegrasContagem, SalvarRegrasInput } from '@/types/regrasContagem';
 
 type Cliente = typeof supabase;
-type ErroBanco = { message: string; code?: string };
 
 /** Meses do uso dos códigos (coluna "Últimos 6 meses") */
 const MESES_USO = 6;
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 const filtrosParaBanco = (f: FiltrosContagem) => ({
   grupos_que_contam: f.gruposQueContam,
@@ -68,7 +67,7 @@ export class RegrasContagemService {
 
   async salvar(input: SalvarRegrasInput): Promise<void> {
     const motivo = input.motivo.trim();
-    if (!motivo) throw new Error('Informe o motivo da alteração.');
+    if (!motivo) throw new ErroTraduzivel('erros.motivo', {}, 'Informe o motivo da alteração.');
 
     const { error } = await this.cliente.rpc('salvar_regras_contagem', {
       p_motivo: motivo,

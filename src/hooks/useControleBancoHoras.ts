@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { chaveMes, controleBancoHorasService } from '@/services/controleBancoHorasService';
 import { controleLancamentosService } from '@/services/controleLancamentosService';
 import { controleHistoricoService } from '@/services/controleHistoricoService';
@@ -39,7 +40,7 @@ function useAvisos() {
     t,
     recarregar: () => queryClient.invalidateQueries({ queryKey: [CHAVE] }),
     avisarErro: (titulo: string) => (err: Error) =>
-      toast({ title: titulo, description: err.message, variant: 'destructive' }),
+      toast({ title: titulo, description: textoDoErro(err, t), variant: 'destructive' }),
   };
 }
 

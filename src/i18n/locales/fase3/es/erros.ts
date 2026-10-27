@@ -1,0 +1,88 @@
+/** Mensagens de erro dos services das telas novas (Fase 3), traduzidas por textoDoErro */
+const erros = {
+  motivo: 'Informe el motivo del cambio.',
+  daLinha: '{{linha}}: {{erro}}',
+  bancos: {
+    nome: 'Informe el nombre del banco.',
+    valorFiltro: 'Informe el valor del filtro.',
+    padraoSemEscopo:
+      'El Banco predeterminado no tiene alcance ni filtro: recibe lo que no encaja en los demás.',
+    escopoVazio: 'Elija al menos un producto, módulo o filtro.',
+    vigenciaDiaUm: 'El inicio de la vigencia es el día 1 del mes.',
+    fimAntesInicio: 'El fin no puede ser anterior al inicio de la vigencia.',
+    diaInicioApuracao: 'El día de inicio del cálculo va de 1 a 28.',
+    diaFimApuracao: 'El día de fin del cálculo va de 0 (último día) a 28.',
+    duracaoPeriodos: 'Duración × períodos debe ser igual al período de cálculo ({{meses}} meses).',
+    conflitoEscopo: 'Conflicto de alcance: el banco "{{banco}}" ya cubre este producto o módulo.',
+  },
+  catalogo: {
+    solucaoRepetida: 'Ya existe una solución con este nombre.',
+    codigoRepetido: 'Ya existe una solución con este código.',
+    moduloRepetido: 'Ya existe un módulo con este nombre en el producto.',
+  },
+  dePara: {
+    grupoJaMapeado: 'Este grupo de Aranda ya está en el mapeo.',
+  },
+  ramos: {
+    nomeRepetido: 'Ya existe un ramo con este nombre.',
+    nomeVazio: 'Escriba el nombre del ramo.',
+    emUso: 'El ramo {{ramo}} está en uso en las empresas: inactívelo en vez de eliminarlo.',
+  },
+  empresas: {
+    ramoSecundarioIgual: 'El ramo secundario debe ser diferente del principal.',
+    descricaoLonga: 'La descripción de la actividad supera los {{limite}} caracteres.',
+    atualizacoesPorAno: 'Informe al menos una actualización por año.',
+    dbaNegativo: 'Las horas de DBA no pueden ser negativas.',
+    justificativaVazia: 'Explique brevemente el proyecto.',
+    justificativaLonga: 'La justificación del proyecto supera los {{limite}} caracteres.',
+    organizacaoDeOutra: 'La organización {{organizacao}} ya pertenece a {{empresa}}.',
+    organizacaoDeOutraEmpresa: 'La organización {{organizacao}} ya pertenece a otra empresa.',
+  },
+  falhas: {
+    atribuirODestino: 'No fue posible asignar el destino: {{detalhe}}',
+    carregarAEmpresa: 'No fue posible cargar la empresa: {{detalhe}}',
+    carregarAsEmpresas: 'No fue posible cargar las empresas: {{detalhe}}',
+    carregarAsRegrasDeContagem: 'No fue posible cargar las reglas de conteo: {{detalhe}}',
+    carregarOCatalogo: 'No fue posible cargar el catálogo: {{detalhe}}',
+    carregarODePara: 'No fue posible cargar el mapeo: {{detalhe}}',
+    carregarOUsoDosGrupos: 'No fue posible cargar el uso de los grupos: {{detalhe}}',
+    carregarOsBancos: 'No fue posible cargar los bancos: {{detalhe}}',
+    carregarOsBancosQueUsamOCatalogo:
+      'No fue posible cargar los bancos que usan el catálogo: {{detalhe}}',
+    carregarOsGruposNaoMapeados: 'No fue posible cargar los grupos no mapeados: {{detalhe}}',
+    carregarOsModulosDeRequerimento:
+      'No fue posible cargar los módulos de requerimiento: {{detalhe}}',
+    carregarOsRamos: 'No fue posible cargar los ramos: {{detalhe}}',
+    criarOBanco: 'No fue posible crear el banco: {{detalhe}}',
+    excluirOMapeamento: 'No fue posible eliminar el mapeo: {{detalhe}}',
+    excluirORamo: 'No fue posible eliminar el ramo: {{detalhe}}',
+    importarOModulo: 'No fue posible importar el módulo: {{detalhe}}',
+    importarOProduto: 'No fue posible importar el producto: {{detalhe}}',
+    inativarOBanco: 'No fue posible inactivar el banco: {{detalhe}}',
+    inativarOProdutoAClassificar:
+      'No fue posible inactivar el producto "A clasificar": {{detalhe}}',
+    incluirORamo: 'No fue posible incluir el ramo: {{detalhe}}',
+    moverOModulo: 'No fue posible mover el módulo: {{detalhe}}',
+    reativarOBanco: 'No fue posible reactivar el banco: {{detalhe}}',
+    registrarAVigencia: 'No fue posible registrar la vigencia: {{detalhe}}',
+    reordenarOsBancos: 'No fue posible reordenar los bancos: {{detalhe}}',
+    reordenarOsProdutos: 'No fue posible reordenar los productos: {{detalhe}}',
+    salvarAmsEProjetos: 'No fue posible guardar AMS y proyectos: {{detalhe}}',
+    salvarASolucao: 'No fue posible guardar la solución: {{detalhe}}',
+    salvarAsInformacoes: 'No fue posible guardar la información: {{detalhe}}',
+    salvarAsInformacoesDoContrato:
+      'No fue posible guardar la información del contrato: {{detalhe}}',
+    salvarAsOrganizacoes: 'No fue posible guardar las organizaciones: {{detalhe}}',
+    salvarAsRegrasDeContagem: 'No fue posible guardar las reglas de conteo: {{detalhe}}',
+    salvarOBanco: 'No fue posible guardar el banco: {{detalhe}}',
+    salvarOEscopo: 'No fue posible guardar el alcance: {{detalhe}}',
+    salvarOMapeamento: 'No fue posible guardar el mapeo: {{detalhe}}',
+    salvarOModulo: 'No fue posible guardar el módulo: {{detalhe}}',
+    salvarOModuloDeRequerimento: 'No fue posible guardar el módulo de requerimiento: {{detalhe}}',
+    salvarOProduto: 'No fue posible guardar el producto: {{detalhe}}',
+    salvarORamo: 'No fue posible guardar el ramo: {{detalhe}}',
+    salvarOsRamos: 'No fue posible guardar los ramos: {{detalhe}}',
+  },
+};
+
+export default erros;

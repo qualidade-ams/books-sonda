@@ -325,7 +325,10 @@ describe('EmpresasService.listar', () => {
     const s = new EmpresasService(
       comErro(cenario(), 'empresas', 'select', { message: 'sem rede' }) as any
     );
-    await expect(s.listar()).rejects.toThrow('Falha ao carregar as empresas: sem rede');
+    await expect(s.listar()).rejects.toMatchObject({
+      message: 'Falha ao carregar as empresas: sem rede',
+      chave: 'erros.falhas.carregarAsEmpresas',
+    });
   });
 
   it('totais da lista', () => {
@@ -511,7 +514,11 @@ describe('EmpresasService.salvarInformacoes', () => {
         ...entrada,
         organizacoes: ['EMPRESA ALFA S.A.', 'empresa beta ltda'],
       })
-    ).rejects.toThrow('A organização EMPRESA BETA LTDA já pertence à EMPRESA BETA.');
+    ).rejects.toMatchObject({
+      message: 'A organização EMPRESA BETA LTDA já pertence à EMPRESA BETA.',
+      chave: 'erros.empresas.organizacaoDeOutra',
+      valores: { organizacao: 'EMPRESA BETA LTDA', empresa: 'EMPRESA BETA' },
+    });
   });
 
   it('valida antes de gravar', async () => {

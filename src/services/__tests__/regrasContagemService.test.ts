@@ -146,7 +146,7 @@ describe('RegrasContagemService.salvar', () => {
     const fake = cenario();
     await expect(
       new RegrasContagemService(fake as any).salvar({ motivo: '  ', codigos: [] })
-    ).rejects.toThrow('Informe o motivo da alteração.');
+    ).rejects.toMatchObject({ message: 'Informe o motivo da alteração.', chave: 'erros.motivo' });
     expect(fake.chamadasRpc).toHaveLength(0);
   });
 

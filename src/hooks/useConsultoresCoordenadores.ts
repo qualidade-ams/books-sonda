@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { consultoresCoordenadoresService } from '@/services/consultoresCoordenadoresService';
 
 const CHAVE = ['consultores-coordenadores'];
@@ -40,7 +41,7 @@ export function useConsultoresCoordenadores() {
     onError: (err: Error) => {
       toast({
         title: t('avisos.coordenadores.erroSalvar'),
-        description: err.message,
+        description: textoDoErro(err, t),
         variant: 'destructive',
       });
     },

@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   BancoCadastro,
   EscopoBancoCadastro,
@@ -18,11 +19,9 @@ import type {
 } from '@/types/bancosHorasCadastro';
 
 type Cliente = typeof supabase;
-type ErroBanco = { message: string; code?: string };
 type Linha = Record<string, any>;
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 const diaUm = (data: string | null) => !data || data.endsWith('-01');
 const numeroOuNulo = (valor: unknown) =>
@@ -34,33 +33,58 @@ const numeroOuNulo = (valor: unknown) =>
 
 /** O que dá para conferir antes de gravar; o resto fica com os gatilhos */
 export function validarParametros(p: ParametrosBanco): void {
-  if (!p.nome.trim()) throw new Error('Informe o nome do banco.');
-  if (p.filtroIc && !p.filtroIc.valor.trim()) throw new Error('Informe o valor do filtro.');
+  if (!p.nome.trim()) throw new ErroTraduzivel('erros.bancos.nome', {}, 'Informe o nome do banco.');
+  if (p.filtroIc && !p.filtroIc.valor.trim())
+    throw new ErroTraduzivel('erros.bancos.valorFiltro', {}, 'Informe o valor do filtro.');
   if (p.padrao && (p.escopo.length > 0 || p.filtroIc)) {
-    throw new Error(
+    throw new ErroTraduzivel(
+      'erros.bancos.padraoSemEscopo',
+      {},
       'O Banco padrão não tem escopo nem filtro: recebe o que não se encaixa nos outros.'
     );
   }
   if (!p.padrao && p.escopo.length === 0 && !p.filtroIc) {
-    throw new Error('Escolha ao menos um produto, módulo ou filtro.');
+    throw new ErroTraduzivel(
+      'erros.bancos.escopoVazio',
+      {},
+      'Escolha ao menos um produto, módulo ou filtro.'
+    );
   }
   if (!diaUm(p.inicioVigencia) || !diaUm(p.fimVigencia)) {
-    throw new Error('O início da vigência é no dia 1 do mês.');
+    throw new ErroTraduzivel(
+      'erros.bancos.vigenciaDiaUm',
+      {},
+      'O início da vigência é no dia 1 do mês.'
+    );
   }
   if (p.fimVigencia && p.fimVigencia < p.inicioVigencia) {
-    throw new Error('O fim não pode ser anterior ao início da vigência.');
+    throw new ErroTraduzivel(
+      'erros.bancos.fimAntesInicio',
+      {},
+      'O fim não pode ser anterior ao início da vigência.'
+    );
   }
   if (p.diaInicioApuracao < 1 || p.diaInicioApuracao > 28) {
-    throw new Error('O dia de início da apuração vai de 1 a 28.');
+    throw new ErroTraduzivel(
+      'erros.bancos.diaInicioApuracao',
+      {},
+      'O dia de início da apuração vai de 1 a 28.'
+    );
   }
   if (p.diaFimApuracao < 0 || p.diaFimApuracao > 28) {
-    throw new Error('O dia de fim da apuração vai de 0 (último dia) a 28.');
+    throw new ErroTraduzivel(
+      'erros.bancos.diaFimApuracao',
+      {},
+      'O dia de fim da apuração vai de 0 (último dia) a 28.'
+    );
   }
   if (
     p.repasseEspecial === 'por_periodo' &&
     (p.duracaoPeriodoMeses ?? 0) * (p.periodosAteZerar ?? 0) !== p.periodoApuracao
   ) {
-    throw new Error(
+    throw new ErroTraduzivel(
+      'erros.bancos.duracaoPeriodos',
+      { meses: p.periodoApuracao },
       `Duração × períodos precisa ser igual ao período de apuração (${p.periodoApuracao} meses).`
     );
   }
@@ -212,7 +236,11 @@ export class BancosHorasCadastroService {
     const outros = (await this.listar(empresaId)).filter((b) => b.ativo && b.id !== bancoId);
     const conflito = conflitoDeEscopo(escopo, outros);
     if (conflito) {
-      throw new Error(`Conflito de escopo: o banco "${conflito}" já cobre este produto ou módulo.`);
+      throw new ErroTraduzivel(
+        'erros.bancos.conflitoEscopo',
+        { banco: conflito },
+        `Conflito de escopo: o banco "${conflito}" já cobre este produto ou módulo.`
+      );
     }
   }
 
@@ -292,7 +320,7 @@ export class BancosHorasCadastroService {
 
   async inativar(bancoId: string, motivo: string): Promise<void> {
     const limpo = motivo.trim();
-    if (!limpo) throw new Error('Informe o motivo da alteração.');
+    if (!limpo) throw new ErroTraduzivel('erros.motivo', {}, 'Informe o motivo da alteração.');
     const { error } = await this.cliente.rpc('bancos_horas_inativar', {
       p_banco_id: bancoId,
       p_motivo: limpo,
@@ -329,7 +357,7 @@ export class BancosHorasCadastroService {
       p_valores: valores,
       p_motivo: input.motivo.trim(),
     });
-    if (error) throw falha(`registrar a vigência de ${input.tipo}`, error);
+    if (error) throw falha('registrar a vigência', error);
   }
 }
 

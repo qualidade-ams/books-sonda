@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useBancosHorasCadastro } from '../useBancosHorasCadastro';
 import { bancosHorasCadastroService } from '@/services/bancosHorasCadastroService';
+import { ErroTraduzivel } from '@/errors/erroTraduzivel';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
@@ -142,6 +143,24 @@ describe('useBancosHorasCadastro', () => {
     expect(toast).toHaveBeenCalledWith({
       title: 'avisos.bancos.erroSalvar',
       description: 'Conflito de escopo: o banco "A" já cobre este produto ou módulo.',
+      variant: 'destructive',
+    });
+  });
+
+  it('erro do service com chave aparece no aviso no idioma da tela', async () => {
+    service.salvar.mockRejectedValue(
+      new ErroTraduzivel('erros.bancos.conflitoEscopo', { banco: 'A' }, 'Conflito de escopo...')
+    );
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useBancosHorasCadastro('e1'), { wrapper });
+
+    await act(() =>
+      result.current.salvar({ bancoId: 'b1', parametros: {} as any }).catch(() => undefined)
+    );
+
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.bancos.erroSalvar',
+      description: 'erros.bancos.conflitoEscopo {"banco":"A"}',
       variant: 'destructive',
     });
   });
