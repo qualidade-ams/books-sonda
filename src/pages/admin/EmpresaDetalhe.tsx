@@ -28,7 +28,7 @@ import { useCatalogo } from '@/hooks/useCatalogo';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
-import { TELA_ATUAL_EMPRESAS } from '@/utils/empresasTela';
+import { telaAtualDaEmpresa } from '@/utils/empresasTela';
 import type { Anexo, ModeloEmpresa } from '@/types/empresas';
 import type { BancoCadastro } from '@/types/bancosHorasCadastro';
 import type { Catalogo } from '@/types/catalogo';
@@ -259,7 +259,7 @@ export default function EmpresaDetalhe() {
               )}
               {podeEditarEmpresa && (
                 <Link
-                  to={TELA_ATUAL_EMPRESAS}
+                  to={telaAtualDaEmpresa(empresa.id)}
                   title={t('empresasCadastro.telaAtualDica')}
                   className={cn(botaoVidro, 'h-7 rounded-full px-2.5 text-xs md:h-7')}
                 >
@@ -315,9 +315,14 @@ export default function EmpresaDetalhe() {
                 onTentarNovamente={bancosHook.recarregar}
               />
             ) : aba === 'contatos' ? (
-              <AbaContatos contatos={empresa.contatos} podeEditar={podeEditarEmpresa} />
+              <AbaContatos
+                empresaId={empresa.id}
+                contatos={empresa.contatos}
+                podeEditar={podeEditarEmpresa}
+              />
             ) : aba === 'book' ? (
               <AbaBook
+                empresaId={empresa.id}
                 book={empresa.book}
                 temAms={empresa.solucoes.some((s) => s.temAms)}
                 nomeTemplate={

@@ -9,9 +9,11 @@ import type { Contato } from '@/types/empresas';
 import { EditarNaTelaAtual } from './IdentidadeEmpresa';
 
 export function AbaContatos({
+  empresaId,
   contatos,
   podeEditar,
 }: {
+  empresaId: string;
   contatos: Contato[];
   podeEditar: boolean;
 }) {
@@ -50,7 +52,11 @@ export function AbaContatos({
     },
   ];
   return (
-    <Card semPadding titulo={c('titulo')} acoes={podeEditar ? <EditarNaTelaAtual /> : undefined}>
+    <Card
+      semPadding
+      titulo={c('titulo')}
+      acoes={podeEditar ? <EditarNaTelaAtual empresaId={empresaId} /> : undefined}
+    >
       <DataTable
         rotulo={c('titulo')}
         colunas={colunas}

@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import { useAberturaPeloLink } from '@/hooks/useAberturaPeloLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -324,6 +325,12 @@ const EmpresasClientes = () => {
     setSelectedEmpresa(empresa);
     setShowEditModal(true);
   };
+
+  // Vindo da tela nova de Empresas: abre a empresa em edição (?editar=) ou o cadastro (?nova=1)
+  useAberturaPeloLink(empresas, isLoading, {
+    editar: handleEdit,
+    nova: () => setShowCreateModal(true),
+  });
 
   const handleUpdate = async (data: EmpresaFormData) => {
     if (!selectedEmpresa) return;

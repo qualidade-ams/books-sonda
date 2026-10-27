@@ -21,7 +21,7 @@ import {
   exportacaoEmpresas,
   filtrarEmpresas,
   SEM_FILTRO_EMPRESAS,
-  TELA_ATUAL_EMPRESAS,
+  TELA_ATUAL_NOVA_EMPRESA,
   type FiltroEmpresas,
 } from '@/utils/empresasTela';
 
@@ -49,7 +49,7 @@ export default function Empresas() {
               <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
                 {podeEditar && (
                   <Link
-                    to={TELA_ATUAL_EMPRESAS}
+                    to={TELA_ATUAL_NOVA_EMPRESA}
                     className={botaoVidro}
                     title={t('empresasCadastro.telaAtualDica')}
                   >

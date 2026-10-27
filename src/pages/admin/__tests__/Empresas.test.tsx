@@ -226,7 +226,7 @@ describe('Empresas (lista)', () => {
     const { unmount } = renderizar('/admin/empresas');
     expect(screen.getByRole('link', { name: /empresasCadastro.novaNaTelaAtual/ })).toHaveAttribute(
       'href',
-      '/admin/empresas-clientes'
+      '/admin/empresas-clientes?nova=1'
     );
     unmount();
     permissoes = ['empresas:view'];

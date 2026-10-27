@@ -118,7 +118,7 @@ describe('IdentidadeEmpresa', () => {
     expect(onEditarAms).toHaveBeenCalled();
     expect(
       screen.getByRole('link', { name: 'empresasCadastro.editarNaTelaAtual' })
-    ).toHaveAttribute('href', '/admin/empresas-clientes');
+    ).toHaveAttribute('href', `/admin/empresas-clientes?editar=${EMPRESA.id}`);
   });
 });
 

@@ -145,7 +145,7 @@ describe('ListaEmpresas', () => {
     );
     expect(
       screen.getByRole('menuitem', { name: 'empresasCadastro.editarNaTelaAtual' })
-    ).toHaveAttribute('href', '/admin/empresas-clientes');
+    ).toHaveAttribute('href', '/admin/empresas-clientes?editar=alfa');
     unmount();
     renderizar({ podeEditar: false });
     expect(screen.queryByRole('button', { name: /fase3Comum.acoesDe/ })).not.toBeInTheDocument();

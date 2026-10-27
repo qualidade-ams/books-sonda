@@ -22,11 +22,13 @@ function Item({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 }
 
 export function AbaBook({
+  empresaId,
   book,
   temAms,
   nomeTemplate,
   podeEditar,
 }: {
+  empresaId: string;
   book: BookEmpresa;
   temAms: boolean;
   /** Nome do template padrão (resolvido pela tela); sem nome, mostra "Template personalizado" */
@@ -41,7 +43,10 @@ export function AbaBook({
   const simNao = (v: boolean) => (v ? b('sim') : b('nao'));
 
   return (
-    <Card titulo={b('titulo')} acoes={podeEditar ? <EditarNaTelaAtual /> : undefined}>
+    <Card
+      titulo={b('titulo')}
+      acoes={podeEditar ? <EditarNaTelaAtual empresaId={empresaId} /> : undefined}
+    >
       <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
         <Item rotulo={b('tipoBook')}>{temAms ? b(`tipo.${book.tipoBook}`) : b('semAms')}</Item>
         {temBook && (

@@ -20,6 +20,13 @@ export type SimNao = 'sim' | 'nao';
 /** Tela atual de empresas, onde a identidade é mantida até a virada (Fase 6) */
 export const TELA_ATUAL_EMPRESAS = '/admin/empresas-clientes';
 
+/** A tela atual já com a empresa aberta em edição (useAberturaPeloLink) */
+export const telaAtualDaEmpresa = (empresaId: string) =>
+  `${TELA_ATUAL_EMPRESAS}?editar=${encodeURIComponent(empresaId)}`;
+
+/** A tela atual já com o cadastro de uma empresa nova aberto */
+export const TELA_ATUAL_NOVA_EMPRESA = `${TELA_ATUAL_EMPRESAS}?nova=1`;
+
 export interface FiltroEmpresas {
   busca: string;
   status: EmpresaLista['status'][];

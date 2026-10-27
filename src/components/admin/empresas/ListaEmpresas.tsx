@@ -37,7 +37,7 @@ import { campo, itemMenu } from '@/components/ds/estilos';
 import { cn } from '@/lib/utils';
 import {
   SEM_FILTRO_EMPRESAS,
-  TELA_ATUAL_EMPRESAS,
+  telaAtualDaEmpresa,
   codigosDeSolucao,
   filtrarEmpresas,
   filtrosAtivosEmpresas,
@@ -183,7 +183,7 @@ function MenuLinha({ empresa }: { empresa: EmpresaLista }) {
           className="min-w-52 border-ds-border bg-ds-bg-raised p-1 font-ds-sans text-ds-fg"
         >
           <DropdownMenuItem asChild className={itemMenu}>
-            <Link to={TELA_ATUAL_EMPRESAS}>
+            <Link to={telaAtualDaEmpresa(empresa.id)}>
               <ExternalLink className="h-4 w-4" /> {t('empresasCadastro.editarNaTelaAtual')}
             </Link>
           </DropdownMenuItem>

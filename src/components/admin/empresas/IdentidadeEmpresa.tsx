@@ -9,7 +9,7 @@ import { Button } from '@/components/ds/Button';
 import { useDicas } from '@/components/ds/Dicas';
 import { InfoDica, ValorCopiavel } from '@/components/ds/Formulario';
 import { formatarDia } from '@/hooks/useUltimaAlteracao';
-import { TELA_ATUAL_EMPRESAS } from '@/utils/empresasTela';
+import { telaAtualDaEmpresa } from '@/utils/empresasTela';
 import type { Anexo, EmpresaDetalhe } from '@/types/empresas';
 
 const Vazio = () => <span className="text-ds-fg-muted">—</span>;
@@ -39,12 +39,12 @@ function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-/** Atalho para a tela atual, onde a identidade é mantida até a virada */
-export function EditarNaTelaAtual() {
+/** Atalho para a tela atual, já na empresa, onde a identidade é mantida até a virada */
+export function EditarNaTelaAtual({ empresaId }: { empresaId: string }) {
   const { t } = useTranslation();
   return (
     <Link
-      to={TELA_ATUAL_EMPRESAS}
+      to={telaAtualDaEmpresa(empresaId)}
       title={t('empresasCadastro.telaAtualDica')}
       className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-ds-fg-accent transition hover:bg-ds-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus"
     >
@@ -86,7 +86,7 @@ export function IdentidadeEmpresa({
             <Button tamanho="sm" variante="fantasma" onClick={onEditarAms}>
               <Pencil /> {r('amsEProjetos')}
             </Button>
-            <EditarNaTelaAtual />
+            <EditarNaTelaAtual empresaId={empresa.id} />
           </div>
         )}
       </div>

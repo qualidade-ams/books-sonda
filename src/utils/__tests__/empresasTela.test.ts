@@ -4,6 +4,8 @@ import {
   exportacaoEmpresas,
   filtrarEmpresas,
   SEM_FILTRO_EMPRESAS,
+  TELA_ATUAL_NOVA_EMPRESA,
+  telaAtualDaEmpresa,
 } from '../empresasTela';
 import { matrizDaAba } from '@/utils/exportarTabela';
 import type { EmpresaLista, SolucaoDaEmpresa } from '@/types/empresas';
@@ -140,5 +142,12 @@ describe('exportacaoEmpresas', () => {
         '',
       ],
     ]);
+  });
+});
+
+describe('links para a tela atual', () => {
+  it('abre a empresa em edição, ou o cadastro de uma nova', () => {
+    expect(telaAtualDaEmpresa('e1')).toBe('/admin/empresas-clientes?editar=e1');
+    expect(TELA_ATUAL_NOVA_EMPRESA).toBe('/admin/empresas-clientes?nova=1');
   });
 });

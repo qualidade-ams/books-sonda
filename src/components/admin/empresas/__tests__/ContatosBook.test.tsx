@@ -50,16 +50,16 @@ const renderizar = (ui: React.ReactElement) =>
 
 describe('AbaContatos', () => {
   it('lista os contatos, com o principal e a situação; o atalho só para quem edita', () => {
-    const { unmount } = renderizar(<AbaContatos contatos={CONTATOS} podeEditar />);
+    const { unmount } = renderizar(<AbaContatos empresaId="e1" contatos={CONTATOS} podeEditar />);
     const lista = within(screen.getByRole('list', { name: 'empresasCadastro.contatos.titulo' }));
     expect(lista.getByLabelText('empresasCadastro.contatos.principal')).toBeInTheDocument();
     expect(lista.getByText('b@cliente.com')).toBeInTheDocument();
     expect(lista.getByText('fase3Comum.inativo')).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'empresasCadastro.editarNaTelaAtual' })
-    ).toBeInTheDocument();
+    ).toHaveAttribute('href', '/admin/empresas-clientes?editar=e1');
     unmount();
-    renderizar(<AbaContatos contatos={[]} podeEditar={false} />);
+    renderizar(<AbaContatos empresaId="e1" contatos={[]} podeEditar={false} />);
     expect(screen.getByText('empresasCadastro.contatos.nenhum')).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
@@ -67,7 +67,15 @@ describe('AbaContatos', () => {
 
 describe('AbaBook', () => {
   it('Book de Qualidade: template pelo nome, SharePoint, opções e SLA', () => {
-    renderizar(<AbaBook book={BOOK} temAms nomeTemplate="Template Samarco" podeEditar={false} />);
+    renderizar(
+      <AbaBook
+        empresaId="e1"
+        book={BOOK}
+        temAms
+        nomeTemplate="Template Samarco"
+        podeEditar={false}
+      />
+    );
     expect(screen.getByText('empresasCadastro.book.tipo.qualidade')).toBeInTheDocument();
     expect(screen.getByText('Template Samarco')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'https://sharepoint.com/alfa' })).toHaveAttribute(
@@ -80,15 +88,19 @@ describe('AbaBook', () => {
   });
 
   it('sem AMS, não há Book; sem Book, nem template nem opções', () => {
-    const { unmount } = renderizar(<AbaBook book={BOOK} temAms={false} podeEditar={false} />);
+    const { unmount } = renderizar(
+      <AbaBook empresaId="e1" book={BOOK} temAms={false} podeEditar={false} />
+    );
     expect(screen.getByText('empresasCadastro.book.semAms')).toBeInTheDocument();
     expect(screen.queryByText('empresasCadastro.book.templatePadrao')).not.toBeInTheDocument();
     unmount();
-    renderizar(<AbaBook book={{ ...BOOK, tipoBook: 'nao_tem_book' }} temAms podeEditar />);
+    renderizar(
+      <AbaBook empresaId="e1" book={{ ...BOOK, tipoBook: 'nao_tem_book' }} temAms podeEditar />
+    );
     expect(screen.queryByText('empresasCadastro.book.linkSharepoint')).not.toBeInTheDocument();
     expect(screen.queryByText('empresasCadastro.book.consolidadora')).not.toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'empresasCadastro.editarNaTelaAtual' })
-    ).toBeInTheDocument();
+    ).toHaveAttribute('href', '/admin/empresas-clientes?editar=e1');
   });
 });
