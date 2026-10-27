@@ -6,14 +6,14 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type { Autor, ItemRetroativo, Retroativo } from '@/types/retroativos';
 
 type Cliente = typeof supabase;
 type ErroBanco = { message: string; code?: string };
 type Linha = Record<string, any>;
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 const umOuNulo = <T>(valor: T | T[] | null | undefined): T | null =>
   Array.isArray(valor) ? (valor[0] ?? null) : (valor ?? null);
@@ -169,7 +169,8 @@ export class RetroativosService {
   /** Só o pendente; a justificativa vai para a auditoria como motivo */
   async decidir(retroativoId: string, decisao: 'aprovar' | 'descartar', justificativa: string) {
     const limpa = justificativa.trim();
-    if (!limpa) throw new Error('Informe a justificativa.');
+    if (!limpa)
+      throw new ErroTraduzivel('erros.retroativos.justificativa', {}, 'Informe a justificativa.');
     const { error } = await this.cliente.rpc('decidir_retroativo', {
       p_retroativo_id: retroativoId,
       p_decisao: decisao,

@@ -3,6 +3,7 @@
 // A recorrência é a mesma da Sincronização e é validada de novo no sync-api.
 import { useEffect, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { z } from 'zod';
 import { Plus, Search } from 'lucide-react';
 import { Callout } from '@/components/ds/Callout';
@@ -218,7 +219,7 @@ export function EdicaoAgendamento({
     } catch (err) {
       toast({
         title: t('envioSaldoParcial.toasts.erroSalvar'),
-        description: err instanceof Error ? err.message : undefined,
+        description: err instanceof Error ? textoDoErro(err, t) : undefined,
         variant: 'destructive',
       });
     } finally {

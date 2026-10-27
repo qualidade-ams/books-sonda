@@ -38,6 +38,28 @@ const erros = {
     organizacaoDeOutra: 'La organización {{organizacao}} ya pertenece a {{empresa}}.',
     organizacaoDeOutraEmpresa: 'La organización {{organizacao}} ya pertenece a otra empresa.',
   },
+  controle: {
+    reajusteVazio: 'Informe las horas o los tickets del reajuste.',
+    motivoReajuste: 'Informe el motivo del reajuste.',
+    motivoLongo: 'El motivo supera los {{limite}} caracteres.',
+    anotacaoLonga: 'Las anotaciones internas superan los {{limite}} caracteres.',
+    motivoInativacao: 'Informe el motivo de la inactivación.',
+    observacaoVazia: 'Escriba la observación.',
+    observacaoLonga: 'La observación supera los {{limite}} caracteres.',
+    semAjustes: 'Ningún requerimiento con banco cambiado.',
+    motivoTroca: 'Informe el motivo del cambio de banco.',
+  },
+  retroativos: {
+    justificativa: 'Informe la justificación.',
+  },
+  menu: {
+    formatoLogo: 'Use PNG, SVG, WebP o JPG.',
+    logoGrande: 'El logo supera los 500 KB.',
+  },
+  saldoParcial: {
+    naoEnviado: 'El correo no fue enviado.',
+    semHistorico: 'El correo fue enviado, pero no quedó en el historial de envíos: {{detalhe}}',
+  },
   falhas: {
     atribuirODestino: 'No fue posible asignar el destino: {{detalhe}}',
     carregarAEmpresa: 'No fue posible cargar la empresa: {{detalhe}}',
@@ -82,6 +104,32 @@ const erros = {
     salvarOProduto: 'No fue posible guardar el producto: {{detalhe}}',
     salvarORamo: 'No fue posible guardar el ramo: {{detalhe}}',
     salvarOsRamos: 'No fue posible guardar los ramos: {{detalhe}}',
+    buscarOEMailDosConsultores: 'No fue posible buscar el correo de los consultores: {{detalhe}}',
+    carregarAAuditoria: 'No fue posible cargar la auditoría: {{detalhe}}',
+    carregarAsObservacoes: 'No fue posible cargar las observaciones: {{detalhe}}',
+    carregarOConsumoEntreBancos: 'No fue posible cargar el consumo entre bancos: {{detalhe}}',
+    carregarOHistorico: 'No fue posible cargar el historial: {{detalhe}}',
+    carregarOIdiomaDoEMail: 'No fue posible cargar el idioma del correo: {{detalhe}}',
+    carregarOLogo: 'No fue posible cargar el logo: {{detalhe}}',
+    carregarOMenu: 'No fue posible cargar el menú: {{detalhe}}',
+    carregarOsApontamentosRetroativos:
+      'No fue posible cargar los registros retroactivos: {{detalhe}}',
+    carregarOsChamados: 'No fue posible cargar los tickets: {{detalhe}}',
+    carregarOsChamadosDosMesesFechados:
+      'No fue posible cargar los tickets de los meses cerrados: {{detalhe}}',
+    carregarOsReajustes: 'No fue posible cargar los reajustes: {{detalhe}}',
+    carregarOsRequerimentos: 'No fue posible cargar los requerimientos: {{detalhe}}',
+    enviarOLogo: 'No fue posible enviar el logo: {{detalhe}}',
+    excluirAObservacao: 'No fue posible eliminar la observación: {{detalhe}}',
+    inativarOReajuste: 'No fue posible inactivar el reajuste: {{detalhe}}',
+    lancarOReajuste: 'No fue posible registrar el reajuste: {{detalhe}}',
+    registrarOAvisoAosConsultores:
+      'No fue posible registrar el aviso a los consultores: {{detalhe}}',
+    registrarOEnvioDoSaldoParcial:
+      'No fue posible registrar el envío del Saldo Parcial: {{detalhe}}',
+    salvarAObservacao: 'No fue posible guardar la observación: {{detalhe}}',
+    salvarATrocaDeBanco: 'No fue posible guardar el cambio de banco: {{detalhe}}',
+    salvarOMenu: 'No fue posible guardar el menú: {{detalhe}}',
   },
 };
 

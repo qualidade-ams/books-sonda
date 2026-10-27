@@ -8,6 +8,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { falhaDoBanco } from '@/errors/erroTraduzivel';
 import { criarClassificador } from '@/services/bancosHoras/classificacao';
 import { estaVigente, type MesAno } from '@/services/bancosHoras/calculo';
 import { itensDeConsumoPorBanco } from '@/services/bancosHoras/fechamento';
@@ -39,7 +40,6 @@ import type {
 import type { TipoContrato } from '@/services/bancosHoras/calculo';
 
 type Cliente = typeof supabase;
-type ErroBanco = { message: string; code?: string };
 type Linha = Record<string, any>;
 
 /** Ids por consulta: a lista vai na URL */
@@ -92,8 +92,7 @@ interface ItemDoBanco {
   tickets: number;
 }
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 const indice = (m: MesAno) => m.ano * 12 + m.mes;
 

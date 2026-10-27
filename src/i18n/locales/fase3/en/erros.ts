@@ -39,6 +39,29 @@ const erros = {
     organizacaoDeOutraEmpresa:
       'The organization {{organizacao}} already belongs to another company.',
   },
+  controle: {
+    reajusteVazio: 'Enter the hours or tickets of the adjustment.',
+    motivoReajuste: 'Enter the reason for the adjustment.',
+    motivoLongo: 'The reason exceeds {{limite}} characters.',
+    anotacaoLonga: 'The internal notes exceed {{limite}} characters.',
+    motivoInativacao: 'Enter the reason for the deactivation.',
+    observacaoVazia: 'Write the note.',
+    observacaoLonga: 'The note exceeds {{limite}} characters.',
+    semAjustes: 'No requirement with a changed bank.',
+    motivoTroca: 'Enter the reason for the bank change.',
+  },
+  retroativos: {
+    justificativa: 'Enter the justification.',
+  },
+  menu: {
+    formatoLogo: 'Use PNG, SVG, WebP or JPG.',
+    logoGrande: 'The logo exceeds 500 KB.',
+  },
+  saldoParcial: {
+    naoEnviado: 'The e-mail was not sent.',
+    semHistorico:
+      'The e-mail was sent, but it was not recorded in the sending history: {{detalhe}}',
+  },
   falhas: {
     atribuirODestino: 'Could not assign the target: {{detalhe}}',
     carregarAEmpresa: 'Could not load the company: {{detalhe}}',
@@ -79,6 +102,29 @@ const erros = {
     salvarOProduto: 'Could not save the product: {{detalhe}}',
     salvarORamo: 'Could not save the sector: {{detalhe}}',
     salvarOsRamos: 'Could not save the sectors: {{detalhe}}',
+    buscarOEMailDosConsultores: 'Could not fetch the consultants e-mail: {{detalhe}}',
+    carregarAAuditoria: 'Could not load the audit log: {{detalhe}}',
+    carregarAsObservacoes: 'Could not load the notes: {{detalhe}}',
+    carregarOConsumoEntreBancos: 'Could not load the usage between banks: {{detalhe}}',
+    carregarOHistorico: 'Could not load the history: {{detalhe}}',
+    carregarOIdiomaDoEMail: 'Could not load the e-mail language: {{detalhe}}',
+    carregarOLogo: 'Could not load the logo: {{detalhe}}',
+    carregarOMenu: 'Could not load the menu: {{detalhe}}',
+    carregarOsApontamentosRetroativos: 'Could not load the retroactive time entries: {{detalhe}}',
+    carregarOsChamados: 'Could not load the tickets: {{detalhe}}',
+    carregarOsChamadosDosMesesFechados:
+      'Could not load the tickets of the closed months: {{detalhe}}',
+    carregarOsReajustes: 'Could not load the adjustments: {{detalhe}}',
+    carregarOsRequerimentos: 'Could not load the requirements: {{detalhe}}',
+    enviarOLogo: 'Could not upload the logo: {{detalhe}}',
+    excluirAObservacao: 'Could not delete the note: {{detalhe}}',
+    inativarOReajuste: 'Could not deactivate the adjustment: {{detalhe}}',
+    lancarOReajuste: 'Could not register the adjustment: {{detalhe}}',
+    registrarOAvisoAosConsultores: 'Could not register the notice to the consultants: {{detalhe}}',
+    registrarOEnvioDoSaldoParcial: 'Could not register the Partial Balance sending: {{detalhe}}',
+    salvarAObservacao: 'Could not save the note: {{detalhe}}',
+    salvarATrocaDeBanco: 'Could not save the bank change: {{detalhe}}',
+    salvarOMenu: 'Could not save the menu: {{detalhe}}',
   },
 };
 

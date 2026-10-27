@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { falhaDoBanco } from '@/errors/erroTraduzivel';
 import {
   bancoDoRequerimento,
   calcularEmpresaMes,
@@ -74,7 +75,7 @@ export class ControleBancoHorasService {
       .select('id, nome_abreviado, modelo_calculo, bancos_horas(ativo)')
       .eq('status', 'ativo')
       .order('nome_abreviado');
-    if (error) throw new Error(`Falha ao carregar as empresas: ${error.message}`);
+    if (error) throw falhaDoBanco('carregar as empresas', error);
     return (data as Record<string, any>[]).map((e) => {
       const bancosAtivos = (e.bancos_horas ?? []).filter((b: { ativo: boolean }) => b.ativo).length;
       return {
@@ -116,7 +117,7 @@ export class ControleBancoHorasService {
         p_ano: m.ano,
         p_mes: m.mes,
       });
-      if (error) throw new Error(`Falha ao carregar os requerimentos: ${error.message}`);
+      if (error) throw falhaDoBanco('carregar os requerimentos', error);
 
       const classificador = criarClassificador(bancos, dePara, m);
       const doMes = bancos.filter((b) => b.ativo && estaVigente(b, m)).map((b) => b.bancoId);

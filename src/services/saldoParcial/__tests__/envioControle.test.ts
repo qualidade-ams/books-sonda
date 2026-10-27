@@ -104,9 +104,11 @@ describe('enviarSaldoParcialControle', () => {
 
   it('e-mail enviado mas o registro falhou: avisa sem dizer que o envio falhou', async () => {
     const d = dependencias({ registrar: vi.fn(async () => Promise.reject(new Error('sem rede'))) });
-    await expect(enviarSaldoParcialControle(entrada, d)).rejects.toThrow(
-      /enviado, mas não ficou no histórico/
-    );
+    await expect(enviarSaldoParcialControle(entrada, d)).rejects.toMatchObject({
+      message: expect.stringMatching(/enviado, mas não ficou no histórico/),
+      chave: 'erros.saldoParcial.semHistorico',
+      valores: { detalhe: 'sem rede' },
+    });
     expect(d.registrar).toHaveBeenCalledTimes(1);
   });
 });

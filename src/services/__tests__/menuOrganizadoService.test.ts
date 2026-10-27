@@ -311,13 +311,15 @@ describe('MenuOrganizadoService', () => {
     });
 
     const grande = new File([new Uint8Array(512001)], 'grande.png', { type: 'image/png' });
-    await expect(s.enviarLogo('claro', 'aberto', grande)).rejects.toThrow(
-      'O logo passa de 500 KB.'
-    );
+    await expect(s.enviarLogo('claro', 'aberto', grande)).rejects.toMatchObject({
+      message: 'O logo passa de 500 KB.',
+      chave: 'erros.menu.logoGrande',
+    });
     const gif = new File(['x'], 'logo.gif', { type: 'image/gif' });
-    await expect(s.enviarLogo('claro', 'aberto', gif)).rejects.toThrow(
-      'Use PNG, SVG, WebP ou JPG.'
-    );
+    await expect(s.enviarLogo('claro', 'aberto', gif)).rejects.toMatchObject({
+      message: 'Use PNG, SVG, WebP ou JPG.',
+      chave: 'erros.menu.formatoLogo',
+    });
   });
 
   it('gera o endereço temporário do logo (bucket privado)', async () => {

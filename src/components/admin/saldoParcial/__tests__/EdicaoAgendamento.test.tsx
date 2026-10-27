@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { EdicaoAgendamento } from '../EdicaoAgendamento';
 import * as hooks from '@/hooks/useEnvioSaldoParcial';
+import { ErroTraduzivel } from '@/errors/erroTraduzivel';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -246,5 +247,20 @@ describe('EdicaoAgendamento', () => {
       )
     );
     expect(onFechar).not.toHaveBeenCalled();
+  });
+
+  it('erro com chave aparece no idioma da tela', async () => {
+    salvar.mutateAsync.mockRejectedValue(
+      new ErroTraduzivel('erros.motivo', {}, 'Informe o motivo.')
+    );
+    const user = userEvent.setup();
+    renderizar(agendamento);
+
+    await user.click(screen.getByRole('button', { name: 'ds.formulario.salvar' }));
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'destructive', description: 'erros.motivo {}' })
+      )
+    );
   });
 });

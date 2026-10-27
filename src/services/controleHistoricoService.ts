@@ -6,17 +6,16 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { falhaDoBanco } from '@/errors/erroTraduzivel';
 import type { EventoHistorico } from '@/types/controleBancoHoras';
 
 type Cliente = typeof supabase;
-type ErroBanco = { message: string; code?: string };
 type Linha = Record<string, any>;
 
 /** Até onde a aba volta na auditoria */
 const LIMITE_ALTERACOES = 500;
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 export class ControleHistoricoService {
   constructor(private readonly cliente: Cliente = supabase) {}

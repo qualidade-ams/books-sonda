@@ -205,9 +205,10 @@ describe('RetroativosService.listar', () => {
             select: () => ({ order: async () => ({ data: null, error: { message: 'sem rede' } }) }),
           }
         : original(t);
-    await expect(new RetroativosService(fake as any).listar()).rejects.toThrow(
-      'Falha ao carregar os apontamentos retroativos: sem rede'
-    );
+    await expect(new RetroativosService(fake as any).listar()).rejects.toMatchObject({
+      message: 'Falha ao carregar os apontamentos retroativos: sem rede',
+      chave: 'erros.falhas.carregarOsApontamentosRetroativos',
+    });
   });
 });
 
@@ -226,7 +227,10 @@ describe('RetroativosService.decidir e registrarAviso', () => {
     const fake = cenario();
     await expect(
       new RetroativosService(fake as any).decidir('rt1', 'descartar', ' ')
-    ).rejects.toThrow('Informe a justificativa.');
+    ).rejects.toMatchObject({
+      message: 'Informe a justificativa.',
+      chave: 'erros.retroativos.justificativa',
+    });
     expect(fake.chamadasRpc).toHaveLength(0);
   });
 

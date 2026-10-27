@@ -7,6 +7,7 @@
  */
 
 import { emailService, type EmailData } from '@/services/emailService';
+import { ErroTraduzivel } from '@/errors/erroTraduzivel';
 import {
   controleSaldoParcialService,
   type ChamadoDoBanco,
@@ -122,7 +123,10 @@ export async function enviarSaldoParcialControle(
       html,
       anexos,
     });
-    if (!resultado.success) throw new Error(resultado.error || 'O e-mail não foi enviado.');
+    if (!resultado.success)
+      throw resultado.error
+        ? new Error(resultado.error)
+        : new ErroTraduzivel('erros.saldoParcial.naoEnviado', {}, 'O e-mail não foi enviado.');
   } catch (erro) {
     const mensagem = erro instanceof Error ? erro.message : 'O e-mail não foi enviado.';
     // A falha fica no histórico; se nem isso der, vale o erro do envio
@@ -135,10 +139,11 @@ export async function enviarSaldoParcialControle(
   try {
     await dependencias.registrar(entrada.empresaId, { sucesso: true, destinatarios: quantos });
   } catch (erro) {
-    throw new Error(
-      `O e-mail foi enviado, mas não ficou no histórico de envios: ${
-        erro instanceof Error ? erro.message : 'erro desconhecido'
-      }`
+    const detalhe = erro instanceof Error ? erro.message : String(erro);
+    throw new ErroTraduzivel(
+      'erros.saldoParcial.semHistorico',
+      { detalhe },
+      `O e-mail foi enviado, mas não ficou no histórico de envios: ${detalhe}`
     );
   }
 }

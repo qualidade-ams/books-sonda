@@ -242,7 +242,10 @@ describe('ControleLancamentosService.inativarReajuste', () => {
   it('exige o motivo', async () => {
     await expect(
       new ControleLancamentosService(cenario() as any).inativarReajuste('rj-out', ' ')
-    ).rejects.toThrow('Informe o motivo da inativação.');
+    ).rejects.toMatchObject({
+      message: 'Informe o motivo da inativação.',
+      chave: 'erros.controle.motivoInativacao',
+    });
   });
 });
 
@@ -288,10 +291,17 @@ describe('ControleLancamentosService — observações', () => {
     const s = new ControleLancamentosService(cenario() as any);
     await expect(
       s.salvarObservacao({ bancoId: 'b1', mes: { mes: 9, ano: 2026 }, texto: ' ' })
-    ).rejects.toThrow('Escreva a observação.');
+    ).rejects.toMatchObject({
+      message: 'Escreva a observação.',
+      chave: 'erros.controle.observacaoVazia',
+    });
     await expect(
       s.salvarObservacao({ bancoId: 'b1', mes: { mes: 9, ano: 2026 }, texto: 'x'.repeat(701) })
-    ).rejects.toThrow('A observação passa de 700 caracteres.');
+    ).rejects.toMatchObject({
+      message: 'A observação passa de 700 caracteres.',
+      chave: 'erros.controle.observacaoLonga',
+      valores: { limite: 700 },
+    });
   });
 
   it('excluir inativa (fica na auditoria)', async () => {
@@ -336,10 +346,14 @@ describe('ControleLancamentosService.salvarAjustesRequerimentos', () => {
     const s = new ControleLancamentosService(fake as any);
     await expect(
       s.salvarAjustesRequerimentos([{ requerimentoId: 'r1', bancoId: 'b3' }], ' ')
-    ).rejects.toThrow('Informe o motivo da troca de banco.');
-    await expect(s.salvarAjustesRequerimentos([], 'x')).rejects.toThrow(
-      'Nenhum requerimento com banco alterado.'
-    );
+    ).rejects.toMatchObject({
+      message: 'Informe o motivo da troca de banco.',
+      chave: 'erros.controle.motivoTroca',
+    });
+    await expect(s.salvarAjustesRequerimentos([], 'x')).rejects.toMatchObject({
+      message: 'Nenhum requerimento com banco alterado.',
+      chave: 'erros.controle.semAjustes',
+    });
     expect(
       fake.tabelas.requerimentos_bancos.find((r) => r.requerimento_id === 'r1')!.banco_id
     ).toBe('b1');

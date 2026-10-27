@@ -8,6 +8,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   AparenciaMenu,
   ItemMenuSalvo,
@@ -166,7 +167,7 @@ export class MenuOrganizadoService {
       this.cliente.from('menu_aparencia').select('*'),
     ]);
     const erro = itens.error ?? aparencia.error;
-    if (erro) throw new Error(`Falha ao carregar o menu: ${erro.message}`);
+    if (erro) throw falhaDoBanco('carregar o menu', erro);
 
     const porTema = new Map((aparencia.data as Linha[]).map((a) => [a.tema, aparenciaDaLinha(a)]));
     return {
@@ -205,20 +206,22 @@ export class MenuOrganizadoService {
       })),
       p_aparencia: Object.keys(aparencia).length > 0 ? aparencia : null,
     });
-    if (error) throw new Error(`Falha ao salvar o menu: ${error.message}`);
+    if (error) throw falhaDoBanco('salvar o menu', error);
   }
 
   /** Sobe o logo e devolve o caminho; ele só vale depois de salvo na aparência */
   async enviarLogo(tema: TemaMenu, tipo: 'aberto' | 'recolhido', arquivo: File): Promise<string> {
     const extensao = EXTENSAO_POR_TIPO[arquivo.type];
-    if (!extensao) throw new Error('Use PNG, SVG, WebP ou JPG.');
-    if (arquivo.size > LIMITE_LOGO_BYTES) throw new Error('O logo passa de 500 KB.');
+    if (!extensao)
+      throw new ErroTraduzivel('erros.menu.formatoLogo', {}, 'Use PNG, SVG, WebP ou JPG.');
+    if (arquivo.size > LIMITE_LOGO_BYTES)
+      throw new ErroTraduzivel('erros.menu.logoGrande', {}, 'O logo passa de 500 KB.');
 
     const caminho = `${tema}/${tipo}-${this.agora()}.${extensao}`;
     const { error } = await this.cliente.storage
       .from(BUCKET)
       .upload(caminho, arquivo, { contentType: arquivo.type, upsert: false });
-    if (error) throw new Error(`Falha ao enviar o logo: ${error.message}`);
+    if (error) throw falhaDoBanco('enviar o logo', error);
     return caminho;
   }
 
@@ -227,7 +230,7 @@ export class MenuOrganizadoService {
     const { data, error } = await this.cliente.storage
       .from(BUCKET)
       .createSignedUrl(caminho, VALIDADE_URL_LOGO_S);
-    if (error) throw new Error(`Falha ao carregar o logo: ${error.message}`);
+    if (error) throw falhaDoBanco('carregar o logo', error);
     return data.signedUrl;
   }
 }

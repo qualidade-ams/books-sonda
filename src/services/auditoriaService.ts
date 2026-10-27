@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   AcaoAuditoria,
   CampoAlterado,
@@ -111,7 +112,7 @@ export class AuditoriaService {
     const { data, error } = await consulta
       .order('created_at', { ascending: false })
       .limit(this.tamanhoPagina + 1);
-    if (error) throw new Error(`Falha ao carregar a auditoria: ${error.message}`);
+    if (error) throw falhaDoBanco('carregar a auditoria', error);
 
     const linhas = (data as Linha[]).slice(0, this.tamanhoPagina);
     const [usuarios, empresas, bancos] = await Promise.all([

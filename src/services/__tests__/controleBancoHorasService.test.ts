@@ -285,8 +285,10 @@ describe('ControleBancoHorasService.requerimentos', () => {
   it('falha com mensagem descritiva', async () => {
     const { s, fake } = servico();
     fake.rpc = async () => ({ data: null, error: { message: 'Sem permissão' } });
-    await expect(s.requerimentos('e1', [{ mes: 10, ano: 2026 }])).rejects.toThrow(
-      'Falha ao carregar os requerimentos: Sem permissão'
-    );
+    await expect(s.requerimentos('e1', [{ mes: 10, ano: 2026 }])).rejects.toMatchObject({
+      message: 'Falha ao carregar os requerimentos: Sem permissão',
+      chave: 'erros.falhas.carregarOsRequerimentos',
+      valores: { detalhe: 'Sem permissão' },
+    });
   });
 });

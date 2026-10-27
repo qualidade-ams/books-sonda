@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type { MesAno } from '@/services/bancosHoras/calculo';
 import type {
   AjusteRequerimento,
@@ -17,13 +18,11 @@ import type {
 } from '@/types/controleBancoHoras';
 
 type Cliente = typeof supabase;
-type ErroBanco = { message: string; code?: string };
 type Linha = Record<string, any>;
 
 const LIMITE_TEXTO = 700;
 
-const falha = (contexto: string, error: ErroBanco) =>
-  new Error(`Falha ao ${contexto}: ${error.message}`);
+const falha = falhaDoBanco;
 
 const chave = (mes: number, ano: number) => `${ano}-${mes}`;
 const chavesDoPeriodo = (meses: MesAno[]) => new Set(meses.map((m) => chave(m.mes, m.ano)));
@@ -130,14 +129,31 @@ export class ControleLancamentosService {
     const justificativa = input.justificativa.trim();
     const anotacao = input.anotacaoInterna?.trim() || null;
     if (!(input.minutos > 0 || input.tickets > 0) || input.minutos < 0 || input.tickets < 0) {
-      throw new Error('Informe as horas ou os tickets do reajuste.');
+      throw new ErroTraduzivel(
+        'erros.controle.reajusteVazio',
+        {},
+        'Informe as horas ou os tickets do reajuste.'
+      );
     }
-    if (!justificativa) throw new Error('Informe o motivo do reajuste.');
+    if (!justificativa)
+      throw new ErroTraduzivel(
+        'erros.controle.motivoReajuste',
+        {},
+        'Informe o motivo do reajuste.'
+      );
     if (justificativa.length > LIMITE_TEXTO) {
-      throw new Error(`O motivo passa de ${LIMITE_TEXTO} caracteres.`);
+      throw new ErroTraduzivel(
+        'erros.controle.motivoLongo',
+        { limite: LIMITE_TEXTO },
+        `O motivo passa de ${LIMITE_TEXTO} caracteres.`
+      );
     }
     if ((anotacao?.length ?? 0) > LIMITE_TEXTO) {
-      throw new Error(`As anotações internas passam de ${LIMITE_TEXTO} caracteres.`);
+      throw new ErroTraduzivel(
+        'erros.controle.anotacaoLonga',
+        { limite: LIMITE_TEXTO },
+        `As anotações internas passam de ${LIMITE_TEXTO} caracteres.`
+      );
     }
 
     const { error } = await this.cliente.from('bancos_horas_reajustes').insert({
@@ -157,7 +173,12 @@ export class ControleLancamentosService {
   /** Nada é apagado: o reajuste continua no histórico, com o motivo */
   async inativarReajuste(reajusteId: string, motivo: string): Promise<void> {
     const limpo = motivo.trim();
-    if (!limpo) throw new Error('Informe o motivo da inativação.');
+    if (!limpo)
+      throw new ErroTraduzivel(
+        'erros.controle.motivoInativacao',
+        {},
+        'Informe o motivo da inativação.'
+      );
     const { error } = await this.cliente
       .from('bancos_horas_reajustes')
       .update({ ativo: false, motivo_inativacao: limpo, inativado_em: new Date().toISOString() })
@@ -223,9 +244,14 @@ export class ControleLancamentosService {
   /** Observação manual; em mês fechado, pede a retificação do Book (gatilho) */
   async salvarObservacao(input: ObservacaoInput): Promise<void> {
     const texto = input.texto.trim();
-    if (!texto) throw new Error('Escreva a observação.');
+    if (!texto)
+      throw new ErroTraduzivel('erros.controle.observacaoVazia', {}, 'Escreva a observação.');
     if (texto.length > LIMITE_TEXTO) {
-      throw new Error(`A observação passa de ${LIMITE_TEXTO} caracteres.`);
+      throw new ErroTraduzivel(
+        'erros.controle.observacaoLonga',
+        { limite: LIMITE_TEXTO },
+        `A observação passa de ${LIMITE_TEXTO} caracteres.`
+      );
     }
     const campos = { texto, mes: input.mes.mes, ano: input.mes.ano };
     const { error } = input.id
@@ -242,8 +268,18 @@ export class ControleLancamentosService {
    */
   async salvarAjustesRequerimentos(ajustes: AjusteRequerimento[], motivo: string): Promise<void> {
     const limpo = motivo.trim();
-    if (ajustes.length === 0) throw new Error('Nenhum requerimento com banco alterado.');
-    if (!limpo) throw new Error('Informe o motivo da troca de banco.');
+    if (ajustes.length === 0)
+      throw new ErroTraduzivel(
+        'erros.controle.semAjustes',
+        {},
+        'Nenhum requerimento com banco alterado.'
+      );
+    if (!limpo)
+      throw new ErroTraduzivel(
+        'erros.controle.motivoTroca',
+        {},
+        'Informe o motivo da troca de banco.'
+      );
 
     const voltam = ajustes.filter((a) => a.bancoId === null).map((a) => a.requerimentoId);
     if (voltam.length > 0) {
