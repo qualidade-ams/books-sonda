@@ -44,6 +44,21 @@ describe('paridade das traduções', () => {
       expect(vazios).toEqual([]);
     }
   });
+
+  it('envioSaldoParcial guarda só o que a aba Saldo Parcial ainda usa, igual nos três idiomas', () => {
+    for (const locale of [ptBR, en, es]) {
+      expect(Object.keys((locale as typeof ptBR).envioSaldoParcial).sort()).toEqual([
+        'novoAgendamento',
+        'toasts',
+        'validacao',
+      ]);
+    }
+    for (const [idioma, locale] of Object.entries(IDIOMAS)) {
+      expect(chaves((locale as typeof ptBR).envioSaldoParcial).sort(), idioma).toEqual(
+        chaves(ptBR.envioSaldoParcial).sort()
+      );
+    }
+  });
 });
 
 function planificar(objeto: Record<string, unknown>, prefixo = ''): Record<string, unknown> {
