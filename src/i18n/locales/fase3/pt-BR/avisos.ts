@@ -58,6 +58,11 @@ const avisos = {
     excluido: 'Mapeamento excluído',
     excluidoDescricao: 'O grupo voltou para Grupos não mapeados.',
     erroExcluir: 'Erro ao excluir o mapeamento',
+    importados: {
+      um: '{{n}} mapeamento importado',
+      varios: '{{n}} mapeamentos importados',
+    },
+    erroImportar: 'Erro ao importar os mapeamentos',
   },
   empresas: {
     amsSalvos: 'AMS e projetos salvos',

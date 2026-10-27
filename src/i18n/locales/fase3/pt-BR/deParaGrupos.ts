@@ -133,6 +133,32 @@ const deParaGrupos = {
     },
     tickets: 'Tickets (6 meses)',
   },
+  importar: {
+    titulo: 'Importar mapeamentos',
+    modelo: 'modelo-de-para-de-grupos',
+    regras: {
+      grupo:
+        'O grupo é encontrado pelo nome do Aranda (sem diferenciar maiúsculas); se já estiver mapeado, a linha atualiza o mapeamento.',
+      destino:
+        'Sem produto, o grupo é de serviço da solução; sem solução, "não se aplica". Os dois vão para o Banco padrão.',
+      catalogo: 'Solução, produto e módulo precisam existir e estar ativos em Produtos e Módulos.',
+    },
+    aviso: {
+      titulo: 'Pode mover horas entre bancos',
+      texto:
+        'Linhas que mudam o produto ou o módulo de um grupo mudam o banco das horas nas empresas com bancos múltiplos, a partir do próximo recálculo. Meses fechados não mudam.',
+    },
+    erros: {
+      grupoVazio: 'Grupo do Aranda vazio.',
+      bookVazio: 'Grupo do Book vazio.',
+      solucaoNaoExiste: 'Solução "{{nome}}" não existe ou está inativa.',
+      produtoSemSolucao: 'Informe a solução do produto.',
+      produtoNaoExiste: 'Produto "{{nome}}" não existe em {{solucao}} ou está inativo.',
+      moduloSemProduto: 'Informe o produto do módulo.',
+      moduloNaoExiste: 'Módulo "{{nome}}" não existe em {{produto}} ou está inativo.',
+      repetido: 'Grupo repetido na planilha (linha {{linha}}).',
+    },
+  },
 };
 
 export default deParaGrupos;

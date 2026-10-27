@@ -23,6 +23,7 @@ vi.mock('@/services/deParaService', () => ({
     salvar: vi.fn(),
     atribuirDestino: vi.fn(),
     excluir: vi.fn(),
+    importar: vi.fn(),
   },
 }));
 
@@ -129,6 +130,44 @@ describe('useDePara', () => {
     expect(toast).toHaveBeenCalledWith({
       title: 'avisos.dePara.erroSalvar',
       description: 'Este grupo do Aranda já está no de-para.',
+      variant: 'destructive',
+    });
+  });
+
+  it('importar grava as linhas, recarrega e dá um aviso só', async () => {
+    service.importar.mockResolvedValue(undefined);
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useDePara(), { wrapper });
+    const inputs = [
+      { grupoAranda: 'G1', grupoBook: 'B', destino },
+      { grupoAranda: 'G2', grupoBook: 'B', destino },
+    ];
+
+    await act(() => result.current.importar(inputs));
+
+    expect(service.importar).toHaveBeenCalledWith(inputs);
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
+    expect(toast).toHaveBeenCalledTimes(1);
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.dePara.importados.varios {"n":2}' });
+  });
+
+  it('erro ao importar avisa e recarrega (as linhas anteriores ficam gravadas)', async () => {
+    service.importar.mockRejectedValue(new Error('G2: sem permissão'));
+    const { wrapper, client } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() =>
+      result.current
+        .importar([{ grupoAranda: 'G2', grupoBook: 'B', destino }])
+        .catch(() => undefined)
+    );
+
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.dePara.erroImportar',
+      description: 'G2: sem permissão',
       variant: 'destructive',
     });
   });

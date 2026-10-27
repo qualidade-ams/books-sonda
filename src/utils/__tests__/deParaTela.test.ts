@@ -3,11 +3,13 @@ import { matrizDaAba } from '@/utils/exportarTabela';
 import type { Catalogo } from '@/types/catalogo';
 import {
   destinoMudou,
+  conferirMapeamentos,
   empresasAfetadas,
   exportacaoMapeamentos,
   filtrarMapeamentos,
   grupoJaMapeado,
   gruposDoBook,
+  mapeamentosImportados,
   totaisDePara,
   SEM_FILTRO,
 } from '../deParaTela';
@@ -159,6 +161,83 @@ describe('exportacaoMapeamentos', () => {
         4,
       ],
       ['DEDICADOS', 'Dedicados', '', '', '', 'deParaGrupos.classificacao.nao_se_aplica', 0, 0],
+    ]);
+  });
+});
+
+describe('importação de mapeamentos', () => {
+  const t = (chave: string, valores?: Record<string, unknown>) =>
+    valores ? `${chave} ${JSON.stringify(valores)}` : chave;
+  const CATALOGO = {
+    solucoes: [{ id: 's1', codigo: 'COMEX', nome: 'COMEX', ativo: true }],
+    produtos: [{ id: 'ce', nome: 'CE PLUS', solucaoId: 's1', ativo: true }],
+    modulos: [{ id: 'cambio', nome: 'Câmbio', produtoId: 'ce', ativo: true }],
+  } as unknown as Catalogo;
+  const linha = (
+    n: number,
+    grupo: string,
+    book: string,
+    solucao = '',
+    produto = '',
+    modulo = ''
+  ) => ({
+    linha: n,
+    valores: { grupo, book, solucao, produto, modulo },
+  });
+  const LINHAS = [
+    linha(2, 'AMS NOVO', 'COMEX - Novo', 'comex', 'ce plus'),
+    linha(3, 'ams apl - cambio - n2', 'COMEX', 'COMEX', 'CE PLUS', 'Câmbio'),
+    linha(4, 'AMS DBA', 'DBA'),
+    linha(5, 'AMS X', '', 'FISCAL'),
+    linha(6, 'AMS Y', 'B', 'COMEX', 'NADA'),
+    linha(7, 'AMS Z', 'B', '', 'CE PLUS'),
+    linha(8, 'AMS W', 'B', 'COMEX', 'CE PLUS', 'SVA'),
+    linha(9, 'ams novo', 'B'),
+    linha(10, '', 'B'),
+  ];
+
+  it('confere: o destino pelo nome no catálogo; o grupo sem diferenciar maiúsculas', () => {
+    expect(
+      conferirMapeamentos(LINHAS, LISTA, CATALOGO, t).map((l) => [l.situacao, l.erros])
+    ).toEqual([
+      ['novo', undefined],
+      ['igual', undefined],
+      ['atualiza', undefined],
+      [
+        'erro',
+        [
+          'deParaGrupos.importar.erros.bookVazio',
+          'deParaGrupos.importar.erros.solucaoNaoExiste {"nome":"FISCAL"}',
+        ],
+      ],
+      ['erro', ['deParaGrupos.importar.erros.produtoNaoExiste {"nome":"NADA","solucao":"COMEX"}']],
+      ['erro', ['deParaGrupos.importar.erros.produtoSemSolucao']],
+      ['erro', ['deParaGrupos.importar.erros.moduloNaoExiste {"nome":"SVA","produto":"CE PLUS"}']],
+      ['erro', ['deParaGrupos.importar.erros.repetido {"linha":2}']],
+      ['erro', ['deParaGrupos.importar.erros.grupoVazio']],
+    ]);
+  });
+
+  it('o que gravar: os novos sem id e os que mudam com o id do mapeamento', () => {
+    const conferidas = conferirMapeamentos(LINHAS, LISTA, CATALOGO, t);
+    expect(
+      mapeamentosImportados(
+        conferidas.filter((l) => l.situacao === 'novo' || l.situacao === 'atualiza'),
+        LISTA,
+        CATALOGO
+      )
+    ).toEqual([
+      {
+        grupoAranda: 'AMS NOVO',
+        grupoBook: 'COMEX - Novo',
+        destino: { solucaoId: 's1', produtoId: 'ce', moduloId: null },
+      },
+      {
+        id: 'g3',
+        grupoAranda: 'AMS DBA',
+        grupoBook: 'DBA',
+        destino: { solucaoId: null, produtoId: null, moduloId: null },
+      },
     ]);
   });
 });

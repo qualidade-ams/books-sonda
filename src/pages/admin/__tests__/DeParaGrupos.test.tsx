@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import DeParaGrupos from '../DeParaGrupos';
 import type { MapeamentoGrupo } from '@/types/dePara';
 import { exportarTabela } from '@/utils/exportarTabela';
+import { lerPlanilha } from '@/utils/importarPlanilha';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -16,6 +17,10 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/utils/exportarTabela', async (original) => ({
   ...(await original<typeof import('@/utils/exportarTabela')>()),
   exportarTabela: vi.fn(async () => undefined),
+}));
+vi.mock('@/utils/importarPlanilha', async (original) => ({
+  ...(await original<typeof import('@/utils/importarPlanilha')>()),
+  lerPlanilha: vi.fn(),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -67,6 +72,7 @@ const dePara = {
   salvar: vi.fn(async () => undefined),
   atribuirDestino: vi.fn(async () => undefined),
   excluir: vi.fn(async () => undefined),
+  importar: vi.fn(async () => undefined),
   isSalvando: false,
 };
 const catalogo = {
@@ -223,5 +229,44 @@ describe('DeParaGrupos', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
     const [exportacao] = vi.mocked(exportarTabela).mock.calls[0];
     expect((exportacao.abas[0].linhas as MapeamentoGrupo[]).map((m) => m.id)).toEqual(['g1']);
+  });
+
+  it('importa mapeamentos com o destino pelo nome; avisa que pode mover horas', async () => {
+    vi.mocked(lerPlanilha).mockResolvedValue([
+      [
+        'deParaGrupos.lista.colunaGrupo',
+        'deParaGrupos.lista.colunaBook',
+        'deParaGrupos.destino.solucao',
+        'deParaGrupos.destino.produto',
+        'deParaGrupos.destino.modulo',
+      ],
+      ['AMS NOVO', 'COMEX - Novo', 'COMEX', 'CE PLUS', ''],
+      ['DEDICADOS', 'COMEX', '', '', ''],
+    ]);
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: 'ds.importar.botao' }));
+    fireEvent.change(screen.getByLabelText(/ds.importar.escolher/), {
+      target: { files: [new File(['x'], 'de-para.xlsx')] },
+    });
+    expect(await screen.findByText('deParaGrupos.importar.aviso.titulo')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'ds.importar.importarN.um {"n":1}' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ds.importar.botao' })
+    );
+    await waitFor(() =>
+      expect(dePara.importar).toHaveBeenCalledWith([
+        {
+          grupoAranda: 'AMS NOVO',
+          grupoBook: 'COMEX - Novo',
+          destino: { solucaoId: 's1', produtoId: 'ce', moduloId: null },
+        },
+      ])
+    );
+  });
+
+  it('só visualiza: sem importar', () => {
+    permissoes = ['de_para_grupos:view'];
+    renderizar();
+    expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
   });
 });

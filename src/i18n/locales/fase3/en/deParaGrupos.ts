@@ -133,6 +133,32 @@ const deParaGrupos = {
     },
     tickets: 'Tickets (6 months)',
   },
+  importar: {
+    titulo: 'Import mappings',
+    modelo: 'group-mapping-template',
+    regras: {
+      grupo:
+        'The group is found by its Aranda name (case-insensitive); if already mapped, the row updates the mapping.',
+      destino:
+        'Without a product, the group is a service group of the solution; without a solution, "not applicable". Both go to the default bank.',
+      catalogo: 'Solution, product and module must exist and be active in Products and Modules.',
+    },
+    aviso: {
+      titulo: 'May move hours between banks',
+      texto:
+        "Rows that change a group's product or module change the bank of the hours in companies with multiple banks, from the next recalculation. Closed months do not change.",
+    },
+    erros: {
+      grupoVazio: 'Empty Aranda group.',
+      bookVazio: 'Empty Book group.',
+      solucaoNaoExiste: 'Solution "{{nome}}" does not exist or is inactive.',
+      produtoSemSolucao: "Enter the product's solution.",
+      produtoNaoExiste: 'Product "{{nome}}" does not exist in {{solucao}} or is inactive.',
+      moduloSemProduto: "Enter the module's product.",
+      moduloNaoExiste: 'Module "{{nome}}" does not exist in {{produto}} or is inactive.',
+      repetido: 'Group repeated in the spreadsheet (row {{linha}}).',
+    },
+  },
 };
 
 export default deParaGrupos;

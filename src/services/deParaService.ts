@@ -126,6 +126,20 @@ export class DeParaService {
     if (error) throw falha('salvar o mapeamento', error);
   }
 
+  /**
+   * Importação em lote: linha a linha, com a mesma regra do salvar (inclusive reativar o grupo
+   * excluído). Sem transação: no erro, as linhas anteriores ficam gravadas e a mensagem diz o grupo
+   */
+  async importar(inputs: MapeamentoInput[]): Promise<void> {
+    for (const input of inputs) {
+      try {
+        await this.salvar(input);
+      } catch (erro) {
+        throw new Error(`${input.grupoAranda.trim()}: ${(erro as Error).message}`);
+      }
+    }
+  }
+
   /** Mesmo destino para vários grupos; o Grupo do Book de cada um não muda */
   async atribuirDestino(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente

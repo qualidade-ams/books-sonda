@@ -11,6 +11,8 @@ import { DicasContext } from '@/components/ds/Dicas';
 import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
 import { MenuExportar } from '@/components/ds/MenuExportar';
+import { BotaoImportar, TelaImportacao } from '@/components/ds/TelaImportacao';
+import { Callout } from '@/components/ds/Callout';
 import { botaoPrimarioTopo } from '@/components/ds/estilos';
 import { AbaMapeamentos } from '@/components/admin/de-para/AbaMapeamentos';
 import { AbaNaoMapeados } from '@/components/admin/de-para/AbaNaoMapeados';
@@ -21,7 +23,9 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { plural } from '@/utils/plural';
 import {
+  conferirMapeamentos,
   exportacaoMapeamentos,
+  mapeamentosImportados,
   filtrarMapeamentos,
   SEM_FILTRO,
   totaisDePara,
@@ -61,6 +65,7 @@ export default function DeParaGrupos() {
     salvar,
     atribuirDestino,
     excluir,
+    importar,
   } = useDePara();
   const catalogoHook = useCatalogo();
   const { solucoes, produtos, modulos } = catalogoHook;
@@ -79,6 +84,7 @@ export default function DeParaGrupos() {
   const [filtro, setFiltro] = useState<FiltroMapeamentos>(SEM_FILTRO);
   const { situacao } = filtro;
   const [editando, setEditando] = useState<Edicao>(null);
+  const [importando, setImportando] = useState(false);
 
   const dicas = useMemo(
     () =>
@@ -92,7 +98,46 @@ export default function DeParaGrupos() {
   const soSemModulo =
     situacao.length === SEM_MODULO.length && SEM_MODULO.every((c) => situacao.includes(c));
 
-  const conteudo = editando ? (
+  const colunasImportacao = [
+    { id: 'grupo', rotulo: t('deParaGrupos.lista.colunaGrupo'), obrigatoria: true },
+    { id: 'book', rotulo: t('deParaGrupos.lista.colunaBook'), obrigatoria: true },
+    { id: 'solucao', rotulo: t('deParaGrupos.destino.solucao') },
+    { id: 'produto', rotulo: t('deParaGrupos.destino.produto') },
+    { id: 'modulo', rotulo: t('deParaGrupos.destino.modulo') },
+  ];
+
+  const conteudo = importando ? (
+    <TelaImportacao
+      voltarPara={t('deParaGrupos.titulo')}
+      titulo={t('deParaGrupos.importar.titulo')}
+      colunas={colunasImportacao}
+      regras={[
+        t('deParaGrupos.importar.regras.grupo'),
+        t('deParaGrupos.importar.regras.destino'),
+        t('deParaGrupos.importar.regras.catalogo'),
+      ]}
+      modelo={{
+        arquivo: t('deParaGrupos.importar.modelo'),
+        exemplo: [
+          {
+            grupo: 'AMS APL - CAMBIO - N2',
+            book: 'COMEX - Câmbio',
+            solucao: 'COMEX',
+            produto: 'CE PLUS',
+            modulo: 'Câmbio',
+          },
+        ],
+      }}
+      aviso={
+        <Callout tom="warning" titulo={t('deParaGrupos.importar.aviso.titulo')}>
+          {t('deParaGrupos.importar.aviso.texto')}
+        </Callout>
+      }
+      conferir={(linhas) => conferirMapeamentos(linhas, mapeamentos, catalogo, t)}
+      onImportar={(linhas) => importar(mapeamentosImportados(linhas, mapeamentos, catalogo))}
+      onFechar={() => setImportando(false)}
+    />
+  ) : editando ? (
     <EdicaoMapeamento
       key={editando.mapeamento?.id ?? editando.grupoNovo?.grupoAranda ?? 'novo'}
       mapeamento={editando.mapeamento}
@@ -122,6 +167,9 @@ export default function DeParaGrupos() {
               >
                 <Plus className="h-4 w-4" /> {t('deParaGrupos.novoMapeamento')}
               </button>
+            )}
+            {podeEditar && (
+              <BotaoImportar onClick={() => setImportando(true)} desabilitado={carregando} />
             )}
             <MenuExportar
               descricao={plural(t, 'deParaGrupos.exportar.descricao', paraExportar.length)}

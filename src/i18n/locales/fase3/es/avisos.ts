@@ -58,6 +58,11 @@ const avisos = {
     excluido: 'Mapeo eliminado',
     excluidoDescricao: 'El grupo volvió a Grupos no mapeados.',
     erroExcluir: 'No fue posible eliminar el mapeo',
+    importados: {
+      um: '{{n}} mapeo importado',
+      varios: '{{n}} mapeos importados',
+    },
+    erroImportar: 'No fue posible importar los mapeos',
   },
   empresas: {
     amsSalvos: 'AMS y proyectos guardados',

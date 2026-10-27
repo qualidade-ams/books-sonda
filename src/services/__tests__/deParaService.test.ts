@@ -244,3 +244,48 @@ describe('DeParaService — lote e exclusão', () => {
     expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g2')!.ativo).toBe(false);
   });
 });
+
+describe('DeParaService.importar', () => {
+  it('grava cada linha com a regra do salvar: edição, reativação e novo', async () => {
+    const fake = cenario();
+    await new DeParaService(fake as any).importar([
+      {
+        id: 'g1',
+        grupoAranda: 'AMS APL - CAMBIO - N2',
+        grupoBook: 'COMEX - Câmbio 2',
+        destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
+      },
+      {
+        grupoAranda: 'AMS APL - ANTIGO - N2',
+        grupoBook: 'COMEX - Antigo',
+        destino: { solucaoId: null, produtoId: null, moduloId: null },
+      },
+      {
+        grupoAranda: 'AMS APL - NOVO - N2',
+        grupoBook: 'COMEX - Novo',
+        destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+      },
+    ]);
+    const grupos = fake.tabelas.grupos_aranda;
+    expect(grupos.find((g) => g.id === 'g1')).toMatchObject({
+      grupo_book: 'COMEX - Câmbio 2',
+      classificacao: 'produto',
+    });
+    expect(grupos.find((g) => g.id === 'g3')!.ativo).toBe(true);
+    expect(grupos).toHaveLength(4);
+  });
+
+  it('erro numa linha diz qual grupo', async () => {
+    const fake = comErro(cenario(), 'grupos_aranda', { message: 'sem permissão' });
+    await expect(
+      new DeParaService(fake as any).importar([
+        {
+          id: 'g1',
+          grupoAranda: 'AMS APL - CAMBIO - N2',
+          grupoBook: 'B',
+          destino: { solucaoId: null, produtoId: null, moduloId: null },
+        },
+      ])
+    ).rejects.toThrow('AMS APL - CAMBIO - N2: Falha ao salvar o mapeamento: sem permissão');
+  });
+});

@@ -8,10 +8,12 @@ import type {
   DestinoGrupo,
   GrupoNaoMapeado,
   MapeamentoGrupo,
+  MapeamentoInput,
   UsoGrupo,
 } from '@/types/dePara';
 import type { Catalogo } from '@/types/catalogo';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
+import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
 export interface FiltroMapeamentos {
   busca: string;
@@ -112,3 +114,105 @@ export function exportacaoMapeamentos(
     ],
   };
 }
+
+const chaveTexto = (texto: string) => texto.trim().toLowerCase();
+const SEM_DESTINO: DestinoGrupo = { solucaoId: null, produtoId: null, moduloId: null };
+
+type ErroDestino = { chave: string; valores?: Record<string, unknown> };
+
+/** Destino da linha da planilha pelos nomes do catálogo (solução também pelo código), só ativos */
+function destinoDaLinha(
+  v: Record<string, string>,
+  catalogo: Catalogo
+): { destino: DestinoGrupo; erro?: ErroDestino } {
+  const igual = (a: string, b: string) => chaveTexto(a) === chaveTexto(b);
+  if (!v.solucao) {
+    if (v.produto) return { destino: SEM_DESTINO, erro: { chave: 'produtoSemSolucao' } };
+    if (v.modulo) return { destino: SEM_DESTINO, erro: { chave: 'moduloSemProduto' } };
+    return { destino: SEM_DESTINO };
+  }
+  const solucao = catalogo.solucoes.find(
+    (s) => s.ativo && (igual(s.nome, v.solucao) || igual(s.codigo, v.solucao))
+  );
+  if (!solucao)
+    return {
+      destino: SEM_DESTINO,
+      erro: { chave: 'solucaoNaoExiste', valores: { nome: v.solucao } },
+    };
+  const soSolucao = { ...SEM_DESTINO, solucaoId: solucao.id };
+  if (!v.produto)
+    return v.modulo
+      ? { destino: soSolucao, erro: { chave: 'moduloSemProduto' } }
+      : { destino: soSolucao };
+
+  const produto = catalogo.produtos.find(
+    (p) => p.ativo && p.solucaoId === solucao.id && igual(p.nome, v.produto)
+  );
+  if (!produto)
+    return {
+      destino: soSolucao,
+      erro: { chave: 'produtoNaoExiste', valores: { nome: v.produto, solucao: solucao.nome } },
+    };
+  const comProduto = { ...soSolucao, produtoId: produto.id };
+  if (!v.modulo) return { destino: comProduto };
+
+  const modulo = catalogo.modulos.find(
+    (m) => m.ativo && m.produtoId === produto.id && igual(m.nome, v.modulo)
+  );
+  if (!modulo)
+    return {
+      destino: comProduto,
+      erro: { chave: 'moduloNaoExiste', valores: { nome: v.modulo, produto: produto.nome } },
+    };
+  return { destino: { ...comProduto, moduloId: modulo.id } };
+}
+
+const mapeamentoDoGrupo = (grupo: string, mapeamentos: MapeamentoGrupo[]) =>
+  mapeamentos.find((m) => chaveTexto(m.grupoAranda) === chaveTexto(grupo));
+
+/** Importação: o grupo já mapeado (sem diferenciar maiúsculas) que muda Book ou destino é "atualiza" */
+export function conferirMapeamentos(
+  linhas: LinhaPlanilha[],
+  mapeamentos: MapeamentoGrupo[],
+  catalogo: Catalogo,
+  t: Traduzir
+): LinhaImportacao[] {
+  const erro = (chave: string, valores?: Record<string, unknown>) =>
+    t(`deParaGrupos.importar.erros.${chave}`, valores);
+  const primeira = new Map<string, number>();
+  return linhas.map((l) => {
+    const { grupo, book } = l.valores;
+    const erros: string[] = [];
+    if (!grupo) erros.push(erro('grupoVazio'));
+    if (!book) erros.push(erro('bookVazio'));
+    const { destino, erro: erroDestino } = destinoDaLinha(l.valores, catalogo);
+    if (erroDestino) erros.push(erro(erroDestino.chave, erroDestino.valores));
+    if (grupo) {
+      const repetido = primeira.get(chaveTexto(grupo));
+      if (repetido) erros.push(erro('repetido', { linha: repetido }));
+      else primeira.set(chaveTexto(grupo), l.linha);
+    }
+    if (erros.length) return { ...l, situacao: 'erro', erros };
+
+    const atual = mapeamentoDoGrupo(grupo, mapeamentos);
+    if (!atual) return { ...l, situacao: 'novo' };
+    const igual = atual.grupoBook === book && !destinoMudou(atual, destino);
+    return { ...l, situacao: igual ? 'igual' : 'atualiza' };
+  });
+}
+
+/** O que gravar: o grupo novo sem id; o já mapeado com o id dele */
+export const mapeamentosImportados = (
+  linhas: LinhaImportacao[],
+  mapeamentos: MapeamentoGrupo[],
+  catalogo: Catalogo
+): MapeamentoInput[] =>
+  linhas.map((l) => {
+    const atual = mapeamentoDoGrupo(l.valores.grupo, mapeamentos);
+    return {
+      ...(atual ? { id: atual.id } : {}),
+      grupoAranda: atual?.grupoAranda ?? l.valores.grupo,
+      grupoBook: l.valores.book,
+      destino: destinoDaLinha(l.valores, catalogo).destino,
+    };
+  });

@@ -59,6 +59,15 @@ export function useDePara() {
     onError: avisarErro(t('avisos.dePara.erroAtribuir')),
   });
 
+  const importar = useMutation({
+    mutationFn: (inputs: MapeamentoInput[]) => deParaService.importar(inputs),
+    onSuccess: (_r, inputs) =>
+      toast({ title: plural(t, 'avisos.dePara.importados', inputs.length) }),
+    onError: avisarErro(t('avisos.dePara.erroImportar')),
+    // No erro, parte pode ter sido gravada
+    onSettled: recarregar,
+  });
+
   const excluir = useMutation({
     mutationFn: (id: string) => deParaService.excluir(id),
     onSuccess: () => {
@@ -72,6 +81,7 @@ export function useDePara() {
   });
 
   return {
+    importar: importar.mutateAsync,
     mapeamentos: mapeamentosQuery.data ?? [],
     uso: usoQuery.data ?? {},
     naoMapeados: naoMapeadosQuery.data ?? [],

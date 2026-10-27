@@ -58,6 +58,11 @@ const avisos = {
     excluido: 'Mapping deleted',
     excluidoDescricao: 'The group went back to Unmapped groups.',
     erroExcluir: 'Could not delete the mapping',
+    importados: {
+      um: '{{n}} mapping imported',
+      varios: '{{n}} mappings imported',
+    },
+    erroImportar: 'Could not import the mappings',
   },
   empresas: {
     amsSalvos: 'AMS and projects saved',
