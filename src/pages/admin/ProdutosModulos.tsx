@@ -15,6 +15,7 @@ import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { DicasContext } from '@/components/ds/Dicas';
 import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import { botaoPrimarioTopo, botaoVidro } from '@/components/ds/estilos';
 import { ArvoreCatalogo, type SelecaoCatalogo } from '@/components/admin/catalogo/ArvoreCatalogo';
 import { MoverModulo, PainelProduto, PainelSolucao } from '@/components/admin/catalogo/Paineis';
@@ -29,10 +30,12 @@ import { useCatalogo, useModulosRequerimento } from '@/hooks/useCatalogo';
 import { useDePara } from '@/hooks/useDePara';
 import { usePermissions } from '@/hooks/usePermissions';
 import { plural } from '@/utils/plural';
+import { exportarTabela } from '@/utils/exportarTabela';
 import {
   bancosDoProduto,
   destinoAoDesvincular,
   destinoDoAlvo,
+  exportacaoCatalogo,
   gruposDoModulo,
   totaisCatalogo,
   usosDoModulo,
@@ -344,29 +347,35 @@ export default function ProdutosModulos() {
               {t('produtosModulos.subtitulo')}
             </p>
           </div>
-          {podeEditar && (
-            <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
-              <button type="button" className={botaoVidro} onClick={novaSolucao}>
-                <Plus className="h-4 w-4" /> {t('produtosModulos.novaSolucao')}
-              </button>
-              {solucoes.length > 0 && (
-                <button type="button" className={botaoVidro} onClick={novoProduto}>
-                  <Plus className="h-4 w-4" /> {t('produtosModulos.novoProduto')}
+          <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+            {podeEditar && (
+              <>
+                <button type="button" className={botaoVidro} onClick={novaSolucao}>
+                  <Plus className="h-4 w-4" /> {t('produtosModulos.novaSolucao')}
                 </button>
-              )}
-              {produtoParaModulo && (
-                <button
-                  type="button"
-                  className={botaoPrimarioTopo}
-                  onClick={() =>
-                    setEditando({ tipo: 'modulo', modulo: null, produtoId: produtoParaModulo.id })
-                  }
-                >
-                  <Plus className="h-4 w-4" /> {t('produtosModulos.novoModulo')}
-                </button>
-              )}
-            </div>
-          )}
+                {solucoes.length > 0 && (
+                  <button type="button" className={botaoVidro} onClick={novoProduto}>
+                    <Plus className="h-4 w-4" /> {t('produtosModulos.novoProduto')}
+                  </button>
+                )}
+                {produtoParaModulo && (
+                  <button
+                    type="button"
+                    className={botaoPrimarioTopo}
+                    onClick={() =>
+                      setEditando({ tipo: 'modulo', modulo: null, produtoId: produtoParaModulo.id })
+                    }
+                  >
+                    <Plus className="h-4 w-4" /> {t('produtosModulos.novoModulo')}
+                  </button>
+                )}
+              </>
+            )}
+            <MenuExportar
+              descricao={t('produtosModulos.exportar.descricao')}
+              onExportar={(formato) => exportarTabela(exportacaoCatalogo(catalogo, t), formato)}
+            />
+          </div>
         </div>
       </FaixaPagina>
 

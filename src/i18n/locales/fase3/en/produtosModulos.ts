@@ -201,6 +201,16 @@ const produtosModulos = {
     produtoEModulo:
       'Where Hour Bank requirements with this module go. "All modules" leads to the bank that covers the whole product; without a covering bank, they go to the default bank.',
   },
+  exportar: {
+    arquivo: 'products-and-modules',
+    descricao: 'Exports the catalog: solutions, products and modules, active and inactive',
+    colunas: {
+      solucao: 'Solution',
+      produto: 'Product',
+      modulo: 'Module',
+      descricao: 'Description',
+    },
+  },
 };
 
 export default produtosModulos;

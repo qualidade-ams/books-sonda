@@ -11,10 +11,15 @@ import { FaixaPagina } from '@/components/ds/FaixaPagina';
 import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
 import { botaoVidro } from '@/components/ds/estilos';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import { ListaEmpresas } from '@/components/admin/empresas/ListaEmpresas';
 import { useEmpresasCadastro } from '@/hooks/useEmpresasCadastro';
 import { usePermissions } from '@/hooks/usePermissions';
+import { exportarTabela } from '@/utils/exportarTabela';
+import { plural } from '@/utils/plural';
 import {
+  exportacaoEmpresas,
+  filtrarEmpresas,
   SEM_FILTRO_EMPRESAS,
   TELA_ATUAL_EMPRESAS,
   type FiltroEmpresas,
@@ -27,6 +32,7 @@ export default function Empresas() {
   const podeEditar = hasPermission('empresas', 'edit');
   const { empresas, totais, isLoading, error, recarregar } = useEmpresasCadastro();
   const [filtro, setFiltro] = useState<FiltroEmpresas>(SEM_FILTRO_EMPRESAS);
+  const paraExportar = filtrarEmpresas(empresas, filtro);
 
   return (
     <AdminLayout>
@@ -40,8 +46,8 @@ export default function Empresas() {
                   {t('empresasCadastro.subtitulo')}
                 </p>
               </div>
-              {podeEditar && (
-                <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+              <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+                {podeEditar && (
                   <Link
                     to={TELA_ATUAL_EMPRESAS}
                     className={botaoVidro}
@@ -49,8 +55,14 @@ export default function Empresas() {
                   >
                     <ExternalLink className="h-4 w-4" /> {t('empresasCadastro.novaNaTelaAtual')}
                   </Link>
-                </div>
-              )}
+                )}
+                <MenuExportar
+                  descricao={plural(t, 'empresasCadastro.exportar.descricao', paraExportar.length)}
+                  onExportar={(formato) =>
+                    exportarTabela(exportacaoEmpresas(paraExportar, t), formato)
+                  }
+                />
+              </div>
             </div>
           </FaixaPagina>
 

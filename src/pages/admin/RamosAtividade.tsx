@@ -28,6 +28,7 @@ import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { DicasContext } from '@/components/ds/Dicas';
 import { BarraRodape, DicaDoRotulo, Indicador, TituloFaixa } from '@/components/ds/Formulario';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import { BotaoLimparFiltros, FiltroMultiplo } from '@/components/ds/Filtros';
 import { atraso } from '@/components/ds/Visual';
 import { campo } from '@/components/ds/estilos';
@@ -36,7 +37,9 @@ import { useRamosAtividade } from '@/hooks/useRamosAtividade';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
+import { exportarTabela } from '@/utils/exportarTabela';
 import {
+  exportacaoRamos,
   filtrarRamos,
   mudancasRamos,
   nomeRepetido,
@@ -80,6 +83,8 @@ export default function RamosAtividade() {
     [t]
   );
   const visiveis = filtrarRamos(rascunho, busca, situacao);
+  // Exporta o que está gravado, com os filtros da tela; o rascunho só vale depois de salvo
+  const paraExportar = filtrarRamos(salvos, busca, situacao);
   const filtrando = !!busca || situacao.length > 0;
   const limpar = () => {
     setBusca('');
@@ -250,6 +255,14 @@ export default function RamosAtividade() {
                   <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
                     {t('ramosAtividade.subtitulo')}
                   </p>
+                </div>
+                <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+                  <MenuExportar
+                    descricao={plural(t, 'ramosAtividade.exportar.descricao', paraExportar.length)}
+                    onExportar={(formato) =>
+                      exportarTabela(exportacaoRamos(paraExportar, t), formato)
+                    }
+                  />
                 </div>
               </div>
             </FaixaPagina>

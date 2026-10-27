@@ -4,8 +4,9 @@
  * ao vincular e desvincular.
  */
 
-import type { Catalogo, Modulo, UsoEmBanco } from '@/types/catalogo';
+import type { Catalogo, Modulo, Produto, UsoEmBanco } from '@/types/catalogo';
 import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
+import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 
 /** Onde se vincula um grupo na tela */
 export interface AlvoGrupo {
@@ -105,4 +106,55 @@ export function destinoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo
 export function destinoAoDesvincular(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo {
   if (alvo.tipo !== 'modulo') return NENHUM;
   return { ...destinoDoAlvo(alvo, catalogo), moduloId: null };
+}
+
+type LinhaCatalogo = {
+  solucao: string;
+  produto: Produto;
+  modulo?: Modulo;
+};
+
+const porOrdem = <T extends { ordem: number }>(lista: T[]) =>
+  [...lista].sort((a, b) => a.ordem - b.ordem);
+
+/**
+ * Exportação do catálogo no formato da importação: cada produto numa linha, seguido
+ * dos seus módulos, na ordem das soluções, dos produtos e dos módulos
+ */
+export function exportacaoCatalogo(catalogo: Catalogo, t: Traduzir): Exportacao {
+  const linhas: LinhaCatalogo[] = porOrdem(catalogo.solucoes).flatMap((s) =>
+    porOrdem(catalogo.produtos.filter((p) => p.solucaoId === s.id)).flatMap((produto) => [
+      { solucao: s.nome, produto },
+      ...porOrdem(catalogo.modulos.filter((m) => m.produtoId === produto.id)).map((modulo) => ({
+        solucao: s.nome,
+        produto,
+        modulo,
+      })),
+    ])
+  );
+  const coluna = (chave: string, valor: (l: LinhaCatalogo) => string | null | undefined) => ({
+    rotulo: t(`produtosModulos.exportar.colunas.${chave}`),
+    valor,
+  });
+  return {
+    arquivo: t('produtosModulos.exportar.arquivo'),
+    titulo: t('produtosModulos.titulo'),
+    abas: [
+      {
+        nome: t('produtosModulos.titulo'),
+        linhas,
+        colunas: [
+          coluna('solucao', (l) => l.solucao),
+          coluna('produto', (l) => l.produto.nome),
+          coluna('modulo', (l) => l.modulo?.nome),
+          coluna('descricao', (l) => (l.modulo ?? l.produto).descricao),
+          {
+            rotulo: t('fase3Comum.situacao'),
+            valor: (l: LinhaCatalogo) =>
+              t((l.modulo ?? l.produto).ativo ? 'fase3Comum.ativo' : 'fase3Comum.inativo'),
+          },
+        ],
+      },
+    ],
+  };
 }

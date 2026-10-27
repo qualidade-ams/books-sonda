@@ -432,6 +432,22 @@ const empresasCadastro = {
     anexos:
       'Arquivos permanentes da empresa. Vão no disparo do Book quando a opção Anexo está ligada na aba Book.',
   },
+  exportar: {
+    arquivo: 'empresas',
+    descricao: {
+      um: 'Exporta {{n}} empresa, com os filtros aplicados',
+      varios: 'Exporta {{n}} empresas, com os filtros aplicados',
+    },
+    colunas: {
+      abreviado: 'Nome abreviado',
+      completo: 'Nome completo',
+      ams: 'Soluções com AMS',
+      projeto: 'Em projeto',
+      cs: 'E-mail do Customer Success',
+      comercial: 'E-mail do Comercial',
+      observacao: 'Observação',
+    },
+  },
 };
 
 export default empresasCadastro;

@@ -13,6 +13,7 @@ import type {
   ModeloEmpresa,
   SalvarInformacoesInput,
 } from '@/types/empresas';
+import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 
 export type SimNao = 'sim' | 'nao';
 
@@ -139,3 +140,51 @@ export const informacoesParaSalvar = (r: RascunhoInformacoes): SalvarInformacoes
     },
   },
 });
+
+/** Exportação da lista de empresas, com as soluções pelo código */
+export function exportacaoEmpresas(empresas: EmpresaLista[], t: Traduzir): Exportacao {
+  const coluna = (rotulo: string, valor: (e: EmpresaLista) => string | null) => ({
+    rotulo: t(rotulo),
+    valor,
+  });
+  const codigos = (e: EmpresaLista, filtro: (s: EmpresaLista['solucoes'][number]) => boolean) =>
+    e.solucoes
+      .filter(filtro)
+      .map((s) => s.codigo)
+      .join(', ');
+  return {
+    arquivo: t('empresasCadastro.exportar.arquivo'),
+    titulo: t('empresasCadastro.titulo'),
+    abas: [
+      {
+        nome: t('empresasCadastro.titulo'),
+        linhas: empresas,
+        colunas: [
+          coluna('empresasCadastro.exportar.colunas.abreviado', (e) => e.nomeAbreviado),
+          coluna('empresasCadastro.exportar.colunas.completo', (e) => e.nomeCompleto),
+          coluna('empresasCadastro.filtros.status', (e) =>
+            t(
+              e.status === 'ativo'
+                ? 'empresasCadastro.situacao.ativa'
+                : 'empresasCadastro.situacao.inativa'
+            )
+          ),
+          coluna('empresasCadastro.filtros.modelo', (e) =>
+            t(`empresasCadastro.modelo.${e.modelo}`)
+          ),
+          coluna('empresasCadastro.lista.colunaSolucoes', (e) => codigos(e, () => true)),
+          coluna('empresasCadastro.exportar.colunas.ams', (e) => codigos(e, (s) => s.temAms)),
+          coluna('empresasCadastro.exportar.colunas.projeto', (e) =>
+            e.solucoes
+              .filter((s) => s.emProjeto)
+              .map((s) => `${s.codigo}: ${s.justificativaProjeto ?? ''}`)
+              .join(' · ')
+          ),
+          coluna('empresasCadastro.exportar.colunas.cs', (e) => e.emailCs),
+          coluna('empresasCadastro.exportar.colunas.comercial', (e) => e.emailComercial),
+          coluna('empresasCadastro.exportar.colunas.observacao', (e) => e.observacao),
+        ],
+      },
+    ],
+  };
+}

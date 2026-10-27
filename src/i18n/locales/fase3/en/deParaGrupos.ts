@@ -125,6 +125,14 @@ const deParaGrupos = {
       'Result of the chosen solution, product and module: which bank consumes the hours of this group in companies with multiple banks.',
     uso: 'Time entries and tickets of the last 6 months with this group and the companies with multiple banks they reach.',
   },
+  exportar: {
+    arquivo: 'group-mapping',
+    descricao: {
+      um: 'Exports {{n}} mapping, with the filters applied',
+      varios: 'Exports {{n}} mappings, with the filters applied',
+    },
+    tickets: 'Tickets (6 months)',
+  },
 };
 
 export default deParaGrupos;

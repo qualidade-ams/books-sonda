@@ -125,6 +125,14 @@ const deParaGrupos = {
       'Resultado da solução, do produto e do módulo escolhidos: em que banco as horas deste grupo são consumidas nas empresas com bancos múltiplos.',
     uso: 'Apontamentos e tickets dos últimos 6 meses com este grupo e as empresas com bancos múltiplos que eles alcançam.',
   },
+  exportar: {
+    arquivo: 'de-para-de-grupos',
+    descricao: {
+      um: 'Exporta {{n}} mapeamento, com os filtros aplicados',
+      varios: 'Exporta {{n}} mapeamentos, com os filtros aplicados',
+    },
+    tickets: 'Tickets (6 meses)',
+  },
 };
 
 export default deParaGrupos;

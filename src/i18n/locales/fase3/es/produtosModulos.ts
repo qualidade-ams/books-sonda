@@ -198,6 +198,16 @@ const produtosModulos = {
     produtoEModulo:
       'A dónde van los requerimientos de Banco de Horas con este módulo. "Todos los módulos" lleva al banco que cubre el producto entero; sin banco que lo cubra, van al Banco predeterminado.',
   },
+  exportar: {
+    arquivo: 'productos-y-modulos',
+    descricao: 'Exporta el catálogo: soluciones, productos y módulos, activos e inactivos',
+    colunas: {
+      solucao: 'Solución',
+      produto: 'Producto',
+      modulo: 'Módulo',
+      descricao: 'Descripción',
+    },
+  },
 };
 
 export default produtosModulos;

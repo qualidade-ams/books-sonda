@@ -114,6 +114,16 @@ const regrasContagem = {
       'Time entries and tickets with one of these configuration items do not count in the bank (e.g.: projects).',
     tickets: 'Which tickets enter the ticket count of the banks.',
   },
+  exportar: {
+    arquivo: 'counting-rules',
+    descricao: 'Exports the resolution codes, the codes without a rule and the filters, as saved',
+    filtro: 'Filter',
+    valor: 'Value',
+    atividadeNaoConta: 'Does not count',
+    atividadeConta: 'Counts',
+    soFechados: 'Closed only, in the month of closing',
+    abertos: 'Open and closed, in the month of opening',
+  },
 };
 
 export default regrasContagem;

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { codigosDeSolucao, filtrarEmpresas, SEM_FILTRO_EMPRESAS } from '../empresasTela';
+import {
+  codigosDeSolucao,
+  exportacaoEmpresas,
+  filtrarEmpresas,
+  SEM_FILTRO_EMPRESAS,
+} from '../empresasTela';
+import { matrizDaAba } from '@/utils/exportarTabela';
 import type { EmpresaLista, SolucaoDaEmpresa } from '@/types/empresas';
 
 const solucao = (codigo: string, temAms: boolean, emProjeto = false): SolucaoDaEmpresa => ({
@@ -85,5 +91,54 @@ describe('filtrarEmpresas', () => {
 describe('codigosDeSolucao', () => {
   it('as soluções que aparecem na lista, sem repetir, em ordem', () => {
     expect(codigosDeSolucao(LISTA)).toEqual(['COMEX', 'FISCAIS']);
+  });
+});
+
+describe('exportacaoEmpresas', () => {
+  const t = (chave: string) => chave;
+  it('uma linha por empresa, com soluções, AMS, projeto e contatos', () => {
+    const exportacao = exportacaoEmpresas(
+      [{ ...LISTA[2], emailCs: 'cs@exemplo.com', observacao: 'Ver contrato' }, LISTA[1]],
+      t
+    );
+    expect(exportacao.arquivo).toBe('empresasCadastro.exportar.arquivo');
+    expect(matrizDaAba(exportacao.abas[0])).toEqual([
+      [
+        'empresasCadastro.exportar.colunas.abreviado',
+        'empresasCadastro.exportar.colunas.completo',
+        'empresasCadastro.filtros.status',
+        'empresasCadastro.filtros.modelo',
+        'empresasCadastro.lista.colunaSolucoes',
+        'empresasCadastro.exportar.colunas.ams',
+        'empresasCadastro.exportar.colunas.projeto',
+        'empresasCadastro.exportar.colunas.cs',
+        'empresasCadastro.exportar.colunas.comercial',
+        'empresasCadastro.exportar.colunas.observacao',
+      ],
+      [
+        'GAMA',
+        'GAMA LTDA',
+        'empresasCadastro.situacao.inativa',
+        'empresasCadastro.modelo.legado',
+        'COMEX, FISCAIS',
+        'FISCAIS',
+        '',
+        'cs@exemplo.com',
+        '',
+        'Ver contrato',
+      ],
+      [
+        'BETA',
+        'BETA INDÚSTRIA SA',
+        'empresasCadastro.situacao.ativa',
+        'empresasCadastro.modelo.legado',
+        'FISCAIS',
+        '',
+        'FISCAIS: Implantação',
+        '',
+        '',
+        '',
+      ],
+    ]);
   });
 });

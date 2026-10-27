@@ -115,6 +115,17 @@ const regrasContagem = {
       'Los registros y tickets con uno de estos ítems de configuración no cuentan en el banco (ej.: proyectos).',
     tickets: 'Qué tickets entran en el conteo de tickets de los bancos.',
   },
+  exportar: {
+    arquivo: 'reglas-de-conteo',
+    descricao:
+      'Exporta los códigos de resolución, los códigos sin regla y los filtros, como están guardados',
+    filtro: 'Filtro',
+    valor: 'Valor',
+    atividadeNaoConta: 'No cuenta',
+    atividadeConta: 'Cuenta',
+    soFechados: 'Solo cerrados, en el mes del cierre',
+    abertos: 'Abiertos y cerrados, en el mes de apertura',
+  },
 };
 
 export default regrasContagem;

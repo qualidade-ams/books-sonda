@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
 import {
+  exportacaoRamos,
   filtrarRamos,
   mudancasRamos,
   nomeRepetido,
@@ -91,5 +93,26 @@ describe('filtrarRamos', () => {
   it('por nome e situação', () => {
     expect(filtrarRamos(SALVOS, 'ind', []).map((r) => r.id)).toEqual(['r2']);
     expect(filtrarRamos(SALVOS, '', ['inativo']).map((r) => r.id)).toEqual(['r3']);
+  });
+});
+
+describe('exportacaoRamos', () => {
+  const t = (chave: string) => chave;
+  it('uma linha por ramo, na ordem, com situação e empresas', () => {
+    const exportacao = exportacaoRamos([SALVOS[0], SALVOS[2]], t);
+    expect(exportacao).toMatchObject({
+      arquivo: 'ramosAtividade.exportar.arquivo',
+      titulo: 'ramosAtividade.titulo',
+    });
+    expect(matrizDaAba(exportacao.abas[0])).toEqual([
+      [
+        'ramosAtividade.exportar.colunas.ramo',
+        'fase3Comum.situacao',
+        'ramosAtividade.exportar.colunas.principal',
+        'ramosAtividade.exportar.colunas.secundario',
+      ],
+      ['Agronegócio', 'fase3Comum.ativo', 3, 1],
+      ['Varejo', 'fase3Comum.inativo', 0, 0],
+    ]);
   });
 });

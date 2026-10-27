@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
 import {
   codigoNovo,
+  exportacaoRegras,
   filtrarCodigos,
   mudancasRegras,
   paraSalvar,
@@ -115,6 +117,48 @@ describe('filtrarCodigos', () => {
     expect(filtrarCodigos(CODIGOS, '', ['tickets']).map((c) => c.codigo)).toEqual([
       'Banco=S|SLA=N',
       'Outro',
+    ]);
+  });
+});
+
+describe('exportacaoRegras', () => {
+  const t = (chave: string) => chave;
+  it('três abas: códigos, códigos sem regra e filtros', () => {
+    const exportacao = exportacaoRegras(
+      {
+        codigos: [CODIGOS[1]],
+        filtros: FILTROS,
+        codigosSemRegra: [
+          { codigo: 'Novo=S', apontamentos6m: 4, tickets6m: 1, primeiraOcorrencia: '2026-10-01' },
+        ],
+      },
+      t
+    );
+    expect(exportacao.arquivo).toBe('regrasContagem.exportar.arquivo');
+    expect(exportacao.abas.map((a) => a.nome)).toEqual([
+      'regrasContagem.abas.codigos',
+      'regrasContagem.abas.semRegra',
+      'regrasContagem.abas.filtros',
+    ]);
+    const [codigos, semRegra, filtros] = exportacao.abas.map(matrizDaAba);
+    expect(codigos).toEqual([
+      [
+        'regrasContagem.codigos.colunaCodigo',
+        'regrasContagem.codigos.colunaHoras',
+        'regrasContagem.codigos.colunaTickets',
+        'regrasContagem.semRegra.colunaApontamentos',
+        'regrasContagem.semRegra.colunaTickets',
+      ],
+      ['Banco=S |SLA=N', 'regrasContagem.codigos.sim', 'regrasContagem.codigos.nao', 5, 1],
+    ]);
+    expect(semRegra[1]).toEqual(['Novo=S', 4, 1, '2026-10-01']);
+    expect(filtros).toEqual([
+      ['regrasContagem.exportar.filtro', 'regrasContagem.exportar.valor'],
+      ['regrasContagem.filtros.grupos', 'AMS APL, AMS T&M'],
+      ['regrasContagem.filtros.tipos', 'IM, RF, PM'],
+      ['regrasContagem.filtros.atividade', 'regrasContagem.exportar.atividadeNaoConta'],
+      ['regrasContagem.filtros.itens', '000000 - PROJETOS APL'],
+      ['regrasContagem.filtros.tickets', 'regrasContagem.exportar.soFechados'],
     ]);
   });
 });

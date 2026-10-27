@@ -4,6 +4,7 @@ import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import DeParaGrupos from '../DeParaGrupos';
 import type { MapeamentoGrupo } from '@/types/dePara';
+import { exportarTabela } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -11,6 +12,10 @@ vi.mock('react-i18next', () => ({
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
     i18n: { language: 'pt-BR' },
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -205,5 +210,18 @@ describe('DeParaGrupos', () => {
     expect(
       screen.queryByRole('button', { name: /deParaGrupos.novoMapeamento/ })
     ).not.toBeInTheDocument();
+  });
+
+  it('exporta os mapeamentos com a busca aplicada, também para quem só consulta', async () => {
+    permissoes = ['de_para_grupos:view'];
+    renderizar();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'deParaGrupos.lista.buscar' }), {
+      target: { value: 'cambio' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('deParaGrupos.exportar.descricao.um {"n":1}')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
+    const [exportacao] = vi.mocked(exportarTabela).mock.calls[0];
+    expect((exportacao.abas[0].linhas as MapeamentoGrupo[]).map((m) => m.id)).toEqual(['g1']);
   });
 });

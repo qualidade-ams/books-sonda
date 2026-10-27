@@ -3,6 +3,8 @@ import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import RegrasContagem from '../RegrasContagem';
 import type { RegrasContagem as Regras } from '@/types/regrasContagem';
+import userEvent from '@testing-library/user-event';
+import { exportarTabela } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -10,6 +12,10 @@ vi.mock('react-i18next', () => ({
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
     i18n: { language: 'pt-BR' },
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -151,5 +157,16 @@ describe('RegrasContagem', () => {
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     aba('regrasContagem.abas.semRegra');
     expect(screen.queryByRole('button', { name: /incluirCodigo/ })).not.toBeInTheDocument();
+  });
+
+  it('exporta as regras gravadas, também para quem só consulta', async () => {
+    permissoes = ['regras_contagem:view'];
+    renderizar();
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('regrasContagem.exportar.descricao')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
+    const [exportacao, formato] = vi.mocked(exportarTabela).mock.calls[0];
+    expect(formato).toBe('xlsx');
+    expect(exportacao.abas.map((a) => a.linhas.length)).toEqual([1, 1, 5]);
   });
 });

@@ -430,6 +430,22 @@ const empresasCadastro = {
     anexos:
       'Permanent files of the company. They go with the Book when the Attachment option is on in the Book tab.',
   },
+  exportar: {
+    arquivo: 'companies',
+    descricao: {
+      um: 'Exports {{n}} company, with the filters applied',
+      varios: 'Exports {{n}} companies, with the filters applied',
+    },
+    colunas: {
+      abreviado: 'Short name',
+      completo: 'Full name',
+      ams: 'Solutions with AMS',
+      projeto: 'In project',
+      cs: 'Customer Success e-mail',
+      comercial: 'Sales e-mail',
+      observacao: 'Note',
+    },
+  },
 };
 
 export default empresasCadastro;

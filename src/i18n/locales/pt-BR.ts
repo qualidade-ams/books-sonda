@@ -93,6 +93,12 @@ const ptBR = {
       ativos: 'Filtros ({{quantidade}} ativos)',
       limparSelecao: 'Limpar seleção',
     },
+    exportar: {
+      botao: 'Exportar',
+      excel: 'Excel (.xlsx)',
+      pdf: 'PDF',
+      erro: 'Erro ao exportar',
+    },
     formulario: {
       paraQueServe: 'Para que serve: {{assunto}}',
       aumentar: 'Aumentar',

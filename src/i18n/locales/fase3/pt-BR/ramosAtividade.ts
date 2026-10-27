@@ -69,6 +69,18 @@ const ramosAtividade = {
     ramos:
       'Lista usada no Ramo de atividade (obrigatório) e no Ramo secundário (opcional) das empresas, na ordem desta tela. Arraste para mudar a ordem. As alterações só valem depois de salvar.',
   },
+  exportar: {
+    arquivo: 'ramos-de-atividade',
+    descricao: {
+      um: 'Exporta {{n}} ramo, com os filtros aplicados',
+      varios: 'Exporta {{n}} ramos, com os filtros aplicados',
+    },
+    colunas: {
+      ramo: 'Ramo de atividade',
+      principal: 'Empresas (ramo principal)',
+      secundario: 'Empresas (ramo secundário)',
+    },
+  },
 };
 
 export default ramosAtividade;

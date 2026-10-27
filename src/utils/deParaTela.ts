@@ -10,6 +10,8 @@ import type {
   MapeamentoGrupo,
   UsoGrupo,
 } from '@/types/dePara';
+import type { Catalogo } from '@/types/catalogo';
+import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 
 export interface FiltroMapeamentos {
   busca: string;
@@ -75,3 +77,38 @@ export const destinoMudou = (atual: DestinoGrupo, novo: DestinoGrupo) =>
   atual.solucaoId !== novo.solucaoId ||
   atual.produtoId !== novo.produtoId ||
   atual.moduloId !== novo.moduloId;
+
+/** Exportação dos mapeamentos, com o destino pelo nome e o uso dos últimos 6 meses */
+export function exportacaoMapeamentos(
+  mapeamentos: MapeamentoGrupo[],
+  catalogo: Catalogo,
+  uso: Record<string, UsoGrupo>,
+  t: Traduzir
+): Exportacao {
+  const nome = (lista: { id: string; nome: string }[], id: string | null) =>
+    lista.find((x) => x.id === id)?.nome;
+  const coluna = (rotulo: string, valor: (m: MapeamentoGrupo) => string | number | undefined) => ({
+    rotulo: t(rotulo),
+    valor,
+  });
+  return {
+    arquivo: t('deParaGrupos.exportar.arquivo'),
+    titulo: t('deParaGrupos.titulo'),
+    abas: [
+      {
+        nome: t('deParaGrupos.titulo'),
+        linhas: mapeamentos,
+        colunas: [
+          coluna('deParaGrupos.lista.colunaGrupo', (m) => m.grupoAranda),
+          coluna('deParaGrupos.lista.colunaBook', (m) => m.grupoBook),
+          coluna('deParaGrupos.destino.solucao', (m) => nome(catalogo.solucoes, m.solucaoId)),
+          coluna('deParaGrupos.destino.produto', (m) => nome(catalogo.produtos, m.produtoId)),
+          coluna('deParaGrupos.destino.modulo', (m) => nome(catalogo.modulos, m.moduloId)),
+          coluna('fase3Comum.situacao', (m) => t(`deParaGrupos.classificacao.${m.classificacao}`)),
+          coluna('deParaGrupos.lista.colunaApontamentos', (m) => uso[m.id]?.apontamentos ?? 0),
+          coluna('deParaGrupos.exportar.tickets', (m) => uso[m.id]?.tickets ?? 0),
+        ],
+      },
+    ],
+  };
+}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, it, expect, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { AbaMapeamentos } from '../AbaMapeamentos';
 import type { Catalogo } from '@/types/catalogo';
 import type { MapeamentoGrupo, UsoGrupo } from '@/types/dePara';
+import { SEM_FILTRO, type FiltroMapeamentos } from '@/utils/deParaTela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -89,17 +91,23 @@ const props = {
   carregando: false,
   erro: null,
   podeEditar: true,
-  situacao: [] as MapeamentoGrupo['classificacao'][],
-  onSituacao: vi.fn(),
   onEditar: vi.fn(),
   onAtribuir: vi.fn(async () => undefined),
   onExcluir: vi.fn(async () => undefined),
   onTentarNovamente: vi.fn(),
 };
-const renderizar = (extra = {}) =>
+/** O filtro é controlado pela página; aqui um estado faz o papel dela */
+function Controlado({
+  filtroInicial = SEM_FILTRO,
+  ...extra
+}: Partial<typeof props> & { filtroInicial?: FiltroMapeamentos }) {
+  const [filtro, setFiltro] = useState(filtroInicial);
+  return <AbaMapeamentos {...props} {...extra} filtro={filtro} onFiltro={setFiltro} />;
+}
+const renderizar = (extra: Partial<typeof props> & { filtroInicial?: FiltroMapeamentos } = {}) =>
   render(
     <TooltipProvider>
-      <AbaMapeamentos {...props} {...extra} />
+      <Controlado {...extra} />
     </TooltipProvider>
   );
 const lista = () => within(screen.getByRole('list', { name: 'deParaGrupos.lista.rotulo' }));
@@ -127,7 +135,9 @@ describe('AbaMapeamentos', () => {
   });
 
   it('a situação vinda do indicador filtra e mostra os filtros abertos', () => {
-    renderizar({ situacao: ['produto', 'solucao', 'nao_se_aplica'] });
+    renderizar({
+      filtroInicial: { ...SEM_FILTRO, situacao: ['produto', 'solucao', 'nao_se_aplica'] },
+    });
     expect(lista().queryByText('AMS APL - CAMBIO - N2')).not.toBeInTheDocument();
     expect(lista().getByText('DEDICADOS')).toBeInTheDocument();
     expect(

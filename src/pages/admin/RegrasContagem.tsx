@@ -13,14 +13,17 @@ import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { DicasContext } from '@/components/ds/Dicas';
 import { BarraRodape, Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import { AbaCodigos } from '@/components/admin/regras/AbaCodigos';
 import { AbaSemRegra } from '@/components/admin/regras/AbaSemRegra';
 import { AbaFiltros } from '@/components/admin/regras/AbaFiltros';
 import { useRegrasContagem } from '@/hooks/useRegrasContagem';
 import { usePermissions } from '@/hooks/usePermissions';
 import { plural } from '@/utils/plural';
+import { exportarTabela } from '@/utils/exportarTabela';
 import {
   codigoNovo,
+  exportacaoRegras,
   mudancasRegras,
   paraSalvar,
   problemasDosFiltros,
@@ -164,6 +167,14 @@ export default function RegrasContagem() {
                     {t('regrasContagem.subtitulo')}
                   </p>
                 </div>
+                {regras && (
+                  <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+                    <MenuExportar
+                      descricao={t('regrasContagem.exportar.descricao')}
+                      onExportar={(formato) => exportarTabela(exportacaoRegras(regras, t), formato)}
+                    />
+                  </div>
+                )}
               </div>
             </FaixaPagina>
 

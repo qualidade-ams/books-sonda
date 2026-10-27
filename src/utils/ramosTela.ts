@@ -4,6 +4,7 @@
  */
 
 import type { RamoAtividade, RamoRascunho } from '@/types/ramosAtividade';
+import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 
 /** Ramo do rascunho; os incluídos na tela ainda não têm id do banco */
 export type RamoEdicao = RamoAtividade & { novo?: boolean };
@@ -90,3 +91,30 @@ export const filtrarRamos = <T extends RamoAtividade>(
       (!situacao.length || situacao.includes(r.ativo ? 'ativo' : 'inativo')) &&
       (!busca.trim() || normalizar(r.nome).includes(normalizar(busca)))
   );
+
+/** Exportação dos ramos, na ordem da lista */
+export const exportacaoRamos = (ramos: RamoAtividade[], t: Traduzir): Exportacao => ({
+  arquivo: t('ramosAtividade.exportar.arquivo'),
+  titulo: t('ramosAtividade.titulo'),
+  abas: [
+    {
+      nome: t('ramosAtividade.titulo'),
+      linhas: ramos,
+      colunas: [
+        { rotulo: t('ramosAtividade.exportar.colunas.ramo'), valor: (r: RamoAtividade) => r.nome },
+        {
+          rotulo: t('fase3Comum.situacao'),
+          valor: (r: RamoAtividade) => t(r.ativo ? 'fase3Comum.ativo' : 'fase3Comum.inativo'),
+        },
+        {
+          rotulo: t('ramosAtividade.exportar.colunas.principal'),
+          valor: (r: RamoAtividade) => r.empresasPrincipal,
+        },
+        {
+          rotulo: t('ramosAtividade.exportar.colunas.secundario'),
+          valor: (r: RamoAtividade) => r.empresasSecundario,
+        },
+      ],
+    },
+  ],
+});

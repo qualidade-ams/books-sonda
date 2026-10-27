@@ -4,12 +4,17 @@ import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import RamosAtividade from '../RamosAtividade';
 import type { RamoAtividade } from '@/types/ramosAtividade';
+import { exportarTabela } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -181,5 +186,29 @@ describe('RamosAtividade', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fase3Comum.reordenar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fase3Comum.acoesDe/ })).not.toBeInTheDocument();
+  });
+
+  it('exporta os ramos gravados com a busca aplicada, também para quem só consulta', async () => {
+    permissoes = ['ramos_atividade:view'];
+    render(
+      <TooltipProvider>
+        <RamosAtividade />
+      </TooltipProvider>
+    );
+    fireEvent.change(screen.getByRole('searchbox', { name: 'ramosAtividade.lista.buscar' }), {
+      target: { value: 'agro' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('ramosAtividade.exportar.descricao.um {"n":1}')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.pdf' }));
+
+    expect(exportarTabela).toHaveBeenCalledWith(
+      expect.objectContaining({ arquivo: 'ramosAtividade.exportar.arquivo' }),
+      'pdf'
+    );
+    const [exportacao] = vi.mocked(exportarTabela).mock.calls[0];
+    expect((exportacao.abas[0].linhas as RamoAtividade[]).map((r) => r.nome)).toEqual([
+      'Agronegócio',
+    ]);
   });
 });

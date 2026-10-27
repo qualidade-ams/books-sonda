@@ -10,6 +10,7 @@ import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
 import { DicasContext } from '@/components/ds/Dicas';
 import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import { botaoPrimarioTopo } from '@/components/ds/estilos';
 import { AbaMapeamentos } from '@/components/admin/de-para/AbaMapeamentos';
 import { AbaNaoMapeados } from '@/components/admin/de-para/AbaNaoMapeados';
@@ -17,7 +18,15 @@ import { EdicaoMapeamento } from '@/components/admin/de-para/EdicaoMapeamento';
 import { useDePara } from '@/hooks/useDePara';
 import { useCatalogo } from '@/hooks/useCatalogo';
 import { usePermissions } from '@/hooks/usePermissions';
-import { totaisDePara } from '@/utils/deParaTela';
+import { exportarTabela } from '@/utils/exportarTabela';
+import { plural } from '@/utils/plural';
+import {
+  exportacaoMapeamentos,
+  filtrarMapeamentos,
+  SEM_FILTRO,
+  totaisDePara,
+  type FiltroMapeamentos,
+} from '@/utils/deParaTela';
 import type { Catalogo } from '@/types/catalogo';
 import type { ClassificacaoGrupo, GrupoNaoMapeado, MapeamentoGrupo } from '@/types/dePara';
 
@@ -67,7 +76,8 @@ export default function DeParaGrupos() {
   };
 
   const [aba, setAba] = useState('mapeamentos');
-  const [situacao, setSituacao] = useState<ClassificacaoGrupo[]>([]);
+  const [filtro, setFiltro] = useState<FiltroMapeamentos>(SEM_FILTRO);
+  const { situacao } = filtro;
   const [editando, setEditando] = useState<Edicao>(null);
 
   const dicas = useMemo(
@@ -78,6 +88,7 @@ export default function DeParaGrupos() {
     [t]
   );
   const totais = totaisDePara(mapeamentos, naoMapeados);
+  const paraExportar = filtrarMapeamentos(mapeamentos, filtro);
   const soSemModulo =
     situacao.length === SEM_MODULO.length && SEM_MODULO.every((c) => situacao.includes(c));
 
@@ -102,8 +113,8 @@ export default function DeParaGrupos() {
               {t('deParaGrupos.subtitulo')}
             </p>
           </div>
-          {podeEditar && (
-            <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+          <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+            {podeEditar && (
               <button
                 type="button"
                 className={botaoPrimarioTopo}
@@ -111,8 +122,14 @@ export default function DeParaGrupos() {
               >
                 <Plus className="h-4 w-4" /> {t('deParaGrupos.novoMapeamento')}
               </button>
-            </div>
-          )}
+            )}
+            <MenuExportar
+              descricao={plural(t, 'deParaGrupos.exportar.descricao', paraExportar.length)}
+              onExportar={(formato) =>
+                exportarTabela(exportacaoMapeamentos(paraExportar, catalogo, uso, t), formato)
+              }
+            />
+          </div>
         </div>
       </FaixaPagina>
 
@@ -137,7 +154,7 @@ export default function DeParaGrupos() {
           selecionado={aba === 'mapeamentos' && soSemModulo}
           onClick={() => {
             setAba('mapeamentos');
-            setSituacao(soSemModulo ? [] : SEM_MODULO);
+            setFiltro((f) => ({ ...f, situacao: soSemModulo ? [] : SEM_MODULO }));
           }}
         />
         <Indicador
@@ -176,8 +193,8 @@ export default function DeParaGrupos() {
               carregando={carregando}
               erro={erro}
               podeEditar={podeEditar}
-              situacao={situacao}
-              onSituacao={setSituacao}
+              filtro={filtro}
+              onFiltro={setFiltro}
               onEditar={(m) => setEditando({ mapeamento: m })}
               onAtribuir={(ids, destino) => atribuirDestino({ ids, destino })}
               onExcluir={(m) => excluir(m.id)}

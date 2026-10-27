@@ -68,6 +68,18 @@ const ramosAtividade = {
     ramos:
       'List used in the Business sector (required) and Secondary sector (optional) of companies, in the order of this screen. Drag to change the order. Changes only apply after saving.',
   },
+  exportar: {
+    arquivo: 'business-sectors',
+    descricao: {
+      um: 'Exports {{n}} sector, with the filters applied',
+      varios: 'Exports {{n}} sectors, with the filters applied',
+    },
+    colunas: {
+      ramo: 'Business sector',
+      principal: 'Companies (main sector)',
+      secundario: 'Companies (secondary sector)',
+    },
+  },
 };
 
 export default ramosAtividade;

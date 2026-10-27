@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
 import {
   bancosDoProduto,
   destinoAoDesvincular,
   destinoDoAlvo,
+  exportacaoCatalogo,
   gruposDaSolucao,
   gruposDoModulo,
   gruposSoDoProduto,
@@ -216,6 +218,39 @@ describe('bancosDoProduto', () => {
     expect(bancosDoProduto(usos, 'ce').map((u) => [u.bancoId, u.produtoInteiro])).toEqual([
       ['b1', false],
       ['b2', true],
+    ]);
+  });
+});
+
+describe('exportacaoCatalogo', () => {
+  const t = (chave: string) => chave;
+  it('cada produto seguido dos seus módulos, na ordem das soluções, produtos e módulos', () => {
+    const exportacao = exportacaoCatalogo(
+      {
+        solucoes: [...CATALOGO.solucoes].reverse(),
+        produtos: [
+          produto('comply', 's2'),
+          produto('ce', 's1', { descricao: 'Comércio exterior', ordem: 2 }),
+          produto('fci', 's1', { ativo: false }),
+        ],
+        modulos: [{ ...modulo('antigo', 'ce', false), ordem: 2 }, modulo('cambio', 'ce')],
+      },
+      t
+    );
+    expect(exportacao.arquivo).toBe('produtosModulos.exportar.arquivo');
+    expect(matrizDaAba(exportacao.abas[0])).toEqual([
+      [
+        'produtosModulos.exportar.colunas.solucao',
+        'produtosModulos.exportar.colunas.produto',
+        'produtosModulos.exportar.colunas.modulo',
+        'produtosModulos.exportar.colunas.descricao',
+        'fase3Comum.situacao',
+      ],
+      ['COMEX', 'fci', '', '', 'fase3Comum.inativo'],
+      ['COMEX', 'ce', '', 'Comércio exterior', 'fase3Comum.ativo'],
+      ['COMEX', 'ce', 'cambio', '', 'fase3Comum.ativo'],
+      ['COMEX', 'ce', 'antigo', '', 'fase3Comum.inativo'],
+      ['FISCAIS', 'comply', '', '', 'fase3Comum.ativo'],
     ]);
   });
 });

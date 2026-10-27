@@ -5,12 +5,17 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import ProdutosModulos from '../ProdutosModulos';
 import type { Catalogo } from '@/types/catalogo';
 import type { MapeamentoGrupo } from '@/types/dePara';
+import { exportarTabela, matrizDaAba } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -246,5 +251,17 @@ describe('ProdutosModulos', () => {
         moduloId: 'cambio',
       })
     );
+  });
+
+  it('exporta o catálogo inteiro, também para quem só consulta', async () => {
+    permissoes = ['produtos_modulos:view'];
+    renderizar();
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('produtosModulos.exportar.descricao')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.pdf' }));
+    const [exportacao, formato] = vi.mocked(exportarTabela).mock.calls[0];
+    expect(formato).toBe('pdf');
+    // 3 produtos e 2 módulos, depois do cabeçalho
+    expect(matrizDaAba(exportacao.abas[0])).toHaveLength(6);
   });
 });

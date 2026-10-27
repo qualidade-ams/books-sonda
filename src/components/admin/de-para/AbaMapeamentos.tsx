@@ -21,7 +21,12 @@ import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { useNomesUsuarios } from '@/hooks/useNomesUsuarios';
-import { empresasAfetadas, filtrarMapeamentos } from '@/utils/deParaTela';
+import {
+  empresasAfetadas,
+  filtrarMapeamentos,
+  SEM_FILTRO,
+  type FiltroMapeamentos,
+} from '@/utils/deParaTela';
 import type { Catalogo } from '@/types/catalogo';
 import type { ClassificacaoGrupo, DestinoGrupo, MapeamentoGrupo, UsoGrupo } from '@/types/dePara';
 import { DestinoNaLista, EscolhaDestino } from './EscolhaDestino';
@@ -125,8 +130,8 @@ export function AbaMapeamentos({
   carregando,
   erro,
   podeEditar,
-  situacao,
-  onSituacao,
+  filtro,
+  onFiltro,
   onEditar,
   onAtribuir,
   onExcluir,
@@ -138,9 +143,9 @@ export function AbaMapeamentos({
   carregando: boolean;
   erro: Error | null;
   podeEditar: boolean;
-  /** Controlada de fora: o indicador "Sem módulo" filtra a lista */
-  situacao: ClassificacaoGrupo[];
-  onSituacao: (v: ClassificacaoGrupo[]) => void;
+  /** Controlado pela página: o indicador "Sem módulo" filtra a lista e o Exportar usa o filtro */
+  filtro: FiltroMapeamentos;
+  onFiltro: (filtro: FiltroMapeamentos) => void;
   onEditar: (m: MapeamentoGrupo) => void;
   onAtribuir: (ids: string[], destino: DestinoGrupo) => Promise<void>;
   onExcluir: (m: MapeamentoGrupo) => Promise<void>;
@@ -148,10 +153,7 @@ export function AbaMapeamentos({
 }) {
   const { t, i18n } = useTranslation();
   const textoDestino = useTextoDestino(catalogo);
-  const [busca, setBusca] = useState('');
-  const [solucoes, setSolucoes] = useState<string[]>([]);
-  const [produtos, setProdutos] = useState<string[]>([]);
-  const [modulos, setModulos] = useState<string[]>([]);
+  const { busca, solucoes, produtos, modulos, situacao } = filtro;
   const [filtrosAbertos, setFiltrosAbertos] = useState(situacao.length > 0);
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
@@ -167,22 +169,16 @@ export function AbaMapeamentos({
     setPagina(1);
   }, [situacao]);
 
-  const linhas = useMemo(
-    () => filtrarMapeamentos(mapeamentos, { busca, solucoes, produtos, modulos, situacao }),
-    [mapeamentos, busca, solucoes, produtos, modulos, situacao]
-  );
+  const linhas = useMemo(() => filtrarMapeamentos(mapeamentos, filtro), [mapeamentos, filtro]);
   const visiveis = linhas.slice((pagina - 1) * porPagina, pagina * porPagina);
   const nomes = useNomesUsuarios(visiveis.map((m) => m.atualizadoPor));
   const filtrosAtivos = [solucoes, produtos, modulos, situacao].filter((f) => f.length).length;
   const filtrando = filtrosAtivos > 0 || !!busca;
-  const limpar = () => {
-    setBusca('');
-    setSolucoes([]);
-    setProdutos([]);
-    setModulos([]);
-    onSituacao([]);
+  const filtrar = (parte: Partial<FiltroMapeamentos>) => {
+    onFiltro({ ...filtro, ...parte });
     setPagina(1);
   };
+  const limpar = () => filtrar(SEM_FILTRO);
 
   const todosVisiveis = visiveis.length > 0 && visiveis.every((m) => selecao.includes(m.id));
   const algumVisivel = visiveis.some((m) => selecao.includes(m.id));
@@ -303,10 +299,7 @@ export function AbaMapeamentos({
               aria-label={t('deParaGrupos.lista.buscar')}
               placeholder={t('deParaGrupos.lista.buscar')}
               value={busca}
-              onChange={(e) => {
-                setBusca(e.target.value);
-                setPagina(1);
-              }}
+              onChange={(e) => filtrar({ busca: e.target.value })}
               className={cn(campo, 'pl-9')}
             />
           </label>
@@ -319,22 +312,13 @@ export function AbaMapeamentos({
                 rotulo={t('deParaGrupos.destino.solucao')}
                 opcoes={catalogo.solucoes.map((s) => ({ valor: s.id, rotulo: s.nome }))}
                 selecionados={solucoes}
-                onChange={(v) => {
-                  setSolucoes(v);
-                  setProdutos([]);
-                  setModulos([]);
-                  setPagina(1);
-                }}
+                onChange={(v) => filtrar({ solucoes: v, produtos: [], modulos: [] })}
               />
               <FiltroMultiplo
                 rotulo={t('deParaGrupos.destino.produto')}
                 opcoes={produtosDoFiltro.map((p) => ({ valor: p.id, rotulo: p.nome }))}
                 selecionados={produtos}
-                onChange={(v) => {
-                  setProdutos(v);
-                  setModulos([]);
-                  setPagina(1);
-                }}
+                onChange={(v) => filtrar({ produtos: v, modulos: [] })}
               />
               <FiltroMultiplo
                 rotulo={t('deParaGrupos.destino.modulo')}
@@ -346,10 +330,7 @@ export function AbaMapeamentos({
                       : `${nome(catalogo.produtos, m.produtoId)} › ${m.nome}`,
                 }))}
                 selecionados={modulos}
-                onChange={(v) => {
-                  setModulos(v);
-                  setPagina(1);
-                }}
+                onChange={(v) => filtrar({ modulos: v })}
               />
               <FiltroMultiplo<ClassificacaoGrupo>
                 rotulo={t('fase3Comum.situacao')}
@@ -358,7 +339,7 @@ export function AbaMapeamentos({
                   rotulo: t(`deParaGrupos.classificacao.${c}`),
                 }))}
                 selecionados={situacao}
-                onChange={onSituacao}
+                onChange={(v) => filtrar({ situacao: v })}
               />
             </div>
           )}

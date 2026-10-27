@@ -93,6 +93,12 @@ const es = {
       ativos: 'Filtros ({{quantidade}} activos)',
       limparSelecao: 'Borrar selección',
     },
+    exportar: {
+      botao: 'Exportar',
+      excel: 'Excel (.xlsx)',
+      pdf: 'PDF',
+      erro: 'No fue posible exportar',
+    },
     formulario: {
       paraQueServe: 'Para qué sirve: {{assunto}}',
       aumentar: 'Aumentar',

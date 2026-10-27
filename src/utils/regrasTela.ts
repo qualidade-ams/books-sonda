@@ -3,7 +3,13 @@
  * salvar, filtros que impedem a contagem, totais e busca nos códigos de resolução.
  */
 
-import type { CodigoResolucao, FiltrosContagem, SalvarRegrasInput } from '@/types/regrasContagem';
+import type {
+  CodigoResolucao,
+  FiltrosContagem,
+  RegrasContagem,
+  SalvarRegrasInput,
+} from '@/types/regrasContagem';
+import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 
 export interface RegrasEdicao {
   codigos: CodigoResolucao[];
@@ -107,3 +113,94 @@ export const filtrarCodigos = (lista: CodigoResolucao[], busca: string, conta: C
         (conta.includes('horas') && c.contaHoras) ||
         (conta.includes('tickets') && c.contaTickets))
   );
+
+type LinhaFiltro = { filtro: string; valor: string };
+
+/** Exportação das regras gravadas: códigos, códigos sem regra e filtros, uma aba cada */
+export function exportacaoRegras(
+  regras: Pick<RegrasContagem, 'codigos' | 'codigosSemRegra' | 'filtros'>,
+  t: Traduzir
+): Exportacao {
+  const simNao = (sim: boolean) =>
+    t(sim ? 'regrasContagem.codigos.sim' : 'regrasContagem.codigos.nao');
+  const f = regras.filtros;
+  const filtros: LinhaFiltro[] = [
+    { filtro: t('regrasContagem.filtros.grupos'), valor: f.gruposQueContam.join(', ') },
+    { filtro: t('regrasContagem.filtros.tipos'), valor: f.tiposChamado.join(', ') },
+    {
+      filtro: t('regrasContagem.filtros.atividade'),
+      valor: t(
+        f.ignorarAtividadeInterna
+          ? 'regrasContagem.exportar.atividadeNaoConta'
+          : 'regrasContagem.exportar.atividadeConta'
+      ),
+    },
+    { filtro: t('regrasContagem.filtros.itens'), valor: f.itensExcluidos.join(', ') },
+    {
+      filtro: t('regrasContagem.filtros.tickets'),
+      valor: t(
+        f.soTicketsFechados
+          ? 'regrasContagem.exportar.soFechados'
+          : 'regrasContagem.exportar.abertos'
+      ),
+    },
+  ];
+  const apontamentos = {
+    rotulo: t('regrasContagem.semRegra.colunaApontamentos'),
+    valor: (c: { apontamentos6m: number }) => c.apontamentos6m,
+  };
+  const tickets = {
+    rotulo: t('regrasContagem.semRegra.colunaTickets'),
+    valor: (c: { tickets6m: number }) => c.tickets6m,
+  };
+  return {
+    arquivo: t('regrasContagem.exportar.arquivo'),
+    titulo: t('regrasContagem.titulo'),
+    abas: [
+      {
+        nome: t('regrasContagem.abas.codigos'),
+        linhas: regras.codigos,
+        colunas: [
+          {
+            rotulo: t('regrasContagem.codigos.colunaCodigo'),
+            valor: (c: CodigoResolucao) => c.codigo,
+          },
+          {
+            rotulo: t('regrasContagem.codigos.colunaHoras'),
+            valor: (c: CodigoResolucao) => simNao(c.contaHoras),
+          },
+          {
+            rotulo: t('regrasContagem.codigos.colunaTickets'),
+            valor: (c: CodigoResolucao) => simNao(c.contaTickets),
+          },
+          apontamentos,
+          tickets,
+        ],
+      },
+      {
+        nome: t('regrasContagem.abas.semRegra'),
+        linhas: regras.codigosSemRegra,
+        colunas: [
+          {
+            rotulo: t('regrasContagem.codigos.colunaCodigo'),
+            valor: (c: { codigo: string }) => c.codigo,
+          },
+          apontamentos,
+          tickets,
+          {
+            rotulo: t('regrasContagem.semRegra.colunaPrimeira'),
+            valor: (c: { primeiraOcorrencia: string | null }) => c.primeiraOcorrencia,
+          },
+        ],
+      },
+      {
+        nome: t('regrasContagem.abas.filtros'),
+        linhas: filtros,
+        colunas: [
+          { rotulo: t('regrasContagem.exportar.filtro'), valor: (l: LinhaFiltro) => l.filtro },
+          { rotulo: t('regrasContagem.exportar.valor'), valor: (l: LinhaFiltro) => l.valor },
+        ],
+      },
+    ],
+  };
+}

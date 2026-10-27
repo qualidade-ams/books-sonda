@@ -1,10 +1,12 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Empresas from '../Empresas';
 import EmpresaDetalhe from '../EmpresaDetalhe';
 import type { EmpresaDetalhe as Detalhe, EmpresaLista } from '@/types/empresas';
+import { exportarTabela } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -12,6 +14,10 @@ vi.mock('react-i18next', () => ({
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
     i18n: { language: 'pt-BR' },
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -228,6 +234,17 @@ describe('Empresas (lista)', () => {
     expect(
       screen.queryByRole('link', { name: /empresasCadastro.novaNaTelaAtual/ })
     ).not.toBeInTheDocument();
+  });
+
+  it('exporta as empresas com os filtros aplicados, também para quem só consulta', async () => {
+    permissoes = ['empresas:view'];
+    renderizar('/admin/empresas');
+    fireEvent.click(screen.getByRole('button', { name: /empresasCadastro.indicadores.pendentes/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('empresasCadastro.exportar.descricao.um {"n":1}')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
+    const [exportacao] = vi.mocked(exportarTabela).mock.calls[0];
+    expect((exportacao.abas[0].linhas as EmpresaLista[]).map((e) => e.id)).toEqual(['beta']);
   });
 });
 

@@ -114,6 +114,17 @@ const regrasContagem = {
       'Apontamentos e tickets com um destes itens de configuração não contam no banco (ex.: projetos).',
     tickets: 'Quais tickets entram na contagem de tickets dos bancos.',
   },
+  exportar: {
+    arquivo: 'regras-de-contagem',
+    descricao:
+      'Exporta os códigos de resolução, os códigos sem regra e os filtros, como estão gravados',
+    filtro: 'Filtro',
+    valor: 'Valor',
+    atividadeNaoConta: 'Não conta',
+    atividadeConta: 'Conta',
+    soFechados: 'Só fechados, no mês do fechamento',
+    abertos: 'Abertos e fechados, no mês de abertura',
+  },
 };
 
 export default regrasContagem;

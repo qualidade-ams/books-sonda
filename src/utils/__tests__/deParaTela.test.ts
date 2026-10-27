@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
+import type { Catalogo } from '@/types/catalogo';
 import {
   destinoMudou,
   empresasAfetadas,
+  exportacaoMapeamentos,
   filtrarMapeamentos,
   grupoJaMapeado,
   gruposDoBook,
@@ -117,5 +120,45 @@ describe('destinoMudou', () => {
       false
     );
     expect(destinoMudou(LISTA[0], { solucaoId: 's1', produtoId: 'ce', moduloId: null })).toBe(true);
+  });
+});
+
+describe('exportacaoMapeamentos', () => {
+  const t = (chave: string) => chave;
+  const CATALOGO = {
+    solucoes: [{ id: 's1', nome: 'COMEX' }],
+    produtos: [{ id: 'ce', nome: 'CE PLUS', solucaoId: 's1' }],
+    modulos: [{ id: 'cambio', nome: 'Câmbio', produtoId: 'ce' }],
+  } as unknown as Catalogo;
+  const USO: Record<string, UsoGrupo> = {
+    g1: { apontamentos: 120, tickets: 4, empresasMultiplos: [] },
+  };
+
+  it('uma linha por mapeamento, com o destino pelo nome e o uso', () => {
+    const exportacao = exportacaoMapeamentos([LISTA[0], LISTA[3]], CATALOGO, USO, t);
+    expect(exportacao.arquivo).toBe('deParaGrupos.exportar.arquivo');
+    expect(matrizDaAba(exportacao.abas[0])).toEqual([
+      [
+        'deParaGrupos.lista.colunaGrupo',
+        'deParaGrupos.lista.colunaBook',
+        'deParaGrupos.destino.solucao',
+        'deParaGrupos.destino.produto',
+        'deParaGrupos.destino.modulo',
+        'fase3Comum.situacao',
+        'deParaGrupos.lista.colunaApontamentos',
+        'deParaGrupos.exportar.tickets',
+      ],
+      [
+        'AMS APL - CAMBIO - N2',
+        'COMEX',
+        'COMEX',
+        'CE PLUS',
+        'Câmbio',
+        'deParaGrupos.classificacao.modulo',
+        120,
+        4,
+      ],
+      ['DEDICADOS', 'Dedicados', '', '', '', 'deParaGrupos.classificacao.nao_se_aplica', 0, 0],
+    ]);
   });
 });
