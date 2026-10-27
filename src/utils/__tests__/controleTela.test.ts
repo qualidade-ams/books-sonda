@@ -10,6 +10,7 @@ import {
   resultadoDoBanco,
   rotuloMesLocal,
   rotuloPeriodoLocal,
+  ultimaSincronizacaoAranda,
   unidadePrincipal,
 } from '../controleTela';
 import type { QuadroEmpresa } from '@/services/controleBancoHorasService';
@@ -246,5 +247,21 @@ describe('exportacaoControle', () => {
     expect(
       linha('controleBancoHoras.quadro.valorFaturar · controleBancoHoras.quadro.horas')?.[1]
     ).toBe(150);
+  });
+});
+
+describe('ultimaSincronizacaoAranda', () => {
+  it('a mais antiga entre apontamentos e tickets: até ali o consumo está em dia', () => {
+    expect(
+      ultimaSincronizacaoAranda({
+        apontamentos: '2026-10-27T12:00:00Z',
+        tickets: '2026-10-27T11:30:00Z',
+      })
+    ).toBe('2026-10-27T11:30:00Z');
+    expect(ultimaSincronizacaoAranda({ apontamentos: '2026-10-27T12:00:00Z', tickets: null })).toBe(
+      '2026-10-27T12:00:00Z'
+    );
+    expect(ultimaSincronizacaoAranda({ apontamentos: null, tickets: null })).toBeNull();
+    expect(ultimaSincronizacaoAranda(undefined)).toBeNull();
   });
 });

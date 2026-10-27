@@ -349,6 +349,7 @@ const controleBancoHoras = {
     descricao: 'Exports the grid of all banks, one sheet per bank, each in the chosen period',
     linha: 'Line',
   },
+  sincronizadoEm: 'Aranda usage synced up to {{data}}',
 };
 
 export default controleBancoHoras;

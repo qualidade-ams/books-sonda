@@ -232,3 +232,12 @@ export function exportacaoControle(
     })),
   };
 }
+
+/** A sincronização mais antiga entre apontamentos e tickets do Aranda: até ali o consumo está em dia */
+export function ultimaSincronizacaoAranda(
+  datas: { apontamentos: string | null; tickets: string | null } | null | undefined
+): string | null {
+  const validas = [datas?.apontamentos, datas?.tickets].filter((d): d is string => !!d);
+  if (!validas.length) return null;
+  return validas.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b));
+}

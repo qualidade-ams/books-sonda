@@ -123,6 +123,15 @@ vi.mock('@/hooks/usePermissions', () => ({
   }),
 }));
 vi.mock('@/hooks/useNomesUsuarios', () => ({ useNomesUsuarios: () => ({}) }));
+const sincronizacao = {
+  data: { apontamentos: '2026-10-15T12:00:00Z', tickets: '2026-10-15T11:30:00Z' } as Record<
+    string,
+    string | null
+  > | null,
+};
+vi.mock('@/hooks/usePesquisasSqlServer', () => ({
+  useUltimasSincronizacoesPorTabela: () => sincronizacao,
+}));
 // Desktop: o quadro mostra o período inteiro, não um mês por vez
 vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => true }));
 window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
@@ -162,6 +171,7 @@ afterAll(() => vi.useRealTimers());
 beforeEach(() => {
   mesesPedidos.length = 0;
   permissoes = ['bancos_horas_controle:edit'];
+  sincronizacao.data = { apontamentos: '2026-10-15T12:00:00Z', tickets: '2026-10-15T11:30:00Z' };
   lancamentos.lancarReajuste.mockClear();
   saldo.enviar.mockClear();
   saldoPedido.length = 0;
@@ -369,5 +379,16 @@ describe('ControleBancosHoras', () => {
     expect(formato).toBe('xlsx');
     expect(exportacao.arquivo).toBe('controleBancoHoras.exportar.arquivo {"empresa":"ALFA"}');
     expect(exportacao.abas.map((a) => a.nome)).toEqual(['BANCO COMEX', 'Banco padrão']);
+  });
+
+  it('mostra quando o consumo do Aranda foi sincronizado; sem data, não mostra', () => {
+    const { unmount } = renderizar();
+    expect(
+      screen.getByText('controleBancoHoras.sincronizadoEm {"data":"15/10/2026 08:30"}')
+    ).toBeInTheDocument();
+    unmount();
+    sincronizacao.data = null;
+    renderizar();
+    expect(screen.queryByText(/controleBancoHoras.sincronizadoEm/)).not.toBeInTheDocument();
   });
 });

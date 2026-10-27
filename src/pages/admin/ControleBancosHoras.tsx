@@ -41,6 +41,8 @@ import {
   useSaldoParcialControle,
 } from '@/hooks/useControleBancoHoras';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUltimasSincronizacoesPorTabela } from '@/hooks/usePesquisasSqlServer';
+import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { useEmailsClientesPorFinalidade } from '@/hooks/useClientes';
 import { FINALIDADES_SALDO_PARCIAL } from '@/types/clientBooksTypes';
 import { EnviarSaldoParcial } from '@/components/admin/controle/EnviarSaldoParcial';
@@ -54,6 +56,7 @@ import {
   mesesComSituacao,
   resultadoDoBanco,
   rotuloPeriodoLocal,
+  ultimaSincronizacaoAranda,
 } from '@/utils/controleTela';
 import { cn } from '@/lib/utils';
 
@@ -111,6 +114,7 @@ export default function ControleBancosHoras() {
   } = useQuadroControle(empresaId, meses);
   const { quadro: quadroAtual } = useQuadroControle(empresaId, [hoje]);
   const buscarQuadro = useBuscarQuadro(empresaId);
+  const sincronizadoEm = ultimaSincronizacaoAranda(useUltimasSincronizacoesPorTabela().data);
   // Todos os bancos, cada um no período escolhido nele (sem escolha, o atual)
   const exportar = async (formato: FormatoExportacao) => {
     const abas = [];
@@ -418,6 +422,11 @@ export default function ControleBancosHoras() {
               <div className="ds-surgir max-w-2xl">
                 <TituloFaixa texto={c('titulo')} />
                 <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">{c('subtitulo')}</p>
+                {sincronizadoEm && (
+                  <p className="mt-1 text-xs text-[#8C8C8C]">
+                    {c('sincronizadoEm', { data: formatarDataHora(sincronizadoEm, i18n.language) })}
+                  </p>
+                )}
               </div>
               {empresas.length > 0 && (
                 <div

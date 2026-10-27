@@ -347,6 +347,7 @@ const controleBancoHoras = {
       'Exporta o quadro de todos os bancos, uma aba por banco, cada um no período escolhido',
     linha: 'Linha',
   },
+  sincronizadoEm: 'Consumo do Aranda sincronizado até {{data}}',
 };
 
 export default controleBancoHoras;
