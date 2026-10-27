@@ -20309,9 +20309,29 @@ function gerarHtmlTabelasSaldoParcial(dados) {
 function gerarSecoes(dados) {
   const { isEnglish } = dados;
   return {
-    tabelaBancoHoras: gerarTabelaBancoHoras(dados.calculos, dados.tipoCobranca, dados.percentualRepasse, dados.nomePeriodo, dados.diaInicioApuracao, dados.diaFimApuracao, isEnglish),
-    tabelaReqPeriodo: gerarTabelaRequerimentos(dados.requerimentos, isEnglish ? "Period Requirements" : "Requerimentos do Per\xEDodo", "#2563eb", false, isEnglish),
-    tabelaReqDesenv: gerarTabelaRequerimentos(dados.requerimentosEmDesenvolvimento, isEnglish ? "Requirements in Development" : "Requerimentos em Desenvolvimento", "#ea580c", true, isEnglish),
+    tabelaBancoHoras: gerarTabelaBancoHoras(
+      dados.calculos,
+      dados.tipoCobranca,
+      dados.percentualRepasse,
+      dados.nomePeriodo,
+      dados.diaInicioApuracao,
+      dados.diaFimApuracao,
+      isEnglish
+    ),
+    tabelaReqPeriodo: gerarTabelaRequerimentos(
+      dados.requerimentos,
+      isEnglish ? "Period Requirements" : "Requerimentos do Per\xEDodo",
+      "#2563eb",
+      false,
+      isEnglish
+    ),
+    tabelaReqDesenv: gerarTabelaRequerimentos(
+      dados.requerimentosEmDesenvolvimento,
+      isEnglish ? "Requirements in Development" : "Requerimentos em Desenvolvimento",
+      "#ea580c",
+      true,
+      isEnglish
+    ),
     secaoObs: gerarSecaoObservacoes(dados.observacoes, isEnglish)
   };
 }
