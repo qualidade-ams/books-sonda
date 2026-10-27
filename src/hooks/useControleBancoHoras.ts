@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { chaveMes, controleBancoHorasService } from '@/services/controleBancoHorasService';
 import { controleLancamentosService } from '@/services/controleLancamentosService';
@@ -31,8 +32,10 @@ const chaveMeses = (meses: MesAno[]) => meses.map(chaveMes).join(',');
 function useAvisos() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   return {
     toast,
+    t,
     recarregar: () => queryClient.invalidateQueries({ queryKey: [CHAVE] }),
     avisarErro: (titulo: string) => (err: Error) =>
       toast({ title: titulo, description: err.message, variant: 'destructive' }),
@@ -83,7 +86,7 @@ export function useQuadroControle(empresaId: string | undefined, meses: MesAno[]
 }
 
 export function useRequerimentosControle(empresaId: string | undefined, meses: MesAno[]) {
-  const { toast, recarregar, avisarErro } = useAvisos();
+  const { toast, t, recarregar, avisarErro } = useAvisos();
   const query = useQuery({
     queryKey: [CHAVE, 'requerimentos', empresaId, chaveMeses(meses)],
     queryFn: () => controleBancoHorasService.requerimentos(empresaId!, meses),
@@ -96,10 +99,10 @@ export function useRequerimentosControle(empresaId: string | undefined, meses: M
       controleLancamentosService.salvarAjustesRequerimentos(ajustes, motivo),
     onSuccess: () =>
       toast({
-        title: 'Banco dos requerimentos alterado',
-        description: 'Vale a partir do próximo recálculo; meses fechados não mudam.',
+        title: t('avisos.controle.bancoRequerimentosAlterado'),
+        description: t('avisos.controle.valeProximoRecalculo'),
       }),
-    onError: avisarErro('Erro ao trocar o banco dos requerimentos'),
+    onError: avisarErro(t('avisos.controle.erroBancoRequerimentos')),
     onSettled: recarregar,
   });
 
@@ -115,7 +118,7 @@ export function useRequerimentosControle(empresaId: string | undefined, meses: M
 
 /** Reajustes e observações do banco no período */
 export function useLancamentosControle(bancoId: string | undefined, meses: MesAno[]) {
-  const { toast, recarregar, avisarErro } = useAvisos();
+  const { toast, t, recarregar, avisarErro } = useAvisos();
   const habilitado = !!bancoId && meses.length > 0;
 
   const reajustes = useQuery({
@@ -133,28 +136,28 @@ export function useLancamentosControle(bancoId: string | undefined, meses: MesAn
 
   const lancarReajuste = useMutation({
     mutationFn: (input: NovoReajusteInput) => controleLancamentosService.lancarReajuste(input),
-    onSuccess: () => toast({ title: 'Reajuste lançado' }),
-    onError: avisarErro('Erro ao lançar o reajuste'),
+    onSuccess: () => toast({ title: t('avisos.controle.reajusteLancado') }),
+    onError: avisarErro(t('avisos.controle.erroLancarReajuste')),
     onSettled: recarregar,
   });
   const inativarReajuste = useMutation({
     mutationFn: ({ reajusteId, motivo }: { reajusteId: string; motivo: string }) =>
       controleLancamentosService.inativarReajuste(reajusteId, motivo),
-    onSuccess: () => toast({ title: 'Reajuste inativado' }),
-    onError: avisarErro('Erro ao inativar o reajuste'),
+    onSuccess: () => toast({ title: t('avisos.controle.reajusteInativado') }),
+    onError: avisarErro(t('avisos.controle.erroInativarReajuste')),
     onSettled: recarregar,
   });
   const salvarObservacao = useMutation({
     mutationFn: (input: ObservacaoInput) => controleLancamentosService.salvarObservacao(input),
-    onSuccess: () => toast({ title: 'Observação salva' }),
-    onError: avisarErro('Erro ao salvar a observação'),
+    onSuccess: () => toast({ title: t('avisos.controle.observacaoSalva') }),
+    onError: avisarErro(t('avisos.controle.erroSalvarObservacao')),
     onSettled: recarregar,
   });
   const excluirObservacao = useMutation({
     mutationFn: (observacaoId: string) =>
       controleLancamentosService.excluirObservacao(observacaoId),
-    onSuccess: () => toast({ title: 'Observação excluída' }),
-    onError: avisarErro('Erro ao excluir a observação'),
+    onSuccess: () => toast({ title: t('avisos.controle.observacaoExcluida') }),
+    onError: avisarErro(t('avisos.controle.erroExcluirObservacao')),
     onSettled: recarregar,
   });
 
@@ -195,7 +198,7 @@ const SEM_BANCOS: SaldoParcialBanco[] = [];
 
 /** Envio do Saldo Parcial pelo Controle: os bancos que o cliente vê e o idioma do e-mail */
 export function useSaldoParcialControle(empresaId: string | undefined, aberto: boolean) {
-  const { toast, avisarErro } = useAvisos();
+  const { toast, t, avisarErro } = useAvisos();
   const query = useQuery({
     queryKey: [CHAVE, 'saldo-parcial', empresaId],
     queryFn: async () => {
@@ -210,8 +213,8 @@ export function useSaldoParcialControle(empresaId: string | undefined, aberto: b
   });
   const enviar = useMutation({
     mutationFn: (input: EnvioControleInput) => enviarSaldoParcialControle(input),
-    onSuccess: () => toast({ title: 'Saldo Parcial enviado' }),
-    onError: avisarErro('Erro ao enviar o Saldo Parcial'),
+    onSuccess: () => toast({ title: t('avisos.controle.saldoParcialEnviado') }),
+    onError: avisarErro(t('avisos.controle.erroSaldoParcial')),
   });
 
   return {

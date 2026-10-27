@@ -19,6 +19,13 @@ import { enviarSaldoParcialControle } from '@/services/saldoParcial/envioControl
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/controleBancoHorasService', async (original) => ({
   ...(await original<typeof import('@/services/controleBancoHorasService')>()),
@@ -164,7 +171,7 @@ describe('gravações do Controle', () => {
 
     expect(lancamentos.lancarReajuste).toHaveBeenCalledWith(input);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['controle-bh'] });
-    expect(toast).toHaveBeenCalledWith({ title: 'Reajuste lançado' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.controle.reajusteLancado' });
   });
 
   it('tentar de novo busca os reajustes e as observações outra vez', async () => {
@@ -193,9 +200,9 @@ describe('gravações do Controle', () => {
 
     expect(lancamentos.inativarReajuste).toHaveBeenCalledWith('rj1', 'Duplicado');
     expect(lancamentos.excluirObservacao).toHaveBeenCalledWith('ob1');
-    expect(toast).toHaveBeenCalledWith({ title: 'Reajuste inativado' });
-    expect(toast).toHaveBeenCalledWith({ title: 'Observação salva' });
-    expect(toast).toHaveBeenCalledWith({ title: 'Observação excluída' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.controle.reajusteInativado' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.controle.observacaoSalva' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.controle.observacaoExcluida' });
   });
 
   it('trocar o banco dos requerimentos com o motivo', async () => {
@@ -210,8 +217,8 @@ describe('gravações do Controle', () => {
     expect(lancamentos.salvarAjustesRequerimentos).toHaveBeenCalledWith(ajustes, 'Contrato FISCAL');
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['controle-bh'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Banco dos requerimentos alterado',
-      description: 'Vale a partir do próximo recálculo; meses fechados não mudam.',
+      title: 'avisos.controle.bancoRequerimentosAlterado',
+      description: 'avisos.controle.valeProximoRecalculo',
     });
   });
 
@@ -223,7 +230,7 @@ describe('gravações do Controle', () => {
     await act(() => result.current.lancarReajuste({} as any).catch(() => undefined));
 
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao lançar o reajuste',
+      title: 'avisos.controle.erroLancarReajuste',
       description: 'Informe o motivo do reajuste.',
       variant: 'destructive',
     });
@@ -260,12 +267,12 @@ describe('useSaldoParcialControle', () => {
 
     await act(() => result.current.enviar(input));
     expect(enviar).toHaveBeenCalledWith(input);
-    expect(toast).toHaveBeenCalledWith({ title: 'Saldo Parcial enviado' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.controle.saldoParcialEnviado' });
 
     enviar.mockRejectedValueOnce(new Error('Servidor de e-mail fora'));
     await act(() => result.current.enviar(input).catch(() => undefined));
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao enviar o Saldo Parcial',
+      title: 'avisos.controle.erroSaldoParcial',
       description: 'Servidor de e-mail fora',
       variant: 'destructive',
     });

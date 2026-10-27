@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { catalogoService } from '@/services/catalogoService';
 import type { ModuloInput, ProdutoInput, SolucaoInput } from '@/types/catalogo';
@@ -11,6 +12,7 @@ const CHAVE_GRUPOS = ['grupos-aranda'];
 export function useCatalogo() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const catalogoQuery = useQuery({
     queryKey: CHAVE,
@@ -32,33 +34,33 @@ export function useCatalogo() {
     mutationFn: (input: SolucaoInput) => catalogoService.salvarSolucao(input),
     onSuccess: () => {
       recarregar();
-      toast({ title: 'Solução salva' });
+      toast({ title: t('avisos.catalogo.solucaoSalva') });
     },
-    onError: avisarErro('Erro ao salvar a solução'),
+    onError: avisarErro(t('avisos.catalogo.erroSalvarSolucao')),
   });
 
   const salvarProduto = useMutation({
     mutationFn: (input: ProdutoInput) => catalogoService.salvarProduto(input),
     onSuccess: () => {
       recarregar();
-      toast({ title: 'Produto salvo' });
+      toast({ title: t('avisos.catalogo.produtoSalvo') });
     },
-    onError: avisarErro('Erro ao salvar o produto'),
+    onError: avisarErro(t('avisos.catalogo.erroSalvarProduto')),
   });
 
   const reordenarProdutos = useMutation({
     mutationFn: (produtoIds: string[]) => catalogoService.reordenarProdutos(produtoIds),
     onSuccess: recarregar,
-    onError: avisarErro('Erro ao reordenar os produtos'),
+    onError: avisarErro(t('avisos.catalogo.erroReordenarProdutos')),
   });
 
   const salvarModulo = useMutation({
     mutationFn: (input: ModuloInput) => catalogoService.salvarModulo(input),
     onSuccess: () => {
       recarregar();
-      toast({ title: 'Módulo salvo' });
+      toast({ title: t('avisos.catalogo.moduloSalvo') });
     },
-    onError: avisarErro('Erro ao salvar o módulo'),
+    onError: avisarErro(t('avisos.catalogo.erroSalvarModulo')),
   });
 
   const moverModulo = useMutation({
@@ -70,13 +72,13 @@ export function useCatalogo() {
       toast(
         provisorioInativado
           ? {
-              title: 'Módulo movido',
-              description: 'O produto "A classificar" ficou vazio e foi inativado.',
+              title: t('avisos.catalogo.moduloMovido'),
+              description: t('avisos.catalogo.aClassificarInativado'),
             }
-          : { title: 'Módulo movido' }
+          : { title: t('avisos.catalogo.moduloMovido') }
       );
     },
-    onError: avisarErro('Erro ao mover o módulo'),
+    onError: avisarErro(t('avisos.catalogo.erroMoverModulo')),
   });
 
   return {
@@ -104,6 +106,7 @@ export function useCatalogo() {
 export function useModulosRequerimento() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const chave = [...CHAVE, 'modulos-requerimento'];
 
   const query = useQuery({
@@ -124,11 +127,11 @@ export function useModulosRequerimento() {
     }) => catalogoService.salvarModuloRequerimento(id, produtoId, moduloId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chave });
-      toast({ title: 'Correspondência salva' });
+      toast({ title: t('avisos.catalogo.correspondenciaSalva') });
     },
     onError: (err: Error) =>
       toast({
-        title: 'Erro ao salvar a correspondência',
+        title: t('avisos.catalogo.erroCorrespondencia'),
         description: err.message,
         variant: 'destructive',
       }),

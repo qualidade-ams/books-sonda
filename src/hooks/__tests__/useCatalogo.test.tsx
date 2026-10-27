@@ -7,6 +7,13 @@ import { catalogoService } from '@/services/catalogoService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/catalogoService', () => ({
   catalogoService: {
@@ -80,7 +87,9 @@ describe('useCatalogo', () => {
 
     expect(service.salvarProduto).toHaveBeenCalledWith(input);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['catalogo'] });
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Produto salvo' }));
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'avisos.catalogo.produtoSalvo' })
+    );
   });
 
   it('erro ao salvar aparece no aviso com a mensagem do service', async () => {
@@ -97,7 +106,7 @@ describe('useCatalogo', () => {
     );
 
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao salvar o módulo',
+      title: 'avisos.catalogo.erroSalvarModulo',
       description: 'Já existe um módulo com este nome no produto.',
       variant: 'destructive',
     });
@@ -110,7 +119,9 @@ describe('useCatalogo', () => {
 
     await act(() => result.current.salvarSolucao({ nome: 'X', codigo: 'X', ativo: true }));
 
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Solução salva' }));
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'avisos.catalogo.solucaoSalva' })
+    );
   });
 
   it('reordenar não avisa no sucesso, só recarrega', async () => {
@@ -138,8 +149,8 @@ describe('useCatalogo', () => {
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['catalogo'] });
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Módulo movido',
-      description: 'O produto "A classificar" ficou vazio e foi inativado.',
+      title: 'avisos.catalogo.moduloMovido',
+      description: 'avisos.catalogo.aClassificarInativado',
     });
   });
 });
@@ -163,6 +174,8 @@ describe('useModulosRequerimento', () => {
 
     expect(service.salvarModuloRequerimento).toHaveBeenCalledWith('r1', 'p1', 'm2');
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['catalogo', 'modulos-requerimento'] });
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Correspondência salva' }));
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'avisos.catalogo.correspondenciaSalva' })
+    );
   });
 });

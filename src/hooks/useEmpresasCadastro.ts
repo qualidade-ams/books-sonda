@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { empresasService, totaisEmpresas } from '@/services/empresasService';
 import type { SalvarInformacoesInput, SolucaoAmsInput } from '@/types/empresas';
@@ -29,6 +30,7 @@ export function useEmpresasCadastro() {
 export function useEmpresaCadastro(empresaId: string | undefined) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const query = useQuery({
     queryKey: [...CHAVE, 'detalhe', empresaId],
@@ -44,16 +46,16 @@ export function useEmpresaCadastro(empresaId: string | undefined) {
 
   const salvarSolucoes = useMutation({
     mutationFn: (solucoes: SolucaoAmsInput[]) => empresasService.salvarSolucoes(solucoes),
-    onSuccess: () => toast({ title: 'AMS e projetos salvos' }),
-    onError: avisarErro('Erro ao salvar AMS e projetos'),
+    onSuccess: () => toast({ title: t('avisos.empresas.amsSalvos') }),
+    onError: avisarErro(t('avisos.empresas.erroAms')),
     onSettled: recarregar,
   });
 
   const salvarInformacoes = useMutation({
     mutationFn: (input: SalvarInformacoesInput) =>
       empresasService.salvarInformacoes(empresaId!, input),
-    onSuccess: () => toast({ title: 'Informações salvas' }),
-    onError: avisarErro('Erro ao salvar as informações'),
+    onSuccess: () => toast({ title: t('avisos.empresas.informacoesSalvas') }),
+    onError: avisarErro(t('avisos.empresas.erroInformacoes')),
     onSettled: recarregar,
   });
 

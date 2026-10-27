@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { menuOrganizadoService } from '@/services/menuOrganizadoService';
 import type { AparenciaMenu, NoMenu, TemaMenu } from '@/types/menuOrganizado';
@@ -13,6 +14,7 @@ const CINQUENTA_MINUTOS = 50 * 60 * 1000;
 export function useMenuOrganizado() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const query = useQuery({
     queryKey: CHAVE,
@@ -28,10 +30,14 @@ export function useMenuOrganizado() {
     }) => menuOrganizadoService.salvar(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAVE });
-      toast({ title: 'Menu salvo' });
+      toast({ title: t('avisos.menu.salvo') });
     },
     onError: (err: Error) =>
-      toast({ title: 'Erro ao salvar o menu', description: err.message, variant: 'destructive' }),
+      toast({
+        title: t('avisos.menu.erroSalvar'),
+        description: err.message,
+        variant: 'destructive',
+      }),
   });
 
   const enviarLogo = useMutation({
@@ -45,7 +51,7 @@ export function useMenuOrganizado() {
       arquivo: File;
     }) => menuOrganizadoService.enviarLogo(tema, tipo, arquivo),
     onError: (err: Error) =>
-      toast({ title: 'Erro ao enviar o logo', description: err.message, variant: 'destructive' }),
+      toast({ title: t('avisos.menu.erroLogo'), description: err.message, variant: 'destructive' }),
   });
 
   return {

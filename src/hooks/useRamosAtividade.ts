@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { ramosAtividadeService } from '@/services/ramosAtividadeService';
 import type { RamoAtividade, RamoRascunho } from '@/types/ramosAtividade';
@@ -11,6 +12,7 @@ const NENHUM: RamoAtividade[] = [];
 export function useRamosAtividade() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const query = useQuery({
     queryKey: CHAVE,
@@ -20,9 +22,13 @@ export function useRamosAtividade() {
 
   const salvar = useMutation({
     mutationFn: (rascunho: RamoRascunho[]) => ramosAtividadeService.salvar(rascunho),
-    onSuccess: () => toast({ title: 'Ramos salvos' }),
+    onSuccess: () => toast({ title: t('avisos.ramos.salvos') }),
     onError: (err: Error) =>
-      toast({ title: 'Erro ao salvar os ramos', description: err.message, variant: 'destructive' }),
+      toast({
+        title: t('avisos.ramos.erroSalvar'),
+        description: err.message,
+        variant: 'destructive',
+      }),
     // A gravação é feita linha a linha: com erro, parte pode ter sido gravada
     onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
   });

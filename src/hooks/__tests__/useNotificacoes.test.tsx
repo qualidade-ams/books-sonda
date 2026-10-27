@@ -14,6 +14,13 @@ vi.mock('@/services/notificacoesService', () => ({
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 const auth = { user: { id: 'u1' } as any };
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => auth }));
@@ -22,7 +29,9 @@ import { notificacoesService } from '@/services/notificacoesService';
 import { useNotificacoes } from '../useNotificacoes';
 
 function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
@@ -53,7 +62,10 @@ describe('useNotificacoes', () => {
   });
 
   it('lista as notificações abertas e conta as não lidas', async () => {
-    (notificacoesService.listarAbertas as any).mockResolvedValue([notificacao('n1', false), notificacao('n2', true)]);
+    (notificacoesService.listarAbertas as any).mockResolvedValue([
+      notificacao('n1', false),
+      notificacao('n2', true),
+    ]);
 
     const { result } = renderHook(() => useNotificacoes(), { wrapper });
 
@@ -121,6 +133,10 @@ describe('useNotificacoes', () => {
       await result.current.marcarComoLida('n1').catch(() => undefined);
     });
 
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ description: 'negado', variant: 'destructive' }));
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.notificacoes.erroMarcarLida',
+      description: 'negado',
+      variant: 'destructive',
+    });
   });
 });

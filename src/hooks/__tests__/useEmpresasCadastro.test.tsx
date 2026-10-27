@@ -7,6 +7,13 @@ import { empresasService } from '@/services/empresasService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/empresasService', async (original) => ({
   ...(await original<typeof import('@/services/empresasService')>()),
@@ -88,7 +95,7 @@ describe('useEmpresaCadastro', () => {
 
     expect(service.salvarSolucoes).toHaveBeenCalledWith(solucoes);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['empresas-cadastro'] });
-    expect(toast).toHaveBeenCalledWith({ title: 'AMS e projetos salvos' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.empresas.amsSalvos' });
   });
 
   it('salvar informações grava pela empresa aberta e avisa', async () => {
@@ -102,7 +109,7 @@ describe('useEmpresaCadastro', () => {
 
     expect(service.salvarInformacoes).toHaveBeenCalledWith('e1', input);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['empresas-cadastro'] });
-    expect(toast).toHaveBeenCalledWith({ title: 'Informações salvas' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.empresas.informacoesSalvas' });
   });
 
   it('erro ao salvar recarrega (parte pode ter sido gravada) e avisa', async () => {
@@ -121,7 +128,7 @@ describe('useEmpresaCadastro', () => {
 
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['empresas-cadastro'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao salvar as informações',
+      title: 'avisos.empresas.erroInformacoes',
       description: 'A organização EMPRESA BETA LTDA já pertence à EMPRESA BETA.',
       variant: 'destructive',
     });

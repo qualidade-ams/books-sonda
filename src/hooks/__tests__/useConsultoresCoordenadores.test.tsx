@@ -10,6 +10,13 @@ import { consultoresCoordenadoresService } from '@/services/consultoresCoordenad
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/consultoresCoordenadoresService', () => ({
   consultoresCoordenadoresService: {
@@ -77,7 +84,7 @@ describe('useConsultoresCoordenadores', () => {
     expect(service.definirCoordenador).toHaveBeenCalledWith('e1', 'c1');
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['consultores-coordenadores'] });
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Coordenador atualizado' })
+      expect.objectContaining({ title: 'avisos.coordenadores.atualizado' })
     );
   });
 
@@ -94,7 +101,7 @@ describe('useConsultoresCoordenadores', () => {
 
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Erro ao salvar coordenador',
+        title: 'avisos.coordenadores.erroSalvar',
         description: 'RLS',
         variant: 'destructive',
       })

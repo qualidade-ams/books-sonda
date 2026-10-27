@@ -7,6 +7,13 @@ import { ramosAtividadeService } from '@/services/ramosAtividadeService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/ramosAtividadeService', () => ({
   ramosAtividadeService: { listar: vi.fn(), salvar: vi.fn() },
@@ -67,7 +74,7 @@ describe('useRamosAtividade', () => {
 
     expect(service.salvar).toHaveBeenCalledWith(rascunho);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['ramos-atividade'] });
-    expect(toast).toHaveBeenCalledWith({ title: 'Ramos salvos' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.ramos.salvos' });
   });
 
   it('erro ao salvar recarrega a lista (parte pode ter sido gravada) e avisa', async () => {
@@ -82,7 +89,7 @@ describe('useRamosAtividade', () => {
 
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['ramos-atividade'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao salvar os ramos',
+      title: 'avisos.ramos.erroSalvar',
       description: 'O ramo Têxtil está em uso nas empresas: inative em vez de excluir.',
       variant: 'destructive',
     });

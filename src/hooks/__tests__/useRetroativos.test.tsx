@@ -8,6 +8,13 @@ import { retroativosService } from '@/services/retroativosService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/retroativosService', () => ({
   retroativosService: {
@@ -86,8 +93,8 @@ describe('useRetroativos', () => {
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['retroativos-bh'] });
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['notificacoes'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Apontamento retroativo aprovado',
-      description: 'Entra na retificação do Book do mês.',
+      title: 'avisos.retroativos.aprovado',
+      description: 'avisos.retroativos.aprovadoDescricao',
     });
   });
 
@@ -100,7 +107,7 @@ describe('useRetroativos', () => {
       result.current.decidir({ retroativoId: 'rt1', decisao: 'descartar', justificativa: 'Teste' })
     );
 
-    expect(toast).toHaveBeenCalledWith({ title: 'Apontamento retroativo descartado' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.retroativos.descartado' });
   });
 
   it('registrar aviso recarrega a lista', async () => {
@@ -127,7 +134,7 @@ describe('useRetroativos', () => {
     );
 
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao decidir o apontamento retroativo',
+      title: 'avisos.retroativos.erroDecidir',
       description: 'Só o pendente é aprovado ou descartado.',
       variant: 'destructive',
     });
@@ -148,11 +155,12 @@ describe('useRetroativos', () => {
 
     expect(pedir).toHaveBeenCalledWith(input);
     expect(toast).toHaveBeenCalledWith({
-      title: 'E-mails enviados a 2 consultores',
+      title: 'avisos.retroativos.emailsEnviados.varios {"n":2}',
     });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Alguns consultores não receberam',
-      description: 'Carla Dias: sem e-mail no cadastro de especialistas · Davi Reis: Caixa cheia',
+      title: 'avisos.retroativos.naoReceberam',
+      description:
+        'avisos.retroativos.semEmail {"nome":"Carla Dias"} · avisos.retroativos.falha {"nome":"Davi Reis","erro":"Caixa cheia"}',
       variant: 'destructive',
     });
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['retroativos-bh'] });

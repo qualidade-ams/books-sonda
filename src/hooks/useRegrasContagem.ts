@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { regrasContagemService } from '@/services/regrasContagemService';
 import type { SalvarRegrasInput } from '@/types/regrasContagem';
@@ -9,6 +10,7 @@ const CHAVE = ['regras-contagem'];
 export function useRegrasContagem() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const query = useQuery({
     queryKey: CHAVE,
@@ -21,13 +23,13 @@ export function useRegrasContagem() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAVE });
       toast({
-        title: 'Regras de contagem salvas',
-        description: 'Valem a partir do próximo recálculo; meses fechados não mudam.',
+        title: t('avisos.regras.salvas'),
+        description: t('avisos.regras.valemProximoRecalculo'),
       });
     },
     onError: (err: Error) =>
       toast({
-        title: 'Erro ao salvar as regras de contagem',
+        title: t('avisos.regras.erroSalvar'),
         description: err.message,
         variant: 'destructive',
       }),

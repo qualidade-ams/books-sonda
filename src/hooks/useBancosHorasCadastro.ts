@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { bancosHorasCadastroService } from '@/services/bancosHorasCadastroService';
 import type {
@@ -15,6 +16,7 @@ const CHAVE_EMPRESAS = ['empresas-cadastro'];
 export function useBancosHorasCadastro(empresaId: string | undefined) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const chave = [CHAVE, empresaId];
 
   const query = useQuery({
@@ -34,22 +36,22 @@ export function useBancosHorasCadastro(empresaId: string | undefined) {
 
   const criar = useMutation({
     mutationFn: (input: NovoBancoInput) => bancosHorasCadastroService.criar(input),
-    onSuccess: () => toast({ title: 'Banco criado' }),
-    onError: avisarErro('Erro ao criar o banco'),
+    onSuccess: () => toast({ title: t('avisos.bancos.criado') }),
+    onError: avisarErro(t('avisos.bancos.erroCriar')),
     onSettled: recarregar,
   });
 
   const salvar = useMutation({
     mutationFn: ({ bancoId, parametros }: { bancoId: string; parametros: ParametrosBanco }) =>
       bancosHorasCadastroService.salvar({ id: bancoId, empresaId: empresaId! }, parametros),
-    onSuccess: () => toast({ title: 'Banco salvo' }),
-    onError: avisarErro('Erro ao salvar o banco'),
+    onSuccess: () => toast({ title: t('avisos.bancos.salvo') }),
+    onError: avisarErro(t('avisos.bancos.erroSalvar')),
     onSettled: recarregar,
   });
 
   const reordenar = useMutation({
     mutationFn: (bancoIds: string[]) => bancosHorasCadastroService.reordenar(bancoIds),
-    onError: avisarErro('Erro ao reordenar os bancos'),
+    onError: avisarErro(t('avisos.bancos.erroReordenar')),
     onSettled: recarregar,
   });
 
@@ -58,24 +60,24 @@ export function useBancosHorasCadastro(empresaId: string | undefined) {
       bancosHorasCadastroService.inativar(bancoId, motivo),
     onSuccess: () =>
       toast({
-        title: 'Banco inativado',
-        description: 'A partir do próximo mês aberto, as horas dele vão para o Banco padrão.',
+        title: t('avisos.bancos.inativado'),
+        description: t('avisos.bancos.inativadoDescricao'),
       }),
-    onError: avisarErro('Erro ao inativar o banco'),
+    onError: avisarErro(t('avisos.bancos.erroInativar')),
     onSettled: recarregar,
   });
 
   const reativar = useMutation({
     mutationFn: (bancoId: string) => bancosHorasCadastroService.reativar(bancoId),
-    onSuccess: () => toast({ title: 'Banco reativado' }),
-    onError: avisarErro('Erro ao reativar o banco'),
+    onSuccess: () => toast({ title: t('avisos.bancos.reativado') }),
+    onError: avisarErro(t('avisos.bancos.erroReativar')),
     onSettled: recarregar,
   });
 
   const novaVigencia = useMutation({
     mutationFn: (input: NovaVigenciaInput) => bancosHorasCadastroService.novaVigencia(input),
-    onSuccess: () => toast({ title: 'Vigência registrada' }),
-    onError: avisarErro('Erro ao registrar a vigência'),
+    onSuccess: () => toast({ title: t('avisos.bancos.vigenciaRegistrada') }),
+    onError: avisarErro(t('avisos.bancos.erroVigencia')),
     onSettled: recarregar,
   });
 

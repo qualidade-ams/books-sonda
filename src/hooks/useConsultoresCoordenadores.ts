@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { consultoresCoordenadoresService } from '@/services/consultoresCoordenadoresService';
 
@@ -9,6 +10,8 @@ const CHAVE = ['consultores-coordenadores'];
 export function useConsultoresCoordenadores() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { t } = useTranslation();
 
   const consultoresQuery = useQuery({
     queryKey: [...CHAVE, 'consultores'],
@@ -32,11 +35,11 @@ export function useConsultoresCoordenadores() {
     }) => consultoresCoordenadoresService.definirCoordenador(especialistaId, coordenadorId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAVE });
-      toast({ title: 'Coordenador atualizado' });
+      toast({ title: t('avisos.coordenadores.atualizado') });
     },
     onError: (err: Error) => {
       toast({
-        title: 'Erro ao salvar coordenador',
+        title: t('avisos.coordenadores.erroSalvar'),
         description: err.message,
         variant: 'destructive',
       });

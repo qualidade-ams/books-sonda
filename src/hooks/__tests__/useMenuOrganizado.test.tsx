@@ -7,6 +7,13 @@ import { menuOrganizadoService } from '@/services/menuOrganizadoService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/menuOrganizadoService', () => ({
   menuOrganizadoService: {
@@ -60,7 +67,7 @@ describe('useMenuOrganizado', () => {
 
     expect(service.salvar).toHaveBeenCalledWith(input);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['menu-organizado'] });
-    expect(toast).toHaveBeenCalledWith({ title: 'Menu salvo' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.menu.salvo' });
   });
 
   it('enviar logo devolve o caminho; erro aparece no aviso', async () => {
@@ -81,7 +88,7 @@ describe('useMenuOrganizado', () => {
       result.current.enviarLogo({ tema: 'claro', tipo: 'aberto', arquivo }).catch(() => undefined)
     );
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao enviar o logo',
+      title: 'avisos.menu.erroLogo',
       description: 'O logo passa de 500 KB.',
       variant: 'destructive',
     });

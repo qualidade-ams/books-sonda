@@ -7,6 +7,13 @@ import { bancosHorasCadastroService } from '@/services/bancosHorasCadastroServic
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/bancosHorasCadastroService', () => ({
   bancosHorasCadastroService: {
@@ -72,7 +79,7 @@ describe('useBancosHorasCadastro', () => {
 
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['bancos-horas-cadastro', 'e1'] });
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['empresas-cadastro'] });
-    expect(toast).toHaveBeenCalledWith({ title: 'Banco criado' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.bancos.criado' });
   });
 
   it('salvar passa o banco e os parâmetros', async () => {
@@ -84,7 +91,7 @@ describe('useBancosHorasCadastro', () => {
     await act(() => result.current.salvar({ bancoId: 'b1', parametros }));
 
     expect(service.salvar).toHaveBeenCalledWith({ id: 'b1', empresaId: 'e1' }, parametros);
-    expect(toast).toHaveBeenCalledWith({ title: 'Banco salvo' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.bancos.salvo' });
   });
 
   it('inativar, reativar, reordenar e nova vigência', async () => {
@@ -110,11 +117,11 @@ describe('useBancosHorasCadastro', () => {
     expect(service.reordenar).toHaveBeenCalledWith(['b2', 'b1']);
     expect(service.novaVigencia).toHaveBeenCalledWith(vigencia);
     expect(toast).toHaveBeenCalledWith({
-      title: 'Banco inativado',
-      description: 'A partir do próximo mês aberto, as horas dele vão para o Banco padrão.',
+      title: 'avisos.bancos.inativado',
+      description: 'avisos.bancos.inativadoDescricao',
     });
-    expect(toast).toHaveBeenCalledWith({ title: 'Banco reativado' });
-    expect(toast).toHaveBeenCalledWith({ title: 'Vigência registrada' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.bancos.reativado' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.bancos.vigenciaRegistrada' });
     // Reordenar não avisa no sucesso
     expect(toast).toHaveBeenCalledTimes(3);
   });
@@ -133,7 +140,7 @@ describe('useBancosHorasCadastro', () => {
 
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['bancos-horas-cadastro', 'e1'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao salvar o banco',
+      title: 'avisos.bancos.erroSalvar',
       description: 'Conflito de escopo: o banco "A" já cobre este produto ou módulo.',
       variant: 'destructive',
     });

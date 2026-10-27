@@ -7,6 +7,13 @@ import { deParaService } from '@/services/deParaService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/deParaService', () => ({
   deParaService: {
@@ -80,7 +87,7 @@ describe('useDePara', () => {
     expect(service.salvar).toHaveBeenCalledWith(input);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['notificacoes'] });
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Mapeamento salvo' }));
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'avisos.dePara.salvo' }));
   });
 
   it('atribuir em lote conta quantos grupos mudaram', async () => {
@@ -91,7 +98,7 @@ describe('useDePara', () => {
     await act(() => result.current.atribuirDestino({ ids: ['g1', 'g2'], destino }));
 
     expect(service.atribuirDestino).toHaveBeenCalledWith(['g1', 'g2'], destino);
-    expect(toast).toHaveBeenCalledWith({ title: 'Destino atribuído a 2 grupos' });
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.dePara.destinoAtribuido.varios {"n":2}' });
   });
 
   it('excluir avisa que o grupo voltou para os não mapeados', async () => {
@@ -105,8 +112,8 @@ describe('useDePara', () => {
     expect(service.excluir).toHaveBeenCalledWith('g1');
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Mapeamento excluído',
-      description: 'O grupo voltou para Grupos não mapeados.',
+      title: 'avisos.dePara.excluido',
+      description: 'avisos.dePara.excluidoDescricao',
     });
   });
 
@@ -120,7 +127,7 @@ describe('useDePara', () => {
     );
 
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao salvar o mapeamento',
+      title: 'avisos.dePara.erroSalvar',
       description: 'Este grupo do Aranda já está no de-para.',
       variant: 'destructive',
     });

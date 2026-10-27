@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { retroativosService } from '@/services/retroativosService';
 import {
@@ -7,6 +8,7 @@ import {
   type EnvelopeRegularizacao,
 } from '@/services/retroativos/envioRegularizacao';
 import type { SituacaoRetroativo } from '@/types/retroativos';
+import { plural } from '@/utils/plural';
 
 const CHAVE = ['retroativos-bh'];
 /** Decidir resolve o aviso "Apontamento retroativo pendente" no sino (gatilho no banco) */
@@ -16,6 +18,7 @@ const CHAVE_SINO = ['notificacoes'];
 export function useRetroativos() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const query = useQuery({
     queryKey: CHAVE,
@@ -54,14 +57,14 @@ export function useRetroativos() {
       toast(
         decisao === 'aprovar'
           ? {
-              title: 'Apontamento retroativo aprovado',
-              description: 'Entra na retificação do Book do mês.',
+              title: t('avisos.retroativos.aprovado'),
+              description: t('avisos.retroativos.aprovadoDescricao'),
             }
-          : { title: 'Apontamento retroativo descartado' }
+          : { title: t('avisos.retroativos.descartado') }
       ),
     onError: (err: Error) =>
       toast({
-        title: 'Erro ao decidir o apontamento retroativo',
+        title: t('avisos.retroativos.erroDecidir'),
         description: err.message,
         variant: 'destructive',
       }),
@@ -73,7 +76,7 @@ export function useRetroativos() {
       retroativosService.registrarAviso(retroativoId, itemIds),
     onError: (err: Error) =>
       toast({
-        title: 'Erro ao registrar o aviso aos consultores',
+        title: t('avisos.retroativos.erroAviso'),
         description: err.message,
         variant: 'destructive',
       }),
@@ -85,22 +88,22 @@ export function useRetroativos() {
       pedirRegularizacao(input),
     onSuccess: ({ enviados, semEmail, falhas }) => {
       if (enviados.length)
-        toast({
-          title: `E-mails enviados a ${enviados.length} ${enviados.length === 1 ? 'consultor' : 'consultores'}`,
-        });
+        toast({ title: plural(t, 'avisos.retroativos.emailsEnviados', enviados.length) });
       if (semEmail.length || falhas.length)
         toast({
-          title: 'Alguns consultores não receberam',
+          title: t('avisos.retroativos.naoReceberam'),
           description: [
-            ...semEmail.map((c) => `${c}: sem e-mail no cadastro de especialistas`),
-            ...falhas.map((f) => `${f.consultor}: ${f.erro}`),
+            ...semEmail.map((nome) => t('avisos.retroativos.semEmail', { nome })),
+            ...falhas.map((f) =>
+              t('avisos.retroativos.falha', { nome: f.consultor, erro: f.erro })
+            ),
           ].join(' · '),
           variant: 'destructive',
         });
     },
     onError: (err: Error) =>
       toast({
-        title: 'Erro ao pedir a regularização aos consultores',
+        title: t('avisos.retroativos.erroRegularizacao'),
         description: err.message,
         variant: 'destructive',
       }),

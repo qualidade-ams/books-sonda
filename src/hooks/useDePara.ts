@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { deParaService } from '@/services/deParaService';
 import type { DestinoGrupo, MapeamentoInput } from '@/types/dePara';
+import { plural } from '@/utils/plural';
 
 const CHAVE = ['grupos-aranda'];
 /** Mapear resolve o aviso "Grupo do Aranda sem mapeamento" no sino (gatilho no banco) */
@@ -11,6 +13,7 @@ const CHAVE_SINO = ['notificacoes'];
 export function useDePara() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const mapeamentosQuery = useQuery({
     queryKey: CHAVE,
@@ -41,9 +44,9 @@ export function useDePara() {
     mutationFn: (input: MapeamentoInput) => deParaService.salvar(input),
     onSuccess: () => {
       recarregar();
-      toast({ title: 'Mapeamento salvo' });
+      toast({ title: t('avisos.dePara.salvo') });
     },
-    onError: avisarErro('Erro ao salvar o mapeamento'),
+    onError: avisarErro(t('avisos.dePara.erroSalvar')),
   });
 
   const atribuirDestino = useMutation({
@@ -51,11 +54,9 @@ export function useDePara() {
       deParaService.atribuirDestino(ids, destino),
     onSuccess: (_r, { ids }) => {
       recarregar();
-      toast({
-        title: `Destino atribuído a ${ids.length} ${ids.length === 1 ? 'grupo' : 'grupos'}`,
-      });
+      toast({ title: plural(t, 'avisos.dePara.destinoAtribuido', ids.length) });
     },
-    onError: avisarErro('Erro ao atribuir o destino'),
+    onError: avisarErro(t('avisos.dePara.erroAtribuir')),
   });
 
   const excluir = useMutation({
@@ -63,11 +64,11 @@ export function useDePara() {
     onSuccess: () => {
       recarregar();
       toast({
-        title: 'Mapeamento excluído',
-        description: 'O grupo voltou para Grupos não mapeados.',
+        title: t('avisos.dePara.excluido'),
+        description: t('avisos.dePara.excluidoDescricao'),
       });
     },
-    onError: avisarErro('Erro ao excluir o mapeamento'),
+    onError: avisarErro(t('avisos.dePara.erroExcluir')),
   });
 
   return {

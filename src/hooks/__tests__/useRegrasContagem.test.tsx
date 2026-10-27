@@ -7,6 +7,13 @@ import { regrasContagemService } from '@/services/regrasContagemService';
 
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: { language: 'pt-BR' },
+  }),
+}));
 
 vi.mock('@/services/regrasContagemService', () => ({
   regrasContagemService: { carregar: vi.fn(), salvar: vi.fn() },
@@ -80,8 +87,8 @@ describe('useRegrasContagem', () => {
     expect(service.salvar).toHaveBeenCalledWith(input);
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['regras-contagem'] });
     expect(toast).toHaveBeenCalledWith({
-      title: 'Regras de contagem salvas',
-      description: 'Valem a partir do próximo recálculo; meses fechados não mudam.',
+      title: 'avisos.regras.salvas',
+      description: 'avisos.regras.valemProximoRecalculo',
     });
   });
 
@@ -93,7 +100,7 @@ describe('useRegrasContagem', () => {
     await act(() => result.current.salvar({ motivo: '' }).catch(() => undefined));
 
     expect(toast).toHaveBeenCalledWith({
-      title: 'Erro ao salvar as regras de contagem',
+      title: 'avisos.regras.erroSalvar',
       description: 'Informe o motivo da alteração.',
       variant: 'destructive',
     });
