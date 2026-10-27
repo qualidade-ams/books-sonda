@@ -11,6 +11,9 @@
  * - Execução perdida (serviço desligado): roda uma vez ao voltar; a próxima é calculada
  *   a partir de agora (não acumula atrasos).
  * - Erro em um cliente não interrompe os demais.
+ * - "Executar agora" (manual) pula o cliente que já recebeu com sucesso no dia
+ *   (Brasília) e registra a execução como "pulado" (Modelagem_Fase3.md, seção 11).
+ *   O envio agendado não pula: cada horário da regra envia.
  * - Grava só a quantidade de destinatários, nunca os e-mails (LGPD).
  */
 
@@ -23,6 +26,16 @@ export const INTERVALO_ENTRE_ENVIOS_MS = 10_000;
 
 const FINALIDADES_SALDO_PARCIAL = ['saldo_parcial', 'ambos'];
 const CODIGO_VIOLACAO_UNICA = '23505';
+/** Brasília não tem horário de verão desde 2019 */
+const UTC_MENOS_BRASILIA_HORAS = 3;
+
+/** Meia-noite de hoje em Brasília, em UTC */
+export function inicioDoDiaBrasilia(agora: Date): string {
+  const local = new Date(agora.getTime() - UTC_MENOS_BRASILIA_HORAS * 3_600_000);
+  return new Date(
+    Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), UTC_MENOS_BRASILIA_HORAS)
+  ).toISOString();
+}
 
 export interface DependenciasAgendadorSaldoParcial {
   supabase: SupabaseClient;
@@ -44,6 +57,8 @@ export interface ResumoExecucao {
   erro: number;
   semDestinatarios: number;
   ignorados: number;
+  /** "Executar agora" de quem já recebeu no dia */
+  pulados: number;
 }
 
 const esperar = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -72,15 +87,43 @@ export function criarAgendadorSaldoParcial(deps: DependenciasAgendadorSaldoParci
     return (data || []).map((c: { email: string }) => c.email).filter(Boolean);
   }
 
+  /** Empresas com envio de sucesso hoje (Brasília) */
+  async function recebeuHoje(empresas: string[]): Promise<Set<string>> {
+    if (empresas.length === 0) return new Set();
+    const { data, error } = await db
+      .from('banco_horas_envio_execucoes')
+      .select('empresa_id')
+      .in('empresa_id', empresas)
+      .eq('status', 'sucesso')
+      .gte('iniciado_em', inicioDoDiaBrasilia(agora()));
+    if (error) throw new Error(`Erro ao conferir os envios de hoje: ${error.message}`);
+    return new Set((data || []).map((e: { empresa_id: string }) => e.empresa_id));
+  }
+
   /** Envia o Saldo Parcial de todos os clientes do agendamento */
   async function executarAgendamento(ag: any, opcoes: OpcoesExecucao): Promise<ResumoExecucao> {
-    const resumo: ResumoExecucao = { sucesso: 0, erro: 0, semDestinatarios: 0, ignorados: 0 };
+    const resumo: ResumoExecucao = { sucesso: 0, erro: 0, semDestinatarios: 0, ignorados: 0, pulados: 0 };
     const executadoPara = opcoes.executadoPara ?? agora().toISOString();
     const empresas: string[] = (ag.empresas || []).map((e: { empresa_id: string }) => e.empresa_id);
     const emailsCc: string[] = ag.emails_cc || [];
+    const jaRecebeuHoje = opcoes.origem === 'manual' ? await recebeuHoje(empresas) : new Set<string>();
 
     for (let i = 0; i < empresas.length; i++) {
       const empresaId = empresas[i];
+
+      if (jaRecebeuHoje.has(empresaId)) {
+        await db.from('banco_horas_envio_execucoes').insert({
+          agendamento_id: ag.id,
+          empresa_id: empresaId,
+          origem: opcoes.origem,
+          disparado_por: opcoes.disparadoPor ?? null,
+          executado_para: executadoPara,
+          status: 'pulado',
+          finalizado_em: agora().toISOString()
+        });
+        resumo.pulados++;
+        continue;
+      }
 
       // Reserva: a chave única (empresa_id, executado_para) impede envio em dobro
       const { data: reserva, error: erroReserva } = await db

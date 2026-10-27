@@ -103,6 +103,7 @@ export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioF
         tipoContrato: b.tipo_contrato,
         periodoApuracao: b.periodo_apuracao,
         inicioVigencia: mesAno(b.inicio_vigencia),
+        fimVigencia: b.fim_vigencia ? mesAno(b.fim_vigencia) : null,
         diaInicioApuracao: b.dia_inicio_apuracao,
         diaFimApuracao: b.dia_fim_apuracao,
         taxaProduto: b.taxa_produto,

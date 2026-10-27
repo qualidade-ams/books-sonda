@@ -146,6 +146,38 @@ describe('classificação — bancos que participam', () => {
     expect(c.porGrupo('AMS APL - CAMBIO - N2', null)).toBe('p');
   });
 
+  it('banco cuja vigência terminou não recebe (vai para o padrão)', () => {
+    const c = criarClassificador(
+      [
+        banco({
+          bancoId: 'comex',
+          fimVigencia: { mes: 8, ano: 2026 },
+          escopo: [{ produtoId: 'COMEX', moduloId: null }],
+        }),
+        banco({ bancoId: 'p', padrao: true }),
+      ],
+      deParaExemplo,
+      MES
+    );
+    expect(c.porGrupo('AMS APL - CAMBIO - N2', null)).toBe('p');
+  });
+
+  it('no último mês da vigência o banco ainda recebe', () => {
+    const c = criarClassificador(
+      [
+        banco({
+          bancoId: 'comex',
+          fimVigencia: { mes: 9, ano: 2026 },
+          escopo: [{ produtoId: 'COMEX', moduloId: null }],
+        }),
+        banco({ bancoId: 'p', padrao: true }),
+      ],
+      deParaExemplo,
+      MES
+    );
+    expect(c.porGrupo('AMS APL - CAMBIO - N2', null)).toBe('comex');
+  });
+
   it('sem Banco padrão vigente, o que não se encaixa fica sem banco', () => {
     const c = criarClassificador([bancosExemplo[0]], deParaExemplo, MES);
     expect(c.porGrupo('AMS T&M - TIME & MATERIAL', null)).toBeNull();

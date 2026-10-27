@@ -1,45 +1,31 @@
 /**
- * Aba "Saldo Parcial" da tela Rotinas Automáticas: agendamentos por cliente,
- * envio imediato ("Executar agora") e histórico de envios.
+ * Aba "Saldo Parcial" da tela Rotinas Automáticas, no visual novo (Modelagem_Fase3.md, seção 11):
+ * agendamentos em cartões, "Executar agora", empresas sem agendamento e histórico de envios.
  *
  * O envio roda no sync-api (em background); esta aba só configura os agendamentos,
  * dispara execuções manuais e acompanha o histórico. Destinatários: contatos do cliente
  * marcados como "Saldo Parcial" ou "Ambos" em Gerenciamento de Clientes, mais o CC.
  *
- * O botão "Novo agendamento" fica no cabeçalho da tela, que controla `novoAberto`.
+ * Criar e editar abrem a edição em nível a mais, no lugar da tela: a aba só pede (`onEditar`).
+ * O botão "Novo agendamento" fica no cabeçalho da tela.
  * Permissão própria: tela `envio_saldo_parcial` (a mesma das políticas RLS das tabelas).
  */
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CalendarClock, Edit, Loader2, Send, Trash2 } from 'lucide-react';
-import { ProtectedAction } from '@/components/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { AgendamentoSaldoParcialFormModal } from '@/components/admin/banco-horas/AgendamentoSaldoParcialFormModal';
+import { AlertTriangle, Building2, CalendarClock, Plus, Send } from 'lucide-react';
+import { DsPage } from '@/components/ds/DsPage';
+import { Indicador } from '@/components/ds/Formulario';
+import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
+import { EmptyState } from '@/components/ds/EmptyState';
+import { Callout } from '@/components/ds/Callout';
+import { Button } from '@/components/ds/Button';
+import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
+import { CartaoAgendamento } from '@/components/admin/saldoParcial/CartaoAgendamento';
+import { HistoricoEnvios } from '@/components/admin/saldoParcial/HistoricoEnvios';
 import { useToast } from '@/hooks/use-toast';
 import { useApiStatus } from '@/hooks/useApiStatus';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   useAgendamentosSaldoParcial,
   useAlternarAgendamentoSaldoParcial,
@@ -47,546 +33,358 @@ import {
   useExcluirAgendamentoSaldoParcial,
   useExecucoesSaldoParcial,
   useExecutarSaldoParcialAgora,
-  useSalvarAgendamentoSaldoParcial,
+  useSemAgendamentoSaldoParcial,
   useStatusSaldoParcial,
 } from '@/hooks/useEnvioSaldoParcial';
-import type {
-  AgendamentoSaldoParcial,
-  AgendamentoSaldoParcialInput,
-  StatusAgendamentoSaldoParcial,
-  StatusExecucaoSaldoParcial,
-} from '@/types/envioSaldoParcial';
-import { descreverRecorrencia } from '@/utils/descreverRecorrencia';
-import { preverProximaExecucao } from '@/utils/proximaExecucao';
+import { plural } from '@/utils/plural';
+import {
+  exportacaoSaldoParcial,
+  ordenarAgendamentos,
+  receberamHoje,
+  totaisSaldoParcial,
+} from '@/utils/saldoParcialTela';
+import { exportarTabela } from '@/utils/exportarTabela';
+import { MenuExportar } from '@/components/ds/MenuExportar';
+import type { AgendamentoSaldoParcial } from '@/types/envioSaldoParcial';
 
 export const SCREEN_KEY_SALDO_PARCIAL = 'envio_saldo_parcial';
 
-const TAB_TRIGGER =
-  'data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium';
-
-const COR_STATUS: Record<StatusExecucaoSaldoParcial | StatusAgendamentoSaldoParcial, string> = {
-  executando: 'bg-blue-100 text-blue-800',
-  sucesso: 'bg-green-100 text-green-800',
-  parcial: 'bg-yellow-100 text-yellow-800',
-  erro: 'bg-red-100 text-red-800',
-  sem_destinatarios: 'bg-yellow-100 text-yellow-800',
-  interrompida: 'bg-orange-100 text-orange-800',
-};
-
-// Logo após salvar, o servidor ainda não recalculou: usa a previsão (mesma regra do agendador)
-function proximoEnvio(ag: AgendamentoSaldoParcial, agendadorDesligado: boolean): string | null {
-  if (!ag.ativo) return null;
-  return ag.proxima_execucao || (agendadorDesligado ? null : preverProximaExecucao(ag));
-}
+type Secao = 'agendamentos' | 'historico' | 'sem';
+/** O histórico olha os últimos envios: o bastante para os indicadores de 7 dias */
+const LIMITE_HISTORICO = 200;
 
 interface AbaSaldoParcialProps {
-  /** Formulário de novo agendamento aberto (botão no cabeçalho da tela) */
-  novoAberto: boolean;
-  onNovoAbertoChange: (aberto: boolean) => void;
+  /** Abre a edição no lugar da tela; nulo é um agendamento novo */
+  onEditar: (agendamento: AgendamentoSaldoParcial | null) => void;
 }
 
-export function AbaSaldoParcial({ novoAberto, onNovoAbertoChange }: AbaSaldoParcialProps) {
-  const { t, i18n } = useTranslation();
+export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
+  const { t } = useTranslation();
+  const s = (chave: string, valores?: Record<string, unknown>) =>
+    t(`rotinasSaldoParcial.${chave}`, valores);
   const { toast } = useToast();
   const { data: apiOnline = false } = useApiStatus();
+  const { hasPermission } = usePermissions();
+  const podeEditar = hasPermission(SCREEN_KEY_SALDO_PARCIAL, 'edit');
 
   const {
     agendamentos,
     isLoading: carregandoAgendamentos,
     error: erroAgendamentos,
+    refetch,
   } = useAgendamentosSaldoParcial();
-  const {
-    execucoes,
-    isLoading: carregandoExecucoes,
-    error: erroExecucoes,
-  } = useExecucoesSaldoParcial();
+  const { execucoes, isLoading: carregandoExecucoes } = useExecucoesSaldoParcial(LIMITE_HISTORICO);
   const { clientes } = useClientesElegiveisSaldoParcial();
+  const { empresas: semAgendamento } = useSemAgendamentoSaldoParcial();
   // undefined = ainda sem resposta do sync-api; só avisamos com false confirmado
   const { agendadorAtivo, renderImagemConfigurado } = useStatusSaldoParcial();
   const agendadorDesligado = agendadorAtivo === false;
-  const semRenderImagem = renderImagemConfigurado === false;
-  const salvar = useSalvarAgendamentoSaldoParcial();
   const alternar = useAlternarAgendamentoSaldoParcial();
   const excluir = useExcluirAgendamentoSaldoParcial();
   const executar = useExecutarSaldoParcialAgora();
 
-  const [agendamentoEditando, setAgendamentoEditando] = useState<AgendamentoSaldoParcial | null>(
-    null
-  );
-  const [agendamentoExcluindo, setAgendamentoExcluindo] = useState<AgendamentoSaldoParcial | null>(
-    null
-  );
-  const [agendamentoExecutando, setAgendamentoExecutando] =
-    useState<AgendamentoSaldoParcial | null>(null);
+  const [secao, setSecao] = useState<Secao>('agendamentos');
+  const [executando, setExecutando] = useState<AgendamentoSaldoParcial | null>(null);
+  const [desativando, setDesativando] = useState<AgendamentoSaldoParcial | null>(null);
+  const [excluindo, setExcluindo] = useState<AgendamentoSaldoParcial | null>(null);
+  const [processando, setProcessando] = useState(false);
 
-  const modalAberto = novoAberto || !!agendamentoEditando;
-
+  const ordenados = useMemo(
+    () => ordenarAgendamentos(agendamentos, agendadorDesligado),
+    [agendamentos, agendadorDesligado]
+  );
+  const totais = totaisSaldoParcial(agendamentos, execucoes);
   // Clientes sem nenhum contato "Saldo Parcial"/"Ambos": o envio para eles é pulado
-  const clientesSemContato = useMemo(
+  const semContato = useMemo(
     () => new Set(clientes.filter((c) => c.qtdContatosSaldoParcial === 0).map((c) => c.id)),
     [clientes]
   );
-
-  // Próximo envio mais próximo primeiro; sem data (inativo/aguardando agendador) por último
-  const agendamentosOrdenados = useMemo(() => {
-    const comData = agendamentos.map((ag) => ({ ag, data: proximoEnvio(ag, agendadorDesligado) }));
-    comData.sort((a, b) => {
-      if (a.data !== b.data) {
-        if (!a.data) return 1;
-        if (!b.data) return -1;
-        return new Date(a.data).getTime() - new Date(b.data).getTime();
-      }
-      return a.ag.nome.localeCompare(b.ag.nome, 'pt-BR');
-    });
-    return comData;
-  }, [agendamentos, agendadorDesligado]);
-
-  const formatarData = (iso: string | null) =>
-    iso
-      ? new Date(iso).toLocaleString(i18n.language || 'pt-BR', {
-          timeZone: 'America/Sao_Paulo',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : null;
+  const nomeDaEmpresa = (id: string) => clientes.find((c) => c.id === id)?.nome ?? id;
 
   const mensagemErro = (e: unknown) => (e instanceof Error ? e.message : undefined);
+  const avisarErro = (titulo: string, e: unknown) =>
+    toast({ title: t(titulo), description: mensagemErro(e), variant: 'destructive' });
 
-  // ---------------------------------------------------------------------------
-  // Ações
-  // ---------------------------------------------------------------------------
-  const fecharModal = (aberto: boolean) => {
-    if (aberto) return;
-    setAgendamentoEditando(null);
-    onNovoAbertoChange(false);
-  };
-
-  const handleSalvar = async (dados: AgendamentoSaldoParcialInput) => {
+  /** Executa uma ação confirmada; o diálogo fecha no fim (o erro vira aviso na própria ação) */
+  const confirmar = async (acao: () => Promise<void>, fechar: () => void) => {
+    setProcessando(true);
     try {
-      await salvar.mutateAsync({ id: agendamentoEditando?.id, dados });
-      toast({ title: t('envioSaldoParcial.toasts.salvo') });
-      fecharModal(false);
-    } catch (e) {
-      toast({
-        title: t('envioSaldoParcial.toasts.erroSalvar'),
-        description: mensagemErro(e),
-        variant: 'destructive',
-      });
+      await acao();
+    } finally {
+      setProcessando(false);
+      fechar();
     }
   };
 
-  const handleAlternar = async (ag: AgendamentoSaldoParcial, ativo: boolean) => {
+  const mudarAtivo = async (ag: AgendamentoSaldoParcial, ativo: boolean) => {
     try {
       await alternar.mutateAsync({ id: ag.id, ativo });
       toast({
-        title: ativo
-          ? t('envioSaldoParcial.toasts.ativado')
-          : t('envioSaldoParcial.toasts.desativado'),
+        title: t(
+          ativo ? 'envioSaldoParcial.toasts.ativado' : 'envioSaldoParcial.toasts.desativado'
+        ),
       });
     } catch (e) {
-      toast({
-        title: t('envioSaldoParcial.toasts.erroAlternar'),
-        description: mensagemErro(e),
-        variant: 'destructive',
-      });
+      avisarErro('envioSaldoParcial.toasts.erroAlternar', e);
     }
   };
 
-  const handleExcluir = async () => {
-    if (!agendamentoExcluindo) return;
+  const executarAgora = async (ag: AgendamentoSaldoParcial) => {
     try {
-      await excluir.mutateAsync(agendamentoExcluindo.id);
-      toast({ title: t('envioSaldoParcial.toasts.excluido') });
-    } catch (e) {
-      toast({
-        title: t('envioSaldoParcial.toasts.erroExcluir'),
-        description: mensagemErro(e),
-        variant: 'destructive',
-      });
-    } finally {
-      setAgendamentoExcluindo(null);
-    }
-  };
-
-  const handleExecutar = async () => {
-    if (!agendamentoExecutando) return;
-    try {
-      await executar.mutateAsync(agendamentoExecutando.id);
+      await executar.mutateAsync(ag.id);
       toast({ title: t('envioSaldoParcial.toasts.execucaoIniciada') });
     } catch (e) {
-      toast({
-        title: t('envioSaldoParcial.toasts.execucaoErro'),
-        description: mensagemErro(e),
-        variant: 'destructive',
-      });
-    } finally {
-      setAgendamentoExecutando(null);
+      avisarErro('envioSaldoParcial.toasts.execucaoErro', e);
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Render helpers
-  // ---------------------------------------------------------------------------
-  const badgeStatus = (
-    status: StatusExecucaoSaldoParcial | StatusAgendamentoSaldoParcial | null
-  ) =>
-    status ? (
-      <Badge className={`${COR_STATUS[status]} text-xs`}>
-        {status === 'executando' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-        {t(`envioSaldoParcial.status.${status}`)}
-      </Badge>
-    ) : (
-      <span className="text-gray-400">—</span>
+  const excluirAgendamento = async (ag: AgendamentoSaldoParcial) => {
+    try {
+      await excluir.mutateAsync(ag.id);
+      toast({ title: t('envioSaldoParcial.toasts.excluido') });
+    } catch (e) {
+      avisarErro('envioSaldoParcial.toasts.erroExcluir', e);
+    }
+  };
+
+  const jaReceberam = executando
+    ? receberamHoje(
+        (executando.empresas ?? []).map((e) => e.empresa_id),
+        execucoes
+      ).map(nomeDaEmpresa)
+    : [];
+
+  const agendamentosConteudo = () => {
+    if (erroAgendamentos)
+      return (
+        <div className="space-y-3">
+          <Callout tom="danger" titulo={s('erro')}>
+            {t('fase3Comum.verifiqueConexao')}
+          </Callout>
+          <Button onClick={() => refetch?.()}>{t('fase3Comum.tentarNovamente')}</Button>
+        </div>
+      );
+    if (carregandoAgendamentos)
+      return (
+        <div className="space-y-3" role="status" aria-label={s('carregando')}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-ds-bg-surface" />
+          ))}
+        </div>
+      );
+    if (ordenados.length === 0)
+      return (
+        <div className="rounded-xl border border-ds-border bg-ds-bg-surface">
+          <EmptyState
+            icone={<CalendarClock />}
+            titulo={s('vazio.titulo')}
+            descricao={s('vazio.descricao')}
+            acao={
+              podeEditar ? (
+                <Button variante="primario" onClick={() => onEditar(null)}>
+                  <Plus /> {t('envioSaldoParcial.novoAgendamento')}
+                </Button>
+              ) : undefined
+            }
+          />
+        </div>
+      );
+    return (
+      <ul className="space-y-3" aria-label={s('abas.agendamentos')}>
+        {ordenados.map(({ agendamento, proximoEnvio }) => (
+          <CartaoAgendamento
+            key={agendamento.id}
+            agendamento={agendamento}
+            proximoEnvio={proximoEnvio}
+            semContato={
+              (agendamento.empresas ?? []).filter((e) => semContato.has(e.empresa_id)).length
+            }
+            agendadorDesligado={agendadorDesligado}
+            podeEditar={podeEditar}
+            podeExecutar={apiOnline}
+            onAtivo={() =>
+              agendamento.ativo ? setDesativando(agendamento) : mudarAtivo(agendamento, true)
+            }
+            onEditar={() => onEditar(agendamento)}
+            onExecutar={() => setExecutando(agendamento)}
+            onExcluir={() => setExcluindo(agendamento)}
+          />
+        ))}
+      </ul>
     );
-
-  const erroCarregamento = (erro: unknown) => (
-    <div className="flex items-center gap-2 py-8 justify-center text-sm text-red-600">
-      <AlertTriangle className="h-4 w-4" />
-      {mensagemErro(erro)}
-    </div>
-  );
-
-  const carregando = (
-    <div className="flex justify-center py-8">
-      <Loader2 className="h-6 w-6 animate-spin text-sonda-blue" />
-    </div>
-  );
+  };
 
   return (
-    <div className="space-y-4">
-      {semRenderImagem && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{t('envioSaldoParcial.renderImagemNaoConfigurado')}</span>
-        </div>
+    <DsPage className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Indicador
+          rotulo={s('indicadores.ativos')}
+          valor={totais.ativos}
+          icone={<CalendarClock />}
+        />
+        <Indicador
+          rotulo={s('indicadores.empresas')}
+          valor={totais.empresas}
+          icone={<Building2 />}
+          atrasoMs={60}
+        />
+        <Indicador
+          rotulo={s('indicadores.enviados')}
+          valor={totais.enviados}
+          icone={<Send />}
+          tom="success"
+          atrasoMs={120}
+          onClick={() => setSecao('historico')}
+        />
+        <Indicador
+          rotulo={s('indicadores.falhas')}
+          valor={totais.falhas}
+          icone={<AlertTriangle />}
+          tom="warning"
+          atrasoMs={180}
+          onClick={() => setSecao('historico')}
+        />
+      </div>
+
+      {renderImagemConfigurado === false && (
+        <Callout tom="danger" titulo={s('servico.semImagem')}>
+          {s('servico.semImagemTexto')}
+        </Callout>
+      )}
+      {agendadorDesligado ? (
+        <Callout tom="danger" titulo={s('servico.desligado')}>
+          {s('servico.desligadoTexto')}
+        </Callout>
+      ) : (
+        agendadorAtivo && (
+          <p className="flex items-center gap-2 text-xs text-ds-fg-muted">
+            <span className="h-2 w-2 rounded-full bg-ds-success-fg" aria-hidden />
+            {s('servico.ligado')}
+          </p>
+        )
       )}
 
-      {agendadorDesligado && (
-        <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{t('envioSaldoParcial.agendadorDesligado')}</span>
+      <div className="relative flex flex-wrap items-center justify-center gap-3">
+        <SegmentedTabs
+          rotulo={s('abas.rotulo')}
+          itens={[
+            {
+              valor: 'agendamentos',
+              rotulo: s('abas.agendamentos'),
+              contador: agendamentos.length,
+            },
+            { valor: 'historico', rotulo: s('abas.historico') },
+            { valor: 'sem', rotulo: s('abas.sem'), contador: semAgendamento.length },
+          ]}
+          valor={secao}
+          onChange={(v) => setSecao(v as Secao)}
+        />
+        <div className="sm:absolute sm:right-0">
+          <MenuExportar
+            variante="secundario"
+            descricao={s('exportar.descricao')}
+            onExportar={(formato) =>
+              exportarTabela(
+                exportacaoSaldoParcial(ordenados, execucoes, nomeDaEmpresa, t),
+                formato
+              )
+            }
+          />
         </div>
-      )}
+      </div>
 
-      <Tabs defaultValue="agendamentos" className="w-full">
-        <TabsList className="bg-gray-100 p-1 rounded-lg">
-          <TabsTrigger value="agendamentos" className={TAB_TRIGGER}>
-            {t('envioSaldoParcial.tabs.agendamentos')}
-          </TabsTrigger>
-          <TabsTrigger value="historico" className={TAB_TRIGGER}>
-            {t('envioSaldoParcial.tabs.historico')}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Agendamentos */}
-        <TabsContent value="agendamentos" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                {t('envioSaldoParcial.agendamentos.titulo', { count: agendamentos.length })}
-              </CardTitle>
-              <p className="text-sm text-gray-500">{t('envioSaldoParcial.subtitle')}</p>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {carregandoAgendamentos ? (
-                carregando
-              ) : erroAgendamentos ? (
-                erroCarregamento(erroAgendamentos)
-              ) : agendamentos.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-12 text-gray-500">
-                  <CalendarClock className="h-8 w-8 text-gray-400" />
-                  <p className="text-sm">{t('envioSaldoParcial.agendamentos.vazio')}</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.agendamentos.nome')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.agendamentos.clientes')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.agendamentos.emailsCc')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.agendamentos.proxima')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.agendamentos.ultima')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.agendamentos.status')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.agendamentos.ativo')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-32">
-                        {t('envioSaldoParcial.agendamentos.acoes')}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {agendamentosOrdenados.map(({ ag, data: dataProximoEnvio }) => {
-                      const semContato = (ag.empresas || []).filter((e) =>
-                        clientesSemContato.has(e.empresa_id)
-                      ).length;
-                      return (
-                        <TableRow key={ag.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <span className="font-medium">{ag.nome}</span>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {descreverRecorrencia(ag, t)}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {t('envioSaldoParcial.agendamentos.qtdClientes', {
-                              count: (ag.empresas || []).length,
-                            })}
-                            {semContato > 0 && (
-                              <div className="flex items-center gap-1 text-xs text-yellow-700 mt-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                <span>
-                                  {t('envioSaldoParcial.agendamentos.clientesSemContato', {
-                                    count: semContato,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs text-gray-600">
-                            {ag.emails_cc?.length ? (
-                              ag.emails_cc.map((email) => <div key={email}>{email}</div>)
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center text-sm">
-                            {!ag.ativo ? (
-                              <span className="text-gray-400">—</span>
-                            ) : (
-                              formatarData(dataProximoEnvio) || (
-                                <span className="text-gray-400">
-                                  {agendadorDesligado
-                                    ? t('envioSaldoParcial.agendamentos.aguardandoAgendador')
-                                    : t('envioSaldoParcial.agendamentos.calculando')}
-                                </span>
-                              )
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center text-sm">
-                            {formatarData(ag.ultima_execucao) || (
-                              <span className="text-gray-400">
-                                {t('envioSaldoParcial.agendamentos.nunca')}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {badgeStatus(ag.ultimo_status)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <ProtectedAction
-                              screenKey={SCREEN_KEY_SALDO_PARCIAL}
-                              requiredLevel="edit"
-                              fallback={<Switch checked={ag.ativo} disabled />}
-                            >
-                              <Switch
-                                checked={ag.ativo}
-                                disabled={alternar.isPending}
-                                onCheckedChange={(v) => handleAlternar(ag, v)}
-                                aria-label={t('envioSaldoParcial.agendamentos.ativo')}
-                              />
-                            </ProtectedAction>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <ProtectedAction
-                              screenKey={SCREEN_KEY_SALDO_PARCIAL}
-                              requiredLevel="edit"
-                            >
-                              <div className="flex justify-center gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  title={t('envioSaldoParcial.agendamentos.executarAgora')}
-                                  disabled={!apiOnline || executar.isPending}
-                                  onClick={() => setAgendamentoExecutando(ag)}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  title={t('envioSaldoParcial.agendamentos.editar')}
-                                  onClick={() => setAgendamentoEditando(ag)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                  title={t('envioSaldoParcial.agendamentos.excluir')}
-                                  onClick={() => setAgendamentoExcluindo(ag)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </ProtectedAction>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Histórico */}
-        <TabsContent value="historico" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                {t('envioSaldoParcial.historico.titulo')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {carregandoExecucoes ? (
-                carregando
-              ) : erroExecucoes ? (
-                erroCarregamento(erroExecucoes)
-              ) : execucoes.length === 0 ? (
-                <p className="py-12 text-center text-sm text-gray-500">
-                  {t('envioSaldoParcial.historico.vazio')}
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.historico.inicio')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.historico.cliente')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.historico.origem')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.historico.status')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.historico.destinatarios')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">
-                        {t('envioSaldoParcial.historico.emails')}
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700">
-                        {t('envioSaldoParcial.historico.erro')}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {execucoes.map((ex) => (
-                      <TableRow key={ex.id} className="hover:bg-gray-50">
-                        <TableCell className="text-sm">{formatarData(ex.iniciado_em)}</TableCell>
-                        <TableCell className="text-sm font-medium">
-                          {ex.empresa?.nome_abreviado || '—'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {ex.origem === 'agendado'
-                            ? t('envioSaldoParcial.historico.agendado')
-                            : t('envioSaldoParcial.historico.manual')}
-                          {ex.agendamento?.nome && (
-                            <div className="text-xs text-gray-500 mt-1">{ex.agendamento.nome}</div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">{badgeStatus(ex.status)}</TableCell>
-                        <TableCell className="text-center text-sm">
-                          {ex.qtd_destinatarios ?? '—'}
-                        </TableCell>
-                        <TableCell className="text-center text-sm">
-                          {ex.qtd_emails ?? '—'}
-                        </TableCell>
-                        <TableCell className="text-xs text-red-600 max-w-xs break-words">
-                          {ex.erro || ''}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <AgendamentoSaldoParcialFormModal
-        open={modalAberto}
-        onOpenChange={fecharModal}
-        agendamento={agendamentoEditando}
-        onSalvar={handleSalvar}
-        salvando={salvar.isPending}
-      />
-
-      <AlertDialog
-        open={!!agendamentoExecutando}
-        onOpenChange={(v) => !v && setAgendamentoExecutando(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-semibold text-sonda-blue">
-              {t('envioSaldoParcial.agendamentos.executarTitulo')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-gray-500">
-              {t('envioSaldoParcial.agendamentos.executarDescricao', {
-                nome: agendamentoExecutando?.nome,
-                count: agendamentoExecutando?.empresas?.length ?? 0,
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('envioSaldoParcial.agendamentos.cancelar')}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-sonda-blue hover:bg-sonda-dark-blue"
-              onClick={handleExecutar}
+      {secao === 'historico' ? (
+        <HistoricoEnvios execucoes={execucoes} carregando={carregandoExecucoes} />
+      ) : secao === 'sem' ? (
+        <div className="space-y-3">
+          <Callout tom="warning">{s('sem.aviso')}</Callout>
+          {semAgendamento.length === 0 ? (
+            <div className="rounded-xl border border-ds-border bg-ds-bg-surface">
+              <EmptyState icone={<Building2 />} titulo={s('sem.vazio')} />
+            </div>
+          ) : (
+            <ul
+              aria-label={s('abas.sem')}
+              className="divide-y divide-ds-border overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface"
             >
-              {t('envioSaldoParcial.agendamentos.confirmarExecutar')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {semAgendamento.map((e) => (
+                <li key={e.id} className="px-4 py-3">
+                  <span className="font-medium">{e.nome}</span>
+                  <span className="block text-xs text-ds-fg-muted">
+                    {e.qtdContatosSaldoParcial ? (
+                      plural(t, 'rotinasSaldoParcial.sem.contatos', e.qtdContatosSaldoParcial)
+                    ) : (
+                      <span className="text-ds-warning-fg">{s('sem.semContato')}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        agendamentosConteudo()
+      )}
 
-      <AlertDialog
-        open={!!agendamentoExcluindo}
-        onOpenChange={(v) => !v && setAgendamentoExcluindo(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-semibold text-sonda-blue">
-              {t('envioSaldoParcial.agendamentos.excluirTitulo')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-gray-500">
-              {t('envioSaldoParcial.agendamentos.excluirDescricao', {
-                nome: agendamentoExcluindo?.nome,
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('envioSaldoParcial.agendamentos.cancelar')}</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleExcluir}>
-              {t('envioSaldoParcial.agendamentos.excluir')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      <ConfirmDialog
+        aberto={!!executando}
+        onOpenChange={(v) => !v && setExecutando(null)}
+        titulo={s('executar.titulo', { nome: executando?.nome ?? '' })}
+        descricao={
+          executando
+            ? plural(t, 'rotinasSaldoParcial.executar.empresas', executando.empresas?.length ?? 0)
+            : undefined
+        }
+        consequencias={[
+          ...(jaReceberam.length
+            ? [
+                plural(t, 'rotinasSaldoParcial.executar.recebeuHoje', jaReceberam.length, {
+                  empresas: jaReceberam.join(', '),
+                }),
+              ]
+            : []),
+          s('executar.semContato'),
+          s('executar.historico'),
+        ]}
+        rotuloConfirmar={s('executar.confirmar')}
+        processando={processando}
+        onConfirmar={() =>
+          confirmar(
+            () => executarAgora(executando!),
+            () => setExecutando(null)
+          )
+        }
+      />
+      <ConfirmDialog
+        aberto={!!desativando}
+        onOpenChange={(v) => !v && setDesativando(null)}
+        titulo={s('desativar.titulo', { nome: desativando?.nome ?? '' })}
+        consequencias={[s('desativar.deixam'), s('desativar.manual')]}
+        rotuloConfirmar={s('desativar.confirmar')}
+        tom="perigo"
+        processando={processando}
+        onConfirmar={() =>
+          confirmar(
+            () => mudarAtivo(desativando!, false),
+            () => setDesativando(null)
+          )
+        }
+      />
+      <ConfirmDialog
+        aberto={!!excluindo}
+        onOpenChange={(v) => !v && setExcluindo(null)}
+        titulo={s('excluir.titulo', { nome: excluindo?.nome ?? '' })}
+        consequencias={[s('excluir.semAgendamento'), s('excluir.historico')]}
+        rotuloConfirmar={s('excluir.confirmar')}
+        tom="perigo"
+        processando={processando}
+        onConfirmar={() =>
+          confirmar(
+            () => excluirAgendamento(excluindo!),
+            () => setExcluindo(null)
+          )
+        }
+      />
+    </DsPage>
   );
 }

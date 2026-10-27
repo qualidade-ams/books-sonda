@@ -1,0 +1,394 @@
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { afterAll, beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import ControleBancosHoras from '../ControleBancosHoras';
+import type { BancoCadastro } from '@/services/bancosHoras/motorBancosHoras';
+import { exportarTabela } from '@/utils/exportarTabela';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (chave: string, valores?: Record<string, unknown>) =>
+      valores ? `${chave} ${JSON.stringify(valores)}` : chave,
+    i18n: {
+      language: 'pt-BR',
+      getFixedT: (idioma: string) => (chave: string) => `${idioma}:${chave}`,
+    },
+  }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
+}));
+vi.mock('@/components/admin/LayoutAdmin', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+const banco = (bancoId: string, nome: string, extra: Partial<BancoCadastro> = {}) =>
+  ({
+    bancoId,
+    nome,
+    ordem: 1,
+    padrao: false,
+    ativo: true,
+    tipoContrato: 'horas',
+    periodoApuracao: 3,
+    inicioVigencia: { ano: 2026, mes: 1 },
+    fimVigencia: null,
+    escopo: [],
+    filtroIc: null,
+    ...extra,
+  }) as BancoCadastro;
+
+const empresas = {
+  empresas: [
+    { id: 'alfa', nome: 'ALFA', modelo: 'liberada', bancosAtivos: 2 },
+    { id: 'beta', nome: 'BETA', modelo: 'legado', bancosAtivos: 1 },
+  ],
+  isLoading: false,
+  error: null,
+};
+const bancosPorEmpresa: Record<string, BancoCadastro[]> = {
+  alfa: [
+    banco('b1', 'BANCO COMEX', { ordem: 1 }),
+    banco('bp', 'Banco padrão', { ordem: 2, padrao: true }),
+  ],
+  beta: [],
+};
+const mesesPedidos: string[][] = [];
+const buscarQuadro = vi.fn().mockResolvedValue({});
+const lancamentos = {
+  reajustes: [],
+  observacoes: [],
+  isLoading: false,
+  error: null,
+  lancarReajuste: vi.fn(async () => undefined),
+  inativarReajuste: vi.fn(async () => undefined),
+  salvarObservacao: vi.fn(async () => undefined),
+  excluirObservacao: vi.fn(async () => undefined),
+};
+const requerimentos = {
+  requerimentos: [
+    {
+      id: 'rq1',
+      chamado: 'CH-1',
+      titulo: 'Ajuste fiscal',
+      modulo: 'Comex',
+      mes: { ano: 2026, mes: 10 },
+      minutos: 60,
+      tickets: 0,
+      situacao: 'enviado',
+      bancoAutomaticoId: 'b1',
+      bancoId: 'b1',
+      ajuste: null,
+    },
+  ],
+  isLoading: false,
+  error: null,
+  salvarAjustes: vi.fn(async () => undefined),
+};
+const historicoPedido: string[] = [];
+const saldoPedido: [string, boolean][] = [];
+const saldo = {
+  bancos: [
+    {
+      bancoId: 'b1',
+      nome: 'BANCO COMEX',
+      tipoContrato: 'horas',
+      consomeOutrosBancos: false,
+      meses: [{ mes: { ano: 2026, mes: 10 }, chave: '2026-10', situacao: 'aberto' }],
+      requerimentos: [],
+      reajustes: [],
+      observacoes: [],
+    },
+  ],
+  idioma: 'en',
+  isLoading: false,
+  error: null,
+  recarregar: vi.fn(),
+  enviar: vi.fn(async () => undefined),
+  isEnviando: false,
+};
+vi.mock('@/hooks/useClientes', () => ({
+  useEmailsClientesPorFinalidade: (empresaId: string | undefined) => ({
+    emails: empresaId ? ['contato@alfa.com'] : [],
+    isLoading: false,
+  }),
+}));
+let permissoes: string[] = [];
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    hasPermission: (tela: string, nivel: string) => permissoes.includes(`${tela}:${nivel}`),
+  }),
+}));
+vi.mock('@/hooks/useNomesUsuarios', () => ({ useNomesUsuarios: () => ({}) }));
+const sincronizacao = {
+  data: { apontamentos: '2026-10-15T12:00:00Z', tickets: '2026-10-15T11:30:00Z' } as Record<
+    string,
+    string | null
+  > | null,
+};
+vi.mock('@/hooks/usePesquisasSqlServer', () => ({
+  useUltimasSincronizacoesPorTabela: () => sincronizacao,
+}));
+// Desktop: o quadro mostra o período inteiro, não um mês por vez
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => true }));
+window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+vi.mock('@/hooks/useControleBancoHoras', () => ({
+  useLancamentosControle: () => lancamentos,
+  useRequerimentosControle: () => requerimentos,
+  useSaldoParcialControle: (empresaId: string, aberto: boolean) => {
+    saldoPedido.push([empresaId, aberto]);
+    return saldo;
+  },
+  useHistoricoControle: (bancoId: string) => {
+    historicoPedido.push(bancoId);
+    return { eventos: [], isLoading: false, error: null, recarregar: vi.fn() };
+  },
+  useControleEmpresas: () => empresas,
+  useBuscarQuadro: () => buscarQuadro,
+  useControleBancos: (empresaId: string) => ({
+    bancos: bancosPorEmpresa[empresaId] ?? [],
+    isLoading: false,
+    error: null,
+  }),
+  useQuadroControle: (_empresaId: string, meses: { ano: number; mes: number }[]) => {
+    mesesPedidos.push(meses.map((m) => `${m.ano}-${m.mes}`));
+    return { quadro: {}, isLoading: false, error: null, recarregar: vi.fn() };
+  },
+}));
+
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-15T12:00:00Z'));
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.scrollIntoView ??= () => {};
+});
+afterAll(() => vi.useRealTimers());
+beforeEach(() => {
+  mesesPedidos.length = 0;
+  permissoes = ['bancos_horas_controle:edit'];
+  sincronizacao.data = { apontamentos: '2026-10-15T12:00:00Z', tickets: '2026-10-15T11:30:00Z' };
+  lancamentos.lancarReajuste.mockClear();
+  saldo.enviar.mockClear();
+  saldoPedido.length = 0;
+});
+
+const renderizar = (rota = '/admin/bancos-horas') =>
+  render(
+    <MemoryRouter initialEntries={[rota]}>
+      <TooltipProvider>
+        <ControleBancosHoras />
+      </TooltipProvider>
+    </MemoryRouter>
+  );
+
+describe('ControleBancosHoras', () => {
+  it('abre na primeira empresa, no primeiro banco e no período atual', () => {
+    renderizar();
+    expect(screen.getByRole('combobox', { name: 'controleBancoHoras.empresa' })).toHaveTextContent(
+      'ALFA'
+    );
+    expect(screen.getByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+    expect(screen.getByText('Out – Dez/2026')).toBeInTheDocument();
+    expect(mesesPedidos).toContainEqual(['2026-10', '2026-11', '2026-12']);
+    expect(mesesPedidos).toContainEqual(['2026-10']);
+  });
+
+  it('trocar de banco e voltar um período', () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /Banco padrão/ }));
+    expect(screen.getByRole('heading', { name: 'Banco padrão' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /controleBancoHoras.periodo.anterior/ }));
+    expect(screen.getByText('Jul – Set/2026')).toBeInTheDocument();
+  });
+
+  it('empresa ainda no cálculo atual: aviso de modo sombra e sem bancos, o convite para cadastrar', async () => {
+    renderizar('/admin/bancos-horas?empresa=beta');
+    expect(
+      screen.getByText('controleBancoHoras.legado.titulo {"empresa":"BETA"}')
+    ).toBeInTheDocument();
+    expect(screen.getByText('controleBancoHoras.vazioTitulo')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('combobox', { name: 'controleBancoHoras.empresa' }));
+    await userEvent.click(screen.getByRole('option', { name: 'ALFA' }));
+    expect(screen.getByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+  });
+
+  it('o botão do quadro abre o lançamento no mês escolhido e volta ao lançar', async () => {
+    renderizar();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'controleBancoHoras.quadro.lancarReajuste {"mes":"Nov/2026"}',
+      })
+    );
+    expect(
+      screen.getByRole('combobox', { name: /controleBancoHoras.lancar.mes/ })
+    ).toHaveTextContent('Nov/2026');
+    fireEvent.change(
+      screen.getByLabelText(/controleBancoHoras.lancar.horas/, { selector: 'input' }),
+      { target: { value: '02:00' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/controleBancoHoras.lancar.motivo/, { selector: 'textarea' }),
+      { target: { value: 'Atendimento' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.lancar.titulo' }));
+    await waitFor(() =>
+      expect(lancamentos.lancarReajuste).toHaveBeenCalledWith(
+        expect.objectContaining({ bancoId: 'b1', mes: { ano: 2026, mes: 11 }, minutos: 120 })
+      )
+    );
+    expect(await screen.findByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+  });
+
+  it('aba Reajustes; quem só vê não lança, nem pelo quadro', () => {
+    permissoes = ['bancos_horas_controle:view'];
+    renderizar();
+    expect(
+      screen.queryByRole('button', { name: /controleBancoHoras.quadro.lancarReajuste/ })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'controleBancoHoras.secoes.reajustes' }));
+    expect(screen.getByText('controleBancoHoras.reajustes.vazio')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'controleBancoHoras.reajustes.lancar' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('aba Observações grava no banco escolhido', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('tab', { name: 'controleBancoHoras.secoes.observacoes' }));
+    expect(screen.getByText('controleBancoHoras.observacoes.vazio')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.observacoes.nova' }));
+    fireEvent.change(screen.getByLabelText(/controleBancoHoras.observacoes.texto/), {
+      target: { value: 'Cliente pediu revisão' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.salvar' }));
+    await waitFor(() =>
+      expect(lancamentos.salvarObservacao).toHaveBeenCalledWith({
+        bancoId: 'b1',
+        mes: { ano: 2026, mes: 10 },
+        texto: 'Cliente pediu revisão',
+      })
+    );
+  });
+
+  it('aba Requerimentos: troca o banco e salva na barra, com um motivo', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.requerimentos/ }));
+    await userEvent.click(
+      screen.getByRole('combobox', {
+        name: 'controleBancoHoras.requerimentos.bancoDe {"chamado":"CH-1"}',
+      })
+    );
+    await userEvent.click(screen.getByRole('option', { name: 'Banco padrão' }));
+    // A barra fica mesmo trocando de aba
+    fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.quadro/ }));
+    expect(
+      screen.getByText('controleBancoHoras.requerimentos.alterados.um {"n":1}')
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.salvar' }));
+    fireEvent.change(screen.getByLabelText(/controleBancoHoras.requerimentos.motivo/), {
+      target: { value: 'Projeto' },
+    });
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'fase3Comum.salvar' })
+    );
+    await waitFor(() =>
+      expect(requerimentos.salvarAjustes).toHaveBeenCalledWith({
+        ajustes: [{ requerimentoId: 'rq1', bancoId: 'bp' }],
+        motivo: 'Projeto',
+      })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/controleBancoHoras.requerimentos.alterados/)
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('aba Histórico do banco escolhido', () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('tab', { name: /controleBancoHoras.secoes.historico/ }));
+    expect(screen.getByText('controleBancoHoras.historico.vazio')).toBeInTheDocument();
+    expect(historicoPedido).toContain('b1');
+  });
+
+  it('Enviar Saldo Parcial: abre a tela, com os contatos, e envia com os dados da empresa', async () => {
+    renderizar();
+    expect(saldoPedido.every(([, aberto]) => !aberto)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' }));
+    expect(saldoPedido.at(-1)).toEqual(['alfa', true]);
+    expect(screen.getByText('contato@alfa.com')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'controleBancoHoras.enviarSaldo.enviar' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'controleBancoHoras.enviarSaldo.enviar',
+      })
+    );
+    await waitFor(() =>
+      expect(saldo.enviar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          empresaId: 'alfa',
+          empresaNome: 'ALFA',
+          bancos: saldo.bancos,
+          destinatarios: ['contato@alfa.com'],
+          copia: [],
+          idioma: 'en',
+        })
+      )
+    );
+    // Os textos do e-mail no idioma do template, não no da tela
+    const [envio] = saldo.enviar.mock.calls[0] as unknown as [{ t: (c: string) => string }];
+    expect(envio.t('x')).toBe('en:x');
+    expect(await screen.findByRole('heading', { name: 'BANCO COMEX' })).toBeInTheDocument();
+  });
+
+  it('sem o botão de envio: quem só vê e a empresa ainda no cálculo atual', () => {
+    permissoes = ['bancos_horas_controle:view'];
+    const { unmount } = renderizar();
+    expect(
+      screen.queryByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' })
+    ).not.toBeInTheDocument();
+    unmount();
+    permissoes = ['bancos_horas_controle:edit'];
+    renderizar('/admin/bancos-horas?empresa=beta');
+    expect(
+      screen.queryByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('exporta todos os bancos, cada um no período escolhido, também para quem só consulta', async () => {
+    permissoes = ['bancos_horas_controle:view'];
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /Banco padrão/ }));
+    fireEvent.click(screen.getByRole('button', { name: /controleBancoHoras.periodo.anterior/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('controleBancoHoras.exportar.descricao')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
+
+    await waitFor(() => expect(exportarTabela).toHaveBeenCalled());
+    const pedidos = buscarQuadro.mock.calls.map(([meses]) => meses.map((m) => `${m.ano}-${m.mes}`));
+    expect(pedidos).toEqual([
+      ['2026-10', '2026-11', '2026-12'],
+      ['2026-7', '2026-8', '2026-9'],
+    ]);
+    const [exportacao, formato] = vi.mocked(exportarTabela).mock.calls[0];
+    expect(formato).toBe('xlsx');
+    expect(exportacao.arquivo).toBe('controleBancoHoras.exportar.arquivo {"empresa":"ALFA"}');
+    expect(exportacao.abas.map((a) => a.nome)).toEqual(['BANCO COMEX', 'Banco padrão']);
+  });
+
+  it('mostra quando o consumo do Aranda foi sincronizado; sem data, não mostra', () => {
+    const { unmount } = renderizar();
+    expect(
+      screen.getByText('controleBancoHoras.sincronizadoEm {"data":"15/10/2026 08:30"}')
+    ).toBeInTheDocument();
+    unmount();
+    sincronizacao.data = null;
+    renderizar();
+    expect(screen.queryByText(/controleBancoHoras.sincronizadoEm/)).not.toBeInTheDocument();
+  });
+});

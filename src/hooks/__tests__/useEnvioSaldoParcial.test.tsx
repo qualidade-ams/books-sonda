@@ -7,8 +7,9 @@ import {
   useClientesElegiveisSaldoParcial,
   useSalvarAgendamentoSaldoParcial,
   useExecutarSaldoParcialAgora,
+  useSemAgendamentoSaldoParcial,
   intervaloPollingExecucoesSaldoParcial,
-  intervaloPollingAgendamentosSaldoParcial
+  intervaloPollingAgendamentosSaldoParcial,
 } from '../useEnvioSaldoParcial';
 import { envioSaldoParcialService } from '@/services/envioSaldoParcialService';
 
@@ -16,15 +17,18 @@ vi.mock('@/services/envioSaldoParcialService', () => ({
   envioSaldoParcialService: {
     listarAgendamentos: vi.fn(),
     listarClientesElegiveis: vi.fn(),
+    listarSemAgendamento: vi.fn(),
     criarAgendamento: vi.fn(),
     atualizarAgendamento: vi.fn(),
-    executarAgora: vi.fn()
-  }
+    executarAgora: vi.fn(),
+  },
 }));
 
 function criarWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
   return { client, wrapper };
 }
 
@@ -41,7 +45,9 @@ describe('useEnvioSaldoParcial', () => {
   });
 
   it('lista os clientes elegíveis', async () => {
-    (envioSaldoParcialService.listarClientesElegiveis as any).mockResolvedValue([{ id: 'e1', nome: 'A', qtdContatosSaldoParcial: 1 }]);
+    (envioSaldoParcialService.listarClientesElegiveis as any).mockResolvedValue([
+      { id: 'e1', nome: 'A', qtdContatosSaldoParcial: 1 },
+    ]);
     const { wrapper } = criarWrapper();
 
     const { result } = renderHook(() => useClientesElegiveisSaldoParcial(), { wrapper });
@@ -62,6 +68,21 @@ describe('useEnvioSaldoParcial', () => {
     await act(() => client.invalidateQueries({ queryKey: ['clientes'] }));
 
     await waitFor(() => expect(result.current.clientes[0]?.qtdContatosSaldoParcial).toBe(0));
+  });
+
+  it('lista as empresas sem agendamento e recarrega quando os agendamentos mudam', async () => {
+    (envioSaldoParcialService.listarSemAgendamento as any)
+      .mockResolvedValueOnce([{ id: 'e1', nome: 'A', qtdContatosSaldoParcial: 1 }])
+      .mockResolvedValueOnce([]);
+    const { wrapper, client } = criarWrapper();
+
+    const { result } = renderHook(() => useSemAgendamentoSaldoParcial(), { wrapper });
+    await waitFor(() => expect(result.current.empresas).toHaveLength(1));
+
+    await act(() =>
+      client.invalidateQueries({ queryKey: ['envio-saldo-parcial', 'agendamentos'] })
+    );
+    await waitFor(() => expect(result.current.empresas).toHaveLength(0));
   });
 
   it('salvar cria quando não há id e atualiza quando há, invalidando a lista', async () => {
@@ -90,9 +111,17 @@ describe('useEnvioSaldoParcial', () => {
   });
 
   it('consulta os agendamentos a cada 5s enquanto algum ativo espera o servidor calcular o próximo envio', () => {
-    expect(intervaloPollingAgendamentosSaldoParcial([{ ativo: true, proxima_execucao: null }] as any)).toBe(5000);
-    expect(intervaloPollingAgendamentosSaldoParcial([{ ativo: false, proxima_execucao: null }] as any)).toBe(60_000);
-    expect(intervaloPollingAgendamentosSaldoParcial([{ ativo: true, proxima_execucao: '2026-10-05T12:40:00Z' }] as any)).toBe(60_000);
+    expect(
+      intervaloPollingAgendamentosSaldoParcial([{ ativo: true, proxima_execucao: null }] as any)
+    ).toBe(5000);
+    expect(
+      intervaloPollingAgendamentosSaldoParcial([{ ativo: false, proxima_execucao: null }] as any)
+    ).toBe(60_000);
+    expect(
+      intervaloPollingAgendamentosSaldoParcial([
+        { ativo: true, proxima_execucao: '2026-10-05T12:40:00Z' },
+      ] as any)
+    ).toBe(60_000);
     expect(intervaloPollingAgendamentosSaldoParcial(undefined)).toBe(60_000);
   });
 

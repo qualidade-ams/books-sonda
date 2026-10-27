@@ -4,16 +4,16 @@ Consulte quando precisar localizar onde um tipo de arquivo mora, ou decidir onde
 
 ## Raiz
 
-| Diretório | Conteúdo |
-|---|---|
-| `src/` | Aplicação React (ver abaixo) |
-| `api/` | Vercel Serverless Functions (`pdf/generate.ts`, `email/render-image.ts`, `users/create.ts`) |
-| `supabase/migrations/` | Migrations SQL versionadas |
-| `supabase/functions/` | Edge Functions Deno |
-| `sync-api/` | Serviço Node separado (serviço Windows + Cloudflare Tunnel) que sincroniza com SQL Server externo |
-| `scripts/` | Scripts utilitários de manutenção |
-| `.claude/` | **Fonte de verdade** do contexto: `skills/`, `agents/`, `references/` |
-| `.kiro/` | Legado da ferramenta Kiro: `steering/` (docs longas), `specs/` (specs de features já entregues), `workflows/` e `skills/` (duplicatas do `.claude/`) |
+| Diretório              | Conteúdo                                                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`                 | Aplicação React (ver abaixo)                                                                                                                         |
+| `api/`                 | Vercel Serverless Functions (`pdf/generate.ts`, `email/render-image.ts`, `users/create.ts`)                                                          |
+| `supabase/migrations/` | Migrations SQL versionadas                                                                                                                           |
+| `supabase/functions/`  | Edge Functions Deno                                                                                                                                  |
+| `sync-api/`            | Serviço Node separado (serviço Windows + Cloudflare Tunnel) que sincroniza com SQL Server externo                                                    |
+| `scripts/`             | Scripts utilitários de manutenção                                                                                                                    |
+| `.claude/`             | **Fonte de verdade** do contexto: `skills/`, `agents/`, `references/`                                                                                |
+| `.kiro/`               | Legado da ferramenta Kiro: `steering/` (docs longas), `specs/` (specs de features já entregues), `workflows/` e `skills/` (duplicatas do `.claude/`) |
 
 ## `src/`
 
@@ -50,17 +50,17 @@ Testes moram em `__tests__/` dentro da camada testada: `services/__tests__/`, `h
 
 ## Convenções de nome
 
-| Item | Convenção | Exemplo |
-|---|---|---|
-| Componente | PascalCase.tsx | `BookPrintView.tsx` |
-| Página | PascalCase.tsx | `GeracaoBooks.tsx` |
-| Service | camelCase.ts, sufixo `Service` | `booksService.ts` |
-| Hook | camelCase.ts, prefixo `use` | `useBooks.ts` |
-| Tipos | camelCase.ts por domínio | `types/permissions.ts` |
-| Utils | camelCase.ts | `formatters.ts` |
-| Interface | PascalCase descritivo | `BookData`, `UserPermissions` |
-| Type (union) | PascalCase | `PermissionLevel` |
-| Constante | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
-| Migration | `<timestamp>_<snake_case>.sql` | `20260115_add_rls_books.sql` |
+| Item         | Convenção                      | Exemplo                       |
+| ------------ | ------------------------------ | ----------------------------- |
+| Componente   | PascalCase.tsx                 | `BookPrintView.tsx`           |
+| Página       | PascalCase.tsx                 | `GeracaoBooks.tsx`            |
+| Service      | camelCase.ts, sufixo `Service` | `booksService.ts`             |
+| Hook         | camelCase.ts, prefixo `use`    | `useBooks.ts`                 |
+| Tipos        | camelCase.ts por domínio       | `types/permissions.ts`        |
+| Utils        | camelCase.ts                   | `formatters.ts`               |
+| Interface    | PascalCase descritivo          | `BookData`, `UserPermissions` |
+| Type (union) | PascalCase                     | `PermissionLevel`             |
+| Constante    | SCREAMING_SNAKE_CASE           | `MAX_RETRIES`                 |
+| Migration    | `<timestamp>_<snake_case>.sql` | `20260115_add_rls_books.sql`  |
 
 Alias de import: `@/` → `src/`.

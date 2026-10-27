@@ -27,7 +27,11 @@ export const ESTADOS_PROTOTIPO: { valor: EstadoPrototipo; rotulo: string }[] = [
 ];
 
 function palavrasDoArquivo(caminho: string): string[] {
-  const base = caminho.split('/').pop()?.replace(/\.tsx$/, '') ?? '';
+  const base =
+    caminho
+      .split('/')
+      .pop()
+      ?.replace(/\.tsx$/, '') ?? '';
   return base.match(/[A-Z][a-z]*\d*|[a-z]+\d*|\d+/g) ?? [];
 }
 
@@ -41,11 +45,18 @@ export function nomeDoArquivo(caminho: string): string {
 
 export function montarRegistroPrototipos(modulos: Record<string, PrototipoLoader>): Prototipo[] {
   return Object.entries(modulos)
-    .map(([caminho, load]) => ({ slug: slugDoArquivo(caminho), nome: nomeDoArquivo(caminho), load }))
+    .map(([caminho, load]) => ({
+      slug: slugDoArquivo(caminho),
+      nome: nomeDoArquivo(caminho),
+      load,
+    }))
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-export function encontrarPrototipo(registro: Prototipo[], slug: string | undefined): Prototipo | undefined {
+export function encontrarPrototipo(
+  registro: Prototipo[],
+  slug: string | undefined
+): Prototipo | undefined {
   if (!slug) return undefined;
-  return registro.find(p => p.slug === slug);
+  return registro.find((p) => p.slug === slug);
 }

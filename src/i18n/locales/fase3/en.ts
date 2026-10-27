@@ -1,0 +1,36 @@
+/**
+ * Traduções das telas novas da Fase 3 (en), um arquivo por tela em ./en/. Ficam
+ * fora do arquivo principal do idioma para ele não crescer; o i18n/index.ts junta os dois.
+ * O teste src/i18n/__tests__/paridade.test.ts exige as mesmas chaves nos três idiomas.
+ */
+import fase3Comum from './en/comum';
+import produtosModulos from './en/produtosModulos';
+import deParaGrupos from './en/deParaGrupos';
+import ramosAtividade from './en/ramosAtividade';
+import regrasContagem from './en/regrasContagem';
+import empresasCadastro from './en/empresasCadastro';
+import controleBancoHoras from './en/controleBancoHoras';
+import apontamentosRetroativos from './en/apontamentosRetroativos';
+import auditoriaBancosHoras from './en/auditoriaBancosHoras';
+import rotinasSaldoParcial from './en/rotinasSaldoParcial';
+import organizarMenu from './en/organizarMenu';
+import avisos from './en/avisos';
+import erros from './en/erros';
+
+const fase3 = {
+  fase3Comum,
+  produtosModulos,
+  deParaGrupos,
+  ramosAtividade,
+  regrasContagem,
+  empresasCadastro,
+  controleBancoHoras,
+  apontamentosRetroativos,
+  auditoriaBancosHoras,
+  rotinasSaldoParcial,
+  organizarMenu,
+  avisos,
+  erros,
+};
+
+export default fase3;

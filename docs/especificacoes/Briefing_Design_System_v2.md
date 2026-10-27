@@ -210,6 +210,12 @@ Traços que **não** adota: o hero com fotografia no topo da tela (ocupa a prime
 
 A direção visual é a das referências (neutra, com destaque ciano), com tema padrão claro (item 7).
 
+**Em avaliação (15/10/2026):** nova referência `dashboard-cartoes-arredondados.png` (dashboard de cartões brancos de cantos largos sobre fundo claro, sidebar em pílula, chips e anéis de progresso). O protótipo `/prototipos/controle-banco-horas-suave` aplica esse estilo com a paleta Sonda: preto na ação principal e na sidebar, ciano no que está selecionado ou ativo. Se for aprovado, os traços acima (cantos 8–12 px, títulos em caixa alta, sidebar escura fixa) são revistos nos Tokens.
+
+**Direção escolhida (15/10/2026), aprovada por enquanto no protótipo `/prototipos/controle-banco-horas`:** menu em pílula preta, com logo e expansível (recolhido só ícones); topo igual ao da referência Sonda Precificação (faixa escura com foto de marca, selo da tela atual, tema, notificações e usuário), seguido do hero da versão expressiva e dos indicadores sobrepostos; passador de período grande; conteúdo em abas em pílula sem "Visão geral", abrindo direto no Quadro. Pendentes: foto definitiva do topo (a atual é a do login) e versão do logo para o menu recolhido.
+
+Ajustes aprovados na mesma rodada: menu acompanha o tema (branco no claro) com logo centralizado; faixa de topo arredondada, 20 px além dos indicadores de cada lado, com a foto em degradê suave para a esquerda; sem selo da tela e sem a linha "Novo"; fundo escuro `#121212` em vez de preto puro (Tokens); passador de período só com o período; cartões de banco compactos, nome sem negrito, selecionado com borda ciano só à esquerda e embaixo; título do banco à esquerda e abas à direita na mesma linha; mês corrente do Quadro em cor de acento, sem o texto "fechamento"; linhas de tabela com mais respiro.
+
 ## 10. Entregáveis e critério de aceite
 
 **[proposto]**

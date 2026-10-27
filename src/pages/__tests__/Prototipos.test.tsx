@@ -54,6 +54,10 @@ describe('Prototipos', () => {
     renderEm('/prototipos/lista-contratos');
     await screen.findByText('Estado atual: dados');
 
+    // O painel começa minimizado, para não cobrir o protótipo
+    expect(screen.queryByRole('button', { name: 'Vazio' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Estado do protótipo/ }));
+
     await user.click(screen.getByRole('button', { name: 'Vazio' }));
     expect(screen.getByText('Estado atual: vazio')).toBeInTheDocument();
 

@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { textoDoErro } from '@/errors/erroTraduzivel';
 import { notificacoesService } from '@/services/notificacoesService';
 
 const QUERY_KEY = ['notificacoes'];
@@ -14,6 +16,8 @@ export function useNotificacoes() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { t } = useTranslation();
   const habilitado = !!user;
 
   const { data, isLoading, error } = useQuery({
@@ -36,7 +40,11 @@ export function useNotificacoes() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err: Error) => {
-      toast({ title: 'Erro ao marcar notificação como lida', description: err.message, variant: 'destructive' });
+      toast({
+        title: t('avisos.notificacoes.erroMarcarLida'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      });
     },
   });
 

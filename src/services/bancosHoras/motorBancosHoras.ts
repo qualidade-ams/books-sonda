@@ -11,8 +11,8 @@ import {
   aplicarRegraDeSaida,
   calcularSaldo,
   ehFimDePeriodo,
+  estaVigente,
   inicioDoCiclo,
-  mesesDesdeVigencia,
   valorExcedente,
   type EntradaUnidade,
   type MesAno,
@@ -235,7 +235,7 @@ export async function calcularEmpresaMes(
 ): Promise<ResultadoEmpresaMes> {
   const todos = await repo.bancos(empresaId);
   const vigentes = todos
-    .filter((b) => b.ativo && mesesDesdeVigencia(b, mes) >= 0)
+    .filter((b) => b.ativo && estaVigente(b, mes))
     .sort((a, b) => a.ordem - b.ordem);
   const vazio: ResultadoEmpresaMes = {
     empresaId,

@@ -28,6 +28,16 @@ import HistoricoBooks from './pages/admin/HistoricoBooks';
 import GeracaoBooks from './pages/admin/GeracaoBooks';
 import ControleBancoHoras from './pages/admin/ControleBancoHoras';
 import AuditoriaBancoHoras from './pages/admin/AuditoriaBancoHoras';
+import ProdutosModulos from './pages/admin/ProdutosModulos';
+import DeParaGrupos from './pages/admin/DeParaGrupos';
+import RamosAtividade from './pages/admin/RamosAtividade';
+import RegrasContagem from './pages/admin/RegrasContagem';
+import Empresas from './pages/admin/Empresas';
+import EmpresaDetalhe from './pages/admin/EmpresaDetalhe';
+import ControleBancosHoras from './pages/admin/ControleBancosHoras';
+import ApontamentosRetroativos from './pages/admin/ApontamentosRetroativos';
+import AuditoriaBancosHoras from './pages/admin/AuditoriaBancosHoras';
+import OrganizarMenu from './pages/admin/OrganizarMenu';
 import AjustesRetroativos from './pages/admin/AjustesRetroativos';
 import ConfigurarPermissoesClientBooks from './pages/admin/ConfigurarPermissoesClientBooks';
 import ConfigurarPermissoesVigencias from './pages/admin/ConfigurarPermissoesVigencias';
@@ -197,6 +207,86 @@ const App = () => (
                       path="/admin/envio-saldo-parcial"
                       element={
                         <Navigate to="/admin/rotinas-automaticas?aba=saldo-parcial" replace />
+                      }
+                    />
+                    <Route
+                      path="/admin/produtos-modulos"
+                      element={
+                        <ProtectedRoute screenKey="produtos_modulos">
+                          <ProdutosModulos />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/de-para-grupos"
+                      element={
+                        <ProtectedRoute screenKey="de_para_grupos">
+                          <DeParaGrupos />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/ramos-atividade"
+                      element={
+                        <ProtectedRoute screenKey="ramos_atividade">
+                          <RamosAtividade />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/regras-contagem"
+                      element={
+                        <ProtectedRoute screenKey="regras_contagem">
+                          <RegrasContagem />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/empresas"
+                      element={
+                        <ProtectedRoute screenKey="empresas">
+                          <Empresas />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/empresas/:empresaId"
+                      element={
+                        <ProtectedRoute screenKey="empresas">
+                          <EmpresaDetalhe />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/apontamentos-retroativos"
+                      element={
+                        <ProtectedRoute screenKey="bancos_horas_retroativos">
+                          <ApontamentosRetroativos />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/auditoria-bancos-horas"
+                      element={
+                        <ProtectedRoute screenKey="bancos_horas_auditoria">
+                          <AuditoriaBancosHoras />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/organizar-menu"
+                      element={
+                        <ProtectedRoute screenKey="organizar_menu">
+                          <OrganizarMenu />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/bancos-horas"
+                      element={
+                        <ProtectedRoute screenKey="bancos_horas_controle">
+                          <ControleBancosHoras />
+                        </ProtectedRoute>
                       }
                     />
                     <Route

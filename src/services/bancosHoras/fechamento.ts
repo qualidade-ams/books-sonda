@@ -107,6 +107,38 @@ function parametrosDoBanco(b: BancoCadastro, mes: MesAno) {
   };
 }
 
+/**
+ * Apontamentos e tickets que contam no mês, no banco de cada um. Uma consulta por janela de
+ * apuração; o item só fica no banco cuja janela é a mesma da consulta. Também serve ao detalhe
+ * por chamado do Saldo Parcial, para usar a mesma regra do fechamento.
+ */
+export async function itensDeConsumoPorBanco(
+  repo: Pick<RepositorioFechamento, 'consumoItens'>,
+  empresaId: string,
+  mes: MesAno,
+  cadastros: Map<string, BancoCadastro>,
+  classificador: ReturnType<typeof criarClassificador>,
+  bancosDoMes: string[]
+): Promise<Map<string, ItemConsumo[]>> {
+  const itens = new Map<string, ItemConsumo[]>(bancosDoMes.map((id) => [id, []]));
+  const janelas = new Set(
+    bancosDoMes.map(
+      (id) => `${cadastros.get(id)!.diaInicioApuracao}-${cadastros.get(id)!.diaFimApuracao}`
+    )
+  );
+  for (const janela of janelas) {
+    const [di, df] = janela.split('-').map(Number);
+    for (const item of await repo.consumoItens(empresaId, mes, di, df)) {
+      const bancoId = classificador.porGrupo(item.grupo, item.itemConfiguracao);
+      const b = bancoId && cadastros.get(bancoId);
+      if (!b || `${b.diaInicioApuracao}-${b.diaFimApuracao}` !== janela || !itens.has(bancoId))
+        continue;
+      itens.get(bancoId)!.push(item);
+    }
+  }
+  return itens;
+}
+
 export async function fecharMes(
   repo: RepositorioFechamento,
   empresaId: string,
@@ -123,42 +155,34 @@ export async function fecharMes(
   const cadastros = new Map((await repo.bancos(empresaId)).map((b) => [b.bancoId, b]));
   const bancosDoMes = resultado.bancos.map((b) => b.bancoId);
   const classificador = criarClassificador([...cadastros.values()], await repo.dePara(), mes);
-  const itens = new Map<string, ItemFechamento[]>(bancosDoMes.map((id) => [id, []]));
-
-  // Apontamentos e tickets: uma consulta por janela de apuração
-  const janelas = new Set(
-    bancosDoMes.map(
-      (id) => `${cadastros.get(id)!.diaInicioApuracao}-${cadastros.get(id)!.diaFimApuracao}`
-    )
+  const consumo = await itensDeConsumoPorBanco(
+    repo,
+    empresaId,
+    mes,
+    cadastros,
+    classificador,
+    bancosDoMes
   );
-  for (const janela of janelas) {
-    const [di, df] = janela.split('-').map(Number);
-    for (const item of await repo.consumoItens(empresaId, mes, di, df)) {
-      const bancoId = classificador.porGrupo(item.grupo, item.itemConfiguracao);
-      const b = bancoId && cadastros.get(bancoId);
-      if (!b || `${b.diaInicioApuracao}-${b.diaFimApuracao}` !== janela || !itens.has(bancoId))
-        continue;
-      itens
-        .get(bancoId)!
-        .push({
-          tipo: item.fonte,
-          item_id: item.itemId,
-          minutos: item.minutos,
-          tickets: item.tickets,
-        });
-    }
-  }
+  const itens = new Map<string, ItemFechamento[]>(
+    bancosDoMes.map((id) => [
+      id,
+      consumo.get(id)!.map((item) => ({
+        tipo: item.fonte,
+        item_id: item.itemId,
+        minutos: item.minutos,
+        tickets: item.tickets,
+      })),
+    ])
+  );
   for (const r of await repo.requerimentos(empresaId, mes)) {
     const bancoId = bancoDoRequerimento(r, classificador, bancosDoMes);
     if (bancoId && itens.has(bancoId)) {
-      itens
-        .get(bancoId)!
-        .push({
-          tipo: 'requerimento',
-          item_id: r.requerimentoId,
-          minutos: Math.round(r.horas * 60),
-          tickets: r.tickets,
-        });
+      itens.get(bancoId)!.push({
+        tipo: 'requerimento',
+        item_id: r.requerimentoId,
+        minutos: Math.round(r.horas * 60),
+        tickets: r.tickets,
+      });
     }
   }
   for (const r of await repo.reajustes(bancosDoMes, mes, mes)) {

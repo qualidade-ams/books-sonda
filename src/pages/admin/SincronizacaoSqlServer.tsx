@@ -65,6 +65,8 @@ import {
   AbaSaldoParcial,
   SCREEN_KEY_SALDO_PARCIAL,
 } from '@/components/admin/sincronizacao/AbaSaldoParcial';
+import { EdicaoAgendamento } from '@/components/admin/saldoParcial/EdicaoAgendamento';
+import { DsPage } from '@/components/ds/DsPage';
 import { useToast } from '@/hooks/use-toast';
 import { useApiStatus } from '@/hooks/useApiStatus';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -88,6 +90,7 @@ import type {
   SyncExecucao,
   TipoAgendamentoSync,
 } from '@/types/syncAgendamentos';
+import type { AgendamentoSaldoParcial } from '@/types/envioSaldoParcial';
 
 const SCREEN_KEY = 'sincronizacao_sql_server';
 
@@ -158,7 +161,10 @@ function SincronizacaoSqlServer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abaDoLink, podeVerSaldoParcial]);
 
-  const [novoSaldoParcialAberto, setNovoSaldoParcialAberto] = useState(false);
+  // Agendamento de Saldo Parcial em edição, no lugar da tela (nulo dentro: um novo)
+  const [edicaoSaldoParcial, setEdicaoSaldoParcial] = useState<{
+    agendamento: AgendamentoSaldoParcial | null;
+  } | null>(null);
   // Nomes das empresas escolhidas nos agendamentos de books
   const { empresas: empresasBook } = useEmpresasBook(
     aba === 'books' && agendamentosBooks.some((ag) => ag.empresa_ids?.length)
@@ -613,6 +619,20 @@ function SincronizacaoSqlServer() {
       tabelaAgendamentos(lista, coluna)
     );
 
+  if (edicaoSaldoParcial)
+    return (
+      <AdminLayout>
+        <div className="min-h-screen bg-ds-bg-page">
+          <DsPage className="px-4 py-4 md:px-6">
+            <EdicaoAgendamento
+              agendamento={edicaoSaldoParcial.agendamento}
+              onFechar={() => setEdicaoSaldoParcial(null)}
+            />
+          </DsPage>
+        </div>
+      </AdminLayout>
+    );
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -632,7 +652,7 @@ function SincronizacaoSqlServer() {
                   <Button
                     size="sm"
                     className="bg-sonda-blue hover:bg-sonda-dark-blue"
-                    onClick={() => setNovoSaldoParcialAberto(true)}
+                    onClick={() => setEdicaoSaldoParcial({ agendamento: null })}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     {t('envioSaldoParcial.novoAgendamento')}
@@ -773,8 +793,7 @@ function SincronizacaoSqlServer() {
             {podeVerSaldoParcial && (
               <TabsContent value="saldo-parcial" className="mt-4">
                 <AbaSaldoParcial
-                  novoAberto={novoSaldoParcialAberto}
-                  onNovoAbertoChange={setNovoSaldoParcialAberto}
+                  onEditar={(agendamento) => setEdicaoSaldoParcial({ agendamento })}
                 />
               </TabsContent>
             )}

@@ -29,6 +29,7 @@ interface Cenario {
   agendamentos?: any[];
   emailsPorEmpresa?: Record<string, string[]>;
   execucaoJaExiste?: string[]; // empresas cuja reserva da execução viola a chave única
+  jaRecebeuHoje?: string[]; // empresas com envio de sucesso hoje (Brasília)
 }
 
 function criar(cenario: Cenario, executarEnvio = vi.fn(async () => ({ enviados: 1 }))) {
@@ -43,6 +44,9 @@ function criar(cenario: Cenario, executarEnvio = vi.fn(async () => ({ enviados: 
         return { data: null, error: { code: '23505', message: 'duplicate key' } };
       }
       return { data: { id: `exec-${linha.empresa_id}` }, error: null };
+    }
+    if (tabela === 'banco_horas_envio_execucoes' && metodo('select')) {
+      return { data: (cenario.jaRecebeuHoje ?? []).map(empresa_id => ({ empresa_id })), error: null };
     }
     if (tabela === 'clientes') {
       const empresa = chamadas.find(([m, a]) => m === 'eq' && a[0] === 'empresa_id')?.[1][1];
@@ -208,6 +212,40 @@ describe('agendadorSaldoParcial', () => {
     expect(reserva).toMatchObject({ origem: 'manual', disparado_por: 'user-1', executado_para: AGORA.toISOString() });
     const updates = chamadasDe(fake.consultas, 'banco_horas_envio_agendamentos', 'update').map(a => a[0]);
     expect(updates.some(u => 'proxima_execucao' in u)).toBe(false);
+  });
+
+  it('executar agora pula o cliente que já recebeu hoje e registra o pulo', async () => {
+    const { fake, agendador, executarEnvio } = criar({ jaRecebeuHoje: ['emp-1'] });
+
+    const resumo = await agendador.executarAgendamento(agendamento(), { origem: 'manual', disparadoPor: 'user-1' });
+
+    expect(executarEnvio).toHaveBeenCalledTimes(1);
+    expect(executarEnvio).toHaveBeenCalledWith('emp-2', ['b@cliente.com'], ['qualidade@sonda.com']);
+    expect(resumo).toMatchObject({ sucesso: 1, pulados: 1 });
+
+    // "Hoje" é o dia de Brasília: 15/10 começa às 03:00 UTC
+    const consulta = fake.consultas.find(
+      c => c.tabela === 'banco_horas_envio_execucoes' && !c.chamadas.some(([m]) => m === 'insert')
+    )!;
+    expect(tem(consulta.chamadas, 'eq', 'status', 'sucesso')).toBe(true);
+    expect(tem(consulta.chamadas, 'gte', 'iniciado_em', '2026-10-15T03:00:00.000Z')).toBe(true);
+
+    const reservas = chamadasDe(fake.consultas, 'banco_horas_envio_execucoes', 'insert').map(a => a[0]);
+    expect(reservas.find(r => r.empresa_id === 'emp-1')).toMatchObject({
+      status: 'pulado',
+      origem: 'manual',
+      disparado_por: 'user-1'
+    });
+  });
+
+  it('o envio agendado não pula: cada horário agendado envia', async () => {
+    const { fake, agendador, executarEnvio } = criar({ jaRecebeuHoje: ['emp-1'] });
+
+    await agendador.executarAgendamento(agendamento(), { origem: 'agendado', executadoPara: VENCIDO });
+
+    expect(executarEnvio).toHaveBeenCalledTimes(2);
+    const reservas = chamadasDe(fake.consultas, 'banco_horas_envio_execucoes', 'insert').map(a => a[0]);
+    expect(reservas.some(r => r.status === 'pulado')).toBe(false);
   });
 
   it('na subida marca como interrompidas as execuções que ficaram em andamento', async () => {

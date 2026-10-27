@@ -5,6 +5,9 @@
 -- proposital "TESTE OK — tudo revertido", que desfaz tudo o que o teste gravou.
 -- Qualquer outra mensagem de erro diz qual verificação falhou.
 -- =====================================================================
+-- Depois da migration 20261022000002_fase3_catalogo, empresas_produtos virou
+-- empresas_solucoes e foi apagada: a parte de produtos contratados deste teste não
+-- se aplica mais. Soluções e sincronização estão em fase3_01_catalogo.test.sql.
 DO $teste$
 DECLARE
   v_admin uuid := (SELECT uga.user_id FROM user_group_assignments uga JOIN user_groups ug ON ug.id = uga.group_id

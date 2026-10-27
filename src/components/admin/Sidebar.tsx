@@ -3,67 +3,60 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Home,
-  Mail,
-  User,
-  LogOut,
-  Users,
-  UserCheck,
-  UserPlus,
-  History,
-  Building2,
-  Contact,
-  Send,
-  UsersRound,
-  BarChart3,
-  DatabaseZap,
-  Award,
-  MessageSquare,
-  Speech,
-  Settings,
-  Shield,
-  FileText,
-  DollarSign,
-  Heart,
-  ThumbsUp,
-  ClipboardCheck,
-  Eye,
-  Palette,
-  Clock,
-  AlertTriangle,
-  RefreshCw,
-  Network,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
+import { useLogoMenu, useMenuOrganizado } from '@/hooks/useMenuOrganizado';
+import { useTemaDoDocumento } from '@/hooks/useTemaDoDocumento';
+import { MENU_PADRAO } from '@/config/menuPadrao';
+import { aplicarOrdemSalva } from '@/services/menuOrganizadoService';
+import { menuDaRota, menuVisivel } from '@/utils/menuLateral';
+import { logoClaroSobre } from '@/utils/aparenciaMenu';
+import { iconeDoMenu } from './iconesMenu';
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  /** fixed: coluna fixa do desktop. drawer: conteúdo da gaveta abaixo de 1024 px, sempre expandido. */
+  variant?: 'fixed' | 'drawer';
+  /** Chamado depois de navegar (a gaveta usa para fechar). */
+  onNavigate?: () => void;
 }
 
-interface MenuItem {
-  icon: React.ComponentType<any>;
-  label: string;
-  path?: string;
-  screenKey?: string;
-  children?: MenuItem[];
-}
+// Classes do Design System v2 (tokens em src/styles/ds-v2.css). As cores de item, subitem, hover e
+// selecionado vêm de Organizar Menu; sem nada salvo, seguem o shell do tema.
+const hoverClasses =
+  'hover:bg-ds-shell-hover hover:text-[var(--ds-shell-hover-fg)] focus-visible:ring-ds-focus';
+const itemClasses = cn('bg-[var(--ds-menu-item-bg)] text-[var(--ds-menu-item-fg)]', hoverClasses);
+const subitemClasses = cn(
+  'bg-[var(--ds-menu-subitem-bg)] text-[var(--ds-menu-subitem-fg)]',
+  hoverClasses
+);
+const activeItemClasses =
+  'bg-[var(--ds-menu-selecionado-bg)] text-[var(--ds-menu-selecionado-fg)] shadow-[inset_2px_0_0_var(--ds-menu-selecionado-fg)] hover:bg-[var(--ds-menu-selecionado-bg)] hover:text-[var(--ds-menu-selecionado-fg)]';
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  isCollapsed: isCollapsedProp,
+  onToggle,
+  variant = 'fixed',
+  onNavigate,
+}) => {
+  // Na gaveta o menu fica sempre expandido
+  const isCollapsed = variant === 'fixed' && isCollapsedProp;
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { menu } = useMenuOrganizado();
+  // Logo próprio do tema em uso; sem ele, o da Sonda
+  const tema = useTemaDoDocumento();
+  const aparencia = menu?.aparencia?.[tema];
+  const logo = useLogoMenu(aparencia?.logoPath ?? null);
+  const logoRecolhido = useLogoMenu(aparencia?.logoRecolhidoPath ?? null);
 
   // Referência para preservar scroll
   const navRef = useRef<HTMLElement>(null);
@@ -77,40 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const submenuRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Função para determinar qual seção deve estar expandida baseada na rota atual
-  const getCurrentSection = () => {
-    const path = location.pathname;
-    if (path.includes('/requerimentos')) {
-      return 'requerimentos';
-    }
-    if (
-      path.includes('/controle-disparos') ||
-      path.includes('/historico-books') ||
-      path.includes('/geracao-books') ||
-      path.includes('/controle-banco-horas') ||
-      path.includes('/ajustes-retroativos')
-    ) {
-      return 'comunicacao';
-    }
-    if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
-      return 'clientes';
-    }
-    if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
-      return 'configuracoes';
-    }
-    if (
-      path.includes('/grupos') ||
-      path.includes('/usuarios') ||
-      path.includes('/audit-logs') ||
-      path.includes('/monitoramento-vigencias') ||
-      path.includes('/rotinas-automaticas')
-    ) {
-      return 'administracao';
-    }
-    return null;
-  };
-
-  // Estado para controlar quais seções estão expandidas
+  // Estado para controlar quais seções estão expandidas (pela chave do menu)
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
     // Verificar se é uma nova sessão (sem estado salvo de seções expandidas)
     const hasSessionState = sessionStorage.getItem('sidebar-session-initialized');
@@ -134,6 +94,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     // Estado padrão: todas as seções fechadas
     return [];
   });
+
+  // O menu do código com a ordem salva em Organizar Menu, só com as telas que o usuário vê
+  const menuItems = menuVisivel(aplicarOrdemSalva(MENU_PADRAO, menu?.itens ?? []), (screenKey) =>
+    hasPermission(screenKey, 'view')
+  );
 
   const handleLogout = async () => {
     try {
@@ -190,8 +155,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       sessionStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString());
     }
 
-    // Determinar qual seção deve estar expandida para esta rota
-    const targetSection = getCurrentSectionForPath(path);
+    // O menu da tela de destino fica expandido
+    const targetSection = menuDaRota(menuItems, path);
 
     if (targetSection) {
       setExpandedSections((prev) => {
@@ -210,309 +175,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
     // Navegar
     navigate(path);
+    onNavigate?.();
 
     // Desativar prevenção após um tempo
     setTimeout(() => {
       preventScrollRef.current = false;
     }, 500);
   };
-
-  // Função auxiliar para determinar a seção baseada no path
-  const getCurrentSectionForPath = (path: string) => {
-    if (path.includes('/requerimentos')) {
-      return 'requerimentos';
-    }
-    if (
-      path.includes('/controle-disparos') ||
-      path.includes('/historico-books') ||
-      path.includes('/geracao-books') ||
-      path.includes('/controle-banco-horas') ||
-      path.includes('/ajustes-retroativos')
-    ) {
-      return 'comunicacao';
-    }
-    if (path.includes('/auditoria')) {
-      return 'auditoria';
-    }
-    if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
-      return 'clientes';
-    }
-    if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
-      return 'configuracoes';
-    }
-    if (
-      path.includes('/grupos') ||
-      path.includes('/usuarios') ||
-      path.includes('/audit-logs') ||
-      path.includes('/monitoramento-vigencias') ||
-      path.includes('/rotinas-automaticas')
-    ) {
-      return 'administracao';
-    }
-    return null;
-  };
-
-  const menuStructure: MenuItem[] = [
-    {
-      icon: Home,
-      label: t('nav.dashboard'),
-      path: '/admin/dashboard',
-      screenKey: 'dashboard',
-    },
-    {
-      icon: Award,
-      label: t('nav.surveys'),
-      children: [],
-    },
-    {
-      icon: FileText,
-      label: t('nav.requirements'),
-      children: [
-        {
-          icon: FileText,
-          label: t('nav.registerRequirements'),
-          path: '/admin/lancar-requerimentos',
-          screenKey: 'lancar_requerimentos',
-        },
-        {
-          icon: DollarSign,
-          label: t('nav.billingRequirements'),
-          path: '/admin/faturar-requerimentos',
-          screenKey: 'faturar_requerimentos',
-        },
-      ],
-    },
-    {
-      icon: MessageSquare,
-      label: t('nav.surveys'),
-      children: [
-        {
-          icon: FileText,
-          label: t('nav.registerSurveys'),
-          path: '/admin/lancar-pesquisas',
-          screenKey: 'lancar_pesquisas',
-        },
-        {
-          icon: ClipboardCheck,
-          label: t('nav.actionPlan'),
-          path: '/admin/plano-acao',
-          screenKey: 'plano_acao',
-        },
-        {
-          icon: Eye,
-          label: t('nav.viewSurveys'),
-          path: '/admin/visualizar-pesquisas',
-          screenKey: 'visualizar_pesquisas',
-        },
-        {
-          icon: BarChart3,
-          label: t('nav.monthlySurveyAMS'),
-          path: '/admin/pesquisa-mensal-ams',
-          screenKey: 'pesquisa_mensal_ams',
-        },
-      ],
-    },
-    {
-      icon: ThumbsUp,
-      label: t('nav.compliments'),
-      children: [
-        {
-          icon: Heart,
-          label: t('nav.registerCompliments'),
-          path: '/admin/lancar-elogios',
-          screenKey: 'lancar_elogios',
-        },
-        {
-          icon: Send,
-          label: t('nav.sendCompliments'),
-          path: '/admin/enviar-elogios',
-          screenKey: 'lancar_elogios',
-        },
-      ],
-    },
-    {
-      icon: Speech,
-      label: t('nav.books'),
-      children: [
-        {
-          icon: Send,
-          label: t('nav.controlShoots'),
-          path: '/admin/controle-disparos',
-          screenKey: 'controle_disparos',
-        },
-        {
-          icon: Send,
-          label: t('nav.customShoots'),
-          path: '/admin/disparos-personalizados',
-          screenKey: 'controle_disparos',
-        },
-        {
-          icon: BarChart3,
-          label: t('nav.historyBooks'),
-          path: '/admin/historico-books',
-          screenKey: 'historico_books',
-        },
-        {
-          icon: FileText,
-          label: t('nav.generateBooks'),
-          path: '/admin/geracao-books',
-          screenKey: 'geracao_books',
-        },
-        {
-          icon: Clock,
-          label: t('nav.bankHours'),
-          path: '/admin/controle-banco-horas',
-          screenKey: 'controle_banco_horas',
-        },
-        {
-          icon: AlertTriangle,
-          label: t('nav.retroactiveAdjustments'),
-          path: '/admin/ajustes-retroativos',
-          screenKey: 'banco_horas_ajustes_retroativos',
-        },
-      ],
-    },
-    {
-      icon: AlertTriangle,
-      label: t('nav.auditLogs'),
-      children: [
-        {
-          icon: AlertTriangle,
-          label: t('nav.inconsistencies'),
-          path: '/admin/auditoria/inconsistencia-chamados',
-          screenKey: 'inconsistencia_chamados',
-        },
-        {
-          icon: RefreshCw,
-          label: t('nav.ticketMonitoring'),
-          path: '/admin/auditoria/monitoramento-chamados',
-          screenKey: 'troca_codigo_resolucao',
-        },
-      ],
-    },
-    {
-      icon: Building2,
-      label: t('nav.clients'),
-      children: [
-        {
-          icon: Building2,
-          label: t('nav.companies'),
-          path: '/admin/empresas-clientes',
-          screenKey: 'empresas_clientes',
-        },
-        {
-          icon: Contact,
-          label: t('nav.clientEmails'),
-          path: '/admin/clientes',
-          screenKey: 'clientes',
-        },
-        {
-          icon: DollarSign,
-          label: t('nav.clientRates'),
-          path: '/admin/cadastro-taxas-clientes',
-          screenKey: 'cadastro_taxas_clientes',
-        },
-      ],
-    },
-    {
-      icon: Settings,
-      label: t('nav.emailConfig'),
-      children: [
-        {
-          icon: UsersRound,
-          label: t('nav.responsibleGroups'),
-          path: '/admin/grupos-responsaveis',
-          screenKey: 'grupos_responsaveis',
-        },
-        {
-          icon: Mail,
-          label: t('nav.emailConfig'),
-          path: '/admin/email-config',
-          screenKey: 'email-config',
-        },
-      ],
-    },
-    {
-      icon: Shield,
-      label: t('nav.administration'),
-      children: [
-        {
-          icon: Users,
-          label: t('nav.groups'),
-          path: '/admin/grupos',
-          screenKey: 'grupos',
-        },
-        {
-          icon: UserPlus,
-          label: t('nav.userManagement'),
-          path: '/admin/cadastro-usuarios',
-          screenKey: 'cadastro-usuarios',
-        },
-        {
-          icon: UserCheck,
-          label: t('nav.userGroups'),
-          path: '/admin/usuarios-grupos',
-          screenKey: 'usuarios-grupos',
-        },
-        {
-          icon: History,
-          label: t('nav.auditLogs'),
-          path: '/admin/audit-logs',
-          screenKey: 'audit-logs',
-        },
-        {
-          icon: BarChart3,
-          label: t('nav.monitoringTerms'),
-          path: '/admin/monitoramento-vigencias',
-          screenKey: 'monitoramento_vigencias',
-        },
-        {
-          icon: Network,
-          label: t('nav.consultantsCoordinators'),
-          path: '/admin/consultores-coordenadores',
-          screenKey: 'consultores_coordenadores',
-        },
-        {
-          icon: DatabaseZap,
-          label: t('nav.automatedRoutines'),
-          path: '/admin/rotinas-automaticas',
-          screenKey: 'sincronizacao_sql_server',
-        },
-        {
-          icon: Palette,
-          label: t('nav.designSystem'),
-          path: '/admin/design-system',
-          screenKey: 'design_system',
-        },
-      ],
-    },
-  ];
-
-  // Filtrar itens baseado nas permissões
-  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
-    return items.filter((item) => {
-      // Se tem screenKey, verificar permissão
-      if (item.screenKey) {
-        return hasPermission(item.screenKey, 'view');
-      }
-
-      // Se tem filhos, filtrar os filhos
-      if (item.children) {
-        const filteredChildren = filterMenuItems(item.children);
-        // Só mostrar a seção se tiver pelo menos um filho com permissão
-        if (filteredChildren.length > 0) {
-          item.children = filteredChildren;
-          return true;
-        }
-        return false;
-      }
-
-      // Itens sem screenKey nem filhos (como separadores)
-      return true;
-    });
-  };
-
-  const menuItems = filterMenuItems(menuStructure);
 
   // Effect para restaurar posição de scroll
   useLayoutEffect(() => {
@@ -608,34 +277,64 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   }, []);
 
   return (
-    <div
+    <aside
+      data-ds="v2"
+      aria-label={t('layout.mainMenu')}
       className={cn(
-        'bg-blue-600 flex flex-col transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10',
-        isCollapsed ? 'w-16' : 'w-64'
+        'bg-ds-shell-bg text-ds-shell-fg font-ds-sans flex flex-col',
+        variant === 'fixed'
+          ? cn(
+              'transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10 border-r border-ds-shell-border',
+              isCollapsed ? 'w-16' : 'w-64'
+            )
+          : 'h-full w-full'
       )}
     >
       {/* Header com Logo */}
-      <div className="p-4 border-b border-blue-700 relative">
+      <div className="p-4 border-b border-ds-shell-border relative">
         <div className="flex items-center justify-center">
-          {!isCollapsed && (
-            <img src="/images/logo-sonda.png" alt="Sonda Logo" className="h-12 w-auto" />
-          )}
-          {isCollapsed && (
-            <img
-              src="/images/logo-sonda-16x16.png"
-              alt="Sonda Logo"
-              className="h-6 w-6 bg-white rounded p-1"
-            />
-          )}
+          {!isCollapsed &&
+            (logo ? (
+              <img src={logo} alt="Logo" className="h-12 w-auto max-w-full object-contain" />
+            ) : (
+              /* Logo branco: sobre fundo claro vira preto (brightness-0). Sem cor salva, pelo tema */
+              <img
+                src="/images/logo-sonda.png"
+                alt="Sonda Logo"
+                className={cn(
+                  'h-12 w-auto',
+                  aparencia?.menuFundo
+                    ? !logoClaroSobre(aparencia.menuFundo) && 'brightness-0'
+                    : 'brightness-0 dark:brightness-100'
+                )}
+              />
+            ))}
+          {isCollapsed &&
+            (logoRecolhido ? (
+              <img src={logoRecolhido} alt="Logo" className="h-6 w-6 object-contain" />
+            ) : (
+              <img
+                src="/images/logo-sonda-16x16.png"
+                alt="Sonda Logo"
+                className="h-6 w-6 bg-white rounded p-1"
+              />
+            ))}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className="h-6 w-6 absolute -right-3 top-1/2 transform -translate-y-1/2 text-white hover:bg-blue-700 bg-blue-600 z-50 shadow-lg border border-blue-500"
-        >
-          {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-        </Button>
+        {variant === 'fixed' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            aria-label={isCollapsed ? t('layout.expandMenu') : t('layout.collapseMenu')}
+            className="h-6 w-6 absolute -right-3 top-1/2 transform -translate-y-1/2 z-50 shadow-lg border border-ds-shell-border bg-ds-shell-bg text-ds-shell-fg hover:bg-ds-shell-hover hover:text-ds-shell-fg focus-visible:ring-ds-focus"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Menu Items */}
@@ -648,40 +347,38 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         }}
       >
         {menuItems.map((item, index) => {
-          const Icon = item.icon;
-          const sectionKey = item.label
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-            .replace(/\s+/g, '-');
+          const Icon = iconeDoMenu(item.icone);
+          const label = t(item.rotuloI18n);
+          const sectionKey = item.chave;
           const isExpanded = expandedSections.includes(sectionKey);
 
-          // Se é um item simples (sem filhos)
-          if (!item.children || item.children.length === 0) {
-            const isActive = item.path && location.pathname === item.path;
+          // Tela solta no primeiro nível (sem filhos)
+          if (item.tipo === 'tela') {
+            const isActive = location.pathname === item.chave;
 
             const buttonContent = (
               <Button
-                key={item.path || index}
-                variant={isActive ? 'secondary' : 'ghost'}
+                key={item.chave}
+                variant="ghost"
                 className={cn(
-                  'w-full text-white hover:bg-blue-700 min-w-0 flex-shrink-0',
+                  'w-full min-w-0 flex-shrink-0',
+                  itemClasses,
                   isCollapsed ? 'justify-center px-2' : 'justify-start px-3',
-                  isActive && 'bg-blue-800 text-white'
+                  isActive && activeItemClasses
                 )}
-                onClick={() => item.path && handleNavigation(item.path)}
+                onClick={() => handleNavigation(item.chave)}
               >
                 <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {!isCollapsed && <span className="truncate">{label}</span>}
               </Button>
             );
 
             if (isCollapsed) {
               return (
-                <Tooltip key={item.path || index}>
+                <Tooltip key={item.chave}>
                   <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>{item.label}</p>
+                    <p>{label}</p>
                   </TooltipContent>
                 </Tooltip>
               );
@@ -690,12 +387,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             return buttonContent;
           }
 
+          const filhos = item.filhos ?? [];
           // Se é uma seção com filhos
           const sectionButton = (
             <Button
               variant="ghost"
               className={cn(
-                'w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0 gap-3',
+                'w-full font-medium min-w-0 flex-shrink-0 gap-3',
+                itemClasses,
                 isCollapsed ? 'justify-center px-4' : 'justify-start px-3 pr-2'
               )}
               onClick={() => toggleSection(sectionKey)}
@@ -703,9 +402,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               onMouseLeave={handleMouseLeaveSection}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
-              {!isCollapsed && <span className="truncate flex-shrink">{item.label}</span>}
+              {!isCollapsed && <span className="truncate flex-shrink">{label}</span>}
               {!isCollapsed &&
-                item.children.length > 0 &&
+                filhos.length > 0 &&
                 (isExpanded ? (
                   <ChevronUp className="h-3 w-3 flex-shrink-0" />
                 ) : (
@@ -721,7 +420,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 <Tooltip>
                   <TooltipTrigger asChild>{sectionButton}</TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>{item.label}</p>
+                    <p>{label}</p>
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -731,30 +430,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               {/* Itens filhos (quando não está colapsado) */}
               {!isCollapsed &&
                 isExpanded &&
-                item.children.map((child, childIndex) => {
-                  const ChildIcon = child.icon;
-                  const isChildActive = child.path && location.pathname === child.path;
+                filhos.map((child) => {
+                  const ChildIcon = iconeDoMenu(child.icone);
+                  const isChildActive = location.pathname === child.chave;
 
                   return (
                     <Button
-                      key={child.path || childIndex}
-                      variant={isChildActive ? 'secondary' : 'ghost'}
+                      key={child.chave}
+                      variant="ghost"
                       className={cn(
-                        'w-full text-white hover:bg-blue-700 ml-4 min-w-0 flex-shrink-0',
+                        'w-full ml-4 min-w-0 flex-shrink-0',
+                        subitemClasses,
                         'justify-start px-3 text-sm',
-                        isChildActive && 'bg-blue-800 text-white'
+                        isChildActive && activeItemClasses
                       )}
-                      onClick={() => child.path && handleNavigation(child.path)}
+                      onClick={() => handleNavigation(child.chave)}
                     >
                       <ChildIcon className="h-3 w-3 mr-3 flex-shrink-0" />
-                      <span className="truncate">{child.label}</span>
+                      <span className="truncate">{t(child.rotuloI18n)}</span>
                     </Button>
                   );
                 })}
 
               {/* Separador visual entre seções */}
               {index < menuItems.length - 1 && !isCollapsed && (
-                <div className="h-px bg-blue-700 mx-2 my-2" />
+                <div className="h-px bg-ds-shell-border mx-2 my-2" />
               )}
             </div>
           );
@@ -762,7 +462,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       </nav>
 
       {/* User Actions */}
-      <div className="p-2 border-t border-blue-700 space-y-1">
+      <div className="p-2 border-t border-ds-shell-border space-y-1">
         {isCollapsed ? (
           <>
             {hasPermission('user-config', 'view') && (
@@ -770,7 +470,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-center px-2 text-white hover:bg-blue-700"
+                    className={cn('w-full justify-center px-2', itemClasses)}
                     onClick={() => handleNavigation('/admin/user-config')}
                   >
                     <User className="h-4 w-4" />
@@ -786,7 +486,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-center px-2 text-red-300 hover:text-red-200 hover:bg-blue-700"
+                  className="w-full justify-center px-2 text-ds-danger-fg hover:text-ds-danger-fg hover:bg-ds-shell-hover focus-visible:ring-ds-focus"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
@@ -802,7 +502,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             {hasPermission('user-config', 'view') && (
               <Button
                 variant="ghost"
-                className="w-full justify-start px-3 text-white hover:bg-blue-700 min-w-0 flex-shrink-0"
+                className={cn('w-full justify-start px-3 min-w-0 flex-shrink-0', itemClasses)}
                 onClick={() => handleNavigation('/admin/user-config')}
               >
                 <User className="h-4 w-4 mr-3 flex-shrink-0" />
@@ -812,7 +512,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
             <Button
               variant="ghost"
-              className="w-full justify-start px-3 text-red-300 hover:text-red-200 hover:bg-blue-700 min-w-0 flex-shrink-0"
+              className="w-full justify-start px-3 min-w-0 flex-shrink-0 text-ds-danger-fg hover:text-ds-danger-fg hover:bg-ds-shell-hover focus-visible:ring-ds-focus"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-3 flex-shrink-0" />
@@ -826,7 +526,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       {isCollapsed && hoveredSection && submenuPosition && (
         <div
           ref={submenuRef}
-          className="fixed bg-blue-600 border border-blue-500/30 rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
+          className="fixed bg-ds-shell-bg border border-ds-shell-border rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
           style={{
             top: `${submenuPosition.top}px`,
             left: `${submenuPosition.left}px`,
@@ -835,43 +535,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           onMouseLeave={handleMouseLeaveSubmenu}
         >
           {menuItems.map((item) => {
-            const sectionKey = item.label
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/\s+/g, '-');
-
-            if (sectionKey === hoveredSection && item.children && item.children.length > 0) {
+            if (item.chave === hoveredSection && item.filhos && item.filhos.length > 0) {
               return (
-                <div key={sectionKey} className="space-y-0.5">
+                <div key={item.chave} className="space-y-0.5">
                   {/* Título da seção */}
-                  <div className="px-2 py-1.5 text-white font-semibold text-sm border-b border-blue-500 mb-1">
-                    {item.label}
+                  <div className="px-2 py-1.5 text-ds-shell-fg font-semibold text-sm border-b border-ds-shell-border mb-1">
+                    {t(item.rotuloI18n)}
                   </div>
 
                   {/* Itens do submenu */}
-                  {item.children.map((child, childIndex) => {
-                    const ChildIcon = child.icon;
-                    const isChildActive = child.path && location.pathname === child.path;
+                  {item.filhos.map((child) => {
+                    const ChildIcon = iconeDoMenu(child.icone);
+                    const isChildActive = location.pathname === child.chave;
 
                     return (
                       <Button
-                        key={child.path || childIndex}
-                        variant={isChildActive ? 'secondary' : 'ghost'}
+                        key={child.chave}
+                        variant="ghost"
                         className={cn(
-                          'w-full text-white hover:bg-blue-700 justify-start px-2 py-1.5 h-8 text-sm gap-2',
-                          isChildActive && 'bg-blue-800 text-white'
+                          'w-full justify-start px-2 py-1.5 h-8 text-sm gap-2',
+                          subitemClasses,
+                          isChildActive && activeItemClasses
                         )}
                         onClick={() => {
-                          if (child.path) {
-                            handleNavigation(child.path);
-                            setHoveredSection(null);
-                            setSubmenuPosition(null);
-                          }
+                          handleNavigation(child.chave);
+                          setHoveredSection(null);
+                          setSubmenuPosition(null);
                         }}
                       >
                         <ChildIcon className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{child.label}</span>
+                        <span className="truncate">{t(child.rotuloI18n)}</span>
                       </Button>
                     );
                   })}
@@ -882,7 +575,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           })}
         </div>
       )}
-    </div>
+    </aside>
   );
 };
 
