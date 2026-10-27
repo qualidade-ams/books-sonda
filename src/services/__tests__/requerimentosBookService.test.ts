@@ -42,6 +42,7 @@ import {
   buscarRequerimentosEmDesenvolvimentoParaBook,
   buscarRequerimentosFaturadosParaBook,
   formatarRequerimentoParaBook,
+  garantirSnapshotRequerimentosBook,
   paginarRequerimentosBook,
 } from '../requerimentosBookService';
 
@@ -232,6 +233,102 @@ describe('requerimentosBookService', () => {
       await expect(
         buscarRequerimentosEmDesenvolvimentoParaBook(EMPRESA_ID, 9, 2026)
       ).rejects.toMatchObject({ message: 'falhou' });
+    });
+  });
+
+  // A rota do PDF roda sem login e o RLS de requerimentos bloqueia anon: o que a
+  // tela busca em tempo real precisa estar no snapshot para sair no PDF.
+  describe('garantirSnapshotRequerimentosBook', () => {
+    const BOOK = { empresa_id: EMPRESA_ID, mes: 9, ano: 2026 };
+    const ITEM_SNAPSHOT = { id: 'snap-1', numero_chamado: 'RF-1' };
+    const updatesDeBooks = () =>
+      estado.consultas
+        .filter((c) => c.tabela === 'books')
+        .flatMap((c) => c.chamadas.filter(([m]) => m === 'update'))
+        .map(([, args]) => args[0]);
+    const respostaBook = (snapshots: Record<string, any>) => {
+      estado.respostas.books = { data: { ...BOOK, ...snapshots }, error: null };
+    };
+
+    it('grava os compensados quando o book foi gerado antes da aba existir (null)', async () => {
+      respostaBook({
+        dados_requerimentos_faturados: null,
+        dados_requerimentos_em_desenvolvimento: [ITEM_SNAPSHOT],
+      });
+      estado.respostas.requerimentos = { data: [REQ_FATURADO], error: null };
+
+      await garantirSnapshotRequerimentosBook('book-1');
+
+      expect(updatesDeBooks()).toEqual([
+        {
+          dados_requerimentos_faturados: [
+            expect.objectContaining({ numero_chamado: 'RF-9175039', status: 'Faturado' }),
+          ],
+        },
+      ]);
+      const consultaUpdate = estado.consultas.find(
+        (c) => c.tabela === 'books' && c.chamadas.some(([m]) => m === 'update')
+      );
+      expect(consultaUpdate.chamadas).toContainEqual(['eq', ['id', 'book-1']]);
+    });
+
+    it.each([
+      ['vazio', []],
+      ['ausente', null],
+    ])(
+      'grava os em andamento quando o snapshot está %s (a tela busca em tempo real)',
+      async (_caso, snapshot) => {
+        respostaBook({
+          dados_requerimentos_faturados: [],
+          dados_requerimentos_em_desenvolvimento: snapshot,
+        });
+        estado.respostas.requerimentos = { data: [REQ_FATURADO], error: null };
+
+        await garantirSnapshotRequerimentosBook('book-1');
+
+        expect(updatesDeBooks()).toEqual([
+          {
+            dados_requerimentos_em_desenvolvimento: [
+              expect.objectContaining({
+                numero_chamado: 'RF-9175039',
+                status: 'Em desenvolvimento',
+              }),
+            ],
+          },
+        ]);
+      }
+    );
+
+    it('não grava em andamento vazio quando o tempo real também não tem requerimentos', async () => {
+      respostaBook({
+        dados_requerimentos_faturados: [],
+        dados_requerimentos_em_desenvolvimento: [],
+      });
+      estado.respostas.requerimentos = { data: [], error: null };
+
+      await garantirSnapshotRequerimentosBook('book-1');
+
+      expect(updatesDeBooks()).toHaveLength(0);
+    });
+
+    it('não toca no book cujos snapshots a tela já usa (compensados vazio, em andamento com itens)', async () => {
+      respostaBook({
+        dados_requerimentos_faturados: [],
+        dados_requerimentos_em_desenvolvimento: [ITEM_SNAPSHOT],
+      });
+
+      await garantirSnapshotRequerimentosBook('book-1');
+
+      expect(updatesDeBooks()).toHaveLength(0);
+      expect(consultaDe('requerimentos')).toBeUndefined();
+    });
+
+    it('propaga o erro da leitura do book', async () => {
+      estado.respostas.books = { data: null, error: { message: 'sem book', code: 'PGRST116' } };
+
+      await expect(garantirSnapshotRequerimentosBook('book-1')).rejects.toMatchObject({
+        message: 'sem book',
+      });
     });
   });
 

@@ -13,9 +13,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck:ci": "node scripts/typecheck-baseline.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:ci": "node scripts/test-baseline.mjs",
     "prepare": "husky"
   },
   "lint-staged": {

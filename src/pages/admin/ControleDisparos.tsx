@@ -11,7 +11,7 @@ import {
   Search,
   X,
   FileText,
-  Eye
+  Eye,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
@@ -20,12 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,11 +49,10 @@ import ProtectedAction from '@/components/auth/ProtectedAction';
 import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton';
 import FiltrosStatusDisparos from '@/components/admin/FiltrosStatusDisparos';
 import PreviewEmailBookModal from '@/components/admin/disparos/PreviewEmailBookModal';
-import type {
-  AgendamentoDisparo,
-  StatusControleMensal,
-  StatusMensal
-} from '@/types/clientBooks';
+import type { AgendamentoDisparo, StatusControleMensal, StatusMensal } from '@/types/clientBooks';
+
+// Botão de agendamento por empresa desativado; o modal de agendamento continua no código
+const AGENDAMENTO_HABILITADO = false;
 
 const ControleDisparos = () => {
   const { toast } = useToast();
@@ -66,8 +60,18 @@ const ControleDisparos = () => {
 
   // Nomes dos meses via i18n
   const monthKeys = [
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december'
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
   ];
   const getMonthName = (monthIndex: number) => t(`monthPicker.months.${monthKeys[monthIndex]}`);
 
@@ -99,8 +103,6 @@ const ControleDisparos = () => {
   const [buscaEmpresa, setBuscaEmpresa] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-
-
   // Hooks
   const {
     statusMensal = [] as StatusMensal[],
@@ -112,7 +114,7 @@ const ControleDisparos = () => {
     reenviarSelecionados,
     reenviarFalhas,
     agendarDisparo,
-    refetch
+    refetch,
   } = useControleDisparos(mesAtual, anoAtual);
 
   const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
@@ -120,43 +122,46 @@ const ControleDisparos = () => {
   // Filtrar dados baseado no status e busca por nome de empresa
   const statusMensalFiltrado = useMemo<StatusMensal[]>(() => {
     if (!Array.isArray(statusMensal)) return [];
-    
+
     let filtrados: StatusMensal[] = statusMensal;
-    
+
     // Filtrar por status
     if (statusFiltro !== 'todos') {
-      filtrados = filtrados.filter(status => status.status === statusFiltro);
+      filtrados = filtrados.filter((status) => status.status === statusFiltro);
     }
-    
+
     // Filtrar por nome de empresa (busca em nome completo e abreviado)
     if (buscaEmpresa.trim()) {
       const termoBusca = buscaEmpresa.toLowerCase().trim();
-      filtrados = filtrados.filter(status => {
+      filtrados = filtrados.filter((status) => {
         const nomeCompleto = status.empresa?.nome_completo?.toLowerCase() || '';
         const nomeAbreviado = status.empresa?.nome_abreviado?.toLowerCase() || '';
         return nomeCompleto.includes(termoBusca) || nomeAbreviado.includes(termoBusca);
       });
     }
-    
+
     // Ordenar alfabeticamente por nome abreviado da empresa
     filtrados = filtrados.sort((a, b) => {
       const nomeA = a.empresa?.nome_abreviado || a.empresa?.nome_completo || '';
       const nomeB = b.empresa?.nome_abreviado || b.empresa?.nome_completo || '';
       return nomeA.localeCompare(nomeB, 'pt-BR');
     });
-    
+
     return filtrados;
   }, [statusMensal, statusFiltro, buscaEmpresa]);
 
   // Seleção de empresas
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
-  const allIds = useMemo(() => statusMensalFiltrado.map(s => s.empresaId), [statusMensalFiltrado]);
+  const allIds = useMemo(
+    () => statusMensalFiltrado.map((s) => s.empresaId),
+    [statusMensalFiltrado]
+  );
   const allSelected = selecionadas.length > 0 && selecionadas.length === allIds.length;
   const toggleSelectAll = () => {
-    setSelecionadas(prev => (prev.length === allIds.length ? [] : allIds));
+    setSelecionadas((prev) => (prev.length === allIds.length ? [] : allIds));
   };
   const toggleSelectOne = (id: string) => {
-    setSelecionadas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelecionadas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   // Limpar seleção quando filtro muda
@@ -167,35 +172,36 @@ const ControleDisparos = () => {
   // Verificar se todas as empresas selecionadas já foram enviadas
   const empresasSelecionadasStatus = useMemo(() => {
     if (!Array.isArray(statusMensal)) return [];
-    
-    return selecionadas.map(id => {
-      const status = statusMensal.find(s => s.empresaId === id);
+
+    return selecionadas.map((id) => {
+      const status = statusMensal.find((s) => s.empresaId === id);
       return {
         empresaId: id,
-        status: status?.status || 'pendente'
+        status: status?.status || 'pendente',
       };
     });
   }, [selecionadas, statusMensal]);
 
   const todasSelecionadasJaEnviadas = useMemo(() => {
     if (selecionadas.length === 0) return false;
-    return empresasSelecionadasStatus.every(empresa => empresa.status === 'enviado');
+    return empresasSelecionadasStatus.every((empresa) => empresa.status === 'enviado');
   }, [empresasSelecionadasStatus]);
 
   // Contadores inteligentes baseados no status
   const contadoresInteligentes = useMemo(() => {
-    const paraDisparar = empresasSelecionadasStatus.filter(empresa => 
-      empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou'
+    const paraDisparar = empresasSelecionadasStatus.filter(
+      (empresa) =>
+        empresa.status === 'pendente' ||
+        empresa.status === 'agendado' ||
+        empresa.status === 'falhou'
     ).length;
-    
-    const paraReenviar = empresasSelecionadasStatus.filter(empresa => 
-      empresa.status === 'enviado'
+
+    const paraReenviar = empresasSelecionadasStatus.filter(
+      (empresa) => empresa.status === 'enviado'
     ).length;
 
     return { paraDisparar, paraReenviar };
   }, [empresasSelecionadasStatus]);
-
-
 
   // Estatísticas do mês
   const stats = useMemo(() => {
@@ -208,15 +214,15 @@ const ControleDisparos = () => {
         agendados: 0,
         totalEmails: 0,
         totalClientes: 0,
-        percentualConcluido: 0
+        percentualConcluido: 0,
       };
     }
-    
+
     const total = statusMensal.length;
-    const enviados = statusMensal.filter(s => s.status === 'enviado').length;
-    const pendentes = statusMensal.filter(s => s.status === 'pendente').length;
-    const falhas = statusMensal.filter(s => s.status === 'falhou').length;
-    const agendados = statusMensal.filter(s => s.status === 'agendado').length;
+    const enviados = statusMensal.filter((s) => s.status === 'enviado').length;
+    const pendentes = statusMensal.filter((s) => s.status === 'pendente').length;
+    const falhas = statusMensal.filter((s) => s.status === 'falhou').length;
+    const agendados = statusMensal.filter((s) => s.status === 'agendado').length;
 
     const totalEmails = statusMensal.reduce((acc, s) => acc + s.emailsEnviados, 0);
     const totalClientes = statusMensal.reduce((acc, s) => acc + s.clientesAtivos, 0);
@@ -229,7 +235,7 @@ const ControleDisparos = () => {
       agendados,
       totalEmails,
       totalClientes,
-      percentualConcluido: total > 0 ? Math.round((enviados / total) * 100) : 0
+      percentualConcluido: total > 0 ? Math.round((enviados / total) * 100) : 0,
     };
   }, [statusMensal]);
 
@@ -260,7 +266,10 @@ const ControleDisparos = () => {
       const resultado = await dispararSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
         title: t('disparos.dispatchCompleted'),
-        description: t('disparos.dispatchCompletedDesc', { success: resultado.sucesso, failures: resultado.falhas }),
+        description: t('disparos.dispatchCompletedDesc', {
+          success: resultado.sucesso,
+          failures: resultado.falhas,
+        }),
       });
       setSelecionadas([]);
     } catch (error) {
@@ -290,8 +299,6 @@ const ControleDisparos = () => {
     }
   };
 
-
-
   const handleReenvioFalhas = async () => {
     setShowReenvioModal(true);
   };
@@ -305,12 +312,11 @@ const ControleDisparos = () => {
         title: t('disparos.resendFailedCompleted'),
         description: t('disparos.resendFailedCompletedDesc', { success: resultado.sucesso }),
       });
-
     } catch (error) {
       toast({
         title: t('disparos.resendFailedError'),
         description: error instanceof Error ? error.message : t('common.error'),
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -332,7 +338,7 @@ const ControleDisparos = () => {
         empresaId: empresaSelecionada,
         clienteIds: empresa.clientes.map((c: any) => c.id),
         dataAgendamento: new Date(dataAgendamento),
-        observacoes: observacoesAgendamento
+        observacoes: observacoesAgendamento,
       };
 
       await agendarDisparo(agendamento);
@@ -346,12 +352,11 @@ const ControleDisparos = () => {
         title: t('disparos.scheduleCompleted'),
         description: t('disparos.scheduleCompletedDesc'),
       });
-
     } catch (error) {
       toast({
         title: t('disparos.scheduleError'),
         description: error instanceof Error ? error.message : t('common.error'),
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -399,9 +404,7 @@ const ControleDisparos = () => {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {t('disparos.title')}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                {t('disparos.subtitle')}
-              </p>
+              <p className="text-gray-600 dark:text-gray-400">{t('disparos.subtitle')}</p>
             </div>
           </div>
 
@@ -426,11 +429,7 @@ const ControleDisparos = () => {
           <Card>
             <CardContent>
               <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  onClick={handleMesAnterior}
-                  disabled={isLoading}
-                >
+                <Button variant="outline" onClick={handleMesAnterior} disabled={isLoading}>
                   ← {t('common.previous')}
                 </Button>
 
@@ -441,16 +440,10 @@ const ControleDisparos = () => {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                     ({t('disparos.reference')} {getMonthName(mesReferencia - 1)} {anoReferencia})
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {t('common.loading')}
-                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
                 </div>
 
-                <Button
-                  variant="outline"
-                  onClick={handleProximoMes}
-                  disabled={isLoading}
-                >
+                <Button variant="outline" onClick={handleProximoMes} disabled={isLoading}>
                   {t('common.next')} →
                 </Button>
               </div>
@@ -479,9 +472,7 @@ const ControleDisparos = () => {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               {t('disparos.title')}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              {t('disparos.subtitle')}
-            </p>
+            <p className="text-gray-600 dark:text-gray-400">{t('disparos.subtitle')}</p>
           </div>
 
           <div className="flex gap-2">
@@ -490,10 +481,16 @@ const ControleDisparos = () => {
                 onClick={handleDispararSelecionados}
                 disabled={isDisparandoSelecionados || contadoresInteligentes.paraDisparar === 0}
                 size="sm"
-                title={contadoresInteligentes.paraDisparar === 0 ? t('disparos.noCompanyNeedsDispatch') : t('disparos.dispatchBooksFor', { count: contadoresInteligentes.paraDisparar })}
+                title={
+                  contadoresInteligentes.paraDisparar === 0
+                    ? t('disparos.noCompanyNeedsDispatch')
+                    : t('disparos.dispatchBooksFor', { count: contadoresInteligentes.paraDisparar })
+                }
               >
                 <Send className="h-4 w-4 mr-2" />
-                {isDisparandoSelecionados ? t('disparos.sending') : `${t('disparos.sendSelected')} (${contadoresInteligentes.paraDisparar})`}
+                {isDisparandoSelecionados
+                  ? t('disparos.sending')
+                  : `${t('disparos.sendSelected')} (${contadoresInteligentes.paraDisparar})`}
               </Button>
             </ProtectedAction>
 
@@ -503,7 +500,11 @@ const ControleDisparos = () => {
                 onClick={handleReenviarSelecionados}
                 disabled={contadoresInteligentes.paraReenviar === 0}
                 size="sm"
-                title={contadoresInteligentes.paraReenviar === 0 ? t('disparos.noCompanyNeedsResend') : t('disparos.resendAlreadyProcessed')}
+                title={
+                  contadoresInteligentes.paraReenviar === 0
+                    ? t('disparos.noCompanyNeedsResend')
+                    : t('disparos.resendAlreadyProcessed')
+                }
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 {t('disparos.resendSelected')} ({contadoresInteligentes.paraReenviar})
@@ -520,7 +521,9 @@ const ControleDisparos = () => {
                   title={t('disparos.resendCompaniesWithFailure', { count: stats.falhas })}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  {isReenviando ? t('disparos.resending') : `${t('disparos.resendFailed')} (${stats.falhas})`}
+                  {isReenviando
+                    ? t('disparos.resending')
+                    : `${t('disparos.resendFailed')} (${stats.falhas})`}
                 </Button>
               </ProtectedAction>
             )}
@@ -539,8 +542,12 @@ const ControleDisparos = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalClientes} {t('disparos.clients')}</p>
+              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
+                {stats.total}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.totalClientes} {t('disparos.clients')}
+              </p>
             </CardContent>
           </Card>
 
@@ -555,7 +562,9 @@ const ControleDisparos = () => {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-xl lg:text-2xl font-bold text-green-600">{stats.enviados}</div>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalEmails} {t('disparos.emails')}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.totalEmails} {t('disparos.emails')}
+              </p>
             </CardContent>
           </Card>
 
@@ -592,11 +601,7 @@ const ControleDisparos = () => {
         <Card>
           <CardContent>
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={handleMesAnterior}
-                disabled={isLoading}
-              >
+              <Button variant="outline" onClick={handleMesAnterior} disabled={isLoading}>
                 ← {t('common.previous')}
               </Button>
 
@@ -612,11 +617,7 @@ const ControleDisparos = () => {
                 </p>
               </div>
 
-              <Button
-                variant="outline"
-                onClick={handleProximoMes}
-                disabled={isLoading}
-              >
+              <Button variant="outline" onClick={handleProximoMes} disabled={isLoading}>
                 {t('common.next')} →
               </Button>
             </div>
@@ -641,12 +642,16 @@ const ControleDisparos = () => {
                 {t('disparos.statusByCompany')} ({statusMensalFiltrado.length})
                 {statusMensalFiltrado.length > 0 && (
                   <div className="flex items-center gap-2 text-sm">
-                    <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
+                    <Checkbox
+                      id="select-all"
+                      checked={allSelected}
+                      onCheckedChange={toggleSelectAll}
+                    />
                     <Label htmlFor="select-all">{t('disparos.selectAll')}</Label>
                   </div>
                 )}
               </CardTitle>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -657,7 +662,7 @@ const ControleDisparos = () => {
                   <Filter className="h-4 w-4" />
                   <span>{t('common.filter')}</span>
                 </Button>
-                
+
                 {(statusFiltro !== 'todos' || buscaEmpresa) && (
                   <Button
                     variant="outline"
@@ -674,7 +679,7 @@ const ControleDisparos = () => {
                 )}
               </div>
             </div>
-            
+
             {/* Filtros */}
             {mostrarFiltros && (
               <div className="space-y-4 pt-4 border-t">
@@ -698,17 +703,29 @@ const ControleDisparos = () => {
                     <div className="text-sm font-medium mb-2">{t('disparos.dispatchStatus')}</div>
                     <Select
                       value={statusFiltro}
-                      onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
+                      onValueChange={(value) =>
+                        setStatusFiltro(value as StatusControleMensal | 'todos')
+                      }
                     >
                       <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                         <SelectValue placeholder={t('disparos.allStatuses')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">{t('disparos.allStatuses')} ({stats.total})</SelectItem>
-                        <SelectItem value="enviado">{t('disparos.statusSent')} ({stats.enviados})</SelectItem>
-                        <SelectItem value="pendente">{t('disparos.statusPending')} ({stats.pendentes})</SelectItem>
-                        <SelectItem value="falhou">{t('disparos.statusFailed')} ({stats.falhas})</SelectItem>
-                        <SelectItem value="agendado">{t('disparos.statusScheduled')} ({stats.agendados})</SelectItem>
+                        <SelectItem value="todos">
+                          {t('disparos.allStatuses')} ({stats.total})
+                        </SelectItem>
+                        <SelectItem value="enviado">
+                          {t('disparos.statusSent')} ({stats.enviados})
+                        </SelectItem>
+                        <SelectItem value="pendente">
+                          {t('disparos.statusPending')} ({stats.pendentes})
+                        </SelectItem>
+                        <SelectItem value="falhou">
+                          {t('disparos.statusFailed')} ({stats.falhas})
+                        </SelectItem>
+                        <SelectItem value="agendado">
+                          {t('disparos.statusScheduled')} ({stats.agendados})
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -721,10 +738,9 @@ const ControleDisparos = () => {
               <div className="text-center py-8">
                 <AlertCircle className="h-8 w-8 mx-auto text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  {statusFiltro === 'todos' 
+                  {statusFiltro === 'todos'
                     ? t('disparos.noCompanyFound')
-                    : t('disparos.noCompanyWithStatus', { status: statusFiltro })
-                  }
+                    : t('disparos.noCompanyWithStatus', { status: statusFiltro })}
                 </p>
               </div>
             ) : (
@@ -747,13 +763,16 @@ const ControleDisparos = () => {
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {status.clientesAtivos} {t('disparos.activeClients')}
-                          {status.emailsEnviados > 0 && ` • ${status.emailsEnviados} ${t('disparos.emailsSent')}`}
+                          {status.emailsEnviados > 0 &&
+                            ` • ${status.emailsEnviados} ${t('disparos.emailsSent')}`}
                         </p>
                         {status.observacoes && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                             {(() => {
                               // Traduzir observações que seguem padrão conhecido
-                              const match = status.observacoes.match(/E-mail consolidado enviado para (\d+) clientes/);
+                              const match = status.observacoes.match(
+                                /E-mail consolidado enviado para (\d+) clientes/
+                              );
                               if (match) {
                                 return `${t('disparos.consolidatedEmailSent')} ${match[1]} ${t('disparos.clients')}`;
                               }
@@ -776,7 +795,12 @@ const ControleDisparos = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleAbrirPreview(status.empresaId, status.empresa.nome_abreviado || status.empresa.nome_completo)}
+                          onClick={() =>
+                            handleAbrirPreview(
+                              status.empresaId,
+                              status.empresa.nome_abreviado || status.empresa.nome_completo
+                            )
+                          }
                           className="h-8 w-8 p-0"
                           title={t('disparos.preview.buttonTooltip')}
                           aria-label={t('disparos.preview.buttonTooltip')}
@@ -785,7 +809,7 @@ const ControleDisparos = () => {
                         </Button>
                       </ProtectedAction>
 
-                      {false && status.status === 'pendente' && (
+                      {AGENDAMENTO_HABILITADO && status.status === 'pendente' && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                           <Button
                             size="sm"
@@ -830,15 +854,16 @@ const ControleDisparos = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('disparos.confirmResendTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                {t('disparos.confirmResendDescription', { count: stats.falhas, month: getMonthName(mesAtual - 1), year: anoAtual })}
+                {t('disparos.confirmResendDescription', {
+                  count: stats.falhas,
+                  month: getMonthName(mesAtual - 1),
+                  year: anoAtual,
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmarReenvioFalhas}
-                disabled={isReenviando}
-              >
+              <AlertDialogAction onClick={confirmarReenvioFalhas} disabled={isReenviando}>
                 {isReenviando ? t('disparos.resending') : t('disparos.confirmResend')}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -864,7 +889,9 @@ const ControleDisparos = () => {
               </div>
 
               <div>
-                <Label htmlFor="observacoes-agendamento">{t('disparos.scheduleObservations')}</Label>
+                <Label htmlFor="observacoes-agendamento">
+                  {t('disparos.scheduleObservations')}
+                </Label>
                 <Textarea
                   id="observacoes-agendamento"
                   value={observacoesAgendamento}
@@ -874,16 +901,10 @@ const ControleDisparos = () => {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAgendamentoModal(false)}
-                >
+                <Button variant="outline" onClick={() => setShowAgendamentoModal(false)}>
                   {t('common.cancel')}
                 </Button>
-                <Button
-                  onClick={confirmarAgendamento}
-                  disabled={isAgendando || !dataAgendamento}
-                >
+                <Button onClick={confirmarAgendamento} disabled={isAgendando || !dataAgendamento}>
                   {isAgendando ? t('disparos.scheduling') : t('disparos.confirmSchedule')}
                 </Button>
               </div>

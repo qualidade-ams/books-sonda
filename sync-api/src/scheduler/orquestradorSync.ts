@@ -74,6 +74,8 @@ export interface DependenciasOrquestrador {
   etapas: EtapasSync;
   /** Geração automática de books; ausente quando o servidor não tem o pacote configurado */
   gerarBooks?: (contexto: ContextoGeracaoBooks) => Promise<ResumoGeracaoBooks>;
+  /** Confere se o banco réplica foi atualizado (abre/resolve a notificação no sino); só na sincronização */
+  verificarReplica?: (pool: sql.ConnectionPool) => Promise<{ atrasada: boolean; mensagem: string | null; tabelas: any[] }>;
   /** Intervalo de gravação parcial dos logs; 0 desliga (só grava no fim) */
   intervaloGravacaoLogsMs?: number;
 }
@@ -286,6 +288,8 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       log('Conectado ao SQL Server');
       const pool = conexao.pool;
 
+      if (deps.verificarReplica) await verificarReplica(pool, log, resultado);
+
       const rodar = async (chave: string, fn: () => Promise<any>, resumir: (r: any) => any) => {
         log(`${ROTULOS[chave]}: iniciando`);
         const inicio = Date.now();
@@ -365,6 +369,23 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
     }
 
     return status;
+  }
+
+  /** Só avisa: nem atraso nem falha da verificação mudam o status da sincronização (por isso sem `sucesso`) */
+  async function verificarReplica(
+    pool: sql.ConnectionPool,
+    log: (mensagem: string, nivel?: EntradaLog['nivel']) => void,
+    resultado: Record<string, any>
+  ) {
+    try {
+      const r = await deps.verificarReplica!(pool);
+      resultado.verificacaoReplica = { atrasada: r.atrasada, tabelas: r.tabelas };
+      if (r.atrasada) log(`Banco réplica desatualizado: ${r.mensagem}`, 'erro');
+      else log('Banco réplica em dia');
+    } catch (e) {
+      resultado.verificacaoReplica = { erro: mensagemDeErro(e) };
+      log(`Verificação do banco réplica falhou — ${mensagemDeErro(e)}`, 'erro');
+    }
   }
 
   async function atualizarMetadata(tabela: EtapaTabela, r: any) {

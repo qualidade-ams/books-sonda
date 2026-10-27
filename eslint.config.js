@@ -7,13 +7,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: [
-      'dist',
-      'node_modules',
-      'sync-api/**',
-      'supabase/functions/**',
-      'public/**',
-    ],
+    ignores: ['dist', '.vite', 'node_modules', 'sync-api/**', 'supabase/functions/**', 'public/**'],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended, eslintConfigPrettier],
@@ -28,10 +22,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       // TypeScript propositalmente relaxado neste projeto (ver CLAUDE.md /
       // tsconfig.app.json: strict: false, noImplicitAny: false). Estas regras
       // ficam desligadas ou como warning para não gerar centenas de erros
@@ -61,5 +52,5 @@ export default tseslint.config(
       // require() dinâmico é um padrão comum de mock em teste
       '@typescript-eslint/no-require-imports': 'off',
     },
-  },
+  }
 );

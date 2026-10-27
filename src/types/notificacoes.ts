@@ -7,7 +7,9 @@ export type TipoNotificacao =
   | 'book_precisa_retificacao'
   | 'ajuste_retroativo_pendente'
   | 'saldo_parcial_falha'
-  | 'geracao_books_falha';
+  | 'geracao_books_falha'
+  | 'sincronizacao_legado_falha'
+  | 'replica_desatualizada';
 
 export interface Notificacao {
   id: string;

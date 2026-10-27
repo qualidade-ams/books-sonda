@@ -17,13 +17,15 @@ npm run dev          # Vite dev server, porta 8080
 npm run dev:vercel   # Vercel dev (inclui as serverless functions em /api)
 npm run build        # Build de produção
 npm run test         # Vitest watch
-npm run test:run     # Vitest single run  ← precisa passar antes de concluir qualquer tarefa
+npm run test:run     # Vitest single run
+npm run test:ci      # trava do CI: falha só com teste falhando fora de scripts/test-baseline.json  ← precisa passar antes de concluir qualquer tarefa
 npm run typecheck    # tsc --noEmit
+npm run typecheck:ci # trava do CI: falha só se passar do limite em scripts/typecheck-baseline.json
 npm run lint         # ESLint (flat config); lint:fix para corrigir
 npm run format       # Prettier; format:check para verificar
 ```
 
-Pre-commit (Husky + lint-staged) roda `eslint --fix` + `prettier --write` nos arquivos staged. CI (`.github/workflows/ci.yml`) roda lint + typecheck + test + build em todo push/PR para `main`.
+Pre-commit (Husky + lint-staged) roda `eslint --fix` + `prettier --write` nos arquivos staged. CI (`.github/workflows/ci.yml`) roda lint + typecheck + test + build em todo push/PR para `main`. O typecheck do CI usa trava de contagem (o main tem erros de tipo antigos): ao corrigir erros, baixe o `limite` em `scripts/typecheck-baseline.json` no mesmo PR. Os testes também: o main tem falhas antigas listadas em `scripts/test-baseline.json`; ao corrigir um teste da lista, tire-o de lá no mesmo PR.
 
 ## Arquitetura: fluxo em camadas
 
@@ -84,22 +86,22 @@ Padrões de teste: skill `testes`.
 
 Carregue **só** a skill da tarefa em questão; cada uma indica qual referência abrir.
 
-| Tarefa | Skill |
-|---|---|
-| Feature nova atravessando várias camadas | `criar-feature` |
-| Tela/página administrativa nova | `criar-tela` |
-| Protótipo visual de tela (dados fictícios, antes de implementar) | `prototipo` |
-| Migration, tabela, coluna, RLS, trigger | `criar-migration` |
-| Endpoint serverless (Vercel ou Edge Function) | `criar-api` |
-| Sincronização com o SQL Server Aranda, dado que não chegou | `sync-api` |
-| Classes Tailwind, layout, filtro, tabela, modal, formulário | `design-system` |
-| Escrever service, hook, tratamento de erro, Zod, cache | `padroes-codigo` |
-| Log, PII, secret, autorização | `seguranca` |
-| Permissão de tela, ProtectedRoute/Action, acesso negado | `autenticacao` |
-| Bug reportado | `corrigir-bug` |
-| Escrever/rodar teste | `testes` |
-| Revisar diff ou PR | `code-review` |
-| Publicar, migrar ou reverter | `deploy` |
+| Tarefa                                                           | Skill             |
+| ---------------------------------------------------------------- | ----------------- |
+| Feature nova atravessando várias camadas                         | `criar-feature`   |
+| Tela/página administrativa nova                                  | `criar-tela`      |
+| Protótipo visual de tela (dados fictícios, antes de implementar) | `prototipo`       |
+| Migration, tabela, coluna, RLS, trigger                          | `criar-migration` |
+| Endpoint serverless (Vercel ou Edge Function)                    | `criar-api`       |
+| Sincronização com o SQL Server Aranda, dado que não chegou       | `sync-api`        |
+| Classes Tailwind, layout, filtro, tabela, modal, formulário      | `design-system`   |
+| Escrever service, hook, tratamento de erro, Zod, cache           | `padroes-codigo`  |
+| Log, PII, secret, autorização                                    | `seguranca`       |
+| Permissão de tela, ProtectedRoute/Action, acesso negado          | `autenticacao`    |
+| Bug reportado                                                    | `corrigir-bug`    |
+| Escrever/rodar teste                                             | `testes`          |
+| Revisar diff ou PR                                               | `code-review`     |
+| Publicar, migrar ou reverter                                     | `deploy`          |
 
 Referências de projeto (fora de skill): `.claude/references/dominios.md` (mapa domínio → arquivos) e `.claude/references/estrutura.md` (árvore de diretórios e convenções de nome).
 
@@ -112,13 +114,13 @@ Referências de projeto (fora de skill): `.claude/references/dominios.md` (mapa 
 3. Localizar o código existente (`.claude/references/dominios.md`).
 4. Reutilizar estrutura existente; evitar alteração desnecessária.
 5. Escrever o teste (Red), implementar (Green), limpar (Refactor).
-6. Rodar `npm run test:run`, `npm run typecheck`, `npm run build`.
+6. Rodar `npm run test:ci`, `npm run typecheck:ci`, `npm run build`.
 7. Corrigir o que falhar.
 8. Relatar objetivamente o que mudou.
 
 ## Avisos deste repositório
 
-- **Toast**: duas convenções coexistem — `sonner` (~54 arquivos) e o hook `useToast` (~59 arquivos), este pensado para substituir o primeiro, migração inacabada. Ao editar arquivo existente siga o padrão *daquele arquivo*; em código novo prefira `useToast`.
+- **Toast**: duas convenções coexistem — `sonner` (~54 arquivos) e o hook `useToast` (~59 arquivos), este pensado para substituir o primeiro, migração inacabada. Ao editar arquivo existente siga o padrão _daquele arquivo_; em código novo prefira `useToast`.
 - **Lint**: `npm run lint` funciona, mas o baseline tem ~11 erros e ~890 warnings preexistentes. Confira que sua mudança não aumentou a contagem; "lint passou" sozinho não é sinal de qualidade.
 - **Credenciais versionadas**: `sync-api/.env.temp` e `sync-api/deployment/.env.production.sondalyze` estão no git com exceção explícita no `.gitignore` — vazamento real (senha de SQL Server, IP interno) ainda não remediado. Ao mexer em `sync-api/`, não replique esse padrão.
 - **Arquivos gigantes**: `Dashboard.tsx`, `booksDataCollectorService.ts`, `booksDisparoService.ts` e outros têm 2.000–6.600 linhas. Extraia lógica nova em vez de engordá-los.
