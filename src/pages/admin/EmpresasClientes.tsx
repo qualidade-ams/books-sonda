@@ -1,5 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Filter, Search, ChevronLeft, ChevronRight, FileText, X, Building2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import {
+  Plus,
+  Filter,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  X,
+  Building2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,13 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import {
   AlertDialog,
@@ -36,7 +42,11 @@ import { useGrupos } from '@/hooks/useGrupos';
 import { useEmpresasStats } from '@/hooks/useEmpresasStats';
 import { useVirtualPagination } from '@/utils/requerimentosPerformance';
 
-import { EmpresaForm, EmpresasTable, EmpresaImportExportButtons } from '@/components/admin/client-books';
+import {
+  EmpresaForm,
+  EmpresasTable,
+  EmpresaImportExportButtons,
+} from '@/components/admin/client-books';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { toast } from 'sonner';
 import type {
@@ -44,12 +54,9 @@ import type {
   EmpresaFiltros,
   Produto,
   EmpresaClienteCompleta,
-  StatusEmpresa
+  StatusEmpresa,
 } from '@/types/clientBooks';
-import {
-  STATUS_EMPRESA_OPTIONS,
-  PRODUTOS_OPTIONS
-} from '@/types/clientBooks';
+import { STATUS_EMPRESA_OPTIONS, PRODUTOS_OPTIONS } from '@/types/clientBooks';
 
 const EmpresasClientes = () => {
   // Estados para filtros
@@ -65,7 +72,7 @@ const EmpresasClientes = () => {
 
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [buscaLocal, setBuscaLocal] = useState(filtros.busca || '');
-  
+
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -85,7 +92,7 @@ const EmpresasClientes = () => {
   // Debounce para a busca
   useEffect(() => {
     const timer = setTimeout(() => {
-      setFiltros(prev => ({ ...prev, busca: buscaLocal }));
+      setFiltros((prev) => ({ ...prev, busca: buscaLocal }));
       setCurrentPage(1); // Reset página ao filtrar
     }, 500); // 500ms de delay
 
@@ -114,98 +121,104 @@ const EmpresasClientes = () => {
 
   // Garantir que empresas é sempre um array
   const empresasArray = Array.isArray(empresas) ? empresas : [];
-  
+
   // Obter valores únicos para os filtros da aba Parâmetros Book
-  const empresasComAms = empresasArray.filter(e => e.tem_ams === true);
-  
+  const empresasComAms = empresasArray.filter((e) => e.tem_ams === true);
+
   const valoresUnicosTipoContrato = Array.from(
-    new Set(empresasComAms.map(e => e.tipo_contrato).filter(Boolean))
+    new Set(empresasComAms.map((e) => e.tipo_contrato).filter(Boolean))
   ).sort();
-  
+
   const valoresUnicosPeriodoApuracao = Array.from(
-    new Set(empresasComAms.map(e => e.periodo_apuracao).filter(v => v != null))
+    new Set(empresasComAms.map((e) => e.periodo_apuracao).filter((v) => v != null))
   ).sort((a, b) => a - b);
-  
+
   const valoresUnicosPercentualRepasse = Array.from(
-    new Set(empresasComAms.map(e => e.percentual_repasse_mensal).filter(v => v != null))
+    new Set(empresasComAms.map((e) => e.percentual_repasse_mensal).filter((v) => v != null))
   ).sort((a, b) => a - b);
-  
+
   const valoresUnicosBaselineMensal = Array.from(
     new Set(
       empresasComAms
-        .map(e => {
+        .map((e) => {
           // Se for ticket, usar baseline_tickets_mensal
           if (e.tipo_cobranca === 'ticket') {
             const tickets = e.baseline_tickets_mensal;
             return tickets != null ? tickets.toString() : '';
           }
-          
+
           // Se for banco de horas, usar baseline_horas_mensal
           const baseline = e.baseline_horas_mensal?.toString() || '';
           // Formatar como HH:MM (remover segundos se existir)
           if (baseline.includes(':')) {
             const parts = baseline.split(':');
-            return parts.length >= 2 ? `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}` : baseline;
+            return parts.length >= 2
+              ? `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
+              : baseline;
           }
           return baseline;
         })
         .filter(Boolean)
     )
   ).sort();
-  
+
   // Aplicar filtros específicos da aba Parâmetros Book
-  const empresasFiltradas = activeTab === 'parametros' 
-    ? empresasArray.filter(empresa => {
-        // Filtrar apenas empresas com AMS
-        if (!empresa.tem_ams) return false;
-        
-        // Filtro Tipo de Contrato
-        // "Ambos" deve aparecer quando filtro for "horas" ou "tickets"
-        if (filtroTipoContrato !== '__todos__') {
-          if (filtroTipoContrato === 'ambos') {
-            // Filtro "Ambos" selecionado: mostrar apenas empresas com tipo_contrato === 'ambos'
-            if (empresa.tipo_contrato !== 'ambos') return false;
-          } else {
-            // Filtro "Horas" ou "Tickets": mostrar empresas do tipo selecionado OU tipo "ambos"
-            if (empresa.tipo_contrato !== filtroTipoContrato && empresa.tipo_contrato !== 'ambos') {
-              return false;
+  const empresasFiltradas =
+    activeTab === 'parametros'
+      ? empresasArray.filter((empresa) => {
+          // Filtrar apenas empresas com AMS
+          if (!empresa.tem_ams) return false;
+
+          // Filtro Tipo de Contrato
+          // "Ambos" deve aparecer quando filtro for "horas" ou "tickets"
+          if (filtroTipoContrato !== '__todos__') {
+            if (filtroTipoContrato === 'ambos') {
+              // Filtro "Ambos" selecionado: mostrar apenas empresas com tipo_contrato === 'ambos'
+              if (empresa.tipo_contrato !== 'ambos') return false;
+            } else {
+              // Filtro "Horas" ou "Tickets": mostrar empresas do tipo selecionado OU tipo "ambos"
+              if (
+                empresa.tipo_contrato !== filtroTipoContrato &&
+                empresa.tipo_contrato !== 'ambos'
+              ) {
+                return false;
+              }
             }
           }
-        }
-        
-        // Filtro Período Apuração
-        if (filtroPeriodoApuracao !== '__todos__') {
-          const periodo = empresa.periodo_apuracao?.toString() || '';
-          if (periodo !== filtroPeriodoApuracao) return false;
-        }
-        
-        // Filtro % Repasse Mensal
-        if (filtroPercentualRepasse !== '__todos__') {
-          const percentual = empresa.percentual_repasse_mensal?.toString() || '';
-          if (percentual !== filtroPercentualRepasse) return false;
-        }
-        
-        // Filtro Baseline Mensal
-        if (filtroBaselineMensal !== '__todos__') {
-          // Se for ticket, comparar com baseline_tickets_mensal
-          if (empresa.tipo_cobranca === 'ticket') {
-            const tickets = empresa.baseline_tickets_mensal?.toString() || '';
-            if (tickets !== filtroBaselineMensal) return false;
-          } else {
-            // Se for banco de horas, comparar com baseline_horas_mensal
-            const baseline = empresa.baseline_horas_mensal?.toString() || '';
-            // Comparar apenas HH:MM (remover segundos se existir)
-            const baselineFormatado = baseline.includes(':') 
-              ? baseline.split(':').slice(0, 2).join(':') 
-              : baseline;
-            if (baselineFormatado !== filtroBaselineMensal) return false;
+
+          // Filtro Período Apuração
+          if (filtroPeriodoApuracao !== '__todos__') {
+            const periodo = empresa.periodo_apuracao?.toString() || '';
+            if (periodo !== filtroPeriodoApuracao) return false;
           }
-        }
-        
-        return true;
-      })
-    : empresasArray;
-  
+
+          // Filtro % Repasse Mensal
+          if (filtroPercentualRepasse !== '__todos__') {
+            const percentual = empresa.percentual_repasse_mensal?.toString() || '';
+            if (percentual !== filtroPercentualRepasse) return false;
+          }
+
+          // Filtro Baseline Mensal
+          if (filtroBaselineMensal !== '__todos__') {
+            // Se for ticket, comparar com baseline_tickets_mensal
+            if (empresa.tipo_cobranca === 'ticket') {
+              const tickets = empresa.baseline_tickets_mensal?.toString() || '';
+              if (tickets !== filtroBaselineMensal) return false;
+            } else {
+              // Se for banco de horas, comparar com baseline_horas_mensal
+              const baseline = empresa.baseline_horas_mensal?.toString() || '';
+              // Comparar apenas HH:MM (remover segundos se existir)
+              const baselineFormatado = baseline.includes(':')
+                ? baseline.split(':').slice(0, 2).join(':')
+                : baseline;
+              if (baselineFormatado !== filtroBaselineMensal) return false;
+            }
+          }
+
+          return true;
+        })
+      : empresasArray;
+
   // Paginação
   const paginatedData = useVirtualPagination(empresasFiltradas, itemsPerPage, currentPage);
 
@@ -217,16 +230,16 @@ const EmpresasClientes = () => {
   // Usar estatísticas reais do banco ou fallback para dados filtrados
   const stats = statsReais || {
     total: empresasArray.length,
-    ativas: empresasArray.filter(e => e.status === 'ativo').length,
-    inativas: empresasArray.filter(e => e.status === 'inativo').length,
-    suspensas: empresasArray.filter(e => e.status === 'suspenso').length,
+    ativas: empresasArray.filter((e) => e.status === 'ativo').length,
+    inativas: empresasArray.filter((e) => e.status === 'inativo').length,
+    suspensas: empresasArray.filter((e) => e.status === 'suspenso').length,
   };
 
   // Handlers para filtros
   const handleFiltroChange = (key: keyof EmpresaFiltros, value: any) => {
-    setFiltros(prev => ({
+    setFiltros((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
     setCurrentPage(1); // Reset página ao filtrar
   };
@@ -236,18 +249,16 @@ const EmpresasClientes = () => {
     setCurrentPage(1); // Reset página ao buscar
   };
 
-
-
   const handleStatusSelectChange = (value: string) => {
     if (value === '__todos_status__') {
-      setFiltros(prev => ({
+      setFiltros((prev) => ({
         ...prev,
-        status: undefined
+        status: undefined,
       }));
     } else {
-      setFiltros(prev => ({
+      setFiltros((prev) => ({
         ...prev,
-        status: [value as StatusEmpresa]
+        status: [value as StatusEmpresa],
       }));
     }
     setCurrentPage(1); // Reset página ao filtrar
@@ -255,14 +266,14 @@ const EmpresasClientes = () => {
 
   const handleProdutoSelectChange = (value: string) => {
     if (value === '__todos_produtos__') {
-      setFiltros(prev => ({
+      setFiltros((prev) => ({
         ...prev,
-        produtos: undefined
+        produtos: undefined,
       }));
     } else {
-      setFiltros(prev => ({
+      setFiltros((prev) => ({
         ...prev,
-        produtos: [value as Produto]
+        produtos: [value as Produto],
       }));
     }
     setCurrentPage(1); // Reset página ao filtrar
@@ -273,7 +284,7 @@ const EmpresasClientes = () => {
     setFiltros({});
     setBuscaLocal('');
     setCurrentPage(1);
-    
+
     // Limpar filtros específicos da aba Parâmetros
     if (activeTab === 'parametros') {
       setFiltroTipoContrato('__todos__');
@@ -373,11 +384,11 @@ const EmpresasClientes = () => {
       emailGestor: empresa.email_gestor || '',
       emailComercial: (empresa as any).email_comercial || '',
       emailTm: (empresa as any).email_tm || '',
-      produtos: empresa.produtos?.map(p => p.produto as Produto) || [],
-      grupos: empresa.grupos?.map(g => g.grupo_id) || [],
+      produtos: empresa.produtos?.map((p) => p.produto as Produto) || [],
+      grupos: empresa.grupos?.map((g) => g.grupo_id) || [],
       temAms: empresa.tem_ams || false,
-      tipoBook: empresa.tipo_book as any || 'nao_tem_book',
-      tipoCobranca: empresa.tipo_cobranca as any || 'banco_horas',
+      tipoBook: (empresa.tipo_book as any) || 'nao_tem_book',
+      tipoCobranca: (empresa.tipo_cobranca as any) || 'banco_horas',
       vigenciaInicial: empresa.vigencia_inicial || '',
       vigenciaFinal: empresa.vigencia_final || '',
       bookPersonalizado: empresa.book_personalizado || false,
@@ -385,13 +396,14 @@ const EmpresasClientes = () => {
       empresaConsolidadoraId: (empresa as any).empresa_consolidadora_id || null,
       observacao: empresa.observacao || '',
       // NOVO: Parâmetros de Banco de Horas
-      tipo_contrato: empresa.tipo_contrato as any || undefined,
+      tipo_contrato: (empresa.tipo_contrato as any) || undefined,
       periodo_apuracao: empresa.periodo_apuracao || undefined,
       inicio_vigencia_banco_horas: inicioVigenciaFormatado,
       baseline_horas_mensal: baselineHorasFormatado || '00:00',
       baseline_tickets_mensal: empresa.baseline_tickets_mensal || undefined,
       possui_repasse_especial: empresa.possui_repasse_especial || false,
-      tipo_repasse_especial: (empresa.tipo_repasse_especial || 'simples') as 'simples' | 'por_periodo',
+      tipo_repasse_especial: (empresa.tipo_repasse_especial || 'simples') as
+        'simples' | 'por_periodo',
       ciclos_para_zerar: empresa.ciclos_para_zerar || undefined,
       percentual_repasse_mensal: empresa.percentual_repasse_mensal || 0,
       percentual_repasse_especial: empresa.percentual_repasse_especial || 0,
@@ -405,12 +417,11 @@ const EmpresasClientes = () => {
       quantidade_minima_chamados_sla: empresa.quantidade_minima_chamados_sla || undefined,
       // NOVO: Campos de Segmentação de Baseline
       baselineSegmentado: empresa.baseline_segmentado || false,
-      segmentacaoConfig: empresa.segmentacao_config as any || undefined,
+      segmentacaoConfig: (empresa.segmentacao_config as any) || undefined,
       // Periodicidade de apuração
       dia_inicio_apuracao: (empresa as any).dia_inicio_apuracao ?? 1,
       dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0,
     };
-
   };
 
   return (
@@ -458,7 +469,7 @@ const EmpresasClientes = () => {
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 mb-2">
@@ -468,7 +479,7 @@ const EmpresasClientes = () => {
               <p className="text-2xl font-bold text-green-600">{stats.ativas}</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 mb-2">
@@ -478,7 +489,7 @@ const EmpresasClientes = () => {
               <p className="text-2xl font-bold text-red-600">{stats.inativas}</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 mb-2">
@@ -509,13 +520,19 @@ const EmpresasClientes = () => {
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </Button>
-                
+
                 {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
-                {(
-                  buscaLocal !== '' || 
-                  (activeTab === 'principais' && (filtros.status || filtros.produtos || filtros.temAms !== undefined || filtros.emProjeto !== undefined)) ||
-                  (activeTab === 'parametros' && (filtroTipoContrato !== '__todos__' || filtroPeriodoApuracao !== '__todos__' || filtroPercentualRepasse !== '__todos__' || filtroBaselineMensal !== '__todos__'))
-                ) && (
+                {(buscaLocal !== '' ||
+                  (activeTab === 'principais' &&
+                    (filtros.status ||
+                      filtros.produtos ||
+                      filtros.temAms !== undefined ||
+                      filtros.emProjeto !== undefined)) ||
+                  (activeTab === 'parametros' &&
+                    (filtroTipoContrato !== '__todos__' ||
+                      filtroPeriodoApuracao !== '__todos__' ||
+                      filtroPercentualRepasse !== '__todos__' ||
+                      filtroBaselineMensal !== '__todos__'))) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -561,7 +578,9 @@ const EmpresasClientes = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__todos_status__">Todos os status</SelectItem>
-                          {STATUS_EMPRESA_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                          {STATUS_EMPRESA_OPTIONS.filter(
+                            (option) => option.value !== 'Selecione'
+                          ).map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -582,11 +601,13 @@ const EmpresasClientes = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__todos_produtos__">Todos os produtos</SelectItem>
-                          {PRODUTOS_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                          {PRODUTOS_OPTIONS.filter((option) => option.value !== 'Selecione').map(
+                            (option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -595,7 +616,13 @@ const EmpresasClientes = () => {
                     <div>
                       <div className="text-sm font-medium mb-2">Tem AMS</div>
                       <Select
-                        value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
+                        value={
+                          filtros.temAms === undefined
+                            ? '__todos_ams__'
+                            : filtros.temAms
+                              ? 'sim'
+                              : 'nao'
+                        }
                         onValueChange={(value) => {
                           if (value === '__todos_ams__') {
                             handleFiltroChange('temAms', undefined);
@@ -619,7 +646,13 @@ const EmpresasClientes = () => {
                     <div>
                       <div className="text-sm font-medium mb-2">Em Projeto</div>
                       <Select
-                        value={filtros.emProjeto === undefined ? '__todos_projeto__' : filtros.emProjeto ? 'sim' : 'nao'}
+                        value={
+                          filtros.emProjeto === undefined
+                            ? '__todos_projeto__'
+                            : filtros.emProjeto
+                              ? 'sim'
+                              : 'nao'
+                        }
                         onValueChange={(value) => {
                           if (value === '__todos_projeto__') {
                             handleFiltroChange('emProjeto', undefined);
@@ -673,9 +706,15 @@ const EmpresasClientes = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__todos__">Todos os tipos</SelectItem>
-                          {valoresUnicosTipoContrato.map(tipo => (
+                          {valoresUnicosTipoContrato.map((tipo) => (
                             <SelectItem key={tipo} value={tipo}>
-                              {tipo === 'horas' ? 'Horas' : tipo === 'tickets' ? 'Tickets' : tipo === 'ambos' ? 'Ambos' : tipo}
+                              {tipo === 'horas'
+                                ? 'Horas'
+                                : tipo === 'tickets'
+                                  ? 'Tickets'
+                                  : tipo === 'ambos'
+                                    ? 'Ambos'
+                                    : tipo}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -697,7 +736,7 @@ const EmpresasClientes = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__todos__">Todos os períodos</SelectItem>
-                          {valoresUnicosPeriodoApuracao.map(periodo => (
+                          {valoresUnicosPeriodoApuracao.map((periodo) => (
                             <SelectItem key={periodo} value={periodo.toString()}>
                               {periodo} {periodo === 1 ? 'mês' : 'meses'}
                             </SelectItem>
@@ -721,7 +760,7 @@ const EmpresasClientes = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__todos__">Todos os percentuais</SelectItem>
-                          {valoresUnicosPercentualRepasse.map(percentual => (
+                          {valoresUnicosPercentualRepasse.map((percentual) => (
                             <SelectItem key={percentual} value={percentual.toString()}>
                               {percentual}%
                             </SelectItem>
@@ -745,7 +784,7 @@ const EmpresasClientes = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__todos__">Todas as baselines</SelectItem>
-                          {valoresUnicosBaselineMensal.map(baseline => (
+                          {valoresUnicosBaselineMensal.map((baseline) => (
                             <SelectItem key={baseline} value={baseline}>
                               {baseline}
                             </SelectItem>
@@ -802,7 +841,7 @@ const EmpresasClientes = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                       disabled={!paginatedData.hasPrevPage}
                       aria-label="Página anterior"
                     >
@@ -814,7 +853,9 @@ const EmpresasClientes = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(paginatedData.totalPages, prev + 1))
+                      }
                       disabled={!paginatedData.hasNextPage}
                       aria-label="Próxima página"
                     >
@@ -825,7 +866,8 @@ const EmpresasClientes = () => {
 
                 {/* Contador de registros */}
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} empresas
+                  {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems}{' '}
+                  empresas
                 </div>
               </div>
             )}
@@ -836,8 +878,12 @@ const EmpresasClientes = () => {
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-sonda-blue">Nova Empresa</DialogTitle>
-              <p className="text-sm text-gray-500">Preencha os dados para cadastrar um novo cliente</p>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">
+                Nova Empresa
+              </DialogTitle>
+              <p className="text-sm text-gray-500">
+                Preencha os dados para cadastrar um novo cliente
+              </p>
             </DialogHeader>
             <EmpresaForm
               mode="create"
@@ -853,7 +899,9 @@ const EmpresasClientes = () => {
         <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-sonda-blue">Visualizar Empresa</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">
+                Visualizar Empresa
+              </DialogTitle>
               <p className="text-sm text-gray-500">Informações detalhadas da empresa</p>
             </DialogHeader>
             {selectedEmpresa && (
@@ -877,7 +925,9 @@ const EmpresasClientes = () => {
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-sonda-blue">Editar Empresa</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">
+                Editar Empresa
+              </DialogTitle>
             </DialogHeader>
             {selectedEmpresa && (
               <EmpresaForm
@@ -902,8 +952,8 @@ const EmpresasClientes = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja excluir a empresa "{selectedEmpresa?.nome_completo}"?
-                Esta ação não pode ser desfeita.
+                Tem certeza que deseja excluir a empresa "{selectedEmpresa?.nome_completo}"? Esta
+                ação não pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
