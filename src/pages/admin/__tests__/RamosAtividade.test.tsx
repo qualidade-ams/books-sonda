@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import RamosAtividade from '../RamosAtividade';
 import type { RamoAtividade } from '@/types/ramosAtividade';
 import { exportarTabela } from '@/utils/exportarTabela';
+import { lerPlanilha } from '@/utils/importarPlanilha';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -16,6 +17,11 @@ vi.mock('@/utils/exportarTabela', async (original) => ({
   ...(await original<typeof import('@/utils/exportarTabela')>()),
   exportarTabela: vi.fn(async () => undefined),
 }));
+vi.mock('@/utils/importarPlanilha', async (original) => ({
+  ...(await original<typeof import('@/utils/importarPlanilha')>()),
+  lerPlanilha: vi.fn(),
+}));
+window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -210,5 +216,57 @@ describe('RamosAtividade', () => {
     expect((exportacao.abas[0].linhas as RamoAtividade[]).map((r) => r.nome)).toEqual([
       'Agronegócio',
     ]);
+  });
+
+  it('importa ramos novos no fim da lista; o que já existe é ignorado', async () => {
+    vi.mocked(lerPlanilha).mockResolvedValue([
+      ['ramosAtividade.exportar.colunas.ramo'],
+      ['Logística'],
+      ['varejo'],
+    ]);
+    render(
+      <TooltipProvider>
+        <RamosAtividade />
+      </TooltipProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'ds.importar.botao' }));
+    expect(
+      screen.getByRole('heading', { name: 'ramosAtividade.importar.titulo' })
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/ds.importar.escolher/), {
+      target: { files: [new File(['x'], 'ramos.xlsx')] },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'ds.importar.importarN.um {"n":1}' })
+    );
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ds.importar.botao' })
+    );
+    await waitFor(() =>
+      expect(hook.salvar).toHaveBeenCalledWith([
+        { id: 'r1', nome: 'Agronegócio', ativo: true },
+        { id: 'r2', nome: 'Varejo', ativo: false },
+        { nome: 'Logística', ativo: true },
+      ])
+    );
+    expect(screen.getByRole('list', { name: 'ramosAtividade.lista.titulo' })).toBeInTheDocument();
+  });
+
+  it('importar: só quem edita, e não com alterações pendentes', () => {
+    const { unmount } = render(
+      <TooltipProvider>
+        <RamosAtividade />
+      </TooltipProvider>
+    );
+    incluir('Novo ramo');
+    expect(screen.getByRole('button', { name: 'ds.importar.botao' })).toBeDisabled();
+    unmount();
+    permissoes = ['ramos_atividade:view'];
+    render(
+      <TooltipProvider>
+        <RamosAtividade />
+      </TooltipProvider>
+    );
+    expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
   });
 });

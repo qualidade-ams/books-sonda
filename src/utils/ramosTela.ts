@@ -5,6 +5,7 @@
 
 import type { RamoAtividade, RamoRascunho } from '@/types/ramosAtividade';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
+import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
 /** Ramo do rascunho; os incluídos na tela ainda não têm id do banco */
 export type RamoEdicao = RamoAtividade & { novo?: boolean };
@@ -118,3 +119,35 @@ export const exportacaoRamos = (ramos: RamoAtividade[], t: Traduzir): Exportacao
     },
   ],
 });
+
+/** Importação: ramo novo entra; o que já existe (sem diferenciar maiúsculas) é ignorado */
+export function conferirRamos(
+  linhas: LinhaPlanilha[],
+  salvos: RamoAtividade[],
+  t: Traduzir
+): LinhaImportacao[] {
+  const primeira = new Map<string, number>();
+  return linhas.map((l) => {
+    const nome = l.valores.nome.trim();
+    if (!nome) return { ...l, situacao: 'erro', erros: [t('ramosAtividade.importar.erros.vazio')] };
+    const chave = normalizar(nome);
+    const repetido = primeira.get(chave);
+    if (repetido)
+      return {
+        ...l,
+        situacao: 'erro',
+        erros: [t('ramosAtividade.importar.erros.repetido', { linha: repetido })],
+      };
+    primeira.set(chave, l.linha);
+    return { ...l, situacao: nomeRepetido(nome, salvos) ? 'igual' : 'novo' };
+  });
+}
+
+/** A lista gravada com os ramos importados no fim, ativos */
+export const rascunhoComImportados = (
+  salvos: RamoAtividade[],
+  novos: LinhaPlanilha[]
+): RamoRascunho[] => [
+  ...paraRascunho(salvos),
+  ...novos.map((l) => ({ nome: l.valores.nome.trim(), ativo: true })),
+];

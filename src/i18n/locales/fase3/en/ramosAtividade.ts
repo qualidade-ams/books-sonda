@@ -80,6 +80,20 @@ const ramosAtividade = {
       secundario: 'Companies (secondary sector)',
     },
   },
+  importar: {
+    titulo: 'Import business sectors',
+    modelo: 'business-sectors-template',
+    exemplo: 'Agribusiness',
+    salveAntes: 'Save or discard the changes before importing',
+    regras: {
+      umPorLinha: 'One sector per row, in the order they should appear, after the existing ones.',
+      existentes: 'Sectors that already exist (case-insensitive) are ignored.',
+    },
+    erros: {
+      vazio: 'Empty name.',
+      repetido: 'Repeated in the spreadsheet (row {{linha}}).',
+    },
+  },
 };
 
 export default ramosAtividade;

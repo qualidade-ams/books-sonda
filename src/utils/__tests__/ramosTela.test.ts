@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { matrizDaAba } from '@/utils/exportarTabela';
 import {
+  conferirRamos,
   exportacaoRamos,
   filtrarRamos,
   mudancasRamos,
   nomeRepetido,
   novoRamo,
   paraRascunho,
+  rascunhoComImportados,
   pendenciaDoRamo,
   totaisRamos,
 } from '../ramosTela';
@@ -113,6 +115,33 @@ describe('exportacaoRamos', () => {
       ],
       ['Agronegócio', 'fase3Comum.ativo', 3, 1],
       ['Varejo', 'fase3Comum.inativo', 0, 0],
+    ]);
+  });
+});
+
+describe('importação de ramos', () => {
+  const t = (chave: string, valores?: Record<string, unknown>) =>
+    valores ? `${chave} ${JSON.stringify(valores)}` : chave;
+  const linha = (n: number, nome: string) => ({ linha: n, valores: { nome } });
+
+  it('confere: novo, já existe (sem diferenciar maiúsculas), repetido na planilha e vazio', () => {
+    const conferidas = conferirRamos(
+      [linha(2, 'Logística'), linha(3, 'varejo'), linha(4, 'logística '), linha(5, '')],
+      SALVOS,
+      t
+    );
+    expect(conferidas.map((l) => [l.situacao, l.erros])).toEqual([
+      ['novo', undefined],
+      ['igual', undefined],
+      ['erro', ['ramosAtividade.importar.erros.repetido {"linha":2}']],
+      ['erro', ['ramosAtividade.importar.erros.vazio']],
+    ]);
+  });
+
+  it('os novos entram no fim da lista gravada, ativos', () => {
+    expect(rascunhoComImportados(SALVOS, [linha(2, ' Logística ')])).toEqual([
+      ...paraRascunho(SALVOS),
+      { nome: 'Logística', ativo: true },
     ]);
   });
 });

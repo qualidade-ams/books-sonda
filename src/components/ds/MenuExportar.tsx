@@ -55,6 +55,7 @@ export function MenuExportar({
           type="button"
           className={cn(
             variante === 'vidro' ? botaoVidro : buttonVariants({ variante: 'secundario' }),
+            'disabled:cursor-not-allowed disabled:opacity-50',
             className
           )}
           disabled={exportando}

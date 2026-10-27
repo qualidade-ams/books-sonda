@@ -81,6 +81,20 @@ const ramosAtividade = {
       secundario: 'Empresas (ramo secundario)',
     },
   },
+  importar: {
+    titulo: 'Importar ramos',
+    modelo: 'modelo-ramos-de-actividad',
+    exemplo: 'Agronegocio',
+    salveAntes: 'Guarde o descarte los cambios antes de importar',
+    regras: {
+      umPorLinha: 'Un ramo por fila, en el orden en que deben aparecer, después de los existentes.',
+      existentes: 'Los ramos que ya existen (sin distinguir mayúsculas) se ignoran.',
+    },
+    erros: {
+      vazio: 'Nombre vacío.',
+      repetido: 'Repetido en la planilla (fila {{linha}}).',
+    },
+  },
 };
 
 export default ramosAtividade;

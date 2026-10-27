@@ -29,6 +29,7 @@ import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { DicasContext } from '@/components/ds/Dicas';
 import { BarraRodape, DicaDoRotulo, Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { MenuExportar } from '@/components/ds/MenuExportar';
+import { BotaoImportar, TelaImportacao } from '@/components/ds/TelaImportacao';
 import { BotaoLimparFiltros, FiltroMultiplo } from '@/components/ds/Filtros';
 import { atraso } from '@/components/ds/Visual';
 import { campo } from '@/components/ds/estilos';
@@ -39,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import {
+  conferirRamos,
   exportacaoRamos,
   filtrarRamos,
   mudancasRamos,
@@ -46,6 +48,7 @@ import {
   novoRamo,
   paraRascunho,
   pendenciaDoRamo,
+  rascunhoComImportados,
   totaisRamos,
   usoDoRamo,
   type RamoEdicao,
@@ -77,6 +80,7 @@ export default function RamosAtividade() {
   const [novo, setNovo] = useState('');
   const [tocadoNovo, setTocadoNovo] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
+  const [importando, setImportando] = useState(false);
 
   const dicas = useMemo(
     () => ({ [t('ramosAtividade.lista.titulo')]: t('ramosAtividade.dicas.ramos') }),
@@ -248,152 +252,196 @@ export default function RamosAtividade() {
       <DicasContext.Provider value={dicas}>
         <div className="min-h-screen bg-ds-bg-page">
           <DsPage className="px-4 py-4 md:px-6">
-            <FaixaPagina>
-              <div className="pb-24 pt-3 md:pb-28 md:pt-4">
-                <div className="ds-surgir max-w-2xl">
-                  <TituloFaixa texto={t('ramosAtividade.titulo')} />
-                  <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
-                    {t('ramosAtividade.subtitulo')}
-                  </p>
-                </div>
-                <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
-                  <MenuExportar
-                    descricao={plural(t, 'ramosAtividade.exportar.descricao', paraExportar.length)}
-                    onExportar={(formato) =>
-                      exportarTabela(exportacaoRamos(paraExportar, t), formato)
+            {importando ? (
+              <TelaImportacao
+                voltarPara={t('ramosAtividade.titulo')}
+                titulo={t('ramosAtividade.importar.titulo')}
+                colunas={[
+                  {
+                    id: 'nome',
+                    rotulo: t('ramosAtividade.exportar.colunas.ramo'),
+                    obrigatoria: true,
+                  },
+                ]}
+                regras={[
+                  t('ramosAtividade.importar.regras.umPorLinha'),
+                  t('ramosAtividade.importar.regras.existentes'),
+                ]}
+                modelo={{
+                  arquivo: t('ramosAtividade.importar.modelo'),
+                  exemplo: [{ nome: t('ramosAtividade.importar.exemplo') }],
+                }}
+                podeAtualizar={false}
+                conferir={(linhas) => conferirRamos(linhas, salvos, t)}
+                onImportar={(linhas) => salvar(rascunhoComImportados(salvos, linhas))}
+                onFechar={() => setImportando(false)}
+              />
+            ) : (
+              <>
+                <FaixaPagina>
+                  <div className="pb-24 pt-3 md:pb-28 md:pt-4">
+                    <div className="ds-surgir max-w-2xl">
+                      <TituloFaixa texto={t('ramosAtividade.titulo')} />
+                      <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
+                        {t('ramosAtividade.subtitulo')}
+                      </p>
+                    </div>
+                    <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+                      {podeEditar && (
+                        <span
+                          title={
+                            mudancas.algo ? t('ramosAtividade.importar.salveAntes') : undefined
+                          }
+                        >
+                          <BotaoImportar
+                            onClick={() => setImportando(true)}
+                            desabilitado={mudancas.algo}
+                          />
+                        </span>
+                      )}
+                      <MenuExportar
+                        descricao={plural(
+                          t,
+                          'ramosAtividade.exportar.descricao',
+                          paraExportar.length
+                        )}
+                        onExportar={(formato) =>
+                          exportarTabela(exportacaoRamos(paraExportar, t), formato)
+                        }
+                      />
+                    </div>
+                  </div>
+                </FaixaPagina>
+
+                <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
+                  <Indicador
+                    rotulo={t('ramosAtividade.indicadores.ativos')}
+                    valor={totais.ativos}
+                    icone={<ListTree />}
+                  />
+                  <Indicador
+                    rotulo={t('ramosAtividade.indicadores.inativos')}
+                    valor={totais.inativos}
+                    icone={<CircleSlash />}
+                    atrasoMs={60}
+                    selecionado={situacao.length === 1 && situacao[0] === 'inativo'}
+                    onClick={() =>
+                      setSituacao((s) => (s.length === 1 && s[0] === 'inativo' ? [] : ['inativo']))
                     }
                   />
-                </div>
-              </div>
-            </FaixaPagina>
-
-            <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
-              <Indicador
-                rotulo={t('ramosAtividade.indicadores.ativos')}
-                valor={totais.ativos}
-                icone={<ListTree />}
-              />
-              <Indicador
-                rotulo={t('ramosAtividade.indicadores.inativos')}
-                valor={totais.inativos}
-                icone={<CircleSlash />}
-                atrasoMs={60}
-                selecionado={situacao.length === 1 && situacao[0] === 'inativo'}
-                onClick={() =>
-                  setSituacao((s) => (s.length === 1 && s[0] === 'inativo' ? [] : ['inativo']))
-                }
-              />
-              <Indicador
-                rotulo={t('ramosAtividade.indicadores.comRamo')}
-                valor={totais.comRamo}
-                icone={<Building2 />}
-                tom="success"
-                atrasoMs={120}
-              />
-              <Indicador
-                rotulo={t('ramosAtividade.indicadores.semRamo')}
-                valor={totais.semRamo}
-                icone={<AlertTriangle />}
-                tom="warning"
-                atrasoMs={180}
-              />
-            </div>
-
-            <section
-              className="ds-surgir mx-auto mt-6 max-w-3xl overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface"
-              style={atraso(240)}
-            >
-              <header className="flex items-center gap-1.5 border-b border-ds-border px-4 py-4 md:px-5">
-                <h2 className="text-xs font-bold uppercase tracking-[0.06em]">
-                  {t('ramosAtividade.lista.titulo')}
-                </h2>
-                <DicaDoRotulo rotulo={t('ramosAtividade.lista.titulo')} />
-              </header>
-
-              {/* Inclusão direto na lista: o cadastro é só o nome */}
-              {podeEditar && !error && !isLoading && (
-                <div className="border-b border-ds-border px-4 py-3 md:px-5">
-                  <div className="flex gap-2">
-                    <input
-                      aria-label={t('ramosAtividade.lista.novo')}
-                      placeholder={t('ramosAtividade.lista.novoPlaceholder')}
-                      value={novo}
-                      onChange={(e) => setNovo(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && adicionar()}
-                      aria-invalid={!!erroNovo}
-                      className={cn(campo, erroNovo && 'border-ds-danger-fg')}
-                    />
-                    <Button onClick={adicionar} className="shrink-0">
-                      <Plus /> {t('ramosAtividade.lista.incluir')}
-                    </Button>
-                  </div>
-                  {erroNovo && <p className="mt-1.5 text-xs text-ds-danger-fg">{erroNovo}</p>}
-                </div>
-              )}
-
-              {rascunho.length > 0 && !error && (
-                <div className="flex flex-wrap items-center gap-2 border-b border-ds-border px-4 py-3 md:px-5">
-                  {filtrando && <BotaoLimparFiltros onClick={limpar} />}
-                  <label className="relative block min-w-0 flex-1 md:w-64 md:flex-none">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-fg-muted"
-                      aria-hidden
-                    />
-                    <input
-                      type="search"
-                      aria-label={t('ramosAtividade.lista.buscar')}
-                      placeholder={t('ramosAtividade.lista.buscar')}
-                      value={busca}
-                      onChange={(e) => setBusca(e.target.value)}
-                      className={cn(campo, 'pl-9')}
-                    />
-                  </label>
-                  <FiltroMultiplo<SituacaoRamo>
-                    rotulo={t('fase3Comum.situacao')}
-                    opcoes={[
-                      { valor: 'ativo', rotulo: t('fase3Comum.ativos') },
-                      { valor: 'inativo', rotulo: t('fase3Comum.inativos') },
-                    ]}
-                    selecionados={situacao}
-                    onChange={setSituacao}
+                  <Indicador
+                    rotulo={t('ramosAtividade.indicadores.comRamo')}
+                    valor={totais.comRamo}
+                    icone={<Building2 />}
+                    tom="success"
+                    atrasoMs={120}
+                  />
+                  <Indicador
+                    rotulo={t('ramosAtividade.indicadores.semRamo')}
+                    valor={totais.semRamo}
+                    icone={<AlertTriangle />}
+                    tom="warning"
+                    atrasoMs={180}
                   />
                 </div>
-              )}
 
-              {corpo()}
-            </section>
+                <section
+                  className="ds-surgir mx-auto mt-6 max-w-3xl overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface"
+                  style={atraso(240)}
+                >
+                  <header className="flex items-center gap-1.5 border-b border-ds-border px-4 py-4 md:px-5">
+                    <h2 className="text-xs font-bold uppercase tracking-[0.06em]">
+                      {t('ramosAtividade.lista.titulo')}
+                    </h2>
+                    <DicaDoRotulo rotulo={t('ramosAtividade.lista.titulo')} />
+                  </header>
 
-            {mudancas.algo && (
-              <BarraRodape>
-                <span className="text-sm text-ds-fg-secondary">
-                  <span className="font-medium text-ds-fg">{resumo}</span> ·{' '}
-                  {t('ramosAtividade.mudancas.naoSalvo')}
-                </span>
-                <div className="flex gap-2">
-                  <Button disabled={isSalvando} onClick={() => setRascunho(salvos)}>
-                    {t('fase3Comum.descartar')}
-                  </Button>
-                  <Button
-                    variante="primario"
-                    disabled={isSalvando}
-                    onClick={() => setConfirmar(true)}
-                  >
-                    {t('fase3Comum.salvar')}
-                  </Button>
-                </div>
-              </BarraRodape>
+                  {/* Inclusão direto na lista: o cadastro é só o nome */}
+                  {podeEditar && !error && !isLoading && (
+                    <div className="border-b border-ds-border px-4 py-3 md:px-5">
+                      <div className="flex gap-2">
+                        <input
+                          aria-label={t('ramosAtividade.lista.novo')}
+                          placeholder={t('ramosAtividade.lista.novoPlaceholder')}
+                          value={novo}
+                          onChange={(e) => setNovo(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && adicionar()}
+                          aria-invalid={!!erroNovo}
+                          className={cn(campo, erroNovo && 'border-ds-danger-fg')}
+                        />
+                        <Button onClick={adicionar} className="shrink-0">
+                          <Plus /> {t('ramosAtividade.lista.incluir')}
+                        </Button>
+                      </div>
+                      {erroNovo && <p className="mt-1.5 text-xs text-ds-danger-fg">{erroNovo}</p>}
+                    </div>
+                  )}
+
+                  {rascunho.length > 0 && !error && (
+                    <div className="flex flex-wrap items-center gap-2 border-b border-ds-border px-4 py-3 md:px-5">
+                      {filtrando && <BotaoLimparFiltros onClick={limpar} />}
+                      <label className="relative block min-w-0 flex-1 md:w-64 md:flex-none">
+                        <Search
+                          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-fg-muted"
+                          aria-hidden
+                        />
+                        <input
+                          type="search"
+                          aria-label={t('ramosAtividade.lista.buscar')}
+                          placeholder={t('ramosAtividade.lista.buscar')}
+                          value={busca}
+                          onChange={(e) => setBusca(e.target.value)}
+                          className={cn(campo, 'pl-9')}
+                        />
+                      </label>
+                      <FiltroMultiplo<SituacaoRamo>
+                        rotulo={t('fase3Comum.situacao')}
+                        opcoes={[
+                          { valor: 'ativo', rotulo: t('fase3Comum.ativos') },
+                          { valor: 'inativo', rotulo: t('fase3Comum.inativos') },
+                        ]}
+                        selecionados={situacao}
+                        onChange={setSituacao}
+                      />
+                    </div>
+                  )}
+
+                  {corpo()}
+                </section>
+
+                {mudancas.algo && (
+                  <BarraRodape>
+                    <span className="text-sm text-ds-fg-secondary">
+                      <span className="font-medium text-ds-fg">{resumo}</span> ·{' '}
+                      {t('ramosAtividade.mudancas.naoSalvo')}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button disabled={isSalvando} onClick={() => setRascunho(salvos)}>
+                        {t('fase3Comum.descartar')}
+                      </Button>
+                      <Button
+                        variante="primario"
+                        disabled={isSalvando}
+                        onClick={() => setConfirmar(true)}
+                      >
+                        {t('fase3Comum.salvar')}
+                      </Button>
+                    </div>
+                  </BarraRodape>
+                )}
+
+                <ConfirmDialog
+                  aberto={confirmar}
+                  onOpenChange={setConfirmar}
+                  titulo={t('ramosAtividade.confirmar.titulo')}
+                  descricao={`${resumo}.`}
+                  consequencias={consequencias.length ? consequencias : undefined}
+                  rotuloConfirmar={t('ds.formulario.salvar')}
+                  processando={isSalvando}
+                  onConfirmar={gravar}
+                />
+              </>
             )}
-
-            <ConfirmDialog
-              aberto={confirmar}
-              onOpenChange={setConfirmar}
-              titulo={t('ramosAtividade.confirmar.titulo')}
-              descricao={`${resumo}.`}
-              consequencias={consequencias.length ? consequencias : undefined}
-              rotuloConfirmar={t('ds.formulario.salvar')}
-              processando={isSalvando}
-              onConfirmar={gravar}
-            />
           </DsPage>
         </div>
       </DicasContext.Provider>
