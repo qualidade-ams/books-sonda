@@ -158,6 +158,19 @@ const rotinasSaldoParcial = {
     copiaAjuda: 'O gestor de cada empresa marcada entra na cópia.',
     emailInvalido: 'E-mail inválido',
   },
+  exportar: {
+    arquivo: 'envio-de-saldo-parcial',
+    titulo: 'Envio de Saldo Parcial',
+    descricao: 'Exporta os agendamentos e o histórico de envios',
+    colunas: {
+      nome: 'Agendamento',
+      recorrencia: 'Recorrência',
+      empresas: 'Empresas',
+      copia: 'Cópia (CC)',
+      ultimoStatus: 'Situação do último envio',
+      erro: 'Erro',
+    },
+  },
 };
 
 export default rotinasSaldoParcial;

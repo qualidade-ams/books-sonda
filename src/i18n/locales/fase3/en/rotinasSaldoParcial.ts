@@ -158,6 +158,19 @@ const rotinasSaldoParcial = {
     copiaAjuda: 'The manager of each selected company is copied.',
     emailInvalido: 'Invalid e-mail',
   },
+  exportar: {
+    arquivo: 'partial-balance-sending',
+    titulo: 'Partial Balance Sending',
+    descricao: 'Exports the schedules and the sending history',
+    colunas: {
+      nome: 'Schedule',
+      recorrencia: 'Recurrence',
+      empresas: 'Companies',
+      copia: 'Copy (CC)',
+      ultimoStatus: 'Status of the last sending',
+      erro: 'Error',
+    },
+  },
 };
 
 export default rotinasSaldoParcial;

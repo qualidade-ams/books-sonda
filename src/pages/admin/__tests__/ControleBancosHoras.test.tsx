@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, it, expect, vi } from 'vites
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ControleBancosHoras from '../ControleBancosHoras';
 import type { BancoCadastro } from '@/services/bancosHoras/motorBancosHoras';
+import { exportarTabela } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -15,6 +16,10 @@ vi.mock('react-i18next', () => ({
       getFixedT: (idioma: string) => (chave: string) => `${idioma}:${chave}`,
     },
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -52,6 +57,7 @@ const bancosPorEmpresa: Record<string, BancoCadastro[]> = {
   beta: [],
 };
 const mesesPedidos: string[][] = [];
+const buscarQuadro = vi.fn().mockResolvedValue({});
 const lancamentos = {
   reajustes: [],
   observacoes: [],
@@ -132,6 +138,7 @@ vi.mock('@/hooks/useControleBancoHoras', () => ({
     return { eventos: [], isLoading: false, error: null, recarregar: vi.fn() };
   },
   useControleEmpresas: () => empresas,
+  useBuscarQuadro: () => buscarQuadro,
   useControleBancos: (empresaId: string) => ({
     bancos: bancosPorEmpresa[empresaId] ?? [],
     isLoading: false,
@@ -341,5 +348,26 @@ describe('ControleBancosHoras', () => {
     expect(
       screen.queryByRole('button', { name: 'controleBancoHoras.enviarSaldo.botao' })
     ).not.toBeInTheDocument();
+  });
+
+  it('exporta todos os bancos, cada um no período escolhido, também para quem só consulta', async () => {
+    permissoes = ['bancos_horas_controle:view'];
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /Banco padrão/ }));
+    fireEvent.click(screen.getByRole('button', { name: /controleBancoHoras.periodo.anterior/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('controleBancoHoras.exportar.descricao')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
+
+    await waitFor(() => expect(exportarTabela).toHaveBeenCalled());
+    const pedidos = buscarQuadro.mock.calls.map(([meses]) => meses.map((m) => `${m.ano}-${m.mes}`));
+    expect(pedidos).toEqual([
+      ['2026-10', '2026-11', '2026-12'],
+      ['2026-7', '2026-8', '2026-9'],
+    ]);
+    const [exportacao, formato] = vi.mocked(exportarTabela).mock.calls[0];
+    expect(formato).toBe('xlsx');
+    expect(exportacao.arquivo).toBe('controleBancoHoras.exportar.arquivo {"empresa":"ALFA"}');
+    expect(exportacao.abas.map((a) => a.nome)).toEqual(['BANCO COMEX', 'Banco padrão']);
   });
 });

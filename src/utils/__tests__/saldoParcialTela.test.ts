@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
+import { descreverRecorrencia } from '@/utils/descreverRecorrencia';
 import {
+  exportacaoSaldoParcial,
   SEM_FILTRO_HISTORICO,
   filtrarHistorico,
   ordenarAgendamentos,
@@ -130,5 +133,94 @@ describe('ordenarAgendamentos', () => {
   it('com o agendador desligado, não prevê', () => {
     const [item] = ordenarAgendamentos([agendamento('a1')], true, AGORA);
     expect(item.proximoEnvio).toBeNull();
+  });
+});
+
+describe('exportacaoSaldoParcial', () => {
+  const t = (chave: string, valores?: Record<string, unknown>) =>
+    valores ? `${chave} ${JSON.stringify(valores)}` : chave;
+  const nomes: Record<string, string> = { e1: 'EMPRESA ALFA', e2: 'EMPRESA BETA' };
+
+  it('duas abas: agendamentos, na ordem da tela, e histórico de envios', () => {
+    const ag = agendamento('a1', {
+      nome: 'Semanal',
+      empresas: [{ empresa_id: 'e1' }, { empresa_id: 'e2' }],
+      emails_cc: ['gestor@exemplo.com'],
+      ultima_execucao: '2026-10-26T12:00:00Z',
+      ultimo_status: 'sucesso',
+    });
+    const exportacao = exportacaoSaldoParcial(
+      [
+        { agendamento: ag, proximoEnvio: '2026-10-27T12:00:00Z' },
+        { agendamento: agendamento('a2', { ativo: false }), proximoEnvio: null },
+      ],
+      [
+        execucao('x1'),
+        execucao('x2', {
+          origem: 'manual',
+          agendamento_id: null,
+          status: 'erro',
+          erro: 'SMTP fora',
+        }),
+      ],
+      (id) => nomes[id] ?? id,
+      t
+    );
+    expect(exportacao.arquivo).toBe('rotinasSaldoParcial.exportar.arquivo');
+    expect(exportacao.abas.map((a) => a.nome)).toEqual([
+      'rotinasSaldoParcial.abas.agendamentos',
+      'rotinasSaldoParcial.abas.historico',
+    ]);
+    const [agendamentos, historico] = exportacao.abas.map(matrizDaAba);
+    expect(agendamentos[0]).toEqual([
+      'rotinasSaldoParcial.exportar.colunas.nome',
+      'fase3Comum.situacao',
+      'rotinasSaldoParcial.exportar.colunas.recorrencia',
+      'rotinasSaldoParcial.exportar.colunas.empresas',
+      'rotinasSaldoParcial.exportar.colunas.copia',
+      'rotinasSaldoParcial.cartao.proximo',
+      'rotinasSaldoParcial.cartao.ultimo',
+      'rotinasSaldoParcial.exportar.colunas.ultimoStatus',
+    ]);
+    expect(agendamentos[1]).toEqual([
+      'Semanal',
+      'fase3Comum.ativo',
+      descreverRecorrencia(ag, t as never),
+      'EMPRESA ALFA, EMPRESA BETA',
+      'gestor@exemplo.com',
+      '2026-10-27 09:00',
+      '2026-10-26 09:00',
+      'rotinasSaldoParcial.situacoes.sucesso',
+    ]);
+    expect(agendamentos[2].slice(0, 2)).toEqual(['Agendamento a2', 'fase3Comum.inativo']);
+    expect(historico).toEqual([
+      [
+        'rotinasSaldoParcial.historico.colunas.quando',
+        'rotinasSaldoParcial.historico.colunas.empresa',
+        'rotinasSaldoParcial.historico.colunas.origem',
+        'rotinasSaldoParcial.historico.colunas.situacao',
+        'rotinasSaldoParcial.historico.colunas.destinatarios',
+        'rotinasSaldoParcial.historico.colunas.emails',
+        'rotinasSaldoParcial.exportar.colunas.erro',
+      ],
+      [
+        '2026-10-26 09:00',
+        'EMPRESA ALFA',
+        'Semanal',
+        'rotinasSaldoParcial.situacoes.sucesso',
+        2,
+        1,
+        '',
+      ],
+      [
+        '2026-10-26 09:00',
+        'EMPRESA ALFA',
+        'rotinasSaldoParcial.historico.controle',
+        'rotinasSaldoParcial.situacoes.erro',
+        2,
+        1,
+        'SMTP fora',
+      ],
+    ]);
   });
 });

@@ -2,6 +2,9 @@
 // indicadores, quem já recebeu hoje, filtros do histórico e a ordem dos agendamentos.
 import { origemDaExecucao } from '@/services/envioSaldoParcialService';
 import { preverProximaExecucao } from '@/utils/proximaExecucao';
+import { descreverRecorrencia } from '@/utils/descreverRecorrencia';
+import { dataHoraPlanilha, type Exportacao, type Traduzir } from '@/utils/exportarTabela';
+import type { TFunction } from 'i18next';
 import type {
   AgendamentoSaldoParcial,
   ExecucaoSaldoParcial,
@@ -96,4 +99,100 @@ export function ordenarAgendamentos(
       }
       return a.agendamento.nome.localeCompare(b.agendamento.nome, 'pt-BR');
     });
+}
+
+type AgendamentoOrdenado = ReturnType<typeof ordenarAgendamentos>[number];
+
+/** Exportação da aba: os agendamentos na ordem da tela e o histórico de envios carregado */
+export function exportacaoSaldoParcial(
+  agendamentos: AgendamentoOrdenado[],
+  execucoes: ExecucaoSaldoParcial[],
+  nomeDaEmpresa: (id: string) => string,
+  t: Traduzir
+): Exportacao {
+  const r = (chave: string, valores?: Record<string, unknown>) =>
+    t(`rotinasSaldoParcial.${chave}`, valores);
+  const situacao = (status: string | null) => (status ? r(`situacoes.${status}`) : null);
+  const origem = (e: ExecucaoSaldoParcial) => {
+    const tipo = origemDaExecucao(e);
+    if (tipo === 'controle') return r('historico.controle');
+    const nome = e.agendamento?.nome ?? '';
+    return tipo === 'executar_agora' ? r('historico.executadoAgora', { nome }) : nome;
+  };
+  return {
+    arquivo: r('exportar.arquivo'),
+    titulo: r('exportar.titulo'),
+    abas: [
+      {
+        nome: r('abas.agendamentos'),
+        linhas: agendamentos,
+        colunas: [
+          {
+            rotulo: r('exportar.colunas.nome'),
+            valor: (l: AgendamentoOrdenado) => l.agendamento.nome,
+          },
+          {
+            rotulo: t('fase3Comum.situacao'),
+            valor: (l: AgendamentoOrdenado) =>
+              t(l.agendamento.ativo ? 'fase3Comum.ativo' : 'fase3Comum.inativo'),
+          },
+          {
+            rotulo: r('exportar.colunas.recorrencia'),
+            valor: (l: AgendamentoOrdenado) =>
+              descreverRecorrencia(l.agendamento, t as unknown as TFunction),
+          },
+          {
+            rotulo: r('exportar.colunas.empresas'),
+            valor: (l: AgendamentoOrdenado) =>
+              (l.agendamento.empresas ?? []).map((e) => nomeDaEmpresa(e.empresa_id)).join(', '),
+          },
+          {
+            rotulo: r('exportar.colunas.copia'),
+            valor: (l: AgendamentoOrdenado) => l.agendamento.emails_cc.join(', '),
+          },
+          {
+            rotulo: r('cartao.proximo'),
+            valor: (l: AgendamentoOrdenado) => dataHoraPlanilha(l.proximoEnvio),
+          },
+          {
+            rotulo: r('cartao.ultimo'),
+            valor: (l: AgendamentoOrdenado) => dataHoraPlanilha(l.agendamento.ultima_execucao),
+          },
+          {
+            rotulo: r('exportar.colunas.ultimoStatus'),
+            valor: (l: AgendamentoOrdenado) => situacao(l.agendamento.ultimo_status),
+          },
+        ],
+      },
+      {
+        nome: r('abas.historico'),
+        linhas: execucoes,
+        colunas: [
+          {
+            rotulo: r('historico.colunas.quando'),
+            valor: (e: ExecucaoSaldoParcial) => dataHoraPlanilha(e.iniciado_em),
+          },
+          {
+            rotulo: r('historico.colunas.empresa'),
+            valor: (e: ExecucaoSaldoParcial) =>
+              e.empresa?.nome_abreviado ?? nomeDaEmpresa(e.empresa_id),
+          },
+          { rotulo: r('historico.colunas.origem'), valor: origem },
+          {
+            rotulo: r('historico.colunas.situacao'),
+            valor: (e: ExecucaoSaldoParcial) => situacao(e.status),
+          },
+          {
+            rotulo: r('historico.colunas.destinatarios'),
+            valor: (e: ExecucaoSaldoParcial) => e.qtd_destinatarios,
+          },
+          {
+            rotulo: r('historico.colunas.emails'),
+            valor: (e: ExecucaoSaldoParcial) => e.qtd_emails,
+          },
+          { rotulo: r('exportar.colunas.erro'), valor: (e: ExecucaoSaldoParcial) => e.erro },
+        ],
+      },
+    ],
+  };
 }

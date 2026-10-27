@@ -16,9 +16,12 @@ import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { BotaoLimparFiltros, FiltroMultiplo } from '@/components/ds/Filtros';
 import { formatarHoras } from '@/components/ds/horas';
 import { campo } from '@/components/ds/estilos';
+import { MenuExportar } from '@/components/ds/MenuExportar';
+import { atraso } from '@/components/ds/Visual';
 import { CartaoRetroativo } from '@/components/admin/retroativos/CartaoRetroativo';
 import { PedirRegularizacao } from '@/components/admin/retroativos/PedirRegularizacao';
 import { plural } from '@/utils/plural';
+import { exportarTabela } from '@/utils/exportarTabela';
 import { useEmailsConsultores, useRetroativos } from '@/hooks/useRetroativos';
 import { usePermissions } from '@/hooks/usePermissions';
 import { rotuloMesLocal } from '@/utils/controleTela';
@@ -27,6 +30,7 @@ import {
   filtrarRetroativos,
   opcoesDosRetroativos,
   type FiltroRetroativos,
+  exportacaoRetroativos,
 } from '@/utils/retroativosTela';
 import { cn } from '@/lib/utils';
 import type { Retroativo, SituacaoRetroativo } from '@/types/retroativos';
@@ -80,6 +84,7 @@ export default function ApontamentosRetroativos() {
 
   const opcoes = opcoesDosRetroativos(retroativos);
   const visiveis = filtrarRetroativos(retroativos, aba, filtro);
+  const itensVisiveis = visiveis.reduce((n, r) => n + r.itens.length, 0);
   const filtrando =
     !!filtro.busca.trim() || filtro.empresas.length > 0 || filtro.consultores.length > 0;
   const limpar = () => setFiltro(SEM_FILTRO_RETROATIVOS);
@@ -208,6 +213,14 @@ export default function ApontamentosRetroativos() {
               <div className="ds-surgir max-w-2xl">
                 <TituloFaixa texto={a('titulo')} />
                 <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">{a('subtitulo')}</p>
+              </div>
+              <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+                <MenuExportar
+                  descricao={plural(t, 'apontamentosRetroativos.exportar.descricao', itensVisiveis)}
+                  onExportar={(formato) =>
+                    exportarTabela(exportacaoRetroativos(visiveis, t, i18n.language), formato)
+                  }
+                />
               </div>
             </div>
           </FaixaPagina>

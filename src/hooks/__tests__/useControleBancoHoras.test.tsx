@@ -3,6 +3,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import {
+  useBuscarQuadro,
   useControleBancos,
   useControleEmpresas,
   useHistoricoControle,
@@ -276,5 +277,26 @@ describe('useSaldoParcialControle', () => {
       description: 'Servidor de e-mail fora',
       variant: 'destructive',
     });
+  });
+});
+
+describe('useBuscarQuadro', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('busca o quadro de um período sob demanda, com o mesmo cache do quadro da tela', async () => {
+    controle.quadro.mockResolvedValue({ '2026-09': { bancos: [] } });
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(
+      () => ({ buscar: useBuscarQuadro('e1'), tela: useQuadroControle('e1', meses) }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.tela.isLoading).toBe(false));
+
+    await expect(result.current.buscar(meses)).resolves.toEqual({ '2026-09': { bancos: [] } });
+    expect(controle.quadro).toHaveBeenCalledTimes(1);
+
+    const outros = [{ mes: 1, ano: 2027 }];
+    await result.current.buscar(outros);
+    expect(controle.quadro).toHaveBeenLastCalledWith('e1', outros);
   });
 });

@@ -37,6 +37,19 @@ export const matrizDaAba = <T>(aba: AbaExportacao<T>): Celula[][] => [
 const dataLocal = (d: Date) =>
   [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, '0')).join('-');
 
+/** Data e hora em Brasília, como AAAA-MM-DD HH:MM: ordena bem na planilha */
+export const dataHoraPlanilha = (iso: string | null) =>
+  iso
+    ? new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(iso))
+    : null;
+
 export const nomeDoArquivo = (base: string, formato: FormatoExportacao, hoje = new Date()) =>
   `${base}-${dataLocal(hoje)}.${formato}`;
 

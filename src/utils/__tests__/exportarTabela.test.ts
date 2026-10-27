@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  dataHoraPlanilha,
   exportarTabela,
   larguras,
   matrizDaAba,
@@ -56,6 +57,11 @@ const RAMOS: AbaExportacao<Ramo> = {
 const HOJE = new Date(2026, 9, 7, 23, 30);
 
 describe('exportarTabela', () => {
+  it('data e hora em Brasília, no formato que ordena na planilha; vazio fica vazio', () => {
+    expect(dataHoraPlanilha('2026-10-05T12:00:00Z')).toBe('2026-10-05 09:00');
+    expect(dataHoraPlanilha(null)).toBeNull();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     pdf.instancias.length = 0;

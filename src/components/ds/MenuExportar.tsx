@@ -11,15 +11,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { botaoVidro, itemMenu } from '@/components/ds/estilos';
+import { buttonVariants } from '@/components/ds/Button';
+import { cn } from '@/lib/utils';
 import type { FormatoExportacao } from '@/utils/exportarTabela';
 
 export function MenuExportar({
   descricao,
   onExportar,
+  variante = 'vidro',
+  className,
 }: {
   /** O que será exportado (ex.: "Exporta 3 ramos, com os filtros aplicados") */
   descricao: string;
   onExportar: (formato: FormatoExportacao) => void | Promise<void>;
+  /** vidro: na faixa escura do topo · secundario: sobre o fundo da página */
+  variante?: 'vidro' | 'secundario';
+  /** Ajuste do botão ao lado dos outros (ex.: altura) */
+  className?: string;
 }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -43,7 +51,14 @@ export function MenuExportar({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className={botaoVidro} disabled={exportando}>
+        <button
+          type="button"
+          className={cn(
+            variante === 'vidro' ? botaoVidro : buttonVariants({ variante: 'secundario' }),
+            className
+          )}
+          disabled={exportando}
+        >
           <Download className="h-4 w-4" aria-hidden /> {t('ds.exportar.botao')}
         </button>
       </DropdownMenuTrigger>

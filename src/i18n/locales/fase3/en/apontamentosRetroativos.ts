@@ -119,6 +119,28 @@ const apontamentosRetroativos = {
     enviar: 'Send',
     carregandoEmails: "Looking up the consultants' e-mails",
   },
+  exportar: {
+    arquivo: 'retroactive-time-entries',
+    descricao: {
+      um: 'Exports {{n}} time entry, from the tab and filters applied',
+      varios: 'Exports {{n}} time entries, from the tab and filters applied',
+    },
+    tipo: {
+      apontamento: 'Time entry',
+      ticket: 'Ticket',
+    },
+    colunas: {
+      empresa: 'Company',
+      banco: 'Bank',
+      mes: 'Month',
+      tipo: 'Type',
+      chamado: 'Ticket',
+      tarefa: 'Task',
+      horas: 'Hours',
+      tickets: 'Tickets',
+      justificativa: 'Decision justification',
+    },
+  },
 };
 
 export default apontamentosRetroativos;

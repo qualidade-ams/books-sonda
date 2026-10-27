@@ -2,8 +2,16 @@
  * Regras da tela Apontamentos Retroativos que não dependem de componente: a busca e os filtros
  * da lista (dentro da aba de cada situação) e as opções dos filtros.
  */
-import type { Retroativo, SituacaoRetroativo } from '@/types/retroativos';
+import type { ItemRetroativo, Retroativo, SituacaoRetroativo } from '@/types/retroativos';
 import type { EnvelopeRegularizacao } from '@/services/retroativos/envioRegularizacao';
+import { formatarHoras } from '@/components/ds/horas';
+import { rotuloMesLocal } from '@/utils/controleTela';
+import {
+  dataHoraPlanilha,
+  type Exportacao,
+  type Traduzir,
+  type ValorCelula,
+} from '@/utils/exportarTabela';
 
 export interface FiltroRetroativos {
   busca: string;
@@ -90,4 +98,46 @@ export function montarEnvelopes(
       email: consultor ? (emails[consultor] ?? null) : null,
       itens: doConsultor,
     }));
+}
+
+type LinhaRetroativo = { r: Retroativo; i: ItemRetroativo };
+
+/** Exportação dos retroativos visíveis: uma linha por apontamento ou ticket */
+export function exportacaoRetroativos(
+  lista: Retroativo[],
+  t: Traduzir,
+  idioma: string
+): Exportacao {
+  const a = (chave: string) => t(`apontamentosRetroativos.${chave}`);
+  const coluna = (rotulo: string, valor: (l: LinhaRetroativo) => ValorCelula) => ({
+    rotulo,
+    valor,
+  });
+  return {
+    arquivo: a('exportar.arquivo'),
+    titulo: a('titulo'),
+    abas: [
+      {
+        nome: a('titulo'),
+        linhas: lista.flatMap((r) => r.itens.map((i) => ({ r, i }))),
+        colunas: [
+          coluna(a('exportar.colunas.empresa'), (l) => l.r.empresa),
+          coluna(a('exportar.colunas.banco'), (l) => l.r.banco),
+          coluna(a('exportar.colunas.mes'), (l) => rotuloMesLocal(l.r.mes, idioma)),
+          coluna(t('fase3Comum.situacao'), (l) => a(`situacoes.${l.r.situacao}`)),
+          coluna(a('exportar.colunas.tipo'), (l) => a(`exportar.tipo.${l.i.tipo}`)),
+          coluna(a('exportar.colunas.chamado'), (l) => l.i.chamado),
+          coluna(a('exportar.colunas.tarefa'), (l) => l.i.tarefa),
+          coluna(a('colunas.consultor'), (l) => l.i.consultor),
+          // O dia puro (AAAA-MM-DD) vai como está
+          coluna(a('colunas.dataAtividade'), (l) => l.i.dataAtividade),
+          coluna(a('colunas.dataSistema'), (l) => dataHoraPlanilha(l.i.lancadoEm)),
+          coluna(a('colunas.status'), (l) => l.i.statusChamado),
+          coluna(a('exportar.colunas.horas'), (l) => formatarHoras(l.i.minutos).replace('−', '-')),
+          coluna(a('exportar.colunas.tickets'), (l) => l.i.tickets),
+          coluna(a('exportar.colunas.justificativa'), (l) => l.r.decisao?.justificativa),
+        ],
+      },
+    ],
+  };
 }

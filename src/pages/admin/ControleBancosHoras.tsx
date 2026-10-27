@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ds/EmptyState';
 import { TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
 import { DicasContext } from '@/components/ds/Dicas';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import { ListaBancosControle } from '@/components/admin/controle/ListaBancosControle';
 import { NavegadorPeriodo } from '@/components/admin/controle/NavegadorPeriodo';
 import { IndicadoresControle } from '@/components/admin/controle/IndicadoresControle';
@@ -30,6 +31,7 @@ import {
 } from '@/components/admin/controle/AbaRequerimentos';
 import { usePeriodoTexto } from '@/components/admin/empresas/periodoTexto';
 import {
+  useBuscarQuadro,
   useControleBancos,
   useControleEmpresas,
   useLancamentosControle,
@@ -45,8 +47,10 @@ import { EnviarSaldoParcial } from '@/components/admin/controle/EnviarSaldoParci
 import { botaoVidro } from '@/components/ds/estilos';
 import { mesAtual, periodosDoBanco } from '@/services/bancosHoras/periodos';
 import type { MesAno } from '@/services/bancosHoras/calculo';
+import { exportarTabela, type FormatoExportacao } from '@/utils/exportarTabela';
 import {
   ajustesDosRequerimentos,
+  exportacaoControle,
   mesesComSituacao,
   resultadoDoBanco,
   rotuloPeriodoLocal,
@@ -106,6 +110,21 @@ export default function ControleBancosHoras() {
     error: erroQuadro,
   } = useQuadroControle(empresaId, meses);
   const { quadro: quadroAtual } = useQuadroControle(empresaId, [hoje]);
+  const buscarQuadro = useBuscarQuadro(empresaId);
+  // Todos os bancos, cada um no período escolhido nele (sem escolha, o atual)
+  const exportar = async (formato: FormatoExportacao) => {
+    const abas = [];
+    for (const b of bancos) {
+      const doBanco = periodosDoBanco(b, hoje);
+      const mesesDoBanco = doBanco[periodoPorBanco[b.bancoId] ?? doBanco.length - 1]?.meses ?? [];
+      const quadroDoBanco = await buscarQuadro(mesesDoBanco);
+      abas.push({
+        banco: b,
+        meses: mesesComSituacao(mesesDoBanco, quadroDoBanco, b.bancoId, hoje),
+      });
+    }
+    await exportarTabela(exportacaoControle(empresa?.nome ?? '', abas, t, i18n.language), formato);
+  };
   const mesesDoQuadro = banco ? mesesComSituacao(meses, quadro, banco.bancoId, hoje) : [];
   const resultadosAtuais = Object.fromEntries(
     bancos.map((b) => [b.bancoId, resultadoDoBanco(quadroAtual, hoje, b.bancoId)])
@@ -435,14 +454,23 @@ export default function ControleBancosHoras() {
                       {c(`modelo.${empresa.modelo}`)}
                     </span>
                   )}
-                  {podeEditar && bancos.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setEnviandoSaldo(true)}
-                      className={cn(botaoVidro, 'h-9 sm:ml-auto md:h-8')}
-                    >
-                      <Send className="h-4 w-4" /> {c('enviarSaldo.botao')}
-                    </button>
+                  {bancos.length > 0 && (
+                    <div className="flex flex-wrap gap-2 sm:ml-auto">
+                      <MenuExportar
+                        descricao={c('exportar.descricao')}
+                        onExportar={exportar}
+                        className="h-9 md:h-8"
+                      />
+                      {podeEditar && (
+                        <button
+                          type="button"
+                          onClick={() => setEnviandoSaldo(true)}
+                          className={cn(botaoVidro, 'h-9 md:h-8')}
+                        >
+                          <Send className="h-4 w-4" /> {c('enviarSaldo.botao')}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

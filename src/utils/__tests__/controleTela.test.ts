@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
+import type { ResultadoBancoMes, ResultadoUnidade } from '@/services/bancosHoras/motorBancosHoras';
 import {
   ajustesDosRequerimentos,
   camposAlterados,
+  exportacaoControle,
   indiceReferencia,
   mesesComSituacao,
   resultadoDoBanco,
@@ -141,5 +144,107 @@ describe('camposAlterados', () => {
 
   it('inclusão e exclusão não listam campos', () => {
     expect(camposAlterados({ campos: [], antes: null, depois: { a: 1 } })).toEqual([]);
+  });
+});
+
+describe('exportacaoControle', () => {
+  const t = (chave: string, valores?: Record<string, unknown>) =>
+    valores ? `${chave} ${JSON.stringify(valores)}` : chave;
+  const q = (chave: string) => `controleBancoHoras.quadro.${chave}`;
+  const unidade = (extra: Partial<ResultadoUnidade> = {}): ResultadoUnidade => ({
+    baseline: 600,
+    repasseAnterior: -60,
+    saldoAUtilizar: 540,
+    consumo: 120,
+    requerimentos: 30,
+    reajustes: 15,
+    consumoTotal: 135,
+    saldo: 405,
+    repasse: 405,
+    consumidoDeOutros: 0,
+    cedidoAOutros: 0,
+    saldoFinal: 405,
+    excedente: 0,
+    valorExcedente: 0,
+    taxa: null,
+    ...extra,
+  });
+  const mes = (m: number, resultado?: Partial<ResultadoBancoMes>) => ({
+    mes: { ano: 2026, mes: m },
+    chave: `2026-${String(m).padStart(2, '0')}`,
+    situacao: (resultado ? 'aberto' : 'futuro') as 'aberto' | 'futuro',
+    resultado: resultado
+      ? ({ percentualRepasse: 50, horas: null, tickets: null, ...resultado } as ResultadoBancoMes)
+      : undefined,
+  });
+
+  it('uma aba por banco: as linhas do quadro nas linhas e os meses nas colunas', () => {
+    const exportacao = exportacaoControle(
+      'ALFA',
+      [
+        {
+          banco: { nome: 'Banco COMEX', tipoContrato: 'horas' },
+          meses: [mes(8, { horas: unidade() }), mes(9)],
+        },
+      ],
+      t,
+      'pt-BR'
+    );
+    expect(exportacao).toMatchObject({
+      arquivo: 'controleBancoHoras.exportar.arquivo {"empresa":"ALFA"}',
+      titulo: 'controleBancoHoras.exportar.titulo {"empresa":"ALFA"}',
+    });
+    expect(exportacao.abas.map((a) => a.nome)).toEqual(['Banco COMEX']);
+    expect(matrizDaAba(exportacao.abas[0])).toEqual([
+      ['controleBancoHoras.exportar.linha', 'Ago/2026', 'Set/2026'],
+      [q('baseline'), '10:00', ''],
+      [q('repasseAnterior'), '-01:00', ''],
+      [q('disponivel'), '09:00', ''],
+      [q('chamados'), '02:00', ''],
+      [q('requerimentos'), '00:30', ''],
+      [q('reajustes'), '+00:15', ''],
+      [q('consumoTotal'), '02:15', ''],
+      [q('saldo'), '06:45', ''],
+      ['controleBancoHoras.quadro.repasse {"n":50}', '06:45', ''],
+    ]);
+  });
+
+  it('banco de horas e tickets traz as duas unidades; excedente e consumo entre bancos só quando há', () => {
+    const exportacao = exportacaoControle(
+      'ALFA',
+      [
+        {
+          banco: { nome: 'Banco FISCAL', tipoContrato: 'ambos' },
+          meses: [
+            mes(8, {
+              horas: unidade({ cedidoAOutros: 60, excedente: 30, valorExcedente: 150 }),
+              tickets: unidade({ baseline: 10 }),
+            }),
+          ],
+        },
+      ],
+      t,
+      'pt-BR'
+    );
+    const rotulos = matrizDaAba(exportacao.abas[0]).map((l) => l[0]);
+    expect(rotulos).toContain(
+      'controleBancoHoras.quadro.cedidoAOutros · controleBancoHoras.quadro.horas'
+    );
+    expect(rotulos).toContain(
+      'controleBancoHoras.quadro.saldoFinal · controleBancoHoras.quadro.horas'
+    );
+    expect(rotulos).toContain(
+      'controleBancoHoras.quadro.valorFaturar · controleBancoHoras.quadro.horas'
+    );
+    expect(rotulos).not.toContain(
+      'controleBancoHoras.quadro.cedidoAOutros · controleBancoHoras.quadro.tickets'
+    );
+    const linha = (rotulo: string) => matrizDaAba(exportacao.abas[0]).find((l) => l[0] === rotulo);
+    expect(linha('controleBancoHoras.quadro.baseline · controleBancoHoras.quadro.tickets')).toEqual(
+      ['controleBancoHoras.quadro.baseline · controleBancoHoras.quadro.tickets', 10]
+    );
+    expect(
+      linha('controleBancoHoras.quadro.valorFaturar · controleBancoHoras.quadro.horas')?.[1]
+    ).toBe(150);
   });
 });

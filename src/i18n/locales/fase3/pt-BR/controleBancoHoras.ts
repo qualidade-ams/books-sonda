@@ -340,6 +340,13 @@ const controleBancoHoras = {
     },
     confirmarHistorico: 'O envio fica no histórico de envios do Saldo Parcial',
   },
+  exportar: {
+    arquivo: 'controle-banco-de-horas-{{empresa}}',
+    titulo: 'Controle de Banco de Horas · {{empresa}}',
+    descricao:
+      'Exporta o quadro de todos os bancos, uma aba por banco, cada um no período escolhido',
+    linha: 'Linha',
+  },
 };
 
 export default controleBancoHoras;

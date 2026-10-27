@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { matrizDaAba } from '@/utils/exportarTabela';
 import {
   SEM_FILTRO_RETROATIVOS,
+  exportacaoRetroativos,
   filtrarRetroativos,
   montarEnvelopes,
   opcoesDosRetroativos,
@@ -131,6 +133,89 @@ describe('montarEnvelopes', () => {
       ['Ana Souza', 'ana@sonda.com', ['ap-2', 'ap-3']],
       ['Bruno Lima', null, ['ap-1']],
       ['Sem consultor', null, ['ap-4']],
+    ]);
+  });
+});
+
+describe('exportacaoRetroativos', () => {
+  const t = (chave: string) => chave;
+  it('uma linha por apontamento ou ticket, com o retroativo de que faz parte', () => {
+    const exportacao = exportacaoRetroativos(
+      [
+        retroativo('r1', {
+          situacao: 'descartado',
+          decisao: {
+            em: '2026-10-06T12:00:00Z',
+            porId: null,
+            por: null,
+            justificativa: 'Relançar',
+          },
+          itens: [
+            item('1', { minutos: -90 }),
+            item('2', {
+              tipo: 'ticket',
+              minutos: 0,
+              tickets: 1,
+              dataAtividade: null,
+              tarefa: null,
+            }),
+          ],
+        }),
+      ],
+      t,
+      'pt-BR'
+    );
+    expect(exportacao.arquivo).toBe('apontamentosRetroativos.exportar.arquivo');
+    const [cabecalho, ...linhas] = matrizDaAba(exportacao.abas[0]);
+    expect(cabecalho).toEqual([
+      'apontamentosRetroativos.exportar.colunas.empresa',
+      'apontamentosRetroativos.exportar.colunas.banco',
+      'apontamentosRetroativos.exportar.colunas.mes',
+      'fase3Comum.situacao',
+      'apontamentosRetroativos.exportar.colunas.tipo',
+      'apontamentosRetroativos.exportar.colunas.chamado',
+      'apontamentosRetroativos.exportar.colunas.tarefa',
+      'apontamentosRetroativos.colunas.consultor',
+      'apontamentosRetroativos.colunas.dataAtividade',
+      'apontamentosRetroativos.colunas.dataSistema',
+      'apontamentosRetroativos.colunas.status',
+      'apontamentosRetroativos.exportar.colunas.horas',
+      'apontamentosRetroativos.exportar.colunas.tickets',
+      'apontamentosRetroativos.exportar.colunas.justificativa',
+    ]);
+    expect(linhas).toEqual([
+      [
+        'ALFA',
+        'BANCO COMEX',
+        'Set/2026',
+        'apontamentosRetroativos.situacoes.descartado',
+        'apontamentosRetroativos.exportar.tipo.apontamento',
+        'CH-1',
+        'T-1',
+        'Ana Souza',
+        '2026-09-10',
+        '2026-10-05 09:00',
+        'Closed',
+        '-01:30',
+        0,
+        'Relançar',
+      ],
+      [
+        'ALFA',
+        'BANCO COMEX',
+        'Set/2026',
+        'apontamentosRetroativos.situacoes.descartado',
+        'apontamentosRetroativos.exportar.tipo.ticket',
+        'CH-2',
+        '',
+        'Ana Souza',
+        '',
+        '2026-10-05 09:00',
+        'Closed',
+        '00:00',
+        1,
+        'Relançar',
+      ],
     ]);
   });
 });

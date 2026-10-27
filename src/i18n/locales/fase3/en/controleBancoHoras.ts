@@ -343,6 +343,12 @@ const controleBancoHoras = {
     },
     confirmarHistorico: 'The sending stays in the Partial Balance sending history',
   },
+  exportar: {
+    arquivo: 'hour-bank-control-{{empresa}}',
+    titulo: 'Hour Bank Control · {{empresa}}',
+    descricao: 'Exports the grid of all banks, one sheet per bank, each in the chosen period',
+    linha: 'Line',
+  },
 };
 
 export default controleBancoHoras;

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { AbaSaldoParcial } from '../AbaSaldoParcial';
 import * as hooks from '@/hooks/useEnvioSaldoParcial';
+import { exportarTabela, matrizDaAba } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -23,6 +24,10 @@ vi.mock('@/hooks/usePermissions', () => ({
 }));
 
 const toast = vi.fn();
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
+}));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 vi.mock('@/hooks/useApiStatus', () => ({ useApiStatus: () => ({ data: true }) }));
 
@@ -413,5 +418,20 @@ describe('AbaSaldoParcial', () => {
     expect(screen.getByText('rotinasSaldoParcial.vazio.titulo')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /envioSaldoParcial.novoAgendamento/ }));
     expect(onEditar).toHaveBeenCalledWith(null);
+  });
+
+  it('exporta os agendamentos e o histórico, também para quem só consulta', async () => {
+    permissao.edicao = false;
+    const user = userEvent.setup();
+    renderAba();
+    await user.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(screen.getByText('rotinasSaldoParcial.exportar.descricao')).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: 'ds.exportar.pdf' }));
+
+    const [exportacao, formato] = vi.mocked(exportarTabela).mock.calls[0];
+    expect(formato).toBe('pdf');
+    const [agendamentos, historico] = exportacao.abas.map(matrizDaAba);
+    expect(agendamentos[1]).toContain('CLIENTE A, CLIENTE B');
+    expect(historico).toHaveLength(2);
   });
 });

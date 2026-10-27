@@ -118,6 +118,28 @@ const apontamentosRetroativos = {
     enviar: 'Enviar',
     carregandoEmails: 'Buscando o e-mail dos consultores',
   },
+  exportar: {
+    arquivo: 'apontamentos-retroativos',
+    descricao: {
+      um: 'Exporta {{n}} apontamento, da aba e dos filtros aplicados',
+      varios: 'Exporta {{n}} apontamentos, da aba e dos filtros aplicados',
+    },
+    tipo: {
+      apontamento: 'Apontamento',
+      ticket: 'Ticket',
+    },
+    colunas: {
+      empresa: 'Empresa',
+      banco: 'Banco',
+      mes: 'Mês',
+      tipo: 'Tipo',
+      chamado: 'Chamado',
+      tarefa: 'Tarefa',
+      horas: 'Horas',
+      tickets: 'Tickets',
+      justificativa: 'Justificativa da decisão',
+    },
+  },
 };
 
 export default apontamentosRetroativos;

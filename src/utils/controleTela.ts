@@ -6,7 +6,13 @@
 import { chaveMes, type QuadroEmpresa } from '@/services/controleBancoHorasService';
 import { situacaoDoMes, type SituacaoMes } from '@/services/bancosHoras/periodos';
 import type { MesAno, TipoContrato, Unidade } from '@/services/bancosHoras/calculo';
-import type { ResultadoBancoMes } from '@/services/bancosHoras/motorBancosHoras';
+import type {
+  BancoCadastro,
+  ResultadoBancoMes,
+  ResultadoUnidade,
+} from '@/services/bancosHoras/motorBancosHoras';
+import { formatarHoras } from '@/components/ds/horas';
+import type { Exportacao, Traduzir, ValorCelula } from '@/utils/exportarTabela';
 import type { AjusteRequerimento, RequerimentoControle } from '@/types/controleBancoHoras';
 
 /** A unidade que a tela mostra primeiro: tickets só no banco de tickets */
@@ -116,4 +122,113 @@ export function camposAlterados(evento: {
       antes: valorTexto(evento.antes[campo]),
       depois: valorTexto(evento.depois[campo]),
     }));
+}
+
+type CampoQuadro = keyof Pick<
+  ResultadoUnidade,
+  | 'baseline'
+  | 'repasseAnterior'
+  | 'saldoAUtilizar'
+  | 'consumo'
+  | 'requerimentos'
+  | 'reajustes'
+  | 'consumoTotal'
+  | 'saldo'
+  | 'repasse'
+  | 'consumidoDeOutros'
+  | 'cedidoAOutros'
+  | 'saldoFinal'
+  | 'excedente'
+  | 'valorExcedente'
+>;
+
+/** Linhas do quadro na ordem da tela: campo do resultado → rótulo em controleBancoHoras.quadro */
+const LINHAS_QUADRO: [CampoQuadro, string][] = [
+  ['baseline', 'baseline'],
+  ['repasseAnterior', 'repasseAnterior'],
+  ['saldoAUtilizar', 'disponivel'],
+  ['consumo', 'chamados'],
+  ['requerimentos', 'requerimentos'],
+  ['reajustes', 'reajustes'],
+  ['consumoTotal', 'consumoTotal'],
+  ['saldo', 'saldo'],
+  ['repasse', 'repasse'],
+];
+
+export interface BancoParaExportar {
+  banco: Pick<BancoCadastro, 'nome' | 'tipoContrato'>;
+  meses: MesDoQuadro[];
+}
+
+type LinhaQuadro = { rotulo: string; valores: Record<string, ValorCelula> };
+
+/**
+ * Exportação do Controle: uma aba por banco, com as linhas do quadro como na tela e os meses
+ * do período nas colunas. Banco de horas e tickets traz as duas unidades, uma depois da outra.
+ */
+export function exportacaoControle(
+  empresa: string,
+  bancos: BancoParaExportar[],
+  t: Traduzir,
+  idioma: string
+): Exportacao {
+  const q = (chave: string, valores?: Record<string, unknown>) =>
+    t(`controleBancoHoras.quadro.${chave}`, valores);
+
+  const linhasDoBanco = ({ banco, meses }: BancoParaExportar): LinhaQuadro[] => {
+    const unidades: Unidade[] =
+      banco.tipoContrato === 'ambos'
+        ? ['horas', 'tickets']
+        : [unidadePrincipal(banco.tipoContrato)];
+    const ref = meses[indiceReferencia(meses)];
+    return unidades.flatMap((unidade) => {
+      const doMes = (m: MesDoQuadro) => m.resultado?.[unidade] ?? null;
+      const algum = (campo: CampoQuadro) => meses.some((m) => (doMes(m)?.[campo] ?? 0) !== 0);
+      // No Excel o sinal de menos tipográfico da tela atrapalha; vai o hífen
+      const formatar = (n: number, sinal: 'auto' | 'sempre') =>
+        unidade === 'horas' ? formatarHoras(n, { sinal }).replace('−', '-') : n;
+      const linha = (campo: CampoQuadro, rotulo: string): LinhaQuadro => ({
+        rotulo: unidades.length > 1 ? `${rotulo} · ${q(unidade)}` : rotulo,
+        valores: Object.fromEntries(
+          meses.map((m) => {
+            const u = doMes(m);
+            if (!u) return [m.chave, ''];
+            if (campo === 'valorExcedente') return [m.chave, u.valorExcedente || ''];
+            return [m.chave, formatar(u[campo], campo === 'reajustes' ? 'sempre' : 'auto')];
+          })
+        ),
+      });
+
+      const linhas = LINHAS_QUADRO.map(([campo, chave]) =>
+        linha(
+          campo,
+          chave === 'repasse' ? q(chave, { n: ref?.resultado?.percentualRepasse ?? 0 }) : q(chave)
+        )
+      );
+      if (algum('consumidoDeOutros'))
+        linhas.push(linha('consumidoDeOutros', q('consumidoDeOutros')));
+      if (algum('cedidoAOutros')) linhas.push(linha('cedidoAOutros', q('cedidoAOutros')));
+      if (algum('consumidoDeOutros') || algum('cedidoAOutros'))
+        linhas.push(linha('saldoFinal', q('saldoFinal')));
+      if (meses.some((m) => (doMes(m)?.excedente ?? 0) > 0))
+        linhas.push(linha('excedente', q('excedente')), linha('valorExcedente', q('valorFaturar')));
+      return linhas;
+    });
+  };
+
+  return {
+    arquivo: t('controleBancoHoras.exportar.arquivo', { empresa }),
+    titulo: t('controleBancoHoras.exportar.titulo', { empresa }),
+    abas: bancos.map((b) => ({
+      nome: b.banco.nome,
+      linhas: linhasDoBanco(b),
+      colunas: [
+        { rotulo: t('controleBancoHoras.exportar.linha'), valor: (l: LinhaQuadro) => l.rotulo },
+        ...b.meses.map((m) => ({
+          rotulo: rotuloMesLocal(m.mes, idioma),
+          valor: (l: LinhaQuadro) => l.valores[m.chave],
+        })),
+      ],
+    })),
+  };
 }

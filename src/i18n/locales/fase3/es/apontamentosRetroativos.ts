@@ -119,6 +119,28 @@ const apontamentosRetroativos = {
     enviar: 'Enviar',
     carregandoEmails: 'Buscando el correo de los consultores',
   },
+  exportar: {
+    arquivo: 'registros-retroactivos',
+    descricao: {
+      um: 'Exporta {{n}} registro, de la pestaña y los filtros aplicados',
+      varios: 'Exporta {{n}} registros, de la pestaña y los filtros aplicados',
+    },
+    tipo: {
+      apontamento: 'Registro',
+      ticket: 'Ticket',
+    },
+    colunas: {
+      empresa: 'Empresa',
+      banco: 'Banco',
+      mes: 'Mes',
+      tipo: 'Tipo',
+      chamado: 'Ticket',
+      tarefa: 'Tarea',
+      horas: 'Horas',
+      tickets: 'Tickets',
+      justificativa: 'Justificación de la decisión',
+    },
+  },
 };
 
 export default apontamentosRetroativos;

@@ -37,7 +37,14 @@ import {
   useStatusSaldoParcial,
 } from '@/hooks/useEnvioSaldoParcial';
 import { plural } from '@/utils/plural';
-import { ordenarAgendamentos, receberamHoje, totaisSaldoParcial } from '@/utils/saldoParcialTela';
+import {
+  exportacaoSaldoParcial,
+  ordenarAgendamentos,
+  receberamHoje,
+  totaisSaldoParcial,
+} from '@/utils/saldoParcialTela';
+import { exportarTabela } from '@/utils/exportarTabela';
+import { MenuExportar } from '@/components/ds/MenuExportar';
 import type { AgendamentoSaldoParcial } from '@/types/envioSaldoParcial';
 
 export const SCREEN_KEY_SALDO_PARCIAL = 'envio_saldo_parcial';
@@ -257,7 +264,7 @@ export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
         )
       )}
 
-      <div className="flex justify-center">
+      <div className="relative flex flex-wrap items-center justify-center gap-3">
         <SegmentedTabs
           rotulo={s('abas.rotulo')}
           itens={[
@@ -272,6 +279,18 @@ export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
           valor={secao}
           onChange={(v) => setSecao(v as Secao)}
         />
+        <div className="sm:absolute sm:right-0">
+          <MenuExportar
+            variante="secundario"
+            descricao={s('exportar.descricao')}
+            onExportar={(formato) =>
+              exportarTabela(
+                exportacaoSaldoParcial(ordenados, execucoes, nomeDaEmpresa, t),
+                formato
+              )
+            }
+          />
+        </div>
       </div>
 
       {secao === 'historico' ? (

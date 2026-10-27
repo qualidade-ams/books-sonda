@@ -1,9 +1,11 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ApontamentosRetroativos from '../ApontamentosRetroativos';
 import type { Retroativo } from '@/types/retroativos';
+import { exportarTabela } from '@/utils/exportarTabela';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -11,6 +13,10 @@ vi.mock('react-i18next', () => ({
       valores ? `${chave} ${JSON.stringify(valores)}` : chave,
     i18n: { language: 'pt-BR' },
   }),
+}));
+vi.mock('@/utils/exportarTabela', async (original) => ({
+  ...(await original<typeof import('@/utils/exportarTabela')>()),
+  exportarTabela: vi.fn(async () => undefined),
 }));
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -231,5 +237,17 @@ describe('ApontamentosRetroativos', () => {
     expect(
       screen.queryByText('apontamentosRetroativos.selecao.selecionados.um {"n":1}')
     ).not.toBeInTheDocument();
+  });
+
+  it('exporta os apontamentos da aba e dos filtros, também para quem só consulta', async () => {
+    permissoes = ['bancos_horas_retroativos:view'];
+    renderizar();
+    await userEvent.click(screen.getByRole('button', { name: 'ds.exportar.botao' }));
+    expect(
+      screen.getByText('apontamentosRetroativos.exportar.descricao.um {"n":1}')
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
+    const [exportacao] = vi.mocked(exportarTabela).mock.calls[0];
+    expect(exportacao.abas[0].linhas).toHaveLength(1);
   });
 });

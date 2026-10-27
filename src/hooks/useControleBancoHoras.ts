@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
@@ -83,6 +84,20 @@ export function useQuadroControle(empresaId: string | undefined, meses: MesAno[]
     error: query.error as Error | null,
     recarregar: query.refetch,
   };
+}
+
+/** Quadro de qualquer período, sob demanda (exportar todos os bancos); mesmo cache do quadro da tela */
+export function useBuscarQuadro(empresaId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (meses: MesAno[]) =>
+      queryClient.fetchQuery({
+        queryKey: [CHAVE, 'quadro', empresaId, chaveMeses(meses)],
+        queryFn: () => controleBancoHorasService.quadro(empresaId!, meses),
+        staleTime: UM_MINUTO,
+      }),
+    [queryClient, empresaId]
+  );
 }
 
 export function useRequerimentosControle(empresaId: string | undefined, meses: MesAno[]) {
