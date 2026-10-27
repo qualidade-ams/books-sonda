@@ -3,7 +3,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import OrganizarMenu from '../OrganizarMenu';
-import type { ItemMenuSalvo } from '@/types/menuOrganizado';
+import { APARENCIA_PADRAO } from '@/config/aparenciaPadrao';
+import type { ItemMenuSalvo, NoMenu } from '@/types/menuOrganizado';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -21,7 +22,7 @@ vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({ hasPermission: () => permissao.edicao }),
 }));
 
-const APARENCIA = { claro: { menuFundo: '#FAFBFC' }, escuro: { menuFundo: '#1C1C1C' } };
+const APARENCIA = APARENCIA_PADRAO;
 // Administração no topo; o resto como no código
 const SALVOS: ItemMenuSalvo[] = [
   {
@@ -47,9 +48,13 @@ const estado = {
   error: null as Error | null,
   recarregar: vi.fn(),
   salvar: vi.fn(async () => undefined),
+  enviarLogo: vi.fn(async () => 'claro/aberto-1.png'),
   isSalvando: false,
 };
-vi.mock('@/hooks/useMenuOrganizado', () => ({ useMenuOrganizado: () => estado }));
+vi.mock('@/hooks/useMenuOrganizado', () => ({
+  useMenuOrganizado: () => estado,
+  useLogoMenu: (caminho: string | null) => (caminho ? `https://storage/${caminho}` : null),
+}));
 window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 
 const renderizar = () =>
@@ -133,5 +138,106 @@ describe('OrganizarMenu', () => {
     expect(screen.getByText('organizarMenu.erro')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.tentarNovamente' }));
     expect(estado.recarregar).toHaveBeenCalled();
+  });
+
+  describe('aba Cores', () => {
+    const abrirCores = () => {
+      renderizar();
+      fireEvent.click(screen.getByRole('tab', { name: 'organizarMenu.abas.cores' }));
+    };
+    const codigo = (parte: string, parteDaCor: 'fundo' | 'texto') =>
+      screen.getByRole('textbox', {
+        name: new RegExp(
+          `organizarMenu.cores.codigo.*organizarMenu.cores.${parteDaCor}.*organizarMenu.cores.partes.${parte}`
+        ),
+      });
+
+    beforeEach(() => {
+      document.documentElement.classList.remove('dark');
+      localStorage.clear();
+    });
+
+    it('muda a cor do selecionado, mostra a prévia e salva com a ordem como está', async () => {
+      abrirCores();
+      expect(
+        screen.getByRole('complementary', { name: 'organizarMenu.cores.previa' })
+      ).toBeInTheDocument();
+
+      fireEvent.change(codigo('selecionado', 'fundo'), { target: { value: '#ff0000' } });
+      expect(screen.getByText(/organizarMenu.mudancasCores.cores.claro/)).toBeInTheDocument();
+      expect(screen.getByText('organizarMenu.cores.alterada')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'organizarMenu.salvar' }));
+      fireEvent.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'organizarMenu.salvar',
+        })
+      );
+      await waitFor(() => expect(estado.salvar).toHaveBeenCalled());
+      const { arvore, aparenciaAtual, aparenciaNova } = (
+        estado.salvar.mock.calls[0] as unknown as [
+          {
+            arvore: NoMenu[];
+            aparenciaAtual: typeof APARENCIA;
+            aparenciaNova: typeof APARENCIA;
+          },
+        ]
+      )[0];
+      expect(arvore[0].chave).toBe('administracao');
+      expect(aparenciaAtual).toBe(APARENCIA);
+      expect(aparenciaNova.claro.selecionadoFundo).toBe('#FF0000');
+      expect(aparenciaNova.escuro).toEqual(APARENCIA.escuro);
+    });
+
+    it('avisa quando o texto tem pouco contraste com o fundo', () => {
+      abrirCores();
+      fireEvent.change(codigo('item', 'texto'), { target: { value: '#EEEEEE' } });
+      expect(screen.getByText(/organizarMenu.cores.contraste/)).toBeInTheDocument();
+    });
+
+    it('a aba de tema troca o tema da página', async () => {
+      abrirCores();
+      fireEvent.click(screen.getByRole('tab', { name: 'organizarMenu.cores.temas.escuro' }));
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+      await waitFor(() => expect(codigo('menu', 'fundo')).toHaveValue('#1C1C1C'));
+    });
+
+    it('envia o logo e usa o caminho na aparência; usar o padrão volta ao da Sonda', async () => {
+      abrirCores();
+      const arquivo = new File(['x'], 'logo.png', { type: 'image/png' });
+      fireEvent.change(
+        screen.getByLabelText(/organizarMenu.cores.enviarLogo.*organizarMenu.cores.logoAberto/),
+        { target: { files: [arquivo] } }
+      );
+      await waitFor(() =>
+        expect(estado.enviarLogo).toHaveBeenCalledWith({ tema: 'claro', tipo: 'aberto', arquivo })
+      );
+      expect(await screen.findByText(/organizarMenu.mudancasCores.logo.claro/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'organizarMenu.cores.usarPadrao' }));
+      expect(screen.queryByText(/organizarMenu.mudancasCores.logo/)).not.toBeInTheDocument();
+    });
+
+    it('arquivo grande demais não é enviado', () => {
+      abrirCores();
+      const grande = new File([new Uint8Array(600 * 1024)], 'logo.png', { type: 'image/png' });
+      fireEvent.change(
+        screen.getByLabelText(/organizarMenu.cores.enviarLogo.*organizarMenu.cores.logoAberto/),
+        { target: { files: [grande] } }
+      );
+      expect(screen.getByText('organizarMenu.cores.erroTamanho')).toBeInTheDocument();
+      expect(estado.enviarLogo).not.toHaveBeenCalled();
+    });
+
+    it('cores padrão volta às da carga no tema em uso', () => {
+      estado.menu = {
+        itens: SALVOS,
+        aparencia: { ...APARENCIA, claro: { ...APARENCIA.claro, menuFundo: '#000000' } },
+      };
+      abrirCores();
+      expect(codigo('menu', 'fundo')).toHaveValue('#000000');
+      fireEvent.click(screen.getByRole('button', { name: /organizarMenu.cores.padrao/ }));
+      expect(codigo('menu', 'fundo')).toHaveValue('#FAFBFC');
+    });
   });
 });

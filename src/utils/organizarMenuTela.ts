@@ -2,7 +2,7 @@
 // achatada (padrão "sortable tree" do dnd-kit): o arrasto vertical escolhe a posição e o horizontal,
 // o nível. Uma tela solta que recebe outra vira menu, com o nome e o ícone dela.
 import { arrayMove } from '@dnd-kit/sortable';
-import type { NoMenu } from '@/types/menuOrganizado';
+import type { AparenciaMenu, NoMenu, TemaMenu } from '@/types/menuOrganizado';
 
 /** Recuo de cada nível; também é o quanto arrastar na horizontal para trocar de nível */
 export const RECUO = 32;
@@ -176,4 +176,33 @@ export function soltar(
   const movidas = arrayMove(linhas, de, para);
   movidas[para] = { ...movidas[para], nivel };
   return montar(movidas);
+}
+
+/* Aba Cores */
+
+/** As cinco partes do menu; cada uma tem fundo e texto */
+export type ParteDoMenu = 'menu' | 'item' | 'subitem' | 'hover' | 'selecionado';
+export const PARTES_DO_MENU: ParteDoMenu[] = ['menu', 'item', 'subitem', 'hover', 'selecionado'];
+
+const TEMAS: TemaMenu[] = ['claro', 'escuro'];
+const mesmaCor = (a: string, b: string) => a.toUpperCase() === b.toUpperCase();
+
+/** Fundo ou texto da parte mudou em relação ao salvo */
+export const corMudou = (salva: AparenciaMenu, atual: AparenciaMenu, parte: ParteDoMenu) =>
+  !mesmaCor(salva[`${parte}Fundo`], atual[`${parte}Fundo`]) ||
+  !mesmaCor(salva[`${parte}Texto`], atual[`${parte}Texto`]);
+
+/** Temas com cores e com logo diferentes do salvo, para o resumo da barra de salvar */
+export function mudancasDaAparencia(
+  salva: Record<TemaMenu, AparenciaMenu>,
+  atual: Record<TemaMenu, AparenciaMenu>
+) {
+  return {
+    cores: TEMAS.filter((t) => PARTES_DO_MENU.some((p) => corMudou(salva[t], atual[t], p))),
+    logo: TEMAS.filter(
+      (t) =>
+        salva[t].logoPath !== atual[t].logoPath ||
+        salva[t].logoRecolhidoPath !== atual[t].logoRecolhidoPath
+    ),
+  };
 }

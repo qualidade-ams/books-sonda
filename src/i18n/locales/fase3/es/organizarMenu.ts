@@ -45,6 +45,66 @@ const organizarMenu = {
   descartar: 'Descartar',
   erro: 'No fue posible cargar el menú',
   carregando: 'Cargando el menú',
+  abas: {
+    rotulo: 'Secciones',
+    ordem: 'Orden',
+    cores: 'Colores',
+  },
+  cores: {
+    tema: 'Tema',
+    temas: {
+      claro: 'Tema claro',
+      escuro: 'Tema oscuro',
+    },
+    padrao: 'Colores predeterminados',
+    partes: {
+      menu: 'Menú',
+      item: 'Elementos',
+      subitem: 'Subelementos',
+      hover: 'Al pasar el mouse',
+      selecionado: 'Elemento seleccionado',
+    },
+    dicas: {
+      menu: 'Fondo de la barra del menú lateral y texto del botón Contraer.',
+      item: 'Elementos del primer nivel: los menús y las pantallas sueltas, como el Dashboard.',
+      subitem: 'Pantallas dentro de un menú, cuando está abierto.',
+      hover: 'Elemento o subelemento cuando el mouse pasa sobre él.',
+      selecionado:
+        'Pantalla abierta en el momento. Una vez guardado, este color pasa a ser el destaque del sistema en este tema: título de la franja, avatar, botones principales, pestañas y foco. Donde el destaque se vuelve texto sobre la página o la franja, el tono se aclara u oscurece hasta tener contraste.',
+      logo: 'Aparece en la parte superior del menú. Abierto: hasta 48 px de alto. Contraído: espacio cuadrado de 24 px, para el símbolo de la marca. PNG, SVG, WebP o JPG, con fondo transparente, hasta 500 KB. Sin imagen propia, queda el logo de Sonda, en negro o blanco según el fondo.',
+    },
+    fundo: 'Fondo',
+    texto: 'Texto',
+    escolher: 'Elegir {{parte}}: {{rotulo}}',
+    codigo: '{{parte}}: {{rotulo}}',
+    contraste: 'Contraste {{razao}}:1, por debajo de 4,5:1',
+    contrasteDica: 'El texto es difícil de leer: aumente la diferencia entre el fondo y el texto',
+    sugestoes: 'Sugerencias de fondo: {{rotulo}}',
+    alterada: 'Modificada',
+    logo: 'Logo',
+    logoAberto: 'Menú abierto',
+    logoRecolhido: 'Menú contraído',
+    enviarImagem: 'Enviar imagen',
+    enviarLogo: 'Enviar logo: {{rotulo}}',
+    enviando: 'Enviando',
+    usarPadrao: 'Usar el predeterminado',
+    erroTipo: 'Use PNG, SVG, WebP o JPG.',
+    erroTamanho: 'La imagen supera los 500 KB.',
+    previa: 'Vista previa del menú',
+    previaTema: 'Vista previa · {{tema}}',
+  },
+  mudancasCores: {
+    cores: {
+      claro: 'Colores del tema claro modificados',
+      escuro: 'Colores del tema oscuro modificados',
+      ambos: 'Colores de los dos temas modificados',
+    },
+    logo: {
+      claro: 'Logo del tema claro modificado',
+      escuro: 'Logo del tema oscuro modificado',
+      ambos: 'Logo de los dos temas modificado',
+    },
+  },
 };
 
 export default organizarMenu;

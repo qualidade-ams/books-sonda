@@ -44,6 +44,66 @@ const organizarMenu = {
   descartar: 'Discard',
   erro: 'Could not load the menu',
   carregando: 'Loading the menu',
+  abas: {
+    rotulo: 'Sections',
+    ordem: 'Order',
+    cores: 'Colors',
+  },
+  cores: {
+    tema: 'Theme',
+    temas: {
+      claro: 'Light theme',
+      escuro: 'Dark theme',
+    },
+    padrao: 'Default colors',
+    partes: {
+      menu: 'Menu',
+      item: 'Items',
+      subitem: 'Subitems',
+      hover: 'On hover',
+      selecionado: 'Selected item',
+    },
+    dicas: {
+      menu: 'Background of the side menu bar and text of the Collapse button.',
+      item: 'First-level items: the menus and the standalone screens, like the Dashboard.',
+      subitem: 'Screens inside a menu, when it is open.',
+      hover: 'Item or subitem when the mouse is over it.',
+      selecionado:
+        'Screen currently open. Once saved, this color becomes the system highlight in this theme: band title, avatar, main buttons, tabs and focus. Where the highlight becomes text over the page or the band, the tone is lightened or darkened until it has contrast.',
+      logo: 'Shown at the top of the menu. Open: up to 48 px high. Collapsed: a 24 px square space, for the brand symbol. PNG, SVG, WebP or JPG, with a transparent background, up to 500 KB. Without its own image, the Sonda logo is used, in black or white depending on the background.',
+    },
+    fundo: 'Background',
+    texto: 'Text',
+    escolher: 'Choose {{parte}}: {{rotulo}}',
+    codigo: '{{parte}}: {{rotulo}}',
+    contraste: 'Contrast {{razao}}:1, below 4.5:1',
+    contrasteDica: 'The text is hard to read: increase the difference between background and text',
+    sugestoes: 'Background suggestions: {{rotulo}}',
+    alterada: 'Changed',
+    logo: 'Logo',
+    logoAberto: 'Open menu',
+    logoRecolhido: 'Collapsed menu',
+    enviarImagem: 'Upload image',
+    enviarLogo: 'Upload logo: {{rotulo}}',
+    enviando: 'Uploading',
+    usarPadrao: 'Use the default',
+    erroTipo: 'Use PNG, SVG, WebP or JPG.',
+    erroTamanho: 'The image is larger than 500 KB.',
+    previa: 'Menu preview',
+    previaTema: 'Preview · {{tema}}',
+  },
+  mudancasCores: {
+    cores: {
+      claro: 'Light theme colors changed',
+      escuro: 'Dark theme colors changed',
+      ambos: 'Colors of both themes changed',
+    },
+    logo: {
+      claro: 'Light theme logo changed',
+      escuro: 'Dark theme logo changed',
+      ambos: 'Logo of both themes changed',
+    },
+  },
 };
 
 export default organizarMenu;

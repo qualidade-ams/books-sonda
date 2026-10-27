@@ -7,8 +7,11 @@ import {
   mudancasDaOrdem,
   projetar,
   soltar,
+  corMudou,
+  mudancasDaAparencia,
   type Linha,
 } from '../organizarMenuTela';
+import { APARENCIA_PADRAO } from '@/config/aparenciaPadrao';
 import type { NoMenu } from '@/types/menuOrganizado';
 
 const tela = (chave: string): NoMenu => ({
@@ -172,5 +175,30 @@ describe('soltar', () => {
 
   it('soltar fora da lista não muda nada', () => {
     expect(soltar(ARVORE, 'grupos', null, 0)).toBe(ARVORE);
+  });
+});
+
+describe('aparência', () => {
+  const salva = APARENCIA_PADRAO;
+
+  it('cores padrão: as da carga de menu_aparencia, sem logo próprio', () => {
+    expect(APARENCIA_PADRAO.claro).toMatchObject({
+      menuFundo: '#FAFBFC',
+      selecionadoFundo: '#2563EB',
+      logoPath: null,
+    });
+    expect(APARENCIA_PADRAO.escuro.selecionadoFundo).toBe('#00D4E8');
+  });
+
+  it('o que mudou: fundo ou texto de cada parte, por tema; cores e logo separados', () => {
+    const rascunho = {
+      ...salva,
+      claro: { ...salva.claro, hoverTexto: '#000000' },
+      escuro: { ...salva.escuro, logoRecolhidoPath: 'escuro/recolhido-1.png' },
+    };
+    expect(corMudou(salva.claro, rascunho.claro, 'hover')).toBe(true);
+    expect(corMudou(salva.claro, rascunho.claro, 'menu')).toBe(false);
+    expect(mudancasDaAparencia(salva, rascunho)).toEqual({ cores: ['claro'], logo: ['escuro'] });
+    expect(mudancasDaAparencia(salva, salva)).toEqual({ cores: [], logo: [] });
   });
 });

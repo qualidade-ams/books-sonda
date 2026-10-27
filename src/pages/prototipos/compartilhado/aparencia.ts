@@ -3,9 +3,54 @@
 // sistema (título da faixa, avatar, botões principais, abas, foco). Substitui a comparação
 // "Ciano | Azul" de 21/10. Na tela real, isso vem de uma tabela e vira variáveis CSS no carregamento.
 import { useEffect, useState } from 'react';
-import { CORES_PADRAO_MOCK, type CoresMenuMock } from '../mocks/organizarMenu';
 
 export type Tema = 'claro' | 'escuro';
+
+/** Cores do menu em pílula dos protótipos (a tela real lê de menu_aparencia) */
+export interface CoresMenuMock {
+  menu: string;
+  /** Texto do menu fora dos itens: botão Recolher */
+  menuTexto: string;
+  item: string;
+  itemTexto: string;
+  subitem: string;
+  subitemTexto: string;
+  hover: string;
+  hoverTexto: string;
+  selecionado: string;
+  selecionadoTexto: string;
+  /** Logo próprio do menu aberto e do recolhido; sem ele, o da Sonda */
+  logo?: string;
+  logoRecolhido?: string;
+}
+
+/** As cores do menu em pílula do DS v2 (decisão de 22/10/2026): selecionado azul no claro, ciano no escuro */
+export const CORES_PADRAO_MOCK: Record<Tema, CoresMenuMock> = {
+  claro: {
+    menu: '#FAFBFC',
+    menuTexto: '#5F6670',
+    item: '#FAFBFC',
+    itemTexto: '#5F6670',
+    subitem: '#FAFBFC',
+    subitemTexto: '#5F6670',
+    hover: '#EEF1F4',
+    hoverTexto: '#1B1F24',
+    selecionado: '#2563EB',
+    selecionadoTexto: '#FFFFFF',
+  },
+  escuro: {
+    menu: '#1C1C1C',
+    menuTexto: '#B1B1B1',
+    item: '#1C1C1C',
+    itemTexto: '#B1B1B1',
+    subitem: '#1C1C1C',
+    subitemTexto: '#B1B1B1',
+    hover: '#262626',
+    hoverTexto: '#FFFFFF',
+    selecionado: '#00D4E8',
+    selecionadoTexto: '#000000',
+  },
+};
 export type AparenciaMenu = Record<Tema, CoresMenuMock>;
 
 /* ------------------------------------------------------------------ */
