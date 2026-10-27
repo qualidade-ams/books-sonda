@@ -10,6 +10,7 @@ import type {
   SalvarRegrasInput,
 } from '@/types/regrasContagem';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
+import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
 export interface RegrasEdicao {
   codigos: CodigoResolucao[];
@@ -203,4 +204,82 @@ export function exportacaoRegras(
       },
     ],
   };
+}
+
+/** "Sim"/"Não" da planilha (também S/N, Yes/No, Sí); outro valor é nulo */
+function simOuNao(valor: string): boolean | null {
+  const v = valor
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .trim()
+    .toLowerCase();
+  if (['sim', 's', 'si', 'yes', 'y'].includes(v)) return true;
+  if (['nao', 'n', 'no'].includes(v)) return false;
+  return null;
+}
+
+/**
+ * Importação dos códigos de resolução: o código é comparado exatamente (espaços no meio contam).
+ * O que já está na lista e muda as colunas é "atualiza"
+ */
+export function conferirCodigos(
+  linhas: LinhaPlanilha[],
+  codigos: CodigoResolucao[],
+  t: Traduzir
+): LinhaImportacao[] {
+  const primeira = new Map<string, number>();
+  return linhas.map((l) => {
+    const { codigo, horas, tickets } = l.valores;
+    const contaHoras = simOuNao(horas);
+    const contaTickets = simOuNao(tickets);
+    const erros: string[] = [];
+    if (!codigo) erros.push(t('regrasContagem.importar.erros.codigoVazio'));
+    if (contaHoras === null)
+      erros.push(
+        t('regrasContagem.importar.erros.simNao', {
+          coluna: t('regrasContagem.codigos.colunaHoras'),
+        })
+      );
+    if (contaTickets === null)
+      erros.push(
+        t('regrasContagem.importar.erros.simNao', {
+          coluna: t('regrasContagem.codigos.colunaTickets'),
+        })
+      );
+    if (contaHoras === false && contaTickets === false)
+      erros.push(t('regrasContagem.importar.erros.nenhumConta'));
+    if (codigo) {
+      const repetido = primeira.get(codigo);
+      if (repetido) erros.push(t('regrasContagem.importar.erros.repetido', { linha: repetido }));
+      else primeira.set(codigo, l.linha);
+    }
+    if (erros.length) return { ...l, situacao: 'erro', erros };
+
+    const atual = codigos.find((c) => c.codigo === codigo);
+    if (!atual) return { ...l, situacao: 'novo' };
+    const igual = atual.contaHoras === contaHoras && atual.contaTickets === contaTickets;
+    return { ...l, situacao: igual ? 'igual' : 'atualiza' };
+  });
+}
+
+/** A lista gravada com as linhas importadas: as que mudam no lugar, as novas no fim */
+export function codigosComImportados(
+  codigos: CodigoResolucao[],
+  linhas: LinhaImportacao[]
+): SalvarRegrasInput['codigos'] {
+  const daLinha = (l: LinhaImportacao) => ({
+    codigo: l.valores.codigo,
+    contaHoras: simOuNao(l.valores.horas) === true,
+    contaTickets: simOuNao(l.valores.tickets) === true,
+  });
+  const muda = new Map(
+    linhas.filter((l) => l.situacao === 'atualiza').map((l) => [l.valores.codigo, daLinha(l)])
+  );
+  return [
+    ...codigos.map(
+      ({ codigo, contaHoras, contaTickets }) =>
+        muda.get(codigo) ?? { codigo, contaHoras, contaTickets }
+    ),
+    ...linhas.filter((l) => l.situacao === 'novo').map(daLinha),
+  ];
 }

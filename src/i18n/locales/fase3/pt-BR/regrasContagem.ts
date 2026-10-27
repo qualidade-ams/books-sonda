@@ -125,6 +125,25 @@ const regrasContagem = {
     soFechados: 'Só fechados, no mês do fechamento',
     abertos: 'Abertos e fechados, no mês de abertura',
   },
+  importar: {
+    titulo: 'Importar códigos de resolução',
+    modelo: 'modelo-codigos-de-resolucao',
+    exemplo: 'Consultoria',
+    motivo: 'Importação de {{arquivo}}',
+    salveAntes: 'Salve ou descarte as alterações antes de importar',
+    regras: {
+      exato: 'O código é comparado exatamente como vem do Aranda, inclusive os espaços no meio.',
+      simNao: 'Conta horas e Conta tickets: Sim ou Não. Pelo menos um precisa ser Sim.',
+      existentes:
+        'Se o código já estiver na lista, a linha atualiza as duas colunas. Os códigos que não estão na planilha continuam na lista.',
+    },
+    erros: {
+      codigoVazio: 'Código vazio.',
+      simNao: '{{coluna}}: use Sim ou Não.',
+      nenhumConta: 'Pelo menos um precisa ser Sim; para não contar, deixe o código fora da lista.',
+      repetido: 'Repetido na planilha (linha {{linha}}).',
+    },
+  },
 };
 
 export default regrasContagem;

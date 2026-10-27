@@ -124,6 +124,26 @@ const regrasContagem = {
     soFechados: 'Closed only, in the month of closing',
     abertos: 'Open and closed, in the month of opening',
   },
+  importar: {
+    titulo: 'Import resolution codes',
+    modelo: 'resolution-codes-template',
+    exemplo: 'Consulting',
+    motivo: 'Import of {{arquivo}}',
+    salveAntes: 'Save or discard the changes before importing',
+    regras: {
+      exato:
+        'The code is compared exactly as it comes from Aranda, including the spaces in the middle.',
+      simNao: 'Counts hours and Counts tickets: Yes or No. At least one must be Yes.',
+      existentes:
+        'If the code is already on the list, the row updates both columns. Codes that are not in the spreadsheet stay on the list.',
+    },
+    erros: {
+      codigoVazio: 'Empty code.',
+      simNao: '{{coluna}}: use Yes or No.',
+      nenhumConta: 'At least one must be Yes; to not count, leave the code off the list.',
+      repetido: 'Repeated in the spreadsheet (row {{linha}}).',
+    },
+  },
 };
 
 export default regrasContagem;

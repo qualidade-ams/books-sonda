@@ -14,6 +14,7 @@ import { DicasContext } from '@/components/ds/Dicas';
 import { BarraRodape, Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
 import { MenuExportar } from '@/components/ds/MenuExportar';
+import { BotaoImportar, TelaImportacao } from '@/components/ds/TelaImportacao';
 import { AbaCodigos } from '@/components/admin/regras/AbaCodigos';
 import { AbaSemRegra } from '@/components/admin/regras/AbaSemRegra';
 import { AbaFiltros } from '@/components/admin/regras/AbaFiltros';
@@ -23,6 +24,8 @@ import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import {
   codigoNovo,
+  codigosComImportados,
+  conferirCodigos,
   exportacaoRegras,
   mudancasRegras,
   paraSalvar,
@@ -60,6 +63,7 @@ export default function RegrasContagem() {
   useEffect(() => setEdicao(salvo), [salvo]);
   const [aba, setAba] = useState('codigos');
   const [confirmar, setConfirmar] = useState(false);
+  const [importando, setImportando] = useState(false);
 
   const dicas = useMemo(
     () =>
@@ -159,123 +163,190 @@ export default function RegrasContagem() {
       <DicasContext.Provider value={dicas}>
         <div className="min-h-screen bg-ds-bg-page">
           <DsPage className="px-4 py-4 md:px-6">
-            <FaixaPagina>
-              <div className="pb-24 pt-3 md:pb-28 md:pt-4">
-                <div className="ds-surgir max-w-2xl">
-                  <TituloFaixa texto={t('regrasContagem.titulo')} />
-                  <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
-                    {t('regrasContagem.subtitulo')}
-                  </p>
+            {importando && regras ? (
+              <TelaImportacao
+                voltarPara={t('regrasContagem.titulo')}
+                titulo={t('regrasContagem.importar.titulo')}
+                colunas={[
+                  {
+                    id: 'codigo',
+                    rotulo: t('regrasContagem.codigos.colunaCodigo'),
+                    obrigatoria: true,
+                  },
+                  {
+                    id: 'horas',
+                    rotulo: t('regrasContagem.codigos.colunaHoras'),
+                    obrigatoria: true,
+                  },
+                  {
+                    id: 'tickets',
+                    rotulo: t('regrasContagem.codigos.colunaTickets'),
+                    obrigatoria: true,
+                  },
+                ]}
+                regras={[
+                  t('regrasContagem.importar.regras.exato'),
+                  t('regrasContagem.importar.regras.simNao'),
+                  t('regrasContagem.importar.regras.existentes'),
+                ]}
+                modelo={{
+                  arquivo: t('regrasContagem.importar.modelo'),
+                  exemplo: [
+                    {
+                      codigo: t('regrasContagem.importar.exemplo'),
+                      horas: t('regrasContagem.codigos.sim'),
+                      tickets: t('regrasContagem.codigos.sim'),
+                    },
+                  ],
+                }}
+                aviso={<Callout tom="info">{t('fase3Comum.valeMesesAbertos')}</Callout>}
+                conferir={(linhas) => conferirCodigos(linhas, regras.codigos, t)}
+                onImportar={(linhas, { arquivo }) =>
+                  salvar({
+                    motivo: t('regrasContagem.importar.motivo', { arquivo }),
+                    codigos: codigosComImportados(regras.codigos, linhas),
+                  })
+                }
+                onFechar={() => setImportando(false)}
+              />
+            ) : (
+              <>
+                <FaixaPagina>
+                  <div className="pb-24 pt-3 md:pb-28 md:pt-4">
+                    <div className="ds-surgir max-w-2xl">
+                      <TituloFaixa texto={t('regrasContagem.titulo')} />
+                      <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
+                        {t('regrasContagem.subtitulo')}
+                      </p>
+                    </div>
+                    {regras && (
+                      <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
+                        {podeEditar && (
+                          <span
+                            title={
+                              mudancas?.algo ? t('regrasContagem.importar.salveAntes') : undefined
+                            }
+                          >
+                            <BotaoImportar
+                              onClick={() => setImportando(true)}
+                              desabilitado={!!mudancas?.algo}
+                            />
+                          </span>
+                        )}
+                        <MenuExportar
+                          descricao={t('regrasContagem.exportar.descricao')}
+                          onExportar={(formato) =>
+                            exportarTabela(exportacaoRegras(regras, t), formato)
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                </FaixaPagina>
+
+                <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
+                  <Indicador
+                    rotulo={t('regrasContagem.indicadores.horas')}
+                    valor={totais.horas}
+                    icone={<Clock />}
+                  />
+                  <Indicador
+                    rotulo={t('regrasContagem.indicadores.tickets')}
+                    valor={totais.tickets}
+                    icone={<Ticket />}
+                    atrasoMs={60}
+                  />
+                  <Indicador
+                    rotulo={t('regrasContagem.indicadores.filtros')}
+                    valor={totais.filtros}
+                    icone={<Filter />}
+                    atrasoMs={120}
+                    selecionado={aba === 'filtros'}
+                    onClick={() => setAba('filtros')}
+                  />
+                  <Indicador
+                    rotulo={t('regrasContagem.indicadores.semRegra')}
+                    valor={totais.semRegra}
+                    icone={<AlertTriangle />}
+                    tom="warning"
+                    atrasoMs={180}
+                    selecionado={aba === 'sem-regra'}
+                    onClick={() => setAba('sem-regra')}
+                  />
                 </div>
-                {regras && (
-                  <div className="ds-surgir mt-5 flex flex-wrap gap-2" style={atraso(100)}>
-                    <MenuExportar
-                      descricao={t('regrasContagem.exportar.descricao')}
-                      onExportar={(formato) => exportarTabela(exportacaoRegras(regras, t), formato)}
+
+                <div className="mt-6 space-y-4">
+                  <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+                    <SegmentedTabs
+                      rotulo={t('regrasContagem.abas.rotulo')}
+                      itens={[
+                        { valor: 'codigos', rotulo: t('regrasContagem.abas.codigos') },
+                        {
+                          valor: 'sem-regra',
+                          rotulo: t('regrasContagem.abas.semRegra'),
+                          contador: totais.semRegra,
+                        },
+                        { valor: 'filtros', rotulo: t('regrasContagem.abas.filtros') },
+                      ]}
+                      valor={aba}
+                      onChange={setAba}
                     />
                   </div>
-                )}
-              </div>
-            </FaixaPagina>
-
-            <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
-              <Indicador
-                rotulo={t('regrasContagem.indicadores.horas')}
-                valor={totais.horas}
-                icone={<Clock />}
-              />
-              <Indicador
-                rotulo={t('regrasContagem.indicadores.tickets')}
-                valor={totais.tickets}
-                icone={<Ticket />}
-                atrasoMs={60}
-              />
-              <Indicador
-                rotulo={t('regrasContagem.indicadores.filtros')}
-                valor={totais.filtros}
-                icone={<Filter />}
-                atrasoMs={120}
-                selecionado={aba === 'filtros'}
-                onClick={() => setAba('filtros')}
-              />
-              <Indicador
-                rotulo={t('regrasContagem.indicadores.semRegra')}
-                valor={totais.semRegra}
-                icone={<AlertTriangle />}
-                tom="warning"
-                atrasoMs={180}
-                selecionado={aba === 'sem-regra'}
-                onClick={() => setAba('sem-regra')}
-              />
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
-                <SegmentedTabs
-                  rotulo={t('regrasContagem.abas.rotulo')}
-                  itens={[
-                    { valor: 'codigos', rotulo: t('regrasContagem.abas.codigos') },
-                    {
-                      valor: 'sem-regra',
-                      rotulo: t('regrasContagem.abas.semRegra'),
-                      contador: totais.semRegra,
-                    },
-                    { valor: 'filtros', rotulo: t('regrasContagem.abas.filtros') },
-                  ]}
-                  valor={aba}
-                  onChange={setAba}
-                />
-              </div>
-              <div key={aba} className="ds-surgir" style={atraso(240)}>
-                {conteudo()}
-              </div>
-            </div>
-
-            {mudancas?.algo && (
-              <BarraRodape>
-                <span className="text-sm text-ds-fg-secondary">
-                  {podeSalvar ? (
-                    <>
-                      <span className="font-medium text-ds-fg">
-                        {primeiraMaiuscula(itens.join(', '))}
-                      </span>
-                      . {t('fase3Comum.valeMesesAbertos')}
-                    </>
-                  ) : (
-                    <span className="font-medium text-ds-danger-fg">
-                      {t('regrasContagem.mudancas.naoPode')}
-                    </span>
-                  )}
-                </span>
-                <div className="flex gap-2">
-                  <Button disabled={isSalvando} onClick={() => setEdicao(salvo)}>
-                    {t('fase3Comum.descartar')}
-                  </Button>
-                  <Button
-                    variante="primario"
-                    disabled={isSalvando || !podeSalvar}
-                    onClick={() => setConfirmar(true)}
-                  >
-                    {t('fase3Comum.salvar')}
-                  </Button>
+                  <div key={aba} className="ds-surgir" style={atraso(240)}>
+                    {conteudo()}
+                  </div>
                 </div>
-              </BarraRodape>
-            )}
 
-            <ConfirmDialog
-              aberto={confirmar}
-              onOpenChange={setConfirmar}
-              titulo={t('regrasContagem.confirmar.titulo')}
-              descricao={t('regrasContagem.confirmar.descricao')}
-              consequencias={[...itens.map(primeiraMaiuscula), t('fase3Comum.valeMesesAbertos')]}
-              rotuloConfirmar={t('ds.formulario.salvar')}
-              justificativa={{
-                rotulo: t('regrasContagem.confirmar.motivo'),
-                placeholder: t('regrasContagem.confirmar.motivoPlaceholder'),
-              }}
-              processando={isSalvando}
-              onConfirmar={gravar}
-            />
+                {mudancas?.algo && (
+                  <BarraRodape>
+                    <span className="text-sm text-ds-fg-secondary">
+                      {podeSalvar ? (
+                        <>
+                          <span className="font-medium text-ds-fg">
+                            {primeiraMaiuscula(itens.join(', '))}
+                          </span>
+                          . {t('fase3Comum.valeMesesAbertos')}
+                        </>
+                      ) : (
+                        <span className="font-medium text-ds-danger-fg">
+                          {t('regrasContagem.mudancas.naoPode')}
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button disabled={isSalvando} onClick={() => setEdicao(salvo)}>
+                        {t('fase3Comum.descartar')}
+                      </Button>
+                      <Button
+                        variante="primario"
+                        disabled={isSalvando || !podeSalvar}
+                        onClick={() => setConfirmar(true)}
+                      >
+                        {t('fase3Comum.salvar')}
+                      </Button>
+                    </div>
+                  </BarraRodape>
+                )}
+
+                <ConfirmDialog
+                  aberto={confirmar}
+                  onOpenChange={setConfirmar}
+                  titulo={t('regrasContagem.confirmar.titulo')}
+                  descricao={t('regrasContagem.confirmar.descricao')}
+                  consequencias={[
+                    ...itens.map(primeiraMaiuscula),
+                    t('fase3Comum.valeMesesAbertos'),
+                  ]}
+                  rotuloConfirmar={t('ds.formulario.salvar')}
+                  justificativa={{
+                    rotulo: t('regrasContagem.confirmar.motivo'),
+                    placeholder: t('regrasContagem.confirmar.motivoPlaceholder'),
+                  }}
+                  processando={isSalvando}
+                  onConfirmar={gravar}
+                />
+              </>
+            )}
           </DsPage>
         </div>
       </DicasContext.Provider>

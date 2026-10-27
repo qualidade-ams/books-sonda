@@ -99,6 +99,7 @@ describe('TelaImportacao', () => {
       'novo',
       'muda',
     ]);
+    expect(onImportar.mock.calls[0][1]).toEqual({ arquivo: 'codigos.xlsx' });
     expect(onFechar).toHaveBeenCalled();
   });
 

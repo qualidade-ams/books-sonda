@@ -5,6 +5,7 @@ import RegrasContagem from '../RegrasContagem';
 import type { RegrasContagem as Regras } from '@/types/regrasContagem';
 import userEvent from '@testing-library/user-event';
 import { exportarTabela } from '@/utils/exportarTabela';
+import { lerPlanilha } from '@/utils/importarPlanilha';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -17,6 +18,11 @@ vi.mock('@/utils/exportarTabela', async (original) => ({
   ...(await original<typeof import('@/utils/exportarTabela')>()),
   exportarTabela: vi.fn(async () => undefined),
 }));
+vi.mock('@/utils/importarPlanilha', async (original) => ({
+  ...(await original<typeof import('@/utils/importarPlanilha')>()),
+  lerPlanilha: vi.fn(),
+}));
+window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
 vi.mock('@/components/admin/LayoutAdmin', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -168,5 +174,51 @@ describe('RegrasContagem', () => {
     const [exportacao, formato] = vi.mocked(exportarTabela).mock.calls[0];
     expect(formato).toBe('xlsx');
     expect(exportacao.abas.map((a) => a.linhas.length)).toEqual([1, 1, 5]);
+  });
+
+  it('importa códigos: o motivo leva o nome do arquivo e os códigos vão como a lista completa', async () => {
+    vi.mocked(lerPlanilha).mockResolvedValue([
+      [
+        'regrasContagem.codigos.colunaCodigo',
+        'regrasContagem.codigos.colunaHoras',
+        'regrasContagem.codigos.colunaTickets',
+      ],
+      ['Treinamento', 'Sim', 'Não'],
+      ['Banco=S|SLA=N', 'Sim', 'Não'],
+    ]);
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: 'ds.importar.botao' }));
+    expect(
+      screen.getByRole('heading', { name: 'regrasContagem.importar.titulo' })
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/ds.importar.escolher/), {
+      target: { files: [new File(['x'], 'codigos.xlsx')] },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'ds.importar.importarN.varios {"n":2}' })
+    );
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ds.importar.botao' })
+    );
+    await waitFor(() =>
+      expect(hook.salvar).toHaveBeenCalledWith({
+        motivo: 'regrasContagem.importar.motivo {"arquivo":"codigos.xlsx"}',
+        codigos: [
+          { codigo: 'Banco=S|SLA=N', contaHoras: true, contaTickets: false },
+          { codigo: 'Treinamento', contaHoras: true, contaTickets: false },
+        ],
+      })
+    );
+  });
+
+  it('importar: só quem edita, e não com alterações pendentes', () => {
+    const { unmount } = renderizar();
+    aba('regrasContagem.abas.filtros');
+    fireEvent.click(screen.getByRole('switch', { name: 'regrasContagem.filtros.tickets' }));
+    expect(screen.getByRole('button', { name: 'ds.importar.botao' })).toBeDisabled();
+    unmount();
+    permissoes = ['regras_contagem:view'];
+    renderizar();
+    expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
   });
 });

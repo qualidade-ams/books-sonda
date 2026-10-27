@@ -126,6 +126,26 @@ const regrasContagem = {
     soFechados: 'Solo cerrados, en el mes del cierre',
     abertos: 'Abiertos y cerrados, en el mes de apertura',
   },
+  importar: {
+    titulo: 'Importar códigos de resolución',
+    modelo: 'modelo-codigos-de-resolucion',
+    exemplo: 'Consultoría',
+    motivo: 'Importación de {{arquivo}}',
+    salveAntes: 'Guarde o descarte los cambios antes de importar',
+    regras: {
+      exato:
+        'El código se compara exactamente como viene de Aranda, incluidos los espacios del medio.',
+      simNao: 'Cuenta horas y Cuenta tickets: Sí o No. Al menos uno debe ser Sí.',
+      existentes:
+        'Si el código ya está en la lista, la fila actualiza las dos columnas. Los códigos que no están en la planilla siguen en la lista.',
+    },
+    erros: {
+      codigoVazio: 'Código vacío.',
+      simNao: '{{coluna}}: use Sí o No.',
+      nenhumConta: 'Al menos uno debe ser Sí; para no contar, deje el código fuera de la lista.',
+      repetido: 'Repetido en la planilla (fila {{linha}}).',
+    },
+  },
 };
 
 export default regrasContagem;

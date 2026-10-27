@@ -77,8 +77,8 @@ export function TelaImportacao({
   aviso?: ReactNode;
   /** Confere as linhas da planilha contra o cadastro */
   conferir: (linhas: LinhaPlanilha[]) => LinhaImportacao[];
-  /** Grava as linhas válidas escolhidas (novas e, se for o caso, as que mudam) */
-  onImportar: (linhas: LinhaImportacao[]) => Promise<void>;
+  /** Grava as linhas válidas escolhidas (novas e, se for o caso, as que mudam); o arquivo vai para a auditoria */
+  onImportar: (linhas: LinhaImportacao[], origem: { arquivo: string }) => Promise<void>;
   onFechar: () => void;
 }) {
   const { t } = useTranslation();
@@ -149,7 +149,7 @@ export function TelaImportacao({
   const importar = async () => {
     setImportando(true);
     try {
-      await onImportar(gravar);
+      await onImportar(gravar, { arquivo: arquivo ?? '' });
       setConfirmar(false);
       onFechar();
     } catch {

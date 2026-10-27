@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { matrizDaAba } from '@/utils/exportarTabela';
 import {
   codigoNovo,
+  codigosComImportados,
+  conferirCodigos,
   exportacaoRegras,
   filtrarCodigos,
   mudancasRegras,
@@ -159,6 +161,57 @@ describe('exportacaoRegras', () => {
       ['regrasContagem.filtros.atividade', 'regrasContagem.exportar.atividadeNaoConta'],
       ['regrasContagem.filtros.itens', '000000 - PROJETOS APL'],
       ['regrasContagem.filtros.tickets', 'regrasContagem.exportar.soFechados'],
+    ]);
+  });
+});
+
+describe('importação de códigos de resolução', () => {
+  const t = (chave: string, valores?: Record<string, unknown>) =>
+    valores ? `${chave} ${JSON.stringify(valores)}` : chave;
+  const linha = (n: number, codigo: string, horas: string, tickets: string) => ({
+    linha: n,
+    valores: { codigo, horas, tickets },
+  });
+
+  it('confere: novo, muda, igual (código exato, espaços contam) e os erros', () => {
+    const conferidas = conferirCodigos(
+      [
+        linha(2, 'Treinamento', 'Sim', 'não'),
+        linha(3, 'Banco=S |SLA=N', 'S', 'S'),
+        linha(4, 'Banco=S|SLA=N', 'sim', 'SIM'),
+        linha(5, 'Melhoria', 'Talvez', 'Não'),
+        linha(6, 'Cancelado', 'Não', 'N'),
+        linha(7, 'Treinamento', 'Sim', 'Sim'),
+        linha(8, '', 'Sim', 'Sim'),
+      ],
+      CODIGOS,
+      t
+    );
+    expect(conferidas.map((l) => [l.situacao, l.erros])).toEqual([
+      ['novo', undefined],
+      ['atualiza', undefined],
+      ['igual', undefined],
+      [
+        'erro',
+        ['regrasContagem.importar.erros.simNao {"coluna":"regrasContagem.codigos.colunaHoras"}'],
+      ],
+      ['erro', ['regrasContagem.importar.erros.nenhumConta']],
+      ['erro', ['regrasContagem.importar.erros.repetido {"linha":2}']],
+      ['erro', ['regrasContagem.importar.erros.codigoVazio']],
+    ]);
+  });
+
+  it('a lista gravada com as mudanças aplicadas e os novos no fim', () => {
+    const linhas = conferirCodigos(
+      [linha(2, 'Treinamento', 'Sim', 'Não'), linha(3, 'Outro', 'Sim', 'Sim')],
+      CODIGOS,
+      t
+    );
+    expect(codigosComImportados(CODIGOS, linhas)).toEqual([
+      { codigo: 'Banco=S|SLA=N', contaHoras: true, contaTickets: true },
+      { codigo: 'Banco=S |SLA=N', contaHoras: true, contaTickets: false },
+      { codigo: 'Outro', contaHoras: true, contaTickets: true },
+      { codigo: 'Treinamento', contaHoras: true, contaTickets: false },
     ]);
   });
 });
