@@ -538,7 +538,7 @@ export function TelaEdicao({
       </FaixaPagina>
 
       <div
-        className="ds-surgir relative -mt-12 rounded-xl border border-ds-border bg-ds-bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] md:-mt-16"
+        className="ds-surgir relative !-mt-12 rounded-xl border border-ds-border bg-ds-bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] md:!-mt-16"
         style={atraso(80)}
       >
         {children}
