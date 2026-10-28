@@ -151,17 +151,17 @@ O motivo é calculado em TypeScript puro (`comparacao.ts`) a partir dos itens do
 
 ### 5.1 `bancos_horas_comparacao` (nova): uma linha por empresa
 
-| Coluna                                       | Tipo                                                               | Observação                                                           |
-| -------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| empresa_id                                   | uuid PK, FK `empresas`                                             |                                                                      |
-| situacao                                     | text CHECK (`identico`, `soma_confere`, `explicada`, `divergente`) |                                                                      |
-| meses_comparados                             | smallint                                                           |                                                                      |
-| consumo_legado_minutos, consumo_novo_minutos | integer                                                            | Somas dos meses comparados, para a lista                             |
-| consumo_legado_tickets, consumo_novo_tickets | integer                                                            |                                                                      |
-| calculado_em                                 | timestamptz DEFAULT NOW()                                          | Hora mostrada na faixa da tela                                       |
-| erro                                         | text                                                               | Mensagem da última falha da rotina para a empresa (sem dado pessoal) |
-| validada_por, validada_em                    | uuid FK `profiles`, timestamptz                                    | Nulos quando não validada                                            |
-| validacao_situacao                           | text                                                               | Situação no momento da validação                                     |
+| Coluna                                       | Tipo                                                               | Observação                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| empresa_id                                   | uuid PK, FK `empresas`                                             |                                                                                   |
+| situacao                                     | text CHECK (`identico`, `soma_confere`, `explicada`, `divergente`) | Nula quando a rotina só registrou erro, ainda sem resultado                       |
+| meses_comparados                             | smallint                                                           |                                                                                   |
+| consumo_legado_minutos, consumo_novo_minutos | integer                                                            | Somas dos meses comparados, para a lista                                          |
+| consumo_legado_tickets, consumo_novo_tickets | integer                                                            |                                                                                   |
+| calculado_em                                 | timestamptz                                                        | Último cálculo com sucesso; hora mostrada na faixa da tela                        |
+| erro, erro_em                                | text (até 500), timestamptz                                        | Última falha da rotina para a empresa (sem dado pessoal); some no próximo sucesso |
+| validada_por, validada_em                    | uuid FK `auth.users`, timestamptz                                  | Nulos quando não validada                                                         |
+| validacao_situacao                           | text                                                               | Situação no momento da validação                                                  |
 
 ### 5.2 `bancos_horas_comparacao_meses` (nova): uma linha por empresa e mês
 
@@ -173,6 +173,7 @@ O motivo é calculado em TypeScript puro (`comparacao.ts`) a partir dos itens do
 | novo                 | jsonb                                           | As mesmas medidas, mais o consumo por banco (`[{banco_id, nome, minutos, tickets}]`) |
 | origem_saldo         | jsonb                                           | Mês que originou a diferença de saldo (3.3), ou nulo                                 |
 | itens                | jsonb                                           | Diferenças por item (seção 4), limitado a 500 por mês                                |
+| itens_total          | integer                                         | Quantos itens tinham diferença (pode passar de 500)                                  |
 | fechamento_legado_em | timestamptz                                     | `fechado_em` usado                                                                   |
 | calculado_em         | timestamptz DEFAULT NOW()                       |                                                                                      |
 
@@ -180,6 +181,13 @@ O motivo é calculado em TypeScript puro (`comparacao.ts`) a partir dos itens do
 
 - SELECT para quem tem `has_screen_permission('bancos_horas_comparacao', 'view')`, com `(SELECT auth.uid())` onde houver usuário;
 - sem política de INSERT, UPDATE ou DELETE para `authenticated`: quem grava é a rotina, com a service role.
+
+**Gravação pela rotina** (só service role, `SECURITY DEFINER SET search_path = public`):
+
+- `bancos_horas_gravar_comparacao(jsonb)`: grava a empresa e troca os meses numa transação. Sem meses, a empresa sai da comparação (P4). Se a empresa estava validada e o resultado novo é "Divergente", derruba a validação com o motivo "Nova divergência em <mês>/<ano>" e origem `sistema` na auditoria (3.5).
+- `bancos_horas_erro_comparacao(empresa, erro)`: guarda a falha sem apagar o último resultado.
+
+A auditoria da tabela registra só a validação (gatilho em `UPDATE OF validada_por, validada_em`), porque a rotina regrava os resultados todo dia.
 
 **Validação:** pela função `validar_comparacao(p_empresa_id, p_validar boolean, p_motivo text)`:
 
