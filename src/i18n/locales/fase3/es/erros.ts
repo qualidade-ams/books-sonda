@@ -130,6 +130,9 @@ const erros = {
     salvarAObservacao: 'No fue posible guardar la observación: {{detalhe}}',
     salvarATrocaDeBanco: 'No fue posible guardar el cambio de banco: {{detalhe}}',
     salvarOMenu: 'No fue posible guardar el menú: {{detalhe}}',
+    // Comparación Legado x Nuevo (Fase 4)
+    carregarAComparacao: 'No fue posible cargar la comparación: {{detalhe}}',
+    validarAComparacao: 'No fue posible validar la comparación: {{detalhe}}',
   },
 };
 

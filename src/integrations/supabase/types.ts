@@ -1490,6 +1490,112 @@ export type Database = {
           },
         ]
       }
+      bancos_horas_comparacao: {
+        Row: {
+          calculado_em: string | null
+          consumo_legado_minutos: number
+          consumo_legado_tickets: number
+          consumo_novo_minutos: number
+          consumo_novo_tickets: number
+          empresa_id: string
+          erro: string | null
+          erro_em: string | null
+          meses_comparados: number
+          situacao: string | null
+          validacao_situacao: string | null
+          validada_em: string | null
+          validada_por: string | null
+        }
+        Insert: {
+          calculado_em?: string | null
+          consumo_legado_minutos?: number
+          consumo_legado_tickets?: number
+          consumo_novo_minutos?: number
+          consumo_novo_tickets?: number
+          empresa_id: string
+          erro?: string | null
+          erro_em?: string | null
+          meses_comparados?: number
+          situacao?: string | null
+          validacao_situacao?: string | null
+          validada_em?: string | null
+          validada_por?: string | null
+        }
+        Update: {
+          calculado_em?: string | null
+          consumo_legado_minutos?: number
+          consumo_legado_tickets?: number
+          consumo_novo_minutos?: number
+          consumo_novo_tickets?: number
+          empresa_id?: string
+          erro?: string | null
+          erro_em?: string | null
+          meses_comparados?: number
+          situacao?: string | null
+          validacao_situacao?: string | null
+          validada_em?: string | null
+          validada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_comparacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bancos_horas_comparacao_meses: {
+        Row: {
+          ano: number
+          calculado_em: string
+          empresa_id: string
+          fechamento_legado_em: string
+          itens: Json
+          itens_total: number
+          legado: Json
+          mes: number
+          novo: Json
+          origem_saldo: Json | null
+          situacao: string
+        }
+        Insert: {
+          ano: number
+          calculado_em?: string
+          empresa_id: string
+          fechamento_legado_em: string
+          itens?: Json
+          itens_total?: number
+          legado: Json
+          mes: number
+          novo: Json
+          origem_saldo?: Json | null
+          situacao: string
+        }
+        Update: {
+          ano?: number
+          calculado_em?: string
+          empresa_id?: string
+          fechamento_legado_em?: string
+          itens?: Json
+          itens_total?: number
+          legado?: Json
+          mes?: number
+          novo?: Json
+          origem_saldo?: Json | null
+          situacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bancos_horas_comparacao_meses_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_comparacao"
+            referencedColumns: ["empresa_id"]
+          },
+        ]
+      }
       bancos_horas_escopo: {
         Row: {
           banco_id: string
@@ -1851,6 +1957,7 @@ export type Database = {
           minutos: number
           motivo_inativacao: string | null
           origem: string
+          reajuste_legado_id: string | null
           tickets: number
           tipo: string
           updated_at: string
@@ -1871,6 +1978,7 @@ export type Database = {
           minutos?: number
           motivo_inativacao?: string | null
           origem?: string
+          reajuste_legado_id?: string | null
           tickets?: number
           tipo: string
           updated_at?: string
@@ -1891,6 +1999,7 @@ export type Database = {
           minutos?: number
           motivo_inativacao?: string | null
           origem?: string
+          reajuste_legado_id?: string | null
           tickets?: number
           tipo?: string
           updated_at?: string
@@ -6256,6 +6365,14 @@ export type Database = {
         }
         Returns: string
       }
+      bancos_horas_erro_comparacao: {
+        Args: { p_empresa_id: string; p_erro: string }
+        Returns: undefined
+      }
+      bancos_horas_gravar_comparacao: {
+        Args: { p_comparacao: Json }
+        Returns: undefined
+      }
       bancos_horas_inativar: {
         Args: { p_banco_id: string; p_motivo: string }
         Returns: undefined
@@ -6271,6 +6388,10 @@ export type Database = {
           fim: string
           inicio: string
         }[]
+      }
+      bancos_horas_minutos_legado: {
+        Args: { p_texto: string }
+        Returns: number
       }
       bancos_horas_nova_vigencia: {
         Args: {
@@ -6452,6 +6573,10 @@ export type Database = {
           status: Database["public"]["Enums"]["status_especialista_enum"]
           updated_at: string
         }[]
+      }
+      espelhar_reajuste_legado: {
+        Args: { p_excluido?: boolean; p_reajuste_id: string }
+        Returns: string
       }
       estatisticas_anexos_periodo: {
         Args: { p_data_fim: string; p_data_inicio: string }
@@ -6686,6 +6811,10 @@ export type Database = {
         Args: { p_execucao_id: string }
         Returns: undefined
       }
+      notificacoes_sync_replica: {
+        Args: { p_mensagem: string; p_referencia?: Json }
+        Returns: undefined
+      }
       notificacoes_sync_retroativo: {
         Args: { p_ano: number; p_empresa_id: string; p_mes: number }
         Returns: undefined
@@ -6720,6 +6849,15 @@ export type Database = {
           p_book_id: string
           p_destinatarios: string[]
           p_usuario_id: string
+        }
+        Returns: string
+      }
+      registrar_envio_saldo_parcial_controle: {
+        Args: {
+          p_empresa_id: string
+          p_erro?: string
+          p_qtd_destinatarios: number
+          p_sucesso: boolean
         }
         Returns: string
       }
@@ -6842,6 +6980,10 @@ export type Database = {
       user_is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_uuid: string }; Returns: boolean }
+      validar_comparacao: {
+        Args: { p_empresa_id: string; p_motivo: string; p_validar: boolean }
+        Returns: undefined
+      }
       validar_limite_anexos_empresa: {
         Args: { empresa_id: string; tamanho_anexo: number }
         Returns: boolean

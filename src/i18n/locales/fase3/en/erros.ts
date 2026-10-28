@@ -125,6 +125,9 @@ const erros = {
     salvarAObservacao: 'Could not save the note: {{detalhe}}',
     salvarATrocaDeBanco: 'Could not save the bank change: {{detalhe}}',
     salvarOMenu: 'Could not save the menu: {{detalhe}}',
+    // Legacy x New Comparison (Phase 4)
+    carregarAComparacao: 'Could not load the comparison: {{detalhe}}',
+    validarAComparacao: 'Could not validate the comparison: {{detalhe}}',
   },
 };
 

@@ -107,6 +107,15 @@ const avisos = {
     falha: '{{nome}}: {{erro}}',
     erroRegularizacao: 'Could not ask the consultants for the correction',
   },
+  comparacao: {
+    validada: 'Company validated',
+    validacaoDesfeita: 'Validation undone',
+    erroValidar: 'Could not validate the company',
+    recalculando: 'Recalculation started',
+    recalculandoDescricao: 'The result shows up here in a few minutes.',
+    recalculada: 'Comparison updated',
+    erroRecalcular: 'Could not recalculate the comparison',
+  },
 };
 
 export default avisos;
