@@ -15,7 +15,7 @@ import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { BotaoLimparFiltros, FiltroMultiplo } from '@/components/ds/Filtros';
 import { formatarHoras } from '@/components/ds/horas';
-import { campo } from '@/components/ds/estilos';
+import { campo, faixaDasAbas } from '@/components/ds/estilos';
 import { MenuExportar } from '@/components/ds/MenuExportar';
 import { atraso } from '@/components/ds/Visual';
 import { CartaoRetroativo } from '@/components/admin/retroativos/CartaoRetroativo';
@@ -248,7 +248,7 @@ export default function ApontamentosRetroativos() {
               </span>
             </Callout>
 
-            <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+            <div className={cn(faixaDasAbas, 'flex justify-center')}>
               <SegmentedTabs
                 rotulo={a('abas.rotulo')}
                 itens={SITUACOES.map((s) => ({

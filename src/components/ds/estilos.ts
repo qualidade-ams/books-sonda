@@ -26,3 +26,10 @@ export const botaoVidro =
 /** Botão principal sobre a faixa do topo */
 export const botaoPrimarioTopo =
   'inline-flex h-11 items-center gap-2 rounded-lg bg-[#00D4E8] px-3.5 text-sm font-semibold text-black shadow-[0_6px_24px_rgba(0,212,232,0.35)] transition hover:-translate-y-px hover:bg-[#33DDED] hover:shadow-[0_10px_30px_rgba(0,212,232,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:h-9';
+
+/**
+ * Faixa fixa das abas (SegmentedTabs) no alto da lista. O fundo é o mesmo do AdminLayout,
+ * que é o que aparece atrás da tela: bg-ds-bg-page só existe dentro do DsPage e pintaria
+ * a faixa de outra cor.
+ */
+export const faixaDasAbas = 'sticky top-0 z-[5] -mx-1 bg-gray-50 px-1 py-1.5 dark:bg-sonda-black';

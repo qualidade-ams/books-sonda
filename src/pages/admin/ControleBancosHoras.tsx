@@ -46,7 +46,7 @@ import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { useEmailsClientesPorFinalidade } from '@/hooks/useClientes';
 import { FINALIDADES_SALDO_PARCIAL } from '@/types/clientBooksTypes';
 import { EnviarSaldoParcial } from '@/components/admin/controle/EnviarSaldoParcial';
-import { botaoVidro } from '@/components/ds/estilos';
+import { botaoVidro, faixaDasAbas } from '@/components/ds/estilos';
 import { mesAtual, periodosDoBanco } from '@/services/bancosHoras/periodos';
 import type { MesAno } from '@/services/bancosHoras/calculo';
 import { exportarTabela, type FormatoExportacao } from '@/utils/exportarTabela';
@@ -246,7 +246,7 @@ export default function ControleBancosHoras() {
           </section>
 
           <section aria-labelledby="titulo-banco" className="min-w-0 space-y-4">
-            <div className="sticky top-0 z-[5] -mx-1 bg-ds-bg-page px-1 py-1.5">
+            <div className={faixaDasAbas}>
               <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
                 <div className="min-w-0">
                   <h2
