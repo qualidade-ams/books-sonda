@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Clock, Filter, Ticket } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import { cn } from '@/lib/utils';
+import { faixaDasAbas } from '@/components/ds/estilos';
 import { DsPage } from '@/components/ds/DsPage';
 import { FaixaPagina } from '@/components/ds/FaixaPagina';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
@@ -276,7 +278,7 @@ export default function RegrasContagem() {
                 </div>
 
                 <div className="mt-6 space-y-4">
-                  <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+                  <div className={cn(faixaDasAbas, 'flex justify-center')}>
                     <SegmentedTabs
                       rotulo={t('regrasContagem.abas.rotulo')}
                       itens={[

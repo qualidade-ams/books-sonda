@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, GitMerge, Layers, Plus } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import { cn } from '@/lib/utils';
 import { DsPage } from '@/components/ds/DsPage';
 import { FaixaPagina } from '@/components/ds/FaixaPagina';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
@@ -13,7 +14,7 @@ import { atraso } from '@/components/ds/Visual';
 import { MenuExportar } from '@/components/ds/MenuExportar';
 import { BotaoImportar, TelaImportacao } from '@/components/ds/TelaImportacao';
 import { Callout } from '@/components/ds/Callout';
-import { botaoPrimarioTopo } from '@/components/ds/estilos';
+import { botaoPrimarioTopo, faixaDasAbas } from '@/components/ds/estilos';
 import { AbaMapeamentos } from '@/components/admin/de-para/AbaMapeamentos';
 import { AbaNaoMapeados } from '@/components/admin/de-para/AbaNaoMapeados';
 import { EdicaoMapeamento } from '@/components/admin/de-para/EdicaoMapeamento';
@@ -217,7 +218,7 @@ export default function DeParaGrupos() {
       </div>
 
       <div className="mt-6 space-y-4">
-        <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+        <div className={cn(faixaDasAbas, 'flex justify-center')}>
           <SegmentedTabs
             rotulo={t('deParaGrupos.abas.rotulo')}
             itens={[

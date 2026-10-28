@@ -11,7 +11,7 @@ import { Callout } from '@/components/ds/Callout';
 import { EmptyState } from '@/components/ds/EmptyState';
 import { DicasContext } from '@/components/ds/Dicas';
 import { atraso } from '@/components/ds/Visual';
-import { botaoVidro } from '@/components/ds/estilos';
+import { botaoVidro, faixaDasAbas } from '@/components/ds/estilos';
 import { IdentidadeEmpresa } from '@/components/admin/empresas/IdentidadeEmpresa';
 import { EdicaoAmsProjetos } from '@/components/admin/empresas/EdicaoAmsProjetos';
 import { AbaInformacoes } from '@/components/admin/empresas/AbaInformacoes';
@@ -278,7 +278,7 @@ export default function EmpresaDetalhe() {
         />
 
         <div className="mt-6 space-y-4">
-          <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+          <div className={cn(faixaDasAbas, 'flex justify-center')}>
             <SegmentedTabs
               rotulo={t('empresasCadastro.detalhe.abas')}
               itens={[
