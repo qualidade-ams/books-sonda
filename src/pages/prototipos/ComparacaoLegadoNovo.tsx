@@ -1,372 +1,560 @@
-// Protótipo da Comparação Legado x Novo no Design System v2 (docs/especificacoes/design-system-v2).
-// Validação visual: sem dados reais, sem service.
+// Protótipo da Comparação Legado x Novo no Design System v2 (Fase 4, decisões de 27/10/2026).
+// Validação visual: sem dados reais, sem service. Liberar a empresa fica para a Fase 5;
+// aqui a área só marca a empresa como validada.
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
-  Download,
-  Layers,
+  Info,
   RefreshCw,
+  Search,
   SearchX,
   ShieldCheck,
+  Undo2,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { DsPage } from '@/components/ds/DsPage';
-import { PageHeader } from '@/components/ds/PageHeader';
-import { Card } from '@/components/ds/Card';
-import { StatCard } from '@/components/ds/StatCard';
-import { StatusBadge } from '@/components/ds/StatusBadge';
-import { FilterBar } from '@/components/ds/FilterBar';
-import { Select } from '@/components/ds/Select';
+import { FaixaPagina } from '@/components/ds/FaixaPagina';
+import { Indicador, TelaEdicao, TituloFaixa } from '@/components/ds/Formulario';
 import { DataTable, type ColunaTabela } from '@/components/ds/DataTable';
 import { HoursValue } from '@/components/ds/HoursValue';
+import { StatusBadge } from '@/components/ds/StatusBadge';
 import { Callout } from '@/components/ds/Callout';
 import { EmptyState } from '@/components/ds/EmptyState';
 import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
+import { MenuExportar } from '@/components/ds/MenuExportar';
+import { BotaoLimparFiltros } from '@/components/ds/Filtros';
+import { campo } from '@/components/ds/estilos';
+import { atraso } from '@/components/ds/Visual';
+import { cn } from '@/lib/utils';
 import type { PrototipoProps } from '@/utils/prototipos';
 import {
+  ATUALIZADO_EM,
   COMPARACOES_MOCK,
-  DIVERGENCIA_MOCK,
-  MESES_COMPARACAO,
-  type ApontamentoDivergenteMock,
   type ComparacaoMock,
+  type ItemDiferencaMock,
+  type MesComparacaoMock,
   type SituacaoComparacao,
+  type SituacaoMes,
 } from './mocks/comparacaoLegadoNovo';
 
-const SITUACOES: Record<
-  SituacaoComparacao,
-  { rotulo: string; tom: 'success' | 'danger' | 'neutral' }
-> = {
+type Grupo = 'conferem' | 'explicada' | 'divergente' | 'validada';
+type Tom = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+
+const SITUACOES: Record<SituacaoComparacao, { rotulo: string; tom: Tom }> = {
   identico: { rotulo: 'Idêntico', tom: 'success' },
   soma_confere: { rotulo: 'Soma confere', tom: 'success' },
+  explicada: { rotulo: 'Explicada', tom: 'info' },
   divergente: { rotulo: 'Divergente', tom: 'danger' },
-  liberada: { rotulo: 'Liberada', tom: 'neutral' },
 };
+
+const SITUACOES_MES: Record<SituacaoMes, { rotulo: string; tom: Tom }> = {
+  igual: { rotulo: 'Igual', tom: 'neutral' },
+  explicada: { rotulo: 'Explicada', tom: 'info' },
+  divergente: { rotulo: 'Divergente', tom: 'danger' },
+};
+
+const grupoDa = (e: ComparacaoMock): Grupo =>
+  e.validada
+    ? 'validada'
+    : e.situacao === 'identico' || e.situacao === 'soma_confere'
+      ? 'conferem'
+      : e.situacao;
+
+const soma = (meses: MesComparacaoMock[], campo: 'consumoLegado' | 'consumoNovo') =>
+  meses.reduce((s, m) => s + m[campo], 0);
+
+function Diferenca({ minutos }: { minutos: number }) {
+  return (
+    <HoursValue
+      minutos={minutos}
+      sinal="sempre"
+      cor={minutos === 0 ? 'neutral' : 'danger'}
+      className={minutos ? 'font-semibold' : 'text-ds-fg-muted'}
+    />
+  );
+}
 
 export default function ComparacaoLegadoNovo({ estado }: PrototipoProps) {
   const [empresas, setEmpresas] = useState(COMPARACOES_MOCK);
   const [busca, setBusca] = useState('');
-  const [mes, setMes] = useState(MESES_COMPARACAO[0]);
-  const [situacao, setSituacao] = useState<'' | SituacaoComparacao>('');
-  const [detalheId, setDetalheId] = useState<string | undefined>();
-  const [liberar, setLiberar] = useState<ComparacaoMock | null>(null);
-  const [voltar, setVoltar] = useState<ComparacaoMock | null>(null);
+  const [grupo, setGrupo] = useState<Grupo | null>(null);
+  const [abertaId, setAbertaId] = useState<string | null>(null);
+  const [mesAberto, setMesAberto] = useState<string | null>(null);
+  const [validar, setValidar] = useState(false);
+  const [desfazer, setDesfazer] = useState(false);
+  const [atualizado, setAtualizado] = useState<Record<string, string>>({});
 
   const linhas = useMemo(() => {
     if (estado === 'vazio') return [];
+    const termo = busca.trim().toLowerCase();
     return empresas.filter(
-      (e) =>
-        (!busca || e.empresa.toLowerCase().includes(busca.toLowerCase())) &&
-        (!situacao || e.situacao === situacao)
+      (e) => (!termo || e.empresa.toLowerCase().includes(termo)) && (!grupo || grupoDa(e) === grupo)
     );
-  }, [empresas, busca, situacao, estado]);
+  }, [empresas, busca, grupo, estado]);
 
-  const filtrosAtivos = (situacao ? 1 : 0) + (mes !== MESES_COMPARACAO[0] ? 1 : 0);
-  const detalhe = empresas.find((e) => e.id === detalheId);
+  const contagem = (g: Grupo) => COMPARACOES_MOCK.filter((e) => grupoDa(e) === g).length;
+  const filtrando = !!busca.trim() || !!grupo;
+  const limpar = () => {
+    setBusca('');
+    setGrupo(null);
+  };
+
+  const aberta = empresas.find((e) => e.id === abertaId);
+
+  const abrir = (e: ComparacaoMock) => {
+    setAbertaId(e.id);
+    // Abre no mês mais recente com diferença
+    setMesAberto([...e.meses].reverse().find((m) => m.situacao !== 'igual')?.mes ?? null);
+  };
 
   const colunas: ColunaTabela<ComparacaoMock>[] = [
     {
       id: 'empresa',
       cabecalho: 'Empresa',
       mobile: 'titulo',
-      celula: (e) => <span className="font-medium">{e.empresa}</span>,
+      celula: (e) => (
+        <div>
+          <span className="font-medium">{e.empresa}</span>
+          {e.validada && (
+            <div className="text-xs text-ds-fg-muted">
+              Validada por {e.validada.por} em {e.validada.em}
+            </div>
+          )}
+        </div>
+      ),
     },
     { id: 'bancos', cabecalho: 'Bancos', alinhar: 'direita', celula: (e) => e.bancos },
+    {
+      id: 'meses',
+      cabecalho: 'Meses',
+      alinhar: 'direita',
+      mobile: 'oculta',
+      celula: (e) => e.meses.length,
+    },
     {
       id: 'legado',
       cabecalho: 'Consumo legado',
       alinhar: 'direita',
-      celula: (e) => <HoursValue minutos={e.consumoLegado} />,
+      celula: (e) => <HoursValue minutos={soma(e.meses, 'consumoLegado')} />,
     },
     {
       id: 'novo',
-      cabecalho: 'Soma dos bancos',
+      cabecalho: 'Consumo novo',
       alinhar: 'direita',
-      celula: (e) => <HoursValue minutos={e.somaBancos} />,
+      celula: (e) => <HoursValue minutos={soma(e.meses, 'consumoNovo')} />,
     },
     {
       id: 'diferenca',
       cabecalho: 'Diferença',
       alinhar: 'direita',
-      celula: (e) => {
-        const diferenca = e.somaBancos - e.consumoLegado;
-        return (
-          <HoursValue
-            minutos={diferenca}
-            cor={diferenca === 0 ? 'neutral' : 'danger'}
-            className={diferenca ? 'font-bold' : ''}
-          />
-        );
-      },
-    },
-    {
-      id: 'saldo-legado',
-      cabecalho: 'Saldo legado',
-      alinhar: 'direita',
-      mobile: 'oculta',
-      celula: (e) => <HoursValue minutos={e.saldoLegado} />,
-    },
-    {
-      id: 'saldo-novo',
-      cabecalho: 'Saldo novo (padrão)',
-      alinhar: 'direita',
-      mobile: 'oculta',
-      celula: (e) => <HoursValue minutos={e.saldoNovo} />,
+      celula: (e) => (
+        <Diferenca minutos={soma(e.meses, 'consumoNovo') - soma(e.meses, 'consumoLegado')} />
+      ),
     },
     {
       id: 'situacao',
       cabecalho: 'Situação',
       celula: (e) => (
-        <StatusBadge tom={SITUACOES[e.situacao].tom}>
-          {SITUACOES[e.situacao].rotulo}
-          {e.liberadaEm && ` em ${e.liberadaEm}`}
-        </StatusBadge>
+        <div className="flex flex-wrap gap-1">
+          <StatusBadge tom={SITUACOES[e.situacao].tom}>{SITUACOES[e.situacao].rotulo}</StatusBadge>
+          {e.validada && <StatusBadge tom="success">Validada</StatusBadge>}
+        </div>
       ),
     },
-    {
-      id: 'acao',
-      cabecalho: 'Ação',
-      mobile: 'acoes',
-      celula: (e) => {
-        if (e.situacao === 'liberada')
-          return <Button onClick={() => setVoltar(e)}>Voltar para legado</Button>;
-        if (e.situacao === 'divergente')
-          return <Button onClick={() => setDetalheId(e.id)}>Ver detalhes</Button>;
-        return (
-          <Button variante="primario" onClick={() => setLiberar(e)}>
-            Liberar empresa
-          </Button>
-        );
+  ];
+
+  if (aberta) {
+    const umBanco = aberta.bancos === 1;
+    const mes = aberta.meses.find((m) => m.mes === mesAberto);
+    const divergentes = aberta.meses.filter((m) => m.situacao === 'divergente').length;
+
+    const colunasMes: ColunaTabela<MesComparacaoMock>[] = [
+      {
+        id: 'mes',
+        cabecalho: 'Mês',
+        mobile: 'titulo',
+        celula: (m) => <span className="font-medium tabular-nums">{m.mes}</span>,
       },
-    },
-  ];
+      {
+        id: 'legado',
+        cabecalho: 'Consumo legado',
+        alinhar: 'direita',
+        celula: (m) => <HoursValue minutos={m.consumoLegado} />,
+      },
+      {
+        id: 'novo',
+        cabecalho: umBanco ? 'Consumo novo' : 'Soma dos bancos',
+        alinhar: 'direita',
+        celula: (m) => <HoursValue minutos={m.consumoNovo} />,
+      },
+      {
+        id: 'diferenca',
+        cabecalho: 'Diferença',
+        alinhar: 'direita',
+        celula: (m) => <Diferenca minutos={m.consumoNovo - m.consumoLegado} />,
+      },
+      ...(umBanco
+        ? ([
+            {
+              id: 'saldo',
+              cabecalho: 'Saldo legado / novo',
+              alinhar: 'direita',
+              mobile: 'detalhe',
+              celula: (m) => (
+                <span className="inline-flex gap-1.5">
+                  <HoursValue minutos={m.saldoLegado} cor="saldo" />
+                  <span className="text-ds-fg-muted">/</span>
+                  <HoursValue minutos={m.saldoNovo} cor="saldo" />
+                </span>
+              ),
+            },
+            {
+              id: 'repasse',
+              cabecalho: 'Repasse legado / novo',
+              alinhar: 'direita',
+              mobile: 'oculta',
+              celula: (m) => (
+                <span className="inline-flex gap-1.5">
+                  <HoursValue minutos={m.repasseLegado} />
+                  <span className="text-ds-fg-muted">/</span>
+                  <HoursValue minutos={m.repasseNovo} />
+                </span>
+              ),
+            },
+          ] as ColunaTabela<MesComparacaoMock>[])
+        : ([
+            {
+              id: 'bancos',
+              cabecalho: 'Por banco',
+              mobile: 'detalhe',
+              celula: (m) => (
+                <span className="text-[13px] text-ds-fg-secondary">
+                  {m.porBanco.map((b, i) => (
+                    <span key={b.banco}>
+                      {i > 0 && ' · '}
+                      {b.banco} <HoursValue minutos={b.minutos} />
+                    </span>
+                  ))}
+                </span>
+              ),
+            },
+          ] as ColunaTabela<MesComparacaoMock>[])),
+      {
+        id: 'situacao',
+        cabecalho: 'Situação',
+        celula: (m) => (
+          <StatusBadge tom={SITUACOES_MES[m.situacao].tom}>
+            {SITUACOES_MES[m.situacao].rotulo}
+          </StatusBadge>
+        ),
+      },
+    ];
 
-  const colunasDivergencia: ColunaTabela<ApontamentoDivergenteMock>[] = [
-    {
-      id: 'chamado',
-      cabecalho: 'Chamado',
-      mobile: 'titulo',
-      celula: (a) => <span className="font-medium">{a.chamado}</span>,
-    },
-    {
-      id: 'data',
-      cabecalho: 'Data',
-      celula: (a) => <span className="tabular-nums">{a.data}</span>,
-    },
-    {
-      id: 'grupo',
-      cabecalho: 'Grupo Aranda',
-      celula: (a) => <span className="font-ds-mono text-[13px]">{a.grupo}</span>,
-    },
-    {
-      id: 'horas',
-      cabecalho: 'Horas',
-      alinhar: 'direita',
-      celula: (a) => <HoursValue minutos={a.minutos} />,
-    },
-    { id: 'motivo', cabecalho: 'Motivo provável', celula: (a) => a.motivo },
-  ];
+    const colunasItem: ColunaTabela<ItemDiferencaMock>[] = [
+      {
+        id: 'chamado',
+        cabecalho: 'Chamado',
+        mobile: 'titulo',
+        celula: (i) => <span className="font-medium">{i.chamado}</span>,
+      },
+      {
+        id: 'data',
+        cabecalho: 'Data',
+        celula: (i) => <span className="tabular-nums">{i.data}</span>,
+      },
+      {
+        id: 'grupo',
+        cabecalho: 'Grupo do Aranda',
+        mobile: 'detalhe',
+        celula: (i) => <span className="font-ds-mono text-[13px]">{i.grupo}</span>,
+      },
+      {
+        id: 'legado',
+        cabecalho: 'Legado',
+        alinhar: 'direita',
+        celula: (i) =>
+          i.minutosLegado === null ? (
+            <span className="text-ds-fg-muted">—</span>
+          ) : (
+            <HoursValue minutos={i.minutosLegado} />
+          ),
+      },
+      {
+        id: 'novo',
+        cabecalho: 'Novo',
+        alinhar: 'direita',
+        celula: (i) =>
+          i.minutosNovo === null ? (
+            <span className="text-ds-fg-muted">—</span>
+          ) : (
+            <HoursValue minutos={i.minutosNovo} />
+          ),
+      },
+      {
+        id: 'motivo',
+        cabecalho: 'Motivo',
+        celula: (i) => (
+          <div className="flex flex-col items-start gap-1">
+            <StatusBadge tom={i.explicado ? 'info' : 'danger'}>
+              {i.explicado ? 'Explicado' : 'Sem explicação'}
+            </StatusBadge>
+            <span className="text-[13px] text-ds-fg-secondary">{i.motivo}</span>
+          </div>
+        ),
+      },
+    ];
 
-  const total = (s: SituacaoComparacao[]) =>
-    COMPARACOES_MOCK.filter((e) => s.includes(e.situacao)).length;
+    const resumo = {
+      identico: {
+        tom: 'success' as const,
+        texto: 'Consumo, saldo e repasse iguais ao legado em todos os meses comparados.',
+      },
+      soma_confere: {
+        tom: 'success' as const,
+        texto: 'A soma dos bancos é igual ao consumo do legado em todos os meses comparados.',
+      },
+      explicada: {
+        tom: 'info' as const,
+        texto: 'As diferenças vêm de correções do modelo novo. A empresa pode ser validada.',
+      },
+      divergente: {
+        tom: 'danger' as const,
+        texto: `${divergentes} ${divergentes === 1 ? 'mês tem' : 'meses têm'} diferença sem explicação. Corrija a causa (De-para, Regras de contagem, cadastro do banco) e recalcule.`,
+      },
+    }[aberta.situacao];
+
+    return (
+      <AdminLayout>
+        <div className="min-h-screen bg-ds-bg-page">
+          <DsPage className="px-4 py-4 md:px-6">
+            <TelaEdicao
+              voltarPara="Comparação Legado x Novo"
+              titulo={aberta.empresa}
+              subtitulo={`${aberta.bancos} ${aberta.bancos === 1 ? 'banco' : 'bancos'} · ${aberta.meses.length} meses comparados · atualizado ${atualizado[aberta.id] ?? ATUALIZADO_EM}`}
+              onFechar={() => setAbertaId(null)}
+            >
+              <div className="space-y-4 border-b border-ds-border px-4 py-5 md:px-6">
+                <Callout tom={resumo.tom} titulo={SITUACOES[aberta.situacao].rotulo}>
+                  {resumo.texto}
+                  {aberta.validada && (
+                    <>
+                      {' '}
+                      Validada por {aberta.validada.por} em {aberta.validada.em}.
+                    </>
+                  )}
+                </Callout>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => setAtualizado((a) => ({ ...a, [aberta.id]: 'agora mesmo' }))}
+                  >
+                    <RefreshCw /> Recalcular
+                  </Button>
+                  {aberta.validada ? (
+                    <Button onClick={() => setDesfazer(true)}>
+                      <Undo2 /> Desfazer validação
+                    </Button>
+                  ) : (
+                    <Button
+                      variante="primario"
+                      disabled={aberta.situacao === 'divergente'}
+                      onClick={() => setValidar(true)}
+                    >
+                      <ShieldCheck /> Marcar como validada
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3 px-4 py-5 md:px-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ds-fg-secondary">
+                  Mês a mês
+                </h3>
+                <DataTable
+                  rotulo="Comparação mês a mês"
+                  colunas={colunasMes}
+                  linhas={[...aberta.meses].reverse()}
+                  chaveLinha={(m) => m.mes}
+                  linhaSelecionada={mesAberto ?? undefined}
+                  onLinhaClick={(m) => m.itens.length > 0 && setMesAberto(m.mes)}
+                />
+              </div>
+
+              {mes && mes.itens.length > 0 && (
+                <div className="space-y-3 border-t border-ds-border px-4 py-5 md:px-6">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ds-fg-secondary">
+                    Diferenças em {mes.mes}
+                  </h3>
+                  <DataTable
+                    rotulo={`Diferenças em ${mes.mes}`}
+                    colunas={colunasItem}
+                    linhas={mes.itens}
+                    chaveLinha={(i) => i.id}
+                  />
+                </div>
+              )}
+            </TelaEdicao>
+
+            <ConfirmDialog
+              aberto={validar}
+              onOpenChange={setValidar}
+              titulo={`Validar ${aberta.empresa}?`}
+              descricao="Fica registrado que a área conferiu a comparação dos meses acima."
+              consequencias={[
+                'Se um mês novo divergir, a validação cai e a empresa volta para Divergente',
+                'O cliente continua recebendo o Book e o Saldo Parcial do legado até a liberação',
+              ]}
+              rotuloConfirmar="Marcar como validada"
+              onConfirmar={() => {
+                setEmpresas((l) =>
+                  l.map((e) =>
+                    e.id === aberta.id
+                      ? { ...e, validada: { por: 'Usuário Teste', em: '27/10/2026' } }
+                      : e
+                  )
+                );
+                setValidar(false);
+              }}
+            />
+            <ConfirmDialog
+              aberto={desfazer}
+              onOpenChange={setDesfazer}
+              titulo={`Desfazer a validação de ${aberta.empresa}?`}
+              rotuloConfirmar="Desfazer validação"
+              tom="perigo"
+              justificativa={{
+                rotulo: 'Motivo',
+                placeholder: 'Ex.: o Book de setembro foi retificado',
+              }}
+              onConfirmar={() => {
+                setEmpresas((l) =>
+                  l.map((e) => (e.id === aberta.id ? { ...e, validada: undefined } : e))
+                );
+                setDesfazer(false);
+              }}
+            />
+          </DsPage>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  const indicadores: {
+    grupo: Grupo;
+    rotulo: string;
+    icone: React.ReactNode;
+    tom?: 'success' | 'warning';
+  }[] = [
+    { grupo: 'conferem', rotulo: 'Conferem', icone: <CheckCircle2 /> },
+    { grupo: 'explicada', rotulo: 'Explicadas', icone: <Info /> },
+    { grupo: 'divergente', rotulo: 'Divergentes', icone: <AlertTriangle />, tom: 'warning' },
+    { grupo: 'validada', rotulo: 'Validadas', icone: <ShieldCheck />, tom: 'success' },
+  ];
 
   return (
     <AdminLayout>
-      <DsPage>
-        <PageHeader
-          titulo="Comparação Legado x Novo"
-          descricao="Validação do novo modelo antes da liberação de cada empresa"
-          acoes={[
-            { rotulo: 'Exportar', onClick: () => undefined, icone: <Download /> },
-            {
-              rotulo: 'Recalcular',
-              onClick: () => undefined,
-              icone: <RefreshCw />,
-              primaria: true,
-            },
-          ]}
-        />
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-          <StatCard
-            rotulo="Em validação"
-            valor={total(['identico', 'soma_confere', 'divergente'])}
-            icone={<Layers />}
-            carregando={estado === 'carregando'}
-          />
-          <StatCard
-            rotulo="Sem divergência"
-            valor={total(['identico', 'soma_confere'])}
-            tom="success"
-            icone={<CheckCircle2 />}
-            carregando={estado === 'carregando'}
-          />
-          <StatCard
-            rotulo="Com divergência"
-            valor={total(['divergente'])}
-            tom="danger"
-            icone={<AlertTriangle />}
-            carregando={estado === 'carregando'}
-          />
-          <StatCard
-            rotulo="Já liberadas"
-            valor={total(['liberada'])}
-            icone={<ShieldCheck />}
-            carregando={estado === 'carregando'}
-          />
-        </div>
-
-        <Card semPadding>
-          <div className="border-b border-ds-border p-4 md:p-5">
-            <FilterBar
-              busca={{ valor: busca, onChange: setBusca, placeholder: 'Buscar empresa…' }}
-              filtrosAtivos={filtrosAtivos}
-              onLimpar={() => {
-                setSituacao('');
-                setMes(MESES_COMPARACAO[0]);
-              }}
-            >
-              <Select
-                aria-label="Mês"
-                value={mes}
-                onChange={(e) => setMes(e.target.value)}
-                className="md:w-40"
+      <div className="min-h-screen bg-ds-bg-page">
+        <DsPage className="px-4 py-4 md:px-6">
+          <FaixaPagina>
+            <div className="pb-24 pt-3 md:pb-28 md:pt-4">
+              <div className="ds-surgir max-w-2xl">
+                <TituloFaixa texto="Comparação Legado x Novo" />
+                <p className="mt-1.5 text-sm text-[#B1B1B1] md:text-[15px]">
+                  O cálculo novo, em sombra, comparado com o que o cliente recebeu no Book nos
+                  últimos 12 meses fechados
+                </p>
+              </div>
+              <div
+                className="ds-surgir mt-5 flex flex-wrap items-center gap-x-4 gap-y-2"
+                style={atraso(100)}
               >
-                {MESES_COMPARACAO.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </Select>
-              <Select
-                aria-label="Situação"
-                value={situacao}
-                onChange={(e) => setSituacao(e.target.value as typeof situacao)}
-                className="md:w-48"
-              >
-                <option value="">Todas as situações</option>
-                {Object.entries(SITUACOES).map(([valor, s]) => (
-                  <option key={valor} value={valor}>
-                    {s.rotulo}
-                  </option>
-                ))}
-              </Select>
-            </FilterBar>
+                <MenuExportar
+                  descricao={`${linhas.length} empresas`}
+                  onExportar={() => undefined}
+                />
+                <span className="text-xs text-[#B1B1B1]">Atualizado {ATUALIZADO_EM}</span>
+              </div>
+            </div>
+          </FaixaPagina>
+
+          <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
+            {indicadores.map((ind, i) => (
+              <Indicador
+                key={ind.grupo}
+                rotulo={ind.rotulo}
+                valor={estado === 'vazio' ? 0 : contagem(ind.grupo)}
+                icone={ind.icone}
+                tom={ind.tom}
+                atrasoMs={i * 60}
+                selecionado={grupo === ind.grupo}
+                onClick={() => setGrupo((g) => (g === ind.grupo ? null : ind.grupo))}
+              />
+            ))}
           </div>
 
-          {estado === 'erro' ? (
-            <div className="space-y-4 p-4 md:p-5">
-              <Callout tom="danger" titulo="Não foi possível carregar a comparação">
-                O cálculo em sombra pode estar em andamento. Tente novamente em instantes.
-              </Callout>
-              <Button>Tentar novamente</Button>
-            </div>
-          ) : (
-            <DataTable
-              rotulo={`Comparação de ${mes}`}
-              colunas={colunas}
-              linhas={linhas}
-              chaveLinha={(e) => e.id}
-              carregando={estado === 'carregando'}
-              linhaSelecionada={detalheId}
-              vazio={
-                <EmptyState
-                  icone={<SearchX />}
-                  titulo={
-                    estado === 'vazio'
-                      ? 'Nenhuma empresa em validação'
-                      : 'Nenhuma empresa encontrada'
-                  }
-                  descricao={
-                    estado === 'vazio'
-                      ? 'Todas as empresas já estão liberadas ou nenhuma tem cálculo em sombra neste mês.'
-                      : 'Ajuste a busca ou os filtros.'
-                  }
-                  acao={
-                    estado !== 'vazio' && (
-                      <Button
-                        variante="fantasma"
-                        onClick={() => {
-                          setBusca('');
-                          setSituacao('');
-                        }}
-                      >
-                        Limpar filtros
-                      </Button>
-                    )
-                  }
+          <div className="mt-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {filtrando && <BotaoLimparFiltros onClick={limpar} />}
+              <label className="relative block min-w-0 flex-1 md:w-72 md:flex-none">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-fg-muted"
+                  aria-hidden
                 />
-              }
-            />
-          )}
-        </Card>
+                <input
+                  type="search"
+                  aria-label="Buscar empresa"
+                  placeholder="Buscar empresa"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className={cn(campo, 'pl-9')}
+                />
+              </label>
+            </div>
 
-        {detalhe && (
-          <Card
-            titulo={`Divergência — ${detalhe.empresa}`}
-            descricao={`${mes} · apontamentos que explicam a diferença de 01:30`}
-            semPadding
-            acoes={
-              <Button variante="fantasma" tamanho="sm" onClick={() => setDetalheId(undefined)}>
-                Fechar
-              </Button>
-            }
-          >
-            <DataTable
-              rotulo="Apontamentos divergentes"
-              colunas={colunasDivergencia}
-              linhas={DIVERGENCIA_MOCK}
-              chaveLinha={(a) => a.id}
-            />
-          </Card>
-        )}
+            {estado === 'erro' ? (
+              <div className="space-y-3">
+                <Callout tom="danger" titulo="Não foi possível carregar a comparação">
+                  Verifique a conexão e tente de novo.
+                </Callout>
+                <Button>Tentar novamente</Button>
+              </div>
+            ) : (
+              <DataTable
+                rotulo="Empresas em validação"
+                colunas={colunas}
+                linhas={linhas}
+                chaveLinha={(e) => e.id}
+                carregando={estado === 'carregando'}
+                onLinhaClick={abrir}
+                vazio={
+                  <EmptyState
+                    icone={<SearchX />}
+                    titulo={
+                      estado === 'vazio'
+                        ? 'Nenhuma empresa com mês fechado para comparar'
+                        : 'Nenhuma empresa encontrada'
+                    }
+                    acao={
+                      filtrando && (
+                        <Button variante="fantasma" onClick={limpar}>
+                          Limpar filtros
+                        </Button>
+                      )
+                    }
+                  />
+                }
+              />
+            )}
 
-        <Callout tom="info">
-          Empresas com <strong>1 banco</strong> precisam ter saldo idêntico ao legado. Empresas com{' '}
-          <strong>vários bancos</strong> precisam ter a soma do consumo dos bancos igual ao consumo
-          total do legado (nenhuma hora perdida ou duplicada).
-        </Callout>
-
-        <ConfirmDialog
-          aberto={!!liberar}
-          onOpenChange={(aberto) => !aberto && setLiberar(null)}
-          titulo={`Liberar ${liberar?.empresa ?? ''}?`}
-          descricao="A empresa passa a usar os bancos múltiplos no Book, no Saldo Parcial e nas planilhas."
-          consequencias={[
-            'Vale a partir do próximo envio',
-            'É possível voltar para o legado a qualquer momento',
-          ]}
-          rotuloConfirmar="Liberar empresa"
-          onConfirmar={() => {
-            setEmpresas((lista) =>
-              lista.map((e) =>
-                e.id === liberar?.id ? { ...e, situacao: 'liberada', liberadaEm: '15/10' } : e
-              )
-            );
-            setLiberar(null);
-          }}
-        />
-
-        <ConfirmDialog
-          aberto={!!voltar}
-          onOpenChange={(aberto) => !aberto && setVoltar(null)}
-          titulo={`Voltar ${voltar?.empresa ?? ''} para o legado?`}
-          descricao="A empresa volta imediatamente ao cálculo atual. Os bancos e o histórico continuam guardados."
-          rotuloConfirmar="Voltar para legado"
-          tom="perigo"
-          justificativa={{
-            rotulo: 'Motivo',
-            placeholder: 'Ex.: divergência encontrada no Book de setembro',
-          }}
-          onConfirmar={() => {
-            setEmpresas((lista) =>
-              lista.map((e) =>
-                e.id === voltar?.id ? { ...e, situacao: 'soma_confere', liberadaEm: undefined } : e
-              )
-            );
-            setVoltar(null);
-          }}
-        />
-      </DsPage>
+            <Callout tom="info">
+              <strong>1 banco:</strong> consumo, saldo e repasse iguais ao legado.{' '}
+              <strong>Vários bancos:</strong> a soma do consumo dos bancos igual ao consumo do
+              legado.
+            </Callout>
+          </div>
+        </DsPage>
+      </div>
     </AdminLayout>
   );
 }
