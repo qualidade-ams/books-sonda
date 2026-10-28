@@ -270,7 +270,9 @@ Para cada empresa com `modelo_calculo = 'legado'` e ao menos um banco ativo, a r
 
 - **Encaixe:** etapa nova "Modo sombra (Comparação Legado x Novo)" no orquestrador, depois de "Ajustes retroativos", na sincronização que inclui apontamentos.
 - **Frequência:** a comparação completa (todas as empresas, 12 meses) roda uma vez por dia, na primeira sincronização com apontamentos depois das 6h (P3). Nas demais sincronizações do dia, a etapa só faz o fechamento em sombra dos meses que o legado fechou desde a última rodada.
+- **Controle da rodada do dia:** fica na memória do serviço (`modoSombraService.ts`). Reiniciar o serviço faz uma rodada completa a mais no dia; o "Recalcular" de uma empresa não conta como a rodada do dia.
 - **Desligar:** a etapa tem a mesma chave de ligar e desligar das outras (`TabelasSync.modoSombra`, padrão: ligada).
+- **Ativação do fechamento em sombra (P5):** variável `MODO_SOMBRA_FECHAR_DESDE` (AAAA-MM-DD) no `.env` do sync-api. Só os meses que o legado fechar a partir dela são fechados no modelo novo. Vazia, a rotina só compara.
 
 ### 8.3 Recalcular uma empresa
 

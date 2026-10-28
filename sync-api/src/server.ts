@@ -26,6 +26,8 @@ import { criarRotasSyncJobs } from './scheduler/rotas';
 import { criarAgendadorSaldoParcial } from './scheduler/agendadorSaldoParcial';
 import { criarRotasSaldoParcial } from './scheduler/rotasSaldoParcial';
 import { criarExecutorSaldoParcial } from './services/envioSaldoParcialService';
+import { criarModoSombra } from './services/modoSombraService';
+import { criarRotasComparacao } from './scheduler/rotasComparacao';
 import { criarExecutorGeracaoBooks, criarGeradorPdfBook } from './services/geracaoBooksService';
 import { criarRenderizadorImagem } from './services/renderImagemService';
 import { criarEnviadorWebhook } from './services/webhookEmailService';
@@ -4073,6 +4075,17 @@ try {
   console.error('[BOOKS] Pacote vendor/geracaoBooks.cjs não carregou:', e instanceof Error ? e.message : e);
 }
 
+// Modo sombra da Fase 4 (Comparação Legado x Novo). Sem o pacote, a etapa e a rota ficam fora.
+let modoSombra: ReturnType<typeof criarModoSombra> | undefined;
+try {
+  modoSombra = criarModoSombra({
+    supabase,
+    fecharDesde: process.env.MODO_SOMBRA_FECHAR_DESDE || null,
+  });
+} catch (e) {
+  console.error('[COMPARACAO] Pacote vendor/comparacao.cjs não carregou:', e instanceof Error ? e.message : e);
+}
+
 const orquestradorSync = criarOrquestradorSync({
   supabase,
   gerarBooks,
@@ -4092,6 +4105,7 @@ const orquestradorSync = criarOrquestradorSync({
     inconsistencias: () => executarDeteccaoInconsistencias(supabase),
     // Mesmo período usado pela sincronização manual do frontend
     ajustesRetroativos: () => deteccaoRetroativos.executarDeteccaoRecente(2),
+    ...(modoSombra ? { modoSombra: () => modoSombra!.executarEtapa() } : {}),
   },
 });
 
@@ -4112,6 +4126,11 @@ const agendadorSaldoParcial = criarAgendadorSaldoParcial({
 });
 
 app.use('/api/saldo-parcial', criarRotasSaldoParcial(supabase, agendadorSaldoParcial, !!process.env.RENDER_IMAGE_URL));
+
+// ============================================================
+// COMPARAÇÃO LEGADO X NOVO (tela "Comparação Legado x Novo", Fase 4)
+// ============================================================
+if (modoSombra) app.use('/api/comparacao', criarRotasComparacao(supabase, modoSombra));
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = hostDeEscuta(process.env);
