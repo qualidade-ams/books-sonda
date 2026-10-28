@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Boxes, Layers, Link2, Package, Plus } from 'lucide-react';
 import { arrayMove } from '@dnd-kit/sortable';
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import { cn } from '@/lib/utils';
 import { DsPage } from '@/components/ds/DsPage';
 import { FaixaPagina } from '@/components/ds/FaixaPagina';
 import { SegmentedTabs } from '@/components/ds/SegmentedTabs';
@@ -17,7 +18,7 @@ import { Indicador, TituloFaixa } from '@/components/ds/Formulario';
 import { atraso } from '@/components/ds/Visual';
 import { MenuExportar } from '@/components/ds/MenuExportar';
 import { BotaoImportar, TelaImportacao } from '@/components/ds/TelaImportacao';
-import { botaoPrimarioTopo, botaoVidro } from '@/components/ds/estilos';
+import { botaoPrimarioTopo, botaoVidro, faixaDasAbas } from '@/components/ds/estilos';
 import { ArvoreCatalogo, type SelecaoCatalogo } from '@/components/admin/catalogo/ArvoreCatalogo';
 import { MoverModulo, PainelProduto, PainelSolucao } from '@/components/admin/catalogo/Paineis';
 import { AbaModulosRequerimento } from '@/components/admin/catalogo/AbaModulosRequerimento';
@@ -459,7 +460,7 @@ export default function ProdutosModulos() {
       </div>
 
       <div className="mt-6 space-y-4">
-        <div className="sticky top-0 z-[5] -mx-1 flex justify-center bg-ds-bg-page px-1 py-1.5">
+        <div className={cn(faixaDasAbas, 'flex justify-center')}>
           <SegmentedTabs
             rotulo={t('produtosModulos.abas.rotulo')}
             itens={[
