@@ -141,7 +141,7 @@ Para cada mês com diferença, a rotina lista os itens que estão só de um lado
 **Requerimentos e reajustes** são comparados pelo total do mês, não item a item:
 
 - requerimento com diferença: "Divergente";
-- reajuste com diferença, antes do espelhamento da seção 6: "Explicada", com o motivo "reajuste do legado não espelhado".
+- reajuste com diferença: "Divergente". A carga da seção 6 traz todos os reajustes antes da primeira rodada, então uma diferença aponta erro no espelho.
 
 O motivo é calculado em TypeScript puro (`comparacao.ts`) a partir dos itens dos dois lados e de poucos campos do Aranda (data, `synced_at`, minutos, código, organização). Não grava nada nas tabelas do Aranda.
 
