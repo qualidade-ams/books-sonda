@@ -665,6 +665,7 @@ const es = {
     businessSectors: 'Ramos de Actividad',
     countingRules: 'Reglas de conteo',
     bankHoursNew: 'Control de Bancos de Horas (nuevo)',
+    comparisonLegacyNew: 'Comparación Legado x Nuevo',
     retroactiveNew: 'Registros Retroactivos (nuevo)',
     bankHoursAuditNew: 'Auditoría del Banco de Horas (nuevo)',
     organizeMenu: 'Organizar Menú',
@@ -2390,6 +2391,8 @@ const es = {
       etapaResumo:
         '{{processados}} procesados · {{novos}} nuevos · {{atualizados}} actualizados · {{erros}} errores',
       falhou: 'Falló: {{erro}}',
+      resumoSombra:
+        '{{comparadas}} empresa(s) comparada(s), {{fechamentos}} cierre(s) en sombra, {{erros}} error(es)',
       booksResumo:
         'Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados · {{erros}} con error · {{pulados}} omitidos',
       booksSelecionadas: 'Solo {{count}} empresa(s) seleccionada(s)',
@@ -2434,6 +2437,7 @@ const es = {
       detectarInconsistencias: 'Detectar inconsistencias',
       inconsistencias: 'Inconsistencias',
       ajustesRetroativos: 'Ajustes retroactivos',
+      modoSombra: 'Modo sombra (Comparación Legado x Nuevo)',
       gerarBooks: 'Generación de books',
     },
     form: {
@@ -2449,6 +2453,7 @@ const es = {
       tabelas: 'Tablas',
       posProcessamento: 'Posprocesamiento',
       ajustesRetroativosAjuda: 'Se ejecuta junto con Registros de horas',
+      modoSombraAjuda: 'Se ejecuta junto con Registros de horas; compara todo una vez al día',
       frequencia: 'Frecuencia',
       diario: 'Diario',
       semanal: 'Semanal',

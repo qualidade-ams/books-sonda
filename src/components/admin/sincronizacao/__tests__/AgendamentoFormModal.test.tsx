@@ -69,6 +69,25 @@ describe('AgendamentoFormModal', () => {
     });
   });
 
+  it('modo sombra (Fase 4): ligado por padrão, junto com apontamentos, e pode ser desligado', async () => {
+    const { onSalvar } = renderizar();
+    const sombra = screen.getByRole('checkbox', { name: /sincronizacaoSql.tabelas.modoSombra/ });
+    expect(sombra).toBeChecked();
+    expect(screen.getByText('sincronizacaoSql.form.modoSombraAjuda')).toBeInTheDocument();
+
+    fireEvent.click(sombra);
+    fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), {
+      target: { value: 'Diário 7h' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
+
+    await waitFor(() => expect(onSalvar).toHaveBeenCalled());
+    expect(onSalvar.mock.calls[0][0].tabelas).toMatchObject({
+      apontamentos: true,
+      modoSombra: false,
+    });
+  });
+
   it('não salva sem nome e mostra o erro', async () => {
     const { onSalvar } = renderizar();
     fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
@@ -186,7 +205,9 @@ describe('AgendamentoFormModal', () => {
     it('restringe a empresas selecionadas', async () => {
       const { onSalvar } = renderizarBooks();
 
-      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), { target: { value: 'Só Votorantim' } });
+      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), {
+        target: { value: 'Só Votorantim' },
+      });
       fireEvent.click(screen.getByLabelText('sincronizacaoSql.empresas.selecionadas'));
       fireEvent.click(screen.getByRole('checkbox', { name: 'VOTORANTIM' }));
       fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
@@ -198,11 +219,15 @@ describe('AgendamentoFormModal', () => {
     it('não salva "somente selecionadas" sem nenhuma empresa', async () => {
       const { onSalvar } = renderizarBooks();
 
-      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), { target: { value: 'X' } });
+      fireEvent.change(screen.getByLabelText('sincronizacaoSql.form.nome'), {
+        target: { value: 'X' },
+      });
       fireEvent.click(screen.getByLabelText('sincronizacaoSql.empresas.selecionadas'));
       fireEvent.click(screen.getByRole('button', { name: 'sincronizacaoSql.form.salvar' }));
 
-      expect(await screen.findByText('sincronizacaoSql.validacao.empresaObrigatoria')).toBeInTheDocument();
+      expect(
+        await screen.findByText('sincronizacaoSql.validacao.empresaObrigatoria')
+      ).toBeInTheDocument();
       expect(onSalvar).not.toHaveBeenCalled();
     });
 

@@ -125,6 +125,9 @@ const erros = {
     salvarAObservacao: 'Falha ao salvar a observação: {{detalhe}}',
     salvarATrocaDeBanco: 'Falha ao salvar a troca de banco: {{detalhe}}',
     salvarOMenu: 'Falha ao salvar o menu: {{detalhe}}',
+    // Comparação Legado x Novo (Fase 4)
+    carregarAComparacao: 'Falha ao carregar a comparação: {{detalhe}}',
+    validarAComparacao: 'Falha ao validar a comparação: {{detalhe}}',
   },
 };
 

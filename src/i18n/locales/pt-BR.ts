@@ -665,6 +665,7 @@ const ptBR = {
     businessSectors: 'Ramos de Atividade',
     countingRules: 'Regras de contagem',
     bankHoursNew: 'Controle de Bancos de Horas (novo)',
+    comparisonLegacyNew: 'Comparação Legado x Novo',
     retroactiveNew: 'Apontamentos Retroativos (novo)',
     bankHoursAuditNew: 'Auditoria do Banco de Horas (novo)',
     organizeMenu: 'Organizar Menu',
@@ -2391,6 +2392,8 @@ const ptBR = {
       etapaResumo:
         '{{processados}} processados · {{novos}} novos · {{atualizados}} atualizados · {{erros}} erros',
       falhou: 'Falhou: {{erro}}',
+      resumoSombra:
+        '{{comparadas}} empresa(s) comparada(s), {{fechamentos}} fechamento(s) em sombra, {{erros}} erro(s)',
       booksResumo:
         'Referência {{mes}}/{{ano}}: {{gerados}} gerados e enviados · {{erros}} com erro · {{pulados}} pulados',
       booksSelecionadas: 'Somente {{count}} empresa(s) selecionada(s)',
@@ -2435,6 +2438,7 @@ const ptBR = {
       detectarInconsistencias: 'Detectar inconsistências',
       inconsistencias: 'Inconsistências',
       ajustesRetroativos: 'Ajustes retroativos',
+      modoSombra: 'Modo sombra (Comparação Legado x Novo)',
       gerarBooks: 'Geração de books',
     },
     form: {
@@ -2450,6 +2454,7 @@ const ptBR = {
       tabelas: 'Tabelas',
       posProcessamento: 'Pós-processamento',
       ajustesRetroativosAjuda: 'Roda junto com Apontamentos',
+      modoSombraAjuda: 'Roda junto com Apontamentos; compara tudo uma vez por dia',
       frequencia: 'Frequência',
       diario: 'Diário',
       semanal: 'Semanal',

@@ -125,6 +125,56 @@ describe('orquestradorSync', () => {
     expect(etapas.ajustesRetroativos).not.toHaveBeenCalled();
   });
 
+  describe('modo sombra (Comparação Legado x Novo)', () => {
+    const resumoSombra = { completa: true, empresas: 3, comparadas: 2, removidas: 1, fechamentos: 1, erros: 0 };
+
+    it('roda depois dos ajustes retroativos, junto com apontamentos, e registra o resumo', async () => {
+      const ordem: string[] = [];
+      const etapas = criarEtapas({
+        ajustesRetroativos: vi.fn(async () => {
+          ordem.push('retroativos');
+          return [];
+        }),
+        modoSombra: vi.fn(async () => {
+          ordem.push('sombra');
+          return resumoSombra;
+        }),
+      });
+      const { orq } = criar(etapas);
+      const inicio = await orq.iniciar({ tabelas: { apontamentos: true }, origem: 'manual' });
+      await inicio.conclusao;
+
+      expect(ordem).toEqual(['retroativos', 'sombra']);
+      const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+      expect(updates[updates.length - 1].resultado.modoSombra).toMatchObject({ sucesso: true, ...resumoSombra });
+    });
+
+    it('empresa com erro deixa a etapa como concluída com erros', async () => {
+      const etapas = criarEtapas({ modoSombra: vi.fn(async () => ({ ...resumoSombra, erros: 2 })) });
+      const { orq } = criar(etapas);
+      const inicio = await orq.iniciar({ tabelas: { apontamentos: true }, origem: 'manual' });
+      await inicio.conclusao;
+
+      const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+      expect(updates[updates.length - 1].resultado.modoSombra).toMatchObject({
+        sucesso: false,
+        erro: '2 empresa(s) com erro na comparação',
+      });
+    });
+
+    it('não roda sem apontamentos, com modoSombra=false ou sem a etapa configurada', async () => {
+      const etapas = criarEtapas({ modoSombra: vi.fn(async () => resumoSombra) });
+      const { orq } = criar(etapas);
+      await (await orq.iniciar({ tabelas: { pesquisas: true }, origem: 'manual' })).conclusao;
+      await (await orq.iniciar({ tabelas: { apontamentos: true, modoSombra: false }, origem: 'manual' })).conclusao;
+      expect(etapas.modoSombra).not.toHaveBeenCalled();
+
+      const semEtapa = criar(criarEtapas());
+      const inicio = await semEtapa.orq.iniciar({ tabelas: { apontamentos: true }, origem: 'manual' });
+      await expect(inicio.conclusao).resolves.toBe('sucesso');
+    });
+  });
+
   // As inconsistências guardam dados de apontamentos, tickets e código de resolução:
   // sincronizar qualquer uma dessas tabelas sem detectar deixaria a auditoria desatualizada.
   it.each(['apontamentos', 'tickets', 'codigoResolucao'] as const)(

@@ -107,6 +107,15 @@ const avisos = {
     falha: '{{nome}}: {{erro}}',
     erroRegularizacao: 'Erro ao pedir a regularização aos consultores',
   },
+  comparacao: {
+    validada: 'Empresa validada',
+    validacaoDesfeita: 'Validação desfeita',
+    erroValidar: 'Erro ao validar a empresa',
+    recalculando: 'Recálculo iniciado',
+    recalculandoDescricao: 'O resultado aparece aqui em alguns minutos.',
+    recalculada: 'Comparação atualizada',
+    erroRecalcular: 'Erro ao recalcular a comparação',
+  },
 };
 
 export default avisos;

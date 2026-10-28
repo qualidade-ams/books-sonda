@@ -14,7 +14,8 @@ export type TipoAgendamentoSync = 'sincronizacao' | 'books';
 export type FrequenciaAgendamento = 'diario' | 'semanal' | 'mensal';
 export type ModoHorarioAgendamento = 'horarios' | 'intervalo';
 
-export type StatusExecucaoSync = 'executando' | 'sucesso' | 'parcial' | 'erro' | 'ignorada' | 'interrompida';
+export type StatusExecucaoSync =
+  'executando' | 'sucesso' | 'parcial' | 'erro' | 'ignorada' | 'interrompida';
 
 export interface TabelasSync {
   pesquisas?: boolean;
@@ -24,6 +25,8 @@ export interface TabelasSync {
   codigoResolucao?: boolean;
   detectarInconsistencias?: boolean;
   ajustesRetroativos?: boolean;
+  /** Modo sombra da Fase 4 (Comparação Legado x Novo); padrão: ligado, roda junto com apontamentos */
+  modoSombra?: boolean;
   /** YYYY-MM-DD, só para execução manual de pesquisas */
   dataInicial?: string;
 }

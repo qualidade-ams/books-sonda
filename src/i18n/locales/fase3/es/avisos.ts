@@ -107,6 +107,15 @@ const avisos = {
     falha: '{{nome}}: {{erro}}',
     erroRegularizacao: 'No fue posible pedir la regularización a los consultores',
   },
+  comparacao: {
+    validada: 'Empresa validada',
+    validacaoDesfeita: 'Validación deshecha',
+    erroValidar: 'No fue posible validar la empresa',
+    recalculando: 'Recálculo iniciado',
+    recalculandoDescricao: 'El resultado aparece aquí en algunos minutos.',
+    recalculada: 'Comparación actualizada',
+    erroRecalcular: 'No fue posible recalcular la comparación',
+  },
 };
 
 export default avisos;

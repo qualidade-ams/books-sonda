@@ -116,6 +116,7 @@ const ETAPAS_RESUMO = [
   'validacao',
   'inconsistencias',
   'ajustesRetroativos',
+  'modoSombra',
   'gerarBooks',
 ];
 
@@ -378,6 +379,12 @@ function SincronizacaoSqlServer() {
   const tituloEtapa = (k: string, etapa: any): string | undefined => {
     if (etapa.erro) return t('sincronizacaoSql.historico.falhou', { erro: etapa.erro });
     if (k === 'gerarBooks') return textoBooks(etapa);
+    if (k === 'modoSombra')
+      return t('sincronizacaoSql.historico.resumoSombra', {
+        comparadas: etapa.comparadas ?? 0,
+        fechamentos: etapa.fechamentos ?? 0,
+        erros: etapa.erros ?? 0,
+      });
     return etapa.processados !== undefined ? textoEtapa(etapa) : undefined;
   };
 

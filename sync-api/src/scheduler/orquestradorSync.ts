@@ -27,6 +27,8 @@ export interface TabelasSync {
   detectarInconsistencias?: boolean;
   /** padrão: true (só roda quando apontamentos é sincronizado) */
   ajustesRetroativos?: boolean;
+  /** padrão: true (só roda quando apontamentos é sincronizado e o servidor tem o pacote da comparação) */
+  modoSombra?: boolean;
   /** YYYY-MM-DD; para pesquisas e tickets. Vazio = incremental */
   dataInicial?: string | null;
 }
@@ -40,6 +42,19 @@ export interface EtapasSync {
   validacao(pool: sql.ConnectionPool): Promise<any>;
   inconsistencias(): Promise<any>;
   ajustesRetroativos(): Promise<any[]>;
+  /** Modo sombra da Fase 4 (vendor/comparacao.cjs); ausente quando o pacote não carregou */
+  modoSombra?(): Promise<ResumoModoSombra>;
+}
+
+/** Resumo da etapa do modo sombra (Comparação Legado x Novo) */
+export interface ResumoModoSombra {
+  /** true: comparou todas as empresas; false: só fechou em sombra o que o legado fechou */
+  completa: boolean;
+  empresas: number;
+  comparadas: number;
+  removidas: number;
+  fechamentos: number;
+  erros: number;
 }
 
 /** sincronizacao = sync SQL Server; books = geração e envio automático de books para a Qualidade */
@@ -121,6 +136,7 @@ const ROTULOS: Record<string, string> = {
   validacao: 'Validação SQL Server x Supabase',
   inconsistencias: 'Detecção de inconsistências',
   ajustesRetroativos: 'Ajustes retroativos do banco de horas',
+  modoSombra: 'Modo sombra (Comparação Legado x Novo)',
   gerarBooks: 'Geração de books',
 };
 
@@ -347,6 +363,14 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
         await rodar('ajustesRetroativos', () => etapas.ajustesRetroativos(), (r) => ({
           sucesso: true,
           total: Array.isArray(r) ? r.length : 0,
+        }));
+      }
+
+      if (tabelas.apontamentos && tabelas.modoSombra !== false && etapas.modoSombra) {
+        await rodar('modoSombra', () => etapas.modoSombra!(), (r: ResumoModoSombra) => ({
+          ...r,
+          sucesso: r.erros === 0,
+          ...(r.erros > 0 ? { erro: `${r.erros} empresa(s) com erro na comparação` } : {}),
         }));
       }
 

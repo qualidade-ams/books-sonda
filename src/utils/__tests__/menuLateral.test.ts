@@ -69,6 +69,17 @@ describe('MENU_PADRAO', () => {
     for (const n of [...MENU_PADRAO, ...telas]) expect(ICONES_MENU[n.icone!]).toBeDefined();
   });
 
+  it('Comparação Legado x Novo no menu Books, logo depois do Controle novo (Fase 4)', () => {
+    const books = MENU_PADRAO.find((n) => n.chave === 'comunicacao')!.filhos!;
+    const indice = books.findIndex((n) => n.chave === '/admin/comparacao-bancos-horas');
+    expect(books[indice]).toMatchObject({
+      screenKey: 'bancos_horas_comparacao',
+      rotuloI18n: 'nav.comparisonLegacyNew',
+      icone: 'Scale',
+    });
+    expect(books[indice - 1].chave).toBe('/admin/bancos-horas');
+  });
+
   it('os menus têm as chaves fixas do Organizar Menu', () => {
     expect(MENU_PADRAO.filter((n) => n.tipo === 'menu').map((n) => n.chave)).toEqual([
       'requerimentos',
