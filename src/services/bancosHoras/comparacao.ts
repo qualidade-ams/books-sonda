@@ -98,7 +98,7 @@ export interface ContextoItens {
   /** Organizações do Aranda vinculadas à empresa nova */
   organizacoesNovas: string[];
   /** O código de resolução conta nas Regras de contagem? */
-  codigoConta: (codigo: string | null) => boolean;
+  codigoConta: (codigo: string | null, fonte: 'apontamento' | 'ticket') => boolean;
   /** Itens que o modelo novo não pôs em nenhum banco */
   semBanco: Set<string>;
 }
@@ -293,7 +293,7 @@ function motivoSoNoLegado(
     const curinga = /[_%]/.test(ctx.nomeLegado) && casaComoIlike(organizacao, ctx.nomeLegado);
     return curinga ? 'organizacao_curinga' : 'organizacao_fora_do_cadastro';
   }
-  if (!ctx.codigoConta(d.codigoResolucao)) return 'codigo_sem_regra';
+  if (!ctx.codigoConta(d.codigoResolucao, d.fonte)) return 'codigo_sem_regra';
   if (ctx.semBanco.has(chave)) return 'fora_do_escopo';
   return 'sem_motivo';
 }

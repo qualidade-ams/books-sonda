@@ -19,6 +19,7 @@ import {
   type ClienteSupabase,
 } from '@/services/bancosHoras/repositorioSupabase';
 import { criarClassificador } from '@/services/bancosHoras/classificacao';
+import { comCache } from '@/services/bancosHoras/cache';
 import { estaVigente, type MesAno } from '@/services/bancosHoras/calculo';
 import { modeloDaEmpresa } from '@/services/empresasService';
 import type { RequerimentoControle } from '@/types/controleBancoHoras';
@@ -38,28 +39,8 @@ export type QuadroEmpresa = Record<string, ResultadoEmpresaMes>;
 
 export const chaveMes = (m: MesAno) => `${m.ano}-${String(m.mes).padStart(2, '0')}`;
 
-/**
- * Repositório que guarda cada consulta pelos argumentos. Calcular um mês refaz a
- * cadeia desde o início do período: sem o cache, montar o quadro de um semestre
- * repetiria as mesmas consultas várias vezes. Erro não fica guardado.
- */
-export function comCache(repo: RepositorioBancosHoras): RepositorioBancosHoras {
-  const guardadas = new Map<string, Promise<unknown>>();
-  const embrulhado = {} as RepositorioBancosHoras;
-  for (const nome of Object.keys(repo) as (keyof RepositorioBancosHoras)[]) {
-    const original = repo[nome] as (...args: unknown[]) => Promise<unknown>;
-    (embrulhado as unknown as Record<string, unknown>)[nome] = (...args: unknown[]) => {
-      const chave = `${nome}:${JSON.stringify(args)}`;
-      if (!guardadas.has(chave)) {
-        const promessa = original.apply(repo, args);
-        promessa.catch(() => guardadas.delete(chave));
-        guardadas.set(chave, promessa);
-      }
-      return guardadas.get(chave);
-    };
-  }
-  return embrulhado;
-}
+// O cache do repositório também é usado pela rotina do modo sombra (sync-api)
+export { comCache };
 
 export class ControleBancoHorasService {
   constructor(
