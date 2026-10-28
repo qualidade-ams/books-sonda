@@ -218,6 +218,10 @@ Não existe `bancos_horas_comparacao` no schema atual. O Anexo A da especificaç
   - Reajuste de mês anterior ao início de vigência do banco entra assim mesmo: o motor só lê os meses do período, e o histórico fica completo.
   - Reajuste comum vai para o Banco padrão.
   - Reajuste segmentado (`empresa_segmentada`) vai para o banco de mesmo nome. Se não houver, vai para o Banco padrão com observação.
+  - As horas são lidas como o legado lê (`converterHorasParaMinutos`, replicada em `bancos_horas_minutos_legado`): texto inválido vale 0, e reajuste sem valor não entra.
+  - Valor negativo inverte o tipo (entrada negativa vira saída), porque o legado soma com o sinal.
+  - Horas e tickets com sinais trocados, ou ticket fracionado, não cabem no modelo novo. Viram falha de sincronização (aviso no sino, como na Fase 1) sem parar a carga.
+  - Empresa sem Banco padrão ativo fica sem espelho; o teste da migration informa quantos reajustes ficaram assim.
 - **Espelho:** gatilho em `banco_horas_reajustes`, ativo só enquanto a empresa estiver em Legado.
   - Ele cria, inativa ou atualiza o reajuste espelhado, guardando o ID de origem numa coluna nova da tabela **nova**.
   - Como os gatilhos da Fase 1, nunca bloqueia o legado: em erro, registra e segue.
