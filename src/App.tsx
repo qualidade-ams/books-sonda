@@ -49,6 +49,7 @@ const RegrasContagem = telaSobDemanda(() => import('./pages/admin/RegrasContagem
 const Empresas = telaSobDemanda(() => import('./pages/admin/Empresas'));
 const EmpresaDetalhe = telaSobDemanda(() => import('./pages/admin/EmpresaDetalhe'));
 const ControleBancosHoras = telaSobDemanda(() => import('./pages/admin/ControleBancosHoras'));
+const ComparacaoBancosHoras = telaSobDemanda(() => import('./pages/admin/ComparacaoBancosHoras'));
 const ApontamentosRetroativos = telaSobDemanda(
   () => import('./pages/admin/ApontamentosRetroativos')
 );
@@ -306,6 +307,14 @@ const App = () => (
                         element={
                           <ProtectedRoute screenKey="bancos_horas_controle">
                             <ControleBancosHoras />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/admin/comparacao-bancos-horas"
+                        element={
+                          <ProtectedRoute screenKey="bancos_horas_comparacao">
+                            <ComparacaoBancosHoras />
                           </ProtectedRoute>
                         }
                       />

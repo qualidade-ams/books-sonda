@@ -666,6 +666,7 @@ const en = {
     businessSectors: 'Business Sectors',
     countingRules: 'Counting rules',
     bankHoursNew: 'Hour Bank Control (new)',
+    comparisonLegacyNew: 'Legacy x New Comparison',
     retroactiveNew: 'Retroactive Time Entries (new)',
     bankHoursAuditNew: 'Hour Bank Audit (new)',
     organizeMenu: 'Organize Menu',

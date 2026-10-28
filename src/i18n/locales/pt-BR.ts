@@ -665,6 +665,7 @@ const ptBR = {
     businessSectors: 'Ramos de Atividade',
     countingRules: 'Regras de contagem',
     bankHoursNew: 'Controle de Bancos de Horas (novo)',
+    comparisonLegacyNew: 'Comparação Legado x Novo',
     retroactiveNew: 'Apontamentos Retroativos (novo)',
     bankHoursAuditNew: 'Auditoria do Banco de Horas (novo)',
     organizeMenu: 'Organizar Menu',

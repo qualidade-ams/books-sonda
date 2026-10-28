@@ -665,6 +665,7 @@ const es = {
     businessSectors: 'Ramos de Actividad',
     countingRules: 'Reglas de conteo',
     bankHoursNew: 'Control de Bancos de Horas (nuevo)',
+    comparisonLegacyNew: 'Comparación Legado x Nuevo',
     retroactiveNew: 'Registros Retroactivos (nuevo)',
     bankHoursAuditNew: 'Auditoría del Banco de Horas (nuevo)',
     organizeMenu: 'Organizar Menú',

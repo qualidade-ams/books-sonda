@@ -53,6 +53,12 @@ export const MENU_PADRAO: NoMenu[] = [
     tela('/admin/controle-banco-horas', 'nav.bankHours', 'Clock', 'controle_banco_horas'),
     tela('/admin/bancos-horas', 'nav.bankHoursNew', 'Clock', 'bancos_horas_controle'),
     tela(
+      '/admin/comparacao-bancos-horas',
+      'nav.comparisonLegacyNew',
+      'Scale',
+      'bancos_horas_comparacao'
+    ),
+    tela(
       '/admin/ajustes-retroativos',
       'nav.retroactiveAdjustments',
       'AlertTriangle',
