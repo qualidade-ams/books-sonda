@@ -2385,6 +2385,8 @@ const en = {
       etapaResumo:
         '{{processados}} processed · {{novos}} new · {{atualizados}} updated · {{erros}} errors',
       falhou: 'Failed: {{erro}}',
+      resumoSombra:
+        '{{comparadas}} company(ies) compared, {{fechamentos}} shadow closing(s), {{erros}} error(s)',
       booksResumo:
         'Reference {{mes}}/{{ano}}: {{gerados}} generated and sent · {{erros}} with errors · {{pulados}} skipped',
       booksSelecionadas: 'Only {{count}} selected company(ies)',
@@ -2429,6 +2431,7 @@ const en = {
       detectarInconsistencias: 'Detect inconsistencies',
       inconsistencias: 'Inconsistencies',
       ajustesRetroativos: 'Retroactive adjustments',
+      modoSombra: 'Shadow mode (Legacy x New Comparison)',
       gerarBooks: 'Book generation',
     },
     form: {
@@ -2444,6 +2447,7 @@ const en = {
       tabelas: 'Tables',
       posProcessamento: 'Post-processing',
       ajustesRetroativosAjuda: 'Runs together with Time entries',
+      modoSombraAjuda: 'Runs together with Time entries; compares everything once a day',
       frequencia: 'Frequency',
       diario: 'Daily',
       semanal: 'Weekly',

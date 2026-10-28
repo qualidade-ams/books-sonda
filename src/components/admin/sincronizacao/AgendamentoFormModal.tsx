@@ -211,6 +211,19 @@ export function AgendamentoFormModal({
                     </span>
                   </span>
                 </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={valores.tabelas.modoSombra}
+                    disabled={!valores.tabelas.apontamentos}
+                    onCheckedChange={(v) => setValue('tabelas.modoSombra', !!v)}
+                  />
+                  <span>
+                    {t('sincronizacaoSql.tabelas.modoSombra')}
+                    <span className="block text-xs text-gray-500">
+                      {t('sincronizacaoSql.form.modoSombraAjuda')}
+                    </span>
+                  </span>
+                </label>
               </div>
             </div>
           )}
@@ -220,8 +233,12 @@ export function AgendamentoFormModal({
             <SeletorEmpresasBooks
               modo={valores.empresas_modo}
               empresaIds={valores.empresa_ids}
-              onChangeModo={(modo) => setValue('empresas_modo', modo, { shouldValidate: formState.isSubmitted })}
-              onChangeEmpresaIds={(ids) => setValue('empresa_ids', ids, { shouldValidate: formState.isSubmitted })}
+              onChangeModo={(modo) =>
+                setValue('empresas_modo', modo, { shouldValidate: formState.isSubmitted })
+              }
+              onChangeEmpresaIds={(ids) =>
+                setValue('empresa_ids', ids, { shouldValidate: formState.isSubmitted })
+              }
               erro={errors.empresa_ids?.message}
             />
           )}

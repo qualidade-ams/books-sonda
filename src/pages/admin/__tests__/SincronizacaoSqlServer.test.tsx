@@ -135,6 +135,38 @@ describe('SincronizacaoSqlServer', () => {
     permissoes.telas = ['sincronizacao_sql_server', 'envio_saldo_parcial'];
   });
 
+  it('histórico mostra a etapa do modo sombra (Fase 4) com o resumo', () => {
+    estado.execucoes = [
+      {
+        id: 'x1',
+        tipo: 'sincronizacao',
+        agendamento_id: null,
+        origem: 'agendado',
+        disparado_por: null,
+        tabelas: { apontamentos: true },
+        status: 'parcial',
+        iniciado_em: '2026-10-28T10:00:00Z',
+        finalizado_em: '2026-10-28T10:05:00Z',
+        resultado: {
+          modoSombra: {
+            sucesso: false,
+            completa: true,
+            empresas: 3,
+            comparadas: 2,
+            removidas: 0,
+            fechamentos: 1,
+            erros: 1,
+          },
+        },
+        logs: [],
+      },
+    ];
+    renderTela('/admin/rotinas-automaticas?aba=historico');
+    const etapa = screen.getAllByText('sincronizacaoSql.tabelas.modoSombra')[0];
+    expect(etapa).toHaveAttribute('title', 'sincronizacaoSql.historico.resumoSombra');
+    estado.execucoes = [];
+  });
+
   it('mostra estado vazio sem agendamentos', () => {
     renderTela();
     expect(screen.getByText('sincronizacaoSql.agendamentos.vazio')).toBeInTheDocument();

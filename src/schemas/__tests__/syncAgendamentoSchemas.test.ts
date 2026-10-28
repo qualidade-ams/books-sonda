@@ -25,12 +25,25 @@ describe('agendamentoFormSchema', () => {
   });
 
   it('exige nome', () => {
-    expect(mensagens(validos({ nome: '  ' }))).toContain('sincronizacaoSql.validacao.nomeObrigatorio');
+    expect(mensagens(validos({ nome: '  ' }))).toContain(
+      'sincronizacaoSql.validacao.nomeObrigatorio'
+    );
   });
 
   it('exige ao menos uma tabela', () => {
-    const tabelas = { pesquisas: false, especialistas: false, apontamentos: false, tickets: false, codigoResolucao: false, detectarInconsistencias: true, ajustesRetroativos: true };
-    expect(mensagens(validos({ tabelas }))).toContain('sincronizacaoSql.validacao.tabelaObrigatoria');
+    const tabelas = {
+      pesquisas: false,
+      especialistas: false,
+      apontamentos: false,
+      tickets: false,
+      codigoResolucao: false,
+      detectarInconsistencias: true,
+      ajustesRetroativos: true,
+      modoSombra: true,
+    };
+    expect(mensagens(validos({ tabelas }))).toContain(
+      'sincronizacaoSql.validacao.tabelaObrigatoria'
+    );
   });
 
   it('semanal exige dia da semana', () => {
@@ -40,27 +53,39 @@ describe('agendamentoFormSchema', () => {
   });
 
   it('mensal exige dia do mês ou último dia', () => {
-    expect(mensagens(validos({ frequencia: 'mensal', dias_mes: [] }))).toContain('sincronizacaoSql.validacao.diaMesObrigatorio');
-    expect(mensagens(validos({ frequencia: 'mensal', dias_mes: [], ultimo_dia_mes: true }))).toEqual([]);
+    expect(mensagens(validos({ frequencia: 'mensal', dias_mes: [] }))).toContain(
+      'sincronizacaoSql.validacao.diaMesObrigatorio'
+    );
+    expect(
+      mensagens(validos({ frequencia: 'mensal', dias_mes: [], ultimo_dia_mes: true }))
+    ).toEqual([]);
   });
 
   it('horários fixos: exige ao menos um e formato HH:MM', () => {
-    expect(mensagens(validos({ horarios: [] }))).toContain('sincronizacaoSql.validacao.horarioObrigatorio');
-    expect(mensagens(validos({ horarios: ['7h'] }))).toContain('sincronizacaoSql.validacao.horarioInvalido');
+    expect(mensagens(validos({ horarios: [] }))).toContain(
+      'sincronizacaoSql.validacao.horarioObrigatorio'
+    );
+    expect(mensagens(validos({ horarios: ['7h'] }))).toContain(
+      'sincronizacaoSql.validacao.horarioInvalido'
+    );
   });
 
   it('intervalo: valida horas, início e fim', () => {
     const intervalo = { modo_horario: 'intervalo' as const, horarios: [] };
-    expect(mensagens(validos({ ...intervalo, intervalo_horas: 0, hora_inicio: '07:00' }))).toContain(
-      'sincronizacaoSql.validacao.intervaloInvalido'
-    );
+    expect(
+      mensagens(validos({ ...intervalo, intervalo_horas: 0, hora_inicio: '07:00' }))
+    ).toContain('sincronizacaoSql.validacao.intervaloInvalido');
     expect(mensagens(validos({ ...intervalo, intervalo_horas: 2, hora_inicio: '' }))).toContain(
       'sincronizacaoSql.validacao.horaInicioObrigatoria'
     );
-    expect(mensagens(validos({ ...intervalo, intervalo_horas: 2, hora_inicio: '10:00', hora_fim: '08:00' }))).toContain(
-      'sincronizacaoSql.validacao.horaFimAntes'
-    );
-    expect(mensagens(validos({ ...intervalo, intervalo_horas: 2, hora_inicio: '07:00', hora_fim: '' }))).toEqual([]);
+    expect(
+      mensagens(
+        validos({ ...intervalo, intervalo_horas: 2, hora_inicio: '10:00', hora_fim: '08:00' })
+      )
+    ).toContain('sincronizacaoSql.validacao.horaFimAntes');
+    expect(
+      mensagens(validos({ ...intervalo, intervalo_horas: 2, hora_inicio: '07:00', hora_fim: '' }))
+    ).toEqual([]);
   });
 });
 
@@ -94,7 +119,12 @@ describe('formParaAgendamentoInput', () => {
     const input = formParaAgendamentoInput(
       validos({ horarios: ['12:00', '07:00', '12:00'], intervalo_horas: 3, hora_inicio: '07:00' })
     );
-    expect(input).toMatchObject({ horarios: ['07:00', '12:00'], intervalo_horas: null, hora_inicio: null, hora_fim: null });
+    expect(input).toMatchObject({
+      horarios: ['07:00', '12:00'],
+      intervalo_horas: null,
+      hora_inicio: null,
+      hora_fim: null,
+    });
   });
 
   it('nome sem espaços nas pontas', () => {
@@ -121,7 +151,12 @@ describe('agendamentoParaForm', () => {
     } as unknown as SyncAgendamento;
 
     const form = agendamentoParaForm(ag);
-    expect(form).toMatchObject({ hora_inicio: '07:00', hora_fim: '19:00', ativo: false, frequencia: 'semanal' });
+    expect(form).toMatchObject({
+      hora_inicio: '07:00',
+      hora_fim: '19:00',
+      ativo: false,
+      frequencia: 'semanal',
+    });
     // tabelas ausentes viram false; pós-processamento ausente vira true (padrão)
     expect(form.tabelas).toEqual({
       pesquisas: true,
@@ -131,7 +166,17 @@ describe('agendamentoParaForm', () => {
       codigoResolucao: false,
       detectarInconsistencias: true,
       ajustesRetroativos: true,
+      modoSombra: true,
     });
+  });
+
+  it('modo sombra desligado no agendamento salvo continua desligado', () => {
+    const ag = { tabelas: { apontamentos: true, modoSombra: false } } as unknown as SyncAgendamento;
+    expect(agendamentoParaForm(ag).tabelas.modoSombra).toBe(false);
+  });
+
+  it('modo sombra começa ligado num agendamento novo', () => {
+    expect(valoresIniciaisAgendamento().tabelas.modoSombra).toBe(true);
   });
 });
 
@@ -144,6 +189,7 @@ describe('agendamento de geração de books (tipo books)', () => {
     codigoResolucao: false,
     detectarInconsistencias: false,
     ajustesRetroativos: false,
+    modoSombra: false,
   };
 
   it('valores iniciais são de sincronização', () => {
@@ -151,17 +197,29 @@ describe('agendamento de geração de books (tipo books)', () => {
   });
 
   it('não exige tabela', () => {
-    const v = { ...valoresIniciaisAgendamento('books'), nome: 'Books mensais', tabelas: nenhumaTabela };
+    const v = {
+      ...valoresIniciaisAgendamento('books'),
+      nome: 'Books mensais',
+      tabelas: nenhumaTabela,
+    };
     expect(mensagens(v)).toEqual([]);
   });
 
   it('continua validando a recorrência', () => {
-    const v = { ...valoresIniciaisAgendamento('books'), nome: 'Books', frequencia: 'semanal' as const, dias_semana: [] };
+    const v = {
+      ...valoresIniciaisAgendamento('books'),
+      nome: 'Books',
+      frequencia: 'semanal' as const,
+      dias_semana: [],
+    };
     expect(mensagens(v)).toContain('sincronizacaoSql.validacao.diaSemanaObrigatorio');
   });
 
   it('grava o tipo e não grava tabelas', () => {
-    const input = formParaAgendamentoInput({ ...valoresIniciaisAgendamento('books'), nome: 'Books' });
+    const input = formParaAgendamentoInput({
+      ...valoresIniciaisAgendamento('books'),
+      nome: 'Books',
+    });
     expect(input.tipo).toBe('books');
     expect(input.tabelas).toEqual({});
   });
@@ -186,7 +244,9 @@ describe('agendamento de geração de books (tipo books)', () => {
       hora_inicio: null,
       hora_fim: null,
     };
-    expect(agendamentoParaForm({ ...base, tipo: 'books' } as unknown as SyncAgendamento).tipo).toBe('books');
+    expect(agendamentoParaForm({ ...base, tipo: 'books' } as unknown as SyncAgendamento).tipo).toBe(
+      'books'
+    );
     expect(agendamentoParaForm(base as unknown as SyncAgendamento).tipo).toBe('sincronizacao');
   });
 });
@@ -199,7 +259,10 @@ describe('empresas da geração de books', () => {
   });
 
   it('padrão é todas as empresas', () => {
-    expect(valoresIniciaisAgendamento('books')).toMatchObject({ empresas_modo: 'todas', empresa_ids: [] });
+    expect(valoresIniciaisAgendamento('books')).toMatchObject({
+      empresas_modo: 'todas',
+      empresa_ids: [],
+    });
     expect(formParaAgendamentoInput(books()).empresa_ids).toEqual([]);
   });
 
@@ -211,11 +274,14 @@ describe('empresas da geração de books', () => {
   });
 
   it('grava só as selecionadas, sem repetição; em "todas" grava vazio', () => {
-    expect(formParaAgendamentoInput(books({ empresas_modo: 'selecionadas', empresa_ids: ['e1', 'e2', 'e1'] })).empresa_ids).toEqual([
-      'e1',
-      'e2',
-    ]);
-    expect(formParaAgendamentoInput(books({ empresas_modo: 'todas', empresa_ids: ['e1'] })).empresa_ids).toEqual([]);
+    expect(
+      formParaAgendamentoInput(
+        books({ empresas_modo: 'selecionadas', empresa_ids: ['e1', 'e2', 'e1'] })
+      ).empresa_ids
+    ).toEqual(['e1', 'e2']);
+    expect(
+      formParaAgendamentoInput(books({ empresas_modo: 'todas', empresa_ids: ['e1'] })).empresa_ids
+    ).toEqual([]);
   });
 
   it('sincronização nunca grava empresas nem exige seleção', () => {
@@ -226,11 +292,29 @@ describe('empresas da geração de books', () => {
 
   it('edição: com empresas salvas abre em "selecionadas"', () => {
     const ag = {
-      id: 'a1', tipo: 'books', nome: 'X', ativo: true, tabelas: {}, empresa_ids: ['e1'],
-      frequencia: 'diario', dias_semana: [], dias_mes: [], ultimo_dia_mes: false,
-      modo_horario: 'horarios', horarios: ['06:00'], intervalo_horas: null, hora_inicio: null, hora_fim: null,
+      id: 'a1',
+      tipo: 'books',
+      nome: 'X',
+      ativo: true,
+      tabelas: {},
+      empresa_ids: ['e1'],
+      frequencia: 'diario',
+      dias_semana: [],
+      dias_mes: [],
+      ultimo_dia_mes: false,
+      modo_horario: 'horarios',
+      horarios: ['06:00'],
+      intervalo_horas: null,
+      hora_inicio: null,
+      hora_fim: null,
     } as unknown as SyncAgendamento;
-    expect(agendamentoParaForm(ag)).toMatchObject({ empresas_modo: 'selecionadas', empresa_ids: ['e1'] });
-    expect(agendamentoParaForm({ ...ag, empresa_ids: undefined } as any)).toMatchObject({ empresas_modo: 'todas', empresa_ids: [] });
+    expect(agendamentoParaForm(ag)).toMatchObject({
+      empresas_modo: 'selecionadas',
+      empresa_ids: ['e1'],
+    });
+    expect(agendamentoParaForm({ ...ag, empresa_ids: undefined } as any)).toMatchObject({
+      empresas_modo: 'todas',
+      empresa_ids: [],
+    });
   });
 });
