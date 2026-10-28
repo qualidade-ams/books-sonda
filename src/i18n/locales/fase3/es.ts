@@ -12,6 +12,7 @@ import empresasCadastro from './es/empresasCadastro';
 import controleBancoHoras from './es/controleBancoHoras';
 import apontamentosRetroativos from './es/apontamentosRetroativos';
 import auditoriaBancosHoras from './es/auditoriaBancosHoras';
+import comparacaoBancosHoras from './es/comparacaoBancosHoras';
 import rotinasSaldoParcial from './es/rotinasSaldoParcial';
 import organizarMenu from './es/organizarMenu';
 import avisos from './es/avisos';
@@ -27,6 +28,7 @@ const fase3 = {
   controleBancoHoras,
   apontamentosRetroativos,
   auditoriaBancosHoras,
+  comparacaoBancosHoras,
   rotinasSaldoParcial,
   organizarMenu,
   avisos,
