@@ -33,9 +33,9 @@ const comparacaoBancosHoras = {
   carregando: 'Loading the comparison',
   erro: 'Could not load the comparison',
   vazio: {
-    semDados: 'No company with a closed month to compare',
+    semDados: 'No comparison to show',
     semDadosDescricao:
-      'The routine compares the Legacy companies after the synchronization with Aranda.',
+      'The comparison shows up after the shadow mode routine runs in the sync-api, for the Legacy companies with a closed month in the last 12 months.',
     filtro: 'No company found',
   },
   colunas: {

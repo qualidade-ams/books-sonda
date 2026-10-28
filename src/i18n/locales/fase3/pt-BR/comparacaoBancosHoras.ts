@@ -33,9 +33,9 @@ const comparacaoBancosHoras = {
   carregando: 'Carregando a comparação',
   erro: 'Não foi possível carregar a comparação',
   vazio: {
-    semDados: 'Nenhuma empresa com mês fechado para comparar',
+    semDados: 'Nenhuma comparação para mostrar',
     semDadosDescricao:
-      'A rotina compara as empresas em Legado depois da sincronização com o Aranda.',
+      'A comparação aparece depois que a rotina do modo sombra roda no sync-api, para as empresas em Legado com mês fechado nos últimos 12 meses.',
     filtro: 'Nenhuma empresa encontrada',
   },
   colunas: {
