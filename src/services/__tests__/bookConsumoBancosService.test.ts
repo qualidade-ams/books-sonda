@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import * as XLSX from 'xlsx-js-style';
 import { criarSupabaseEmMemoria } from '@/test/fakes/supabaseEmMemoria';
 import { BookConsumoBancosService } from '../bookConsumoBancosService';
 import type { MesAno } from '@/services/bancosHoras/calculo';
@@ -216,5 +217,18 @@ describe('BookConsumoBancosService: gravar e ler', () => {
       { nome: 'consumo_bancos_do_book', args: { p_book_id: 'book1' } },
     ]);
     expect(doBook).toEqual([{ ordem: 1, banco_id: 'b1', dados: { mes: SET } }]);
+  });
+});
+
+describe('BookConsumoBancosService.abasDoExcel', () => {
+  it('resumo e uma aba por banco (da empresa e das consolidadas liberadas), só com os chamados do mês do Book', async () => {
+    const { servico } = cenario();
+    const abas = await servico.abasDoExcel('e1', SET);
+
+    expect(abas.map((a) => a.nome)).toEqual(['Resumo', 'Banco COMEX', 'Banco da Filial']);
+    const comex = XLSX.utils.sheet_to_csv(abas[1].sheet);
+    // Setembro: 90 + 30 + 15 min; agosto (999 min) não entra no detalhamento do Book de setembro
+    expect(comex).toContain('01:30');
+    expect(comex).not.toContain('16:39');
   });
 });

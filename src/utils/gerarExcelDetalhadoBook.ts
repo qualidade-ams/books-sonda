@@ -15,6 +15,8 @@
 
 import * as XLSX from 'xlsx-js-style';
 import { supabase } from '@/integrations/supabase/client';
+import { geracaoBookLiberada } from '@/services/geracaoBookLiberada';
+import { bookConsumoBancosService } from '@/services/bookConsumoBancosService';
 
 // ============================================================================
 // INTERFACES
@@ -98,8 +100,18 @@ interface ExcelDetalhadoBookParams {
 // ============================================================================
 
 const MESES_PT = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
 ];
 
 /** Estilo padrão para headers (azul Sonda com texto branco) */
@@ -192,7 +204,12 @@ function criarSheetSemDados(headers: string[], mesNome: string, ano: number): XL
 // ============================================================================
 
 /** Calcula período de datas baseado na periodicidade da empresa */
-function calcularPeriodo(mes: number, ano: number, diaInicioApuracao: number, diaFimApuracao: number) {
+function calcularPeriodo(
+  mes: number,
+  ano: number,
+  diaInicioApuracao: number,
+  diaFimApuracao: number
+) {
   let dataInicioStr: string;
   let dataFimStr: string;
 
@@ -215,10 +232,16 @@ function calcularPeriodo(mes: number, ano: number, diaInicioApuracao: number, di
 }
 
 /** Busca tickets abertos no período (exclui Cancelled) */
-async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
+async function buscarTicketsAbertos(
+  nomeCompleto: string,
+  dataInicio: Date,
+  dataFim: Date
+): Promise<TicketAranda[]> {
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select(
+      'nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo'
+    )
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_abertura', dataInicio.toISOString())
     .lte('data_abertura', dataFim.toISOString())
@@ -226,7 +249,11 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
     .neq('status', 'Cancelled')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+    .not(
+      'nome_grupo',
+      'in',
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    )
     .not('nome_grupo', 'like', 'AMS DX %')
     .not('nome_grupo', 'like', 'AMS PRJ %')
     .not('nome_grupo', 'like', 'AMS SAP %')
@@ -243,14 +270,20 @@ async function buscarTicketsAbertos(nomeCompleto: string, dataInicio: Date, data
 }
 
 /** Busca tickets fechados no período (apenas status Closed) */
-async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
+async function buscarTicketsFechados(
+  nomeCompleto: string,
+  dataInicio: Date,
+  dataFim: Date
+): Promise<TicketAranda[]> {
   const proximoMesInicio = new Date(dataFim);
   proximoMesInicio.setDate(proximoMesInicio.getDate() + 1);
   proximoMesInicio.setHours(0, 0, 0, 0);
 
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select(
+      'nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo'
+    )
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_fechamento', dataInicio.toISOString())
     .lt('data_fechamento', proximoMesInicio.toISOString())
@@ -258,7 +291,11 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
     .eq('status', 'Closed')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+    .not(
+      'nome_grupo',
+      'in',
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    )
     .not('nome_grupo', 'like', 'AMS DX %')
     .not('nome_grupo', 'like', 'AMS PRJ %')
     .not('nome_grupo', 'like', 'AMS SAP %')
@@ -278,14 +315,20 @@ async function buscarTicketsFechados(nomeCompleto: string, dataInicio: Date, dat
 async function buscarTicketsBacklog(nomeCompleto: string, dataFim: Date): Promise<TicketAranda[]> {
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select(
+      'nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo'
+    )
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .lte('data_abertura', dataFim.toISOString())
     .not('status', 'in', '("Closed","Resolved","Canceled","Cancelled")')
     .neq('cod_tipo', 'Problema')
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+    .not(
+      'nome_grupo',
+      'in',
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    )
     .not('nome_grupo', 'like', 'AMS DX %')
     .not('nome_grupo', 'like', 'AMS PRJ %')
     .not('nome_grupo', 'like', 'AMS SAP %')
@@ -321,14 +364,20 @@ const COD_RESOLUCAO_SLA = [
 ];
 
 /** Busca incidentes violados para SLA (exclui Cancelled, retorna apenas TDS Vencido com cod_resolucao elegível) */
-async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim: Date): Promise<TicketAranda[]> {
+async function buscarTicketsSLA(
+  nomeCompleto: string,
+  dataInicio: Date,
+  dataFim: Date
+): Promise<TicketAranda[]> {
   const proximoMesInicio = new Date(dataFim);
   proximoMesInicio.setDate(proximoMesInicio.getDate() + 1);
   proximoMesInicio.setHours(0, 0, 0, 0);
 
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo')
+    .select(
+      'nro_solicitacao, cod_tipo, ticket_externo, numero_pai, organizacao, empresa, categoria, item_configuracao, status, nome_grupo, nome_responsavel, solicitante, data_abertura, data_solucao, data_fechamento, cod_resolucao, tds_cumprido, prioridade, resumo'
+    )
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_fechamento', dataInicio.toISOString())
     .lt('data_fechamento', proximoMesInicio.toISOString())
@@ -338,7 +387,11 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
     .in('cod_resolucao', COD_RESOLUCAO_SLA)
     .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
     .eq('caso_pai', 'SIM')
-    .not('nome_grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+    .not(
+      'nome_grupo',
+      'in',
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    )
     .not('nome_grupo', 'like', 'AMS DX %')
     .not('nome_grupo', 'like', 'AMS PRJ %')
     .not('nome_grupo', 'like', 'AMS SAP %')
@@ -355,7 +408,11 @@ async function buscarTicketsSLA(nomeCompleto: string, dataInicio: Date, dataFim:
 }
 
 /** Busca pesquisas de satisfação do período */
-async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): Promise<PesquisaSatisfacao[]> {
+async function buscarPesquisas(
+  nomeCompleto: string,
+  mes: number,
+  ano: number
+): Promise<PesquisaSatisfacao[]> {
   const dataInicio = new Date(ano, mes - 1, 1);
   const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
 
@@ -363,16 +420,22 @@ async function buscarPesquisas(nomeCompleto: string, mes: number, ano: number): 
     empresa: nomeCompleto,
     periodo: `${mes}/${ano}`,
     dataInicio: dataInicio.toISOString(),
-    dataFim: dataFim.toISOString()
+    dataFim: dataFim.toISOString(),
   });
 
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
-    .select('nro_caso, tipo_caso, empresa, grupo, cliente, prestador, solicitante, data_fechamento, data_resposta, resposta, comentario_pesquisa, categoria, servico, pergunta, descricao')
+    .select(
+      'nro_caso, tipo_caso, empresa, grupo, cliente, prestador, solicitante, data_fechamento, data_resposta, resposta, comentario_pesquisa, categoria, servico, pergunta, descricao'
+    )
     .ilike('empresa', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
     .gte('data_fechamento', dataInicio.toISOString())
     .lte('data_fechamento', dataFim.toISOString())
-    .not('grupo', 'in', '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")')
+    .not(
+      'grupo',
+      'in',
+      '("AMS - FABRICA ABAP (SAP)","AMS - QUALIDADE E PROCESSOS","AMS APL - TÉCNICO","AMS PROJ - MP PROJETOS","AMS SAS - N2","CA SDM")'
+    )
     .not('grupo', 'like', 'AMS DX %')
     .not('grupo', 'like', 'AMS PRJ %')
     .not('grupo', 'like', 'AMS SAP %')
@@ -404,32 +467,64 @@ async function buscarApontamentosHoras(
     'Alocação',
     'Alocação (Banco=S |SLA=N)',
     'Alocação (Banco=S| SLA=N)',
-    'Alocação - T&M', 'Alocação T&M',
-    'Alocação - T&M Banco de Horas (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
-    'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
-    'Aplicação de Nota / Licença - Contratados', 'Aplicação de Nota / Licença (Banco=S |SLA=N)',
-    'Consultoria', 'Consultoria (Banco=S| SLA=S)', 'Consultoria (Banco=S |SLA=S)',
-    'Consultoria - Banco de Dados', 'Consultoria - Banco de Dados (Banco=S |SLA=S)', 'Consultoria - Banco de Dados (Banco=S| SLA=S)',
-    'Consultoria - Nota Publicada', 'Consultoria - Nota Publicada (Banco=S |SLA=S)', 'Consultoria - Nota Publicada (Banco=S| SLA=S)',
-    'Consultoria - Solução Paliativa', 'Consultoria - Solução Paliativa (Banco=S |SLA=S)', 'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
-    'Dúvida', 'Dúvida (Banco=S |SLA=N)',
-    'Erro de classificação na abertura', 'Erro de classificação na abertura (Banco=S |SLA=N)', 'Erro de classificação na abertura (Banco=S| SLA=N)',
-    'Erro de programa especifico (SEM SLA)', 'Erro de programa especifico (Banco=S |SLA=N)', 'Erro de programa especifico (Banco=S| SLA=N)',
-    'Levantamento de Versão / Orçamento', 'Levantamento de Versão / Orçamento (Banco=S |SLA=N)', 'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
-    'Monitoramento DBA', 'Monitoramento DBA (Banco=S |SLA=N)',
-    'Nota Publicada', 'Nota Publicada (Banco=S |SLA=N)', 'Nota Publicada (Banco=S| SLA=N)',
-    'Parametrização / Cadastro', 'Parametrização / Cadastro (Banco=S |SLA=N)',
-    'Parametrização / Funcionalidade', 'Parametrização / Funcionalidade (Banco=S |SLA=N)', 'Parametrização / Funcionalidade (Banco=S| SLA=N)',
-    'Validação de Arquivo', 'Validação de Arquivo (Banco=S |SLA=N)', 'Validação de Arquivo (Banco=S| SLA=N)'
+    'Alocação - T&M',
+    'Alocação T&M',
+    'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
+    'Alocação - T&M (Banco=S| SLA=N)',
+    'AMS SAP',
+    'AMS SAP (Banco=S |SLA=S)',
+    'AMS SAP (Banco=S| SLA=S)',
+    'Aplicação de Nota / Licença - Contratados',
+    'Aplicação de Nota / Licença (Banco=S |SLA=N)',
+    'Consultoria',
+    'Consultoria (Banco=S| SLA=S)',
+    'Consultoria (Banco=S |SLA=S)',
+    'Consultoria - Banco de Dados',
+    'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+    'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+    'Consultoria - Nota Publicada',
+    'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+    'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+    'Consultoria - Solução Paliativa',
+    'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+    'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+    'Dúvida',
+    'Dúvida (Banco=S |SLA=N)',
+    'Erro de classificação na abertura',
+    'Erro de classificação na abertura (Banco=S |SLA=N)',
+    'Erro de classificação na abertura (Banco=S| SLA=N)',
+    'Erro de programa especifico (SEM SLA)',
+    'Erro de programa especifico (Banco=S |SLA=N)',
+    'Erro de programa especifico (Banco=S| SLA=N)',
+    'Levantamento de Versão / Orçamento',
+    'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+    'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+    'Monitoramento DBA',
+    'Monitoramento DBA (Banco=S |SLA=N)',
+    'Nota Publicada',
+    'Nota Publicada (Banco=S |SLA=N)',
+    'Nota Publicada (Banco=S| SLA=N)',
+    'Parametrização / Cadastro',
+    'Parametrização / Cadastro (Banco=S |SLA=N)',
+    'Parametrização / Funcionalidade',
+    'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+    'Parametrização / Funcionalidade (Banco=S| SLA=N)',
+    'Validação de Arquivo',
+    'Validação de Arquivo (Banco=S |SLA=N)',
+    'Validação de Arquivo (Banco=S| SLA=N)',
   ];
 
   const { data: apontamentos, error } = await supabase
     .from('apontamentos_aranda' as any)
-    .select('nro_chamado, cod_resolucao, org_us_final, item_configuracao, categoria, caso_estado, nro_tarefa, tipo_chamado, data_sistema, data_atividade, data_abertura, data_fechamento, analista_tarefa, analista_caso, solicitante, tempo_gasto_horas, tempo_gasto_minutos, ativi_interna, grupo_tarefa, descricao_tarefa')
+    .select(
+      'nro_chamado, cod_resolucao, org_us_final, item_configuracao, categoria, caso_estado, nro_tarefa, tipo_chamado, data_sistema, data_atividade, data_abertura, data_fechamento, analista_tarefa, analista_caso, solicitante, tempo_gasto_horas, tempo_gasto_minutos, ativi_interna, grupo_tarefa, descricao_tarefa'
+    )
     .eq('ativi_interna', 'Não')
     .neq('item_configuracao', '000000 - PROJETOS APL')
     .in('tipo_chamado', ['IM', 'RF', 'PM'])
-    .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%')
+    .or(
+      'caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%'
+    )
     .gte('data_atividade', dataInicio.toISOString())
     .lte('data_atividade', dataFim.toISOString())
     .ilike('org_us_final', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
@@ -442,8 +537,8 @@ async function buscarApontamentosHoras(
   }
 
   // Filtrar por códigos de resolução válidos
-  const comCodigo = (apontamentos || []).filter((apt: any) =>
-    apt.cod_resolucao && codigosResolucaoValidos.includes(apt.cod_resolucao)
+  const comCodigo = (apontamentos || []).filter(
+    (apt: any) => apt.cod_resolucao && codigosResolucaoValidos.includes(apt.cod_resolucao)
   );
 
   // Todos os apontamentos com código válido são incluídos no detalhamento.
@@ -471,25 +566,58 @@ interface TicketConsumo {
 }
 
 /** Busca tickets de consumo para empresas com contrato tipo ticket */
-async function buscarTicketsConsumo(nomeCompleto: string, mes: number, ano: number): Promise<TicketConsumo[]> {
+async function buscarTicketsConsumo(
+  nomeCompleto: string,
+  mes: number,
+  ano: number
+): Promise<TicketConsumo[]> {
   const codigosResolucaoValidos = [
-    'Alocação - T&M', 'Alocação T&M',
-    'Alocação - T&M Banco de Horas (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
-    'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
-    'Aplicação de Nota / Licença - Contratados', 'Aplicação de Nota / Licença (Banco=S |SLA=N)',
-    'Consultoria', 'Consultoria (Banco=S |SLA=S)', 'Consultoria (Banco=S| SLA=S)',
-    'Consultoria - Banco de Dados', 'Consultoria - Banco de Dados (Banco=S |SLA=S)', 'Consultoria - Banco de Dados (Banco=S| SLA=S)',
-    'Consultoria - Nota Publicada', 'Consultoria - Nota Publicada (Banco=S |SLA=S)', 'Consultoria - Nota Publicada (Banco=S| SLA=S)',
-    'Consultoria - Solução Paliativa', 'Consultoria - Solução Paliativa (Banco=S |SLA=S)', 'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
-    'Dúvida', 'Dúvida (Banco=S |SLA=N)',
-    'Erro de classificação na abertura', 'Erro de classificação na abertura (Banco=S |SLA=N)', 'Erro de classificação na abertura (Banco=S| SLA=N)',
-    'Erro de programa especifico (SEM SLA)', 'Erro de programa especifico (Banco=S |SLA=N)', 'Erro de programa especifico (Banco=S| SLA=N)',
-    'Levantamento de Versão / Orçamento', 'Levantamento de Versão / Orçamento (Banco=S |SLA=N)', 'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
-    'Monitoramento DBA', 'Monitoramento DBA (Banco=S |SLA=N)',
-    'Nota Publicada', 'Nota Publicada (Banco=S |SLA=N)', 'Nota Publicada (Banco=S| SLA=N)',
-    'Parametrização / Cadastro', 'Parametrização / Cadastro (Banco=S |SLA=N)',
-    'Parametrização / Funcionalidade', 'Parametrização / Funcionalidade (Banco=S |SLA=S)', 'Parametrização / Funcionalidade (Banco=S |SLA=N)', 'Parametrização / Funcionalidade (Banco=S| SLA=N)',
-    'Validação de Arquivo', 'Validação de Arquivo (Banco=S |SLA=N)', 'Validação de Arquivo (Banco=S| SLA=N)',
+    'Alocação - T&M',
+    'Alocação T&M',
+    'Alocação - T&M Banco de Horas (Banco=S |SLA=N)',
+    'Alocação - T&M (Banco=S| SLA=N)',
+    'AMS SAP',
+    'AMS SAP (Banco=S |SLA=S)',
+    'AMS SAP (Banco=S| SLA=S)',
+    'Aplicação de Nota / Licença - Contratados',
+    'Aplicação de Nota / Licença (Banco=S |SLA=N)',
+    'Consultoria',
+    'Consultoria (Banco=S |SLA=S)',
+    'Consultoria (Banco=S| SLA=S)',
+    'Consultoria - Banco de Dados',
+    'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+    'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+    'Consultoria - Nota Publicada',
+    'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+    'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+    'Consultoria - Solução Paliativa',
+    'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+    'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+    'Dúvida',
+    'Dúvida (Banco=S |SLA=N)',
+    'Erro de classificação na abertura',
+    'Erro de classificação na abertura (Banco=S |SLA=N)',
+    'Erro de classificação na abertura (Banco=S| SLA=N)',
+    'Erro de programa especifico (SEM SLA)',
+    'Erro de programa especifico (Banco=S |SLA=N)',
+    'Erro de programa especifico (Banco=S| SLA=N)',
+    'Levantamento de Versão / Orçamento',
+    'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+    'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+    'Monitoramento DBA',
+    'Monitoramento DBA (Banco=S |SLA=N)',
+    'Nota Publicada',
+    'Nota Publicada (Banco=S |SLA=N)',
+    'Nota Publicada (Banco=S| SLA=N)',
+    'Parametrização / Cadastro',
+    'Parametrização / Cadastro (Banco=S |SLA=N)',
+    'Parametrização / Funcionalidade',
+    'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+    'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+    'Parametrização / Funcionalidade (Banco=S| SLA=N)',
+    'Validação de Arquivo',
+    'Validação de Arquivo (Banco=S |SLA=N)',
+    'Validação de Arquivo (Banco=S| SLA=N)',
   ];
 
   // Calcular primeiro e último dia do mês
@@ -500,9 +628,13 @@ async function buscarTicketsConsumo(nomeCompleto: string, mes: number, ano: numb
 
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
-    .select('nro_solicitacao, cod_tipo, cod_resolucao, categoria, status, nome_grupo, data_abertura, data_fechamento, nome_responsavel, solicitante, cliente, organizacao')
+    .select(
+      'nro_solicitacao, cod_tipo, cod_resolucao, categoria, status, nome_grupo, data_abertura, data_fechamento, nome_responsavel, solicitante, cliente, organizacao'
+    )
     .ilike('organizacao', nomeCompleto) // match exato case-insensitive (sem %) para evitar capturar organizações com nome similar
-    .or('nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%')
+    .or(
+      'nome_grupo.ilike.%AMS APL%,nome_grupo.ilike.%AMS - APL%,nome_grupo.ilike.%AMS - ATENDIMENTO%,nome_grupo.ilike.%AMS T&M%'
+    )
     .eq('status', 'Closed')
     .neq('item_configuracao', '000000 - PROJETOS APL')
     .gte('data_fechamento', dataInicioStr)
@@ -525,28 +657,48 @@ async function buscarTicketsConsumo(nomeCompleto: string, mes: number, ano: numb
 
 /** Headers padrão para abas de tickets (Abertos, Fechados, SLA, Backlog) */
 const TICKET_HEADERS = [
-  'TIPO', 'CHAMADO', 'SOLICITANTE', 'CATEGORIA',
-  'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'CÓDIGO RESOLUÇÃO',
-  'ESTADO', 'DATA ABERTURA', 'DATA SOLUÇÃO', 'DATA ENCERRAMENTO',
-  'TICKET EXTERNO', 'NÚMERO PAI', 'STATUS TDS',
-  'VIOLADO', 'DESCRIÇÃO',
+  'TIPO',
+  'CHAMADO',
+  'SOLICITANTE',
+  'CATEGORIA',
+  'GRUPO DE SOLUÇÃO',
+  'RESPONSÁVEL',
+  'CÓDIGO RESOLUÇÃO',
+  'ESTADO',
+  'DATA ABERTURA',
+  'DATA SOLUÇÃO',
+  'DATA ENCERRAMENTO',
+  'TICKET EXTERNO',
+  'NÚMERO PAI',
+  'STATUS TDS',
+  'VIOLADO',
+  'DESCRIÇÃO',
 ];
 
 /** Larguras para colunas de tickets */
 const TICKET_COL_WIDTHS = [
-  { width: 12 }, { width: 12 }, { width: 25 }, { width: 30 },
-  { width: 25 }, { width: 25 }, { width: 35 },
-  { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 },
-  { width: 14 }, { width: 14 }, { width: 14 },
-  { width: 10 }, { width: 60 },
+  { width: 12 },
+  { width: 12 },
+  { width: 25 },
+  { width: 30 },
+  { width: 25 },
+  { width: 25 },
+  { width: 35 },
+  { width: 12 },
+  { width: 14 },
+  { width: 14 },
+  { width: 14 },
+  { width: 14 },
+  { width: 14 },
+  { width: 14 },
+  { width: 10 },
+  { width: 60 },
 ];
 
 /** Converte ticket em linha para Excel */
 function ticketParaRow(t: TicketAranda): any[] {
   // Limpar cod_resolucao removendo parênteses e seu conteúdo
-  const codResolucaoLimpo = t.cod_resolucao
-    ? t.cod_resolucao.replace(/\s*\(.*\)$/, '').trim()
-    : '';
+  const codResolucaoLimpo = t.cod_resolucao ? t.cod_resolucao.replace(/\s*\(.*\)$/, '').trim() : '';
 
   return [
     t.cod_tipo || '',
@@ -600,28 +752,60 @@ function criarSheetSLA(tickets: TicketAranda[], mesNome: string, ano: number): X
 function traduzirTipoChamado(tipo: string | null): string {
   if (!tipo) return '';
   switch (tipo.toUpperCase()) {
-    case 'IM': return 'Incidente';
-    case 'RF': return 'Solicitação';
-    case 'PM': return 'Problema';
-    default: return tipo;
+    case 'IM':
+      return 'Incidente';
+    case 'RF':
+      return 'Solicitação';
+    case 'PM':
+      return 'Problema';
+    default:
+      return tipo;
   }
 }
 
 /** Cria sheet de Horas (Consumo) */
-function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano: number): XLSX.WorkSheet {
+function criarSheetHoras(
+  apontamentos: ApontamentoHoras[],
+  mesNome: string,
+  ano: number
+): XLSX.WorkSheet {
   const HORAS_HEADERS = [
-    'TIPO', 'CHAMADO', 'TAREFA', 'SOLICITANTE',
-    'CATEGORIA', 'GRUPO DE SOLUÇÃO', 'ANALISTA', 'RESPONSÁVEL PELO CHAMADO',
-    'CÓDIGO RESOLUÇÃO', 'ESTADO', 'DATA SISTEMA', 'DATA ATIVIDADE',
-    'DATA ABERTURA', 'DATA SOLUÇÃO', 'HORAS', 'TEMPO (MINUTOS)',
+    'TIPO',
+    'CHAMADO',
+    'TAREFA',
+    'SOLICITANTE',
+    'CATEGORIA',
+    'GRUPO DE SOLUÇÃO',
+    'ANALISTA',
+    'RESPONSÁVEL PELO CHAMADO',
+    'CÓDIGO RESOLUÇÃO',
+    'ESTADO',
+    'DATA SISTEMA',
+    'DATA ATIVIDADE',
+    'DATA ABERTURA',
+    'DATA SOLUÇÃO',
+    'HORAS',
+    'TEMPO (MINUTOS)',
     'DESCRIÇÃO TAREFA',
   ];
 
   const HORAS_COL_WIDTHS = [
-    { width: 14 }, { width: 12 }, { width: 14 }, { width: 25 },
-    { width: 30 }, { width: 25 }, { width: 30 }, { width: 30 },
-    { width: 35 }, { width: 10 }, { width: 14 }, { width: 14 },
-    { width: 14 }, { width: 14 }, { width: 10 }, { width: 16 },
+    { width: 14 },
+    { width: 12 },
+    { width: 14 },
+    { width: 25 },
+    { width: 30 },
+    { width: 25 },
+    { width: 30 },
+    { width: 30 },
+    { width: 35 },
+    { width: 10 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
+    { width: 10 },
+    { width: 16 },
     { width: 60 },
   ];
 
@@ -638,7 +822,7 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
     return numA - numB;
   });
 
-  const rows = apontamentosOrdenados.map(apt => [
+  const rows = apontamentosOrdenados.map((apt) => [
     traduzirTipoChamado(apt.tipo_chamado),
     apt.nro_chamado || '',
     apt.nro_tarefa || '',
@@ -660,7 +844,7 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
 
   // Calcular total de horas
   let totalMinutos = 0;
-  apontamentosOrdenados.forEach(apt => {
+  apontamentosOrdenados.forEach((apt) => {
     if (apt.tempo_gasto_horas) {
       const partes = apt.tempo_gasto_horas.split(':');
       if (partes.length >= 2) {
@@ -701,23 +885,49 @@ function criarSheetHoras(apontamentos: ApontamentoHoras[], mesNome: string, ano:
   }
   sheet[cellRefTotal].t = 'n';
   sheet[cellRefTotal].v = totalExcelNumerico;
-  sheet[cellRefTotal].s = { numFmt: '[h]:mm:ss', font: { bold: true }, alignment: { horizontal: 'center' as const } };
+  sheet[cellRefTotal].s = {
+    numFmt: '[h]:mm:ss',
+    font: { bold: true },
+    alignment: { horizontal: 'center' as const },
+  };
 
   return sheet;
 }
 
 /** Cria sheet de Tickets (consumo por ticket - empresas com contrato tipo ticket) */
-function criarSheetTicketsConsumo(tickets: TicketConsumo[], mesNome: string, ano: number): XLSX.WorkSheet {
+function criarSheetTicketsConsumo(
+  tickets: TicketConsumo[],
+  mesNome: string,
+  ano: number
+): XLSX.WorkSheet {
   const TICKETS_HEADERS = [
-    'TIPO', 'CHAMADO', 'SOLICITANTE', 'CLIENTE',
-    'CATEGORIA', 'GRUPO SOLUÇÃO', 'ANALISTA', 'RESPONSÁVEL PELO CHAMADO',
-    'CÓDIGO RESOLUÇÃO', 'ESTADO', 'DATA ABERTURA', 'DATA FECHAMENTO',
+    'TIPO',
+    'CHAMADO',
+    'SOLICITANTE',
+    'CLIENTE',
+    'CATEGORIA',
+    'GRUPO SOLUÇÃO',
+    'ANALISTA',
+    'RESPONSÁVEL PELO CHAMADO',
+    'CÓDIGO RESOLUÇÃO',
+    'ESTADO',
+    'DATA ABERTURA',
+    'DATA FECHAMENTO',
   ];
 
   const TICKETS_COL_WIDTHS = [
-    { width: 14 }, { width: 12 }, { width: 25 }, { width: 25 },
-    { width: 30 }, { width: 25 }, { width: 25 }, { width: 30 },
-    { width: 35 }, { width: 12 }, { width: 14 }, { width: 14 },
+    { width: 14 },
+    { width: 12 },
+    { width: 25 },
+    { width: 25 },
+    { width: 30 },
+    { width: 25 },
+    { width: 25 },
+    { width: 30 },
+    { width: 35 },
+    { width: 12 },
+    { width: 14 },
+    { width: 14 },
   ];
 
   if (tickets.length === 0) {
@@ -733,7 +943,7 @@ function criarSheetTicketsConsumo(tickets: TicketConsumo[], mesNome: string, ano
     return numA - numB;
   });
 
-  const rows = ticketsOrdenados.map(t => [
+  const rows = ticketsOrdenados.map((t) => [
     traduzirTipoChamado(t.cod_tipo),
     t.nro_solicitacao || '',
     t.solicitante || '',
@@ -756,16 +966,32 @@ function criarSheetTicketsConsumo(tickets: TicketConsumo[], mesNome: string, ano
 }
 
 /** Cria sheet de Pesquisas Enviadas (sem DATA RESPOSTA, COMENTÁRIO DA PERGUNTA, RESPOSTA) */
-function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
+function criarSheetPesquisasEnviadas(
+  pesquisas: PesquisaSatisfacao[],
+  mesNome: string,
+  ano: number
+): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'TIPO', 'CHAMADO', 'CLIENTE', 'SOLICITANTE',
-    'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
+    'TIPO',
+    'CHAMADO',
+    'CLIENTE',
+    'SOLICITANTE',
+    'GRUPO DE SOLUÇÃO',
+    'RESPONSÁVEL',
+    'DATA FECHAMENTO',
+    'DESCRIÇÃO',
     'PERGUNTA',
   ];
 
   const PESQ_COL_WIDTHS = [
-    { width: 14 }, { width: 12 }, { width: 25 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 16 }, { width: 50 },
+    { width: 14 },
+    { width: 12 },
+    { width: 25 },
+    { width: 25 },
+    { width: 25 },
+    { width: 25 },
+    { width: 16 },
+    { width: 50 },
     { width: 40 },
   ];
 
@@ -782,7 +1008,7 @@ function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: s
     return numA - numB;
   });
 
-  const rows = pesquisasOrdenadas.map(p => [
+  const rows = pesquisasOrdenadas.map((p) => [
     traduzirTipoChamado(p.tipo_caso),
     p.nro_caso || '',
     p.cliente || '',
@@ -802,17 +1028,39 @@ function criarSheetPesquisasEnviadas(pesquisas: PesquisaSatisfacao[], mesNome: s
 }
 
 /** Cria sheet de Pesquisas Respondidas (mantém DATA RESPOSTA, PERGUNTA, COMENTÁRIO, RESPOSTA) */
-function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
+function criarSheetPesquisasRespondidas(
+  pesquisas: PesquisaSatisfacao[],
+  mesNome: string,
+  ano: number
+): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'TIPO', 'CHAMADO', 'CLIENTE', 'SOLICITANTE',
-    'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
-    'DATA RESPOSTA', 'PERGUNTA', 'COMENTÁRIO DA PERGUNTA', 'RESPOSTA',
+    'TIPO',
+    'CHAMADO',
+    'CLIENTE',
+    'SOLICITANTE',
+    'GRUPO DE SOLUÇÃO',
+    'RESPONSÁVEL',
+    'DATA FECHAMENTO',
+    'DESCRIÇÃO',
+    'DATA RESPOSTA',
+    'PERGUNTA',
+    'COMENTÁRIO DA PERGUNTA',
+    'RESPOSTA',
   ];
 
   const PESQ_COL_WIDTHS = [
-    { width: 14 }, { width: 12 }, { width: 25 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 16 }, { width: 50 },
-    { width: 16 }, { width: 40 }, { width: 50 }, { width: 20 },
+    { width: 14 },
+    { width: 12 },
+    { width: 25 },
+    { width: 25 },
+    { width: 25 },
+    { width: 25 },
+    { width: 16 },
+    { width: 50 },
+    { width: 16 },
+    { width: 40 },
+    { width: 50 },
+    { width: 20 },
   ];
 
   if (pesquisas.length === 0) {
@@ -828,7 +1076,7 @@ function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome
     return numA - numB;
   });
 
-  const rows = pesquisasOrdenadas.map(p => [
+  const rows = pesquisasOrdenadas.map((p) => [
     traduzirTipoChamado(p.tipo_caso),
     p.nro_caso || '',
     p.cliente || '',
@@ -851,16 +1099,32 @@ function criarSheetPesquisasRespondidas(pesquisas: PesquisaSatisfacao[], mesNome
 }
 
 /** Cria sheet de Pesquisas Enviadas e Não Respondidas (sem DATA RESPOSTA, COMENTÁRIO, RESPOSTA) */
-function criarSheetPesquisasNaoRespondidas(pesquisas: PesquisaSatisfacao[], mesNome: string, ano: number): XLSX.WorkSheet {
+function criarSheetPesquisasNaoRespondidas(
+  pesquisas: PesquisaSatisfacao[],
+  mesNome: string,
+  ano: number
+): XLSX.WorkSheet {
   const PESQ_HEADERS = [
-    'TIPO', 'CHAMADO', 'CLIENTE', 'SOLICITANTE',
-    'GRUPO DE SOLUÇÃO', 'RESPONSÁVEL', 'DATA FECHAMENTO', 'DESCRIÇÃO',
+    'TIPO',
+    'CHAMADO',
+    'CLIENTE',
+    'SOLICITANTE',
+    'GRUPO DE SOLUÇÃO',
+    'RESPONSÁVEL',
+    'DATA FECHAMENTO',
+    'DESCRIÇÃO',
     'PERGUNTA',
   ];
 
   const PESQ_COL_WIDTHS = [
-    { width: 14 }, { width: 12 }, { width: 25 }, { width: 25 },
-    { width: 25 }, { width: 25 }, { width: 16 }, { width: 50 },
+    { width: 14 },
+    { width: 12 },
+    { width: 25 },
+    { width: 25 },
+    { width: 25 },
+    { width: 25 },
+    { width: 16 },
+    { width: 50 },
     { width: 40 },
   ];
 
@@ -877,7 +1141,7 @@ function criarSheetPesquisasNaoRespondidas(pesquisas: PesquisaSatisfacao[], mesN
     return numA - numB;
   });
 
-  const rows = pesquisasOrdenadas.map(p => [
+  const rows = pesquisasOrdenadas.map((p) => [
     traduzirTipoChamado(p.tipo_caso),
     p.nro_caso || '',
     p.cliente || '',
@@ -906,7 +1170,9 @@ function criarSheetPesquisasNaoRespondidas(pesquisas: PesquisaSatisfacao[], mesN
  *
  * @returns File pronto para upload/anexo, ou null em caso de erro crítico
  */
-export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams): Promise<File | null> {
+export async function gerarExcelDetalhadoBook(
+  params: ExcelDetalhadoBookParams
+): Promise<File | null> {
   const {
     empresaId,
     empresaNome,
@@ -918,7 +1184,12 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
   } = params;
 
   try {
-    console.log('📊 Gerando Excel detalhado do book (8 abas)...', { empresaId, empresaNome, mes, ano });
+    console.log('📊 Gerando Excel detalhado do book (8 abas)...', {
+      empresaId,
+      empresaNome,
+      mes,
+      ano,
+    });
 
     // Buscar nome completo e tipo de contrato da empresa
     const { data: empresaData } = await supabase
@@ -937,7 +1208,7 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
     console.log('📅 Período calculado:', {
       dataInicio: dataInicio.toISOString(),
       dataFim: dataFim.toISOString(),
-      periodicidade: diaInicioApuracao > 1 ? 'customizada' : 'padrão'
+      periodicidade: diaInicioApuracao > 1 ? 'customizada' : 'padrão',
     });
 
     // Buscar todos os dados em paralelo
@@ -954,15 +1225,19 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
       buscarTicketsFechados(nomeCompleto, dataInicio, dataFim),
       buscarTicketsSLA(nomeCompleto, dataInicio, dataFim),
       buscarTicketsBacklog(nomeCompleto, dataFim),
-      tipoContratoEmpresa !== 'tickets' ? buscarApontamentosHoras(nomeCompleto, dataInicio, dataFim, empresaId, mes, ano) : Promise.resolve([]),
-      tipoContratoEmpresa === 'tickets' || tipoContratoEmpresa === 'ambos' ? buscarTicketsConsumo(nomeCompleto, mes, ano) : Promise.resolve([]),
+      tipoContratoEmpresa !== 'tickets'
+        ? buscarApontamentosHoras(nomeCompleto, dataInicio, dataFim, empresaId, mes, ano)
+        : Promise.resolve([]),
+      tipoContratoEmpresa === 'tickets' || tipoContratoEmpresa === 'ambos'
+        ? buscarTicketsConsumo(nomeCompleto, mes, ano)
+        : Promise.resolve([]),
       buscarPesquisas(nomeCompleto, mes, ano),
     ]);
 
     // Separar pesquisas
     const pesquisasEnviadas = pesquisas; // Todas são "enviadas"
-    const pesquisasRespondidas = pesquisas.filter(p => p.data_resposta !== null);
-    const pesquisasNaoRespondidas = pesquisas.filter(p => p.data_resposta === null);
+    const pesquisasRespondidas = pesquisas.filter((p) => p.data_resposta !== null);
+    const pesquisasNaoRespondidas = pesquisas.filter((p) => p.data_resposta === null);
 
     console.log('📊 Dados coletados:', {
       abertos: ticketsAbertos.length,
@@ -980,36 +1255,83 @@ export async function gerarExcelDetalhadoBook(params: ExcelDetalhadoBookParams):
     // Criar workbook com as 8 abas
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsAbertos, mesNome, ano), 'Abertos');
-    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsFechados, mesNome, ano), 'Fechados');
+    XLSX.utils.book_append_sheet(
+      workbook,
+      criarSheetTickets(ticketsAbertos, mesNome, ano),
+      'Abertos'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      criarSheetTickets(ticketsFechados, mesNome, ano),
+      'Fechados'
+    );
     XLSX.utils.book_append_sheet(workbook, criarSheetSLA(ticketsSLA, mesNome, ano), 'SLA');
-    XLSX.utils.book_append_sheet(workbook, criarSheetTickets(ticketsBacklog, mesNome, ano), 'Backlog');
+    XLSX.utils.book_append_sheet(
+      workbook,
+      criarSheetTickets(ticketsBacklog, mesNome, ano),
+      'Backlog'
+    );
+
+    // Empresa liberada (Fase 5, spec 6.3): resumo e uma aba por banco no lugar das abas de consumo
+    const porBanco = await geracaoBookLiberada.noModeloNovo(empresaId, { mes, ano });
 
     // Aba de consumo: "Tickets" para contrato tipo ticket, "Horas" para contrato tipo horas
-    if (tipoContratoEmpresa === 'tickets') {
-      XLSX.utils.book_append_sheet(workbook, criarSheetTicketsConsumo(ticketsConsumo, mesNome, ano), 'Tickets');
+    if (porBanco) {
+      for (const aba of await bookConsumoBancosService.abasDoExcel(empresaId, { mes, ano })) {
+        XLSX.utils.book_append_sheet(workbook, aba.sheet, aba.nome);
+      }
+    } else if (tipoContratoEmpresa === 'tickets') {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        criarSheetTicketsConsumo(ticketsConsumo, mesNome, ano),
+        'Tickets'
+      );
     } else if (tipoContratoEmpresa === 'ambos') {
-      XLSX.utils.book_append_sheet(workbook, criarSheetHoras(apontamentosHoras, mesNome, ano), 'Horas');
-      XLSX.utils.book_append_sheet(workbook, criarSheetTicketsConsumo(ticketsConsumo, mesNome, ano), 'Tickets');
+      XLSX.utils.book_append_sheet(
+        workbook,
+        criarSheetHoras(apontamentosHoras, mesNome, ano),
+        'Horas'
+      );
+      XLSX.utils.book_append_sheet(
+        workbook,
+        criarSheetTicketsConsumo(ticketsConsumo, mesNome, ano),
+        'Tickets'
+      );
     } else {
-      XLSX.utils.book_append_sheet(workbook, criarSheetHoras(apontamentosHoras, mesNome, ano), 'Horas');
+      XLSX.utils.book_append_sheet(
+        workbook,
+        criarSheetHoras(apontamentosHoras, mesNome, ano),
+        'Horas'
+      );
     }
 
-    XLSX.utils.book_append_sheet(workbook, criarSheetPesquisasEnviadas(pesquisasEnviadas, mesNome, ano), 'Pesquisas_Enviadas');
-    XLSX.utils.book_append_sheet(workbook, criarSheetPesquisasRespondidas(pesquisasRespondidas, mesNome, ano), 'Pesquisas_Respondidas');
-    XLSX.utils.book_append_sheet(workbook, criarSheetPesquisasNaoRespondidas(pesquisasNaoRespondidas, mesNome, ano), 'Enviadas_E_Não_Respondidas');
+    XLSX.utils.book_append_sheet(
+      workbook,
+      criarSheetPesquisasEnviadas(pesquisasEnviadas, mesNome, ano),
+      'Pesquisas_Enviadas'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      criarSheetPesquisasRespondidas(pesquisasRespondidas, mesNome, ano),
+      'Pesquisas_Respondidas'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      criarSheetPesquisasNaoRespondidas(pesquisasNaoRespondidas, mesNome, ano),
+      'Enviadas_E_Não_Respondidas'
+    );
 
     // Converter para buffer
     const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
     // Nome do arquivo
     const nomeArquivo = `Detalhamento ${empresaNome} - ${mesNome} ${ano}.xlsx`;
 
     const file = new File([blob], nomeArquivo, {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
     console.log(`✅ Excel detalhado gerado: ${nomeArquivo} (${(file.size / 1024).toFixed(1)} KB)`);

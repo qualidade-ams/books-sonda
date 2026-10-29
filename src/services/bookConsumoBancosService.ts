@@ -27,6 +27,10 @@ import {
 import { resultadoDoBanco } from '@/utils/controleTela';
 import type { SituacaoMes } from '@/services/bancosHoras/periodos';
 import type { ObservacaoParaCliente, ReajusteParaCliente } from '@/types/controleBancoHoras';
+import type * as XLSX from 'xlsx-js-style';
+import { montarWorkbookBancos } from '@/services/saldoParcial/conteudoBancos';
+import type { ChamadoDoBanco, SaldoParcialBanco } from '@/services/controleSaldoParcialService';
+import { criarTradutor } from '@/i18n/tradutor';
 
 type Cliente = typeof supabase;
 type Linha = Record<string, any>;
@@ -126,6 +130,33 @@ export class BookConsumoBancosService {
     );
     if (error) throw falhaDoBanco('carregar o consumo do Book', error);
     return (data as unknown as LinhaConsumoBook[]) ?? [];
+  }
+
+  /**
+   * Abas de consumo do Excel do Book (spec 6.3): resumo e uma aba por banco, com as colunas
+   * Banco e Módulo, como no Saldo Parcial. Só os chamados do mês do Book; em português, como as
+   * demais abas do Excel.
+   */
+  async abasDoExcel(
+    empresaId: string,
+    mes: MesAno
+  ): Promise<{ nome: string; sheet: XLSX.WorkSheet }[]> {
+    const bancos: SaldoParcialBanco[] = [];
+    const chamados: Record<string, ChamadoDoBanco[]> = {};
+    for (const empresa of await this.empresasDoBook(empresaId)) {
+      const daEmpresa = await this.saldoParcial.bancos(empresa.id, mes);
+      if (daEmpresa.length === 0) continue;
+      const porBanco = await this.saldoParcial.chamados(empresa.id, daEmpresa);
+      for (const b of daEmpresa) {
+        bancos.push(b);
+        chamados[b.bancoId] = (porBanco[b.bancoId] ?? []).filter((c) => mesmoMes(c.mes, mes));
+      }
+    }
+    const wb = montarWorkbookBancos(bancos, chamados, {
+      t: criarTradutor('pt-BR'),
+      idioma: 'pt-BR',
+    });
+    return wb.SheetNames.map((nome) => ({ nome, sheet: wb.Sheets[nome] }));
   }
 
   /** A empresa do Book e, depois, as consolidadas dela que já estão liberadas */
