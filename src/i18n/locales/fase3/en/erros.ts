@@ -61,6 +61,8 @@ const erros = {
     naoEnviado: 'The e-mail was not sent.',
     semHistorico:
       'The e-mail was sent, but it was not recorded in the sending history: {{detalhe}}',
+    semEmailDoUsuario: 'Could not read your e-mail to send the test.',
+    semBancos: 'The company has no bank the client sees.',
   },
   falhas: {
     atribuirODestino: 'Could not assign the target: {{detalhe}}',

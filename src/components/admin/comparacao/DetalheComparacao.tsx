@@ -3,7 +3,7 @@
 // legado (Fase 5) exigem Edição.
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Rocket, RotateCcw, ShieldCheck, Undo2 } from 'lucide-react';
+import { FileText, RefreshCw, Rocket, RotateCcw, Send, ShieldCheck, Undo2 } from 'lucide-react';
 import { TelaEdicao } from '@/components/ds/Formulario';
 import { DataTable, type ColunaTabela } from '@/components/ds/DataTable';
 import { HoursValue } from '@/components/ds/HoursValue';
@@ -12,6 +12,7 @@ import { Callout } from '@/components/ds/Callout';
 import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { MenuExportar } from '@/components/ds/MenuExportar';
+import { BookDeTeste } from '@/components/admin/comparacao/BookDeTeste';
 import { useLancamentosParaLegado, useMesesComparacao } from '@/hooks/useComparacao';
 import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { rotuloMesLocal } from '@/utils/controleTela';
@@ -66,6 +67,8 @@ export function DetalheComparacao({
   onRecalcular,
   onLiberar,
   onVoltar,
+  onEnviarSaldoTeste,
+  enviandoSaldoTeste,
 }: {
   empresa: ComparacaoEmpresa;
   podeEditar: boolean;
@@ -76,6 +79,9 @@ export function DetalheComparacao({
   onRecalcular: () => void;
   onLiberar: () => Promise<unknown>;
   onVoltar: (motivo: string) => Promise<unknown>;
+  /** Saldo Parcial de teste (P7), só para quem pediu */
+  onEnviarSaldoTeste: () => void;
+  enviandoSaldoTeste: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const a = (chaveTexto: string, valores?: Record<string, unknown>) =>
@@ -86,6 +92,7 @@ export function DetalheComparacao({
   const [desfazendo, setDesfazendo] = useState(false);
   const [liberando, setLiberando] = useState(false);
   const [voltando, setVoltando] = useState(false);
+  const [vendoBook, setVendoBook] = useState(false);
   // Contados ao abrir a confirmação, para a volta mostrar o que vai para o legado agora
   const { lancamentos } = useLancamentosParaLegado(voltando ? empresa.empresaId : null);
 
@@ -333,6 +340,16 @@ export function DetalheComparacao({
     .filter(Boolean)
     .join(' · ');
 
+  if (vendoBook && ultimoFechado)
+    return (
+      <BookDeTeste
+        empresaId={empresa.empresaId}
+        empresa={empresa.empresa}
+        mes={ultimoFechado}
+        onFechar={() => setVendoBook(false)}
+      />
+    );
+
   return (
     <>
       <TelaEdicao
@@ -362,6 +379,13 @@ export function DetalheComparacao({
                   <>
                     <Button onClick={() => setDesfazendo(true)}>
                       <Undo2 /> {a('acoes.desfazer')}
+                    </Button>
+                    {/* Testes antes de liberar (P7): nada vai para o cliente */}
+                    <Button disabled={!ultimoFechado} onClick={() => setVendoBook(true)}>
+                      <FileText /> {a('acoes.verBookTeste')}
+                    </Button>
+                    <Button disabled={enviandoSaldoTeste} onClick={onEnviarSaldoTeste}>
+                      <Send /> {a('acoes.enviarSaldoTeste')}
                     </Button>
                     <Button
                       variante="primario"

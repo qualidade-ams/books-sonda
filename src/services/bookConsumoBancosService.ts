@@ -97,8 +97,31 @@ export class BookConsumoBancosService {
     mes: MesAno,
     fechamentos: Record<string, string>
   ): Promise<ConsumoBancoBook[]> {
+    // O snapshot não leva a empresa: consumo_bancos_do_book a devolve pelo banco
+    return (await this.linhas(empresaId, mes, fechamentos)).map(
+      ({ banco_id, ordem, nome_banco, nome_empresa, fechamento_id, dados }) => ({
+        banco_id,
+        ordem,
+        nome_banco,
+        nome_empresa,
+        fechamento_id,
+        dados,
+      })
+    );
+  }
+
+  /** Book de teste (P7): os mesmos blocos, calculados agora, sem fechar mês nem gravar */
+  previa(empresaId: string, mes: MesAno): Promise<LinhaConsumoBook[]> {
+    return this.linhas(empresaId, mes, {});
+  }
+
+  private async linhas(
+    empresaId: string,
+    mes: MesAno,
+    fechamentos: Record<string, string>
+  ): Promise<LinhaConsumoBook[]> {
     const empresas = await this.empresasDoBook(empresaId);
-    const linhas: ConsumoBancoBook[] = [];
+    const linhas: LinhaConsumoBook[] = [];
     for (const empresa of empresas) {
       for (const dados of await this.bancosDaEmpresa(empresa.id, mes)) {
         linhas.push({
@@ -106,6 +129,7 @@ export class BookConsumoBancosService {
           ordem: linhas.length + 1,
           nome_banco: dados.nome,
           nome_empresa: empresa.nome,
+          empresa_id: empresa.id,
           fechamento_id: fechamentos[dados.bancoId] ?? null,
           dados: dados.conteudo,
         });

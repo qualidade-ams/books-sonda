@@ -2,8 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useComparacao, useLancamentosParaLegado, useMesesComparacao } from '../useComparacao';
+import {
+  useBookDeTeste,
+  useComparacao,
+  useLancamentosParaLegado,
+  useMesesComparacao,
+} from '../useComparacao';
 import { comparacaoService } from '@/services/comparacaoService';
+import { bookConsumoBancosService } from '@/services/bookConsumoBancosService';
+import { enviarSaldoParcialDeTeste } from '@/services/saldoParcial/envioTeste';
 import type { ComparacaoEmpresa } from '@/types/comparacao';
 
 const toast = vi.fn();
@@ -28,6 +35,10 @@ vi.mock('@/services/comparacaoService', () => ({
   },
 }));
 const service = comparacaoService as unknown as Record<string, ReturnType<typeof vi.fn>>;
+vi.mock('@/services/bookConsumoBancosService', () => ({
+  bookConsumoBancosService: { previa: vi.fn() },
+}));
+vi.mock('@/services/saldoParcial/envioTeste', () => ({ enviarSaldoParcialDeTeste: vi.fn() }));
 
 const empresa = (v: Partial<ComparacaoEmpresa>): ComparacaoEmpresa => ({
   empresaId: 'e',
@@ -250,6 +261,55 @@ describe('useMesesComparacao', () => {
     rerender({ id: 'e4' });
     await waitFor(() => expect(result.current.meses).toHaveLength(1));
     expect(service.meses).toHaveBeenCalledWith('e4');
+  });
+});
+
+describe('testes da liberação (P7)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service.listar.mockResolvedValue(LISTA);
+  });
+
+  it('Book de teste: calcula a prévia do mês pedido; sem empresa ou mês, não calcula', async () => {
+    vi.mocked(bookConsumoBancosService.previa).mockResolvedValue([{ banco_id: 'b1' } as any]);
+    const { wrapper } = criarWrapper();
+    const { result, rerender } = renderHook(({ id }) => useBookDeTeste(id, { mes: 9, ano: 2026 }), {
+      wrapper,
+      initialProps: { id: null as string | null },
+    });
+    expect(bookConsumoBancosService.previa).not.toHaveBeenCalled();
+
+    rerender({ id: 'e5' });
+    await waitFor(() => expect(result.current.bancos).toHaveLength(1));
+    expect(bookConsumoBancosService.previa).toHaveBeenCalledWith('e5', { mes: 9, ano: 2026 });
+  });
+
+  it('Saldo Parcial de teste: envia e avisa; erro avisa com o texto', async () => {
+    vi.mocked(enviarSaldoParcialDeTeste).mockResolvedValueOnce(undefined);
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useComparacao(), { wrapper });
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
+
+    await act(() =>
+      result.current.enviarSaldoParcialTeste({ empresaId: 'e5', empresaNome: 'EMPRESA' })
+    );
+    expect(enviarSaldoParcialDeTeste).toHaveBeenCalledWith('e5', 'EMPRESA');
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.comparacao.saldoTesteEnviado',
+      description: 'avisos.comparacao.saldoTesteEnviadoDescricao',
+    });
+
+    vi.mocked(enviarSaldoParcialDeTeste).mockRejectedValueOnce(new Error('Sem e-mail'));
+    await act(() =>
+      result.current
+        .enviarSaldoParcialTeste({ empresaId: 'e5', empresaNome: 'EMPRESA' })
+        .catch(() => undefined)
+    );
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.comparacao.erroSaldoTeste',
+      description: 'Sem e-mail',
+      variant: 'destructive',
+    });
   });
 });
 

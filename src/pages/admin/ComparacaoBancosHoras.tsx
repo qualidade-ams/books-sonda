@@ -60,6 +60,8 @@ export default function ComparacaoBancosHoras() {
     recalculando,
     liberar,
     voltar,
+    enviarSaldoParcialTeste,
+    enviandoSaldoParcialTeste,
   } = useComparacao();
 
   const [filtro, setFiltro] = useState<FiltroComparacao>(SEM_FILTRO);
@@ -91,6 +93,13 @@ export default function ComparacaoBancosHoras() {
               onRecalcular={() => recalcular(aberta.empresaId).catch(() => undefined)}
               onLiberar={() => liberar(aberta.empresaId)}
               onVoltar={(motivo) => voltar({ empresaId: aberta.empresaId, motivo })}
+              onEnviarSaldoTeste={() =>
+                enviarSaldoParcialTeste({
+                  empresaId: aberta.empresaId,
+                  empresaNome: aberta.empresa,
+                }).catch(() => undefined)
+              }
+              enviandoSaldoTeste={enviandoSaldoParcialTeste}
             />
           </DsPage>
         </div>

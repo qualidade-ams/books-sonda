@@ -119,6 +119,10 @@ const avisos = {
     erroLiberar: 'No fue posible liberar la empresa',
     voltouParaLegado: 'La empresa volvió al legado',
     erroVoltar: 'No fue posible volver la empresa al legado',
+    saldoTesteEnviado: 'Saldo Parcial de prueba enviado',
+    saldoTesteEnviadoDescricao:
+      'Fue solo a su correo, con un bloque por banco. El cliente no recibe nada.',
+    erroSaldoTeste: 'No fue posible enviar el Saldo Parcial de prueba',
   },
 };
 

@@ -93,6 +93,8 @@ const comparacaoBancosHoras = {
     desfazer: 'Undo validation',
     liberar: 'Release',
     voltar: 'Return to legacy',
+    verBookTeste: 'View test Book',
+    enviarSaldoTeste: 'Send me a test Partial Balance',
   },
   colunasMes: {
     mes: 'Month',
@@ -169,6 +171,15 @@ const comparacaoBancosHoras = {
     validacaoDesfeita: 'The validation is undone and the company returns to the comparison',
     motivo: 'Reason',
     placeholder: 'E.g.: the October Book went out with the wrong bank',
+  },
+  bookTeste: {
+    voltar: 'Back to the company',
+    subtitulo: 'Test Book · usage per bank for {{mes}}',
+    aviso:
+      'Calculated now by the new model, as it would appear in the Book. Nothing is saved, no month is closed and the client receives nothing.',
+    carregando: 'Calculating the test Book',
+    erro: 'Could not calculate the test Book',
+    vazio: 'The company has no bank the client sees',
   },
   exportar: {
     arquivo: 'legacy-new-comparison',

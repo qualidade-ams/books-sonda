@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { textoDoErro } from '@/errors/erroTraduzivel';
 import { comparacaoService } from '@/services/comparacaoService';
+import { bookConsumoBancosService } from '@/services/bookConsumoBancosService';
+import { enviarSaldoParcialDeTeste } from '@/services/saldoParcial/envioTeste';
 import { grupoDaComparacao } from '@/utils/comparacaoTela';
+import type { MesAno } from '@/services/bancosHoras/calculo';
 import type { GrupoComparacao } from '@/types/comparacao';
 
 const CHAVE = ['comparacao-bh'];
@@ -137,6 +140,23 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
     onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
   });
 
+  // Teste antes de liberar (P7): só para quem pediu, sem histórico
+  const enviarSaldoParcialTeste = useMutation({
+    mutationFn: ({ empresaId, empresaNome }: { empresaId: string; empresaNome: string }) =>
+      enviarSaldoParcialDeTeste(empresaId, empresaNome),
+    onSuccess: () =>
+      toast({
+        title: t('avisos.comparacao.saldoTesteEnviado'),
+        description: t('avisos.comparacao.saldoTesteEnviadoDescricao'),
+      }),
+    onError: (err: Error) =>
+      toast({
+        title: t('avisos.comparacao.erroSaldoTeste'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
+  });
+
   return {
     empresas,
     contagem,
@@ -150,7 +170,25 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
     recalculando: recalculo?.empresaId ?? null,
     liberar: liberar.mutateAsync,
     voltar: voltar.mutateAsync,
+    enviarSaldoParcialTeste: enviarSaldoParcialTeste.mutateAsync,
+    enviandoSaldoParcialTeste: enviarSaldoParcialTeste.isPending,
     isSalvando: validar.isPending || recalcular.isPending || liberar.isPending || voltar.isPending,
+  };
+}
+
+/** Book de teste (P7): os blocos por banco do mês, calculados agora, sem gravar */
+export function useBookDeTeste(empresaId: string | null, mes: MesAno | null) {
+  const query = useQuery({
+    queryKey: [...CHAVE, 'book-teste', empresaId, mes?.ano, mes?.mes],
+    queryFn: () => bookConsumoBancosService.previa(empresaId!, mes!),
+    enabled: !!empresaId && !!mes,
+    staleTime: 0,
+  });
+  return {
+    bancos: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    recarregar: query.refetch,
   };
 }
 

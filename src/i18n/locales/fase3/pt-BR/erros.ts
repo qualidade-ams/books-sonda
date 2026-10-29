@@ -60,6 +60,8 @@ const erros = {
   saldoParcial: {
     naoEnviado: 'O e-mail não foi enviado.',
     semHistorico: 'O e-mail foi enviado, mas não ficou no histórico de envios: {{detalhe}}',
+    semEmailDoUsuario: 'Não foi possível ler o seu e-mail para enviar o teste.',
+    semBancos: 'A empresa não tem banco que o cliente vê.',
   },
   falhas: {
     atribuirODestino: 'Falha ao atribuir o destino: {{detalhe}}',

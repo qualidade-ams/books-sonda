@@ -34259,7 +34259,9 @@ var comparacaoBancosHoras = {
     validar: "Marcar como validada",
     desfazer: "Desfazer valida\xE7\xE3o",
     liberar: "Liberar",
-    voltar: "Voltar para legado"
+    voltar: "Voltar para legado",
+    verBookTeste: "Ver Book de teste",
+    enviarSaldoTeste: "Enviar Saldo Parcial de teste para mim"
   },
   colunasMes: {
     mes: "M\xEAs",
@@ -34328,6 +34330,14 @@ var comparacaoBancosHoras = {
     validacaoDesfeita: "A valida\xE7\xE3o \xE9 desfeita e a empresa volta para a compara\xE7\xE3o",
     motivo: "Motivo",
     placeholder: "Ex.: o Book de outubro saiu com o banco errado"
+  },
+  bookTeste: {
+    voltar: "Voltar para a empresa",
+    subtitulo: "Book de teste \xB7 consumo por banco de {{mes}}",
+    aviso: "Calculado agora pelo modelo novo, como sairia no Book. Nada \xE9 gravado, nenhum m\xEAs \xE9 fechado e o cliente n\xE3o recebe nada.",
+    carregando: "Calculando o Book de teste",
+    erro: "N\xE3o foi poss\xEDvel calcular o Book de teste",
+    vazio: "A empresa n\xE3o tem banco que o cliente v\xEA"
   },
   exportar: {
     arquivo: "comparacao-legado-novo",
@@ -34761,7 +34771,10 @@ var avisos = {
     liberada: "Empresa liberada",
     erroLiberar: "Erro ao liberar a empresa",
     voltouParaLegado: "Empresa voltou para o legado",
-    erroVoltar: "Erro ao voltar a empresa para o legado"
+    erroVoltar: "Erro ao voltar a empresa para o legado",
+    saldoTesteEnviado: "Saldo Parcial de teste enviado",
+    saldoTesteEnviadoDescricao: "Foi s\xF3 para o seu e-mail, com um bloco por banco. O cliente n\xE3o recebe nada.",
+    erroSaldoTeste: "Erro ao enviar o Saldo Parcial de teste"
   }
 };
 var avisos_default = avisos;
@@ -34825,7 +34838,9 @@ var erros = {
   },
   saldoParcial: {
     naoEnviado: "O e-mail n\xE3o foi enviado.",
-    semHistorico: "O e-mail foi enviado, mas n\xE3o ficou no hist\xF3rico de envios: {{detalhe}}"
+    semHistorico: "O e-mail foi enviado, mas n\xE3o ficou no hist\xF3rico de envios: {{detalhe}}",
+    semEmailDoUsuario: "N\xE3o foi poss\xEDvel ler o seu e-mail para enviar o teste.",
+    semBancos: "A empresa n\xE3o tem banco que o cliente v\xEA."
   },
   falhas: {
     atribuirODestino: "Falha ao atribuir o destino: {{detalhe}}",
@@ -36640,7 +36655,9 @@ var comparacaoBancosHoras2 = {
     validar: "Mark as validated",
     desfazer: "Undo validation",
     liberar: "Release",
-    voltar: "Return to legacy"
+    voltar: "Return to legacy",
+    verBookTeste: "View test Book",
+    enviarSaldoTeste: "Send me a test Partial Balance"
   },
   colunasMes: {
     mes: "Month",
@@ -36709,6 +36726,14 @@ var comparacaoBancosHoras2 = {
     validacaoDesfeita: "The validation is undone and the company returns to the comparison",
     motivo: "Reason",
     placeholder: "E.g.: the October Book went out with the wrong bank"
+  },
+  bookTeste: {
+    voltar: "Back to the company",
+    subtitulo: "Test Book \xB7 usage per bank for {{mes}}",
+    aviso: "Calculated now by the new model, as it would appear in the Book. Nothing is saved, no month is closed and the client receives nothing.",
+    carregando: "Calculating the test Book",
+    erro: "Could not calculate the test Book",
+    vazio: "The company has no bank the client sees"
   },
   exportar: {
     arquivo: "legacy-new-comparison",
@@ -37142,7 +37167,10 @@ var avisos2 = {
     liberada: "Company released",
     erroLiberar: "Could not release the company",
     voltouParaLegado: "Company returned to the legacy",
-    erroVoltar: "Could not return the company to the legacy"
+    erroVoltar: "Could not return the company to the legacy",
+    saldoTesteEnviado: "Test Partial Balance sent",
+    saldoTesteEnviadoDescricao: "It went only to your e-mail, with one block per bank. The client receives nothing.",
+    erroSaldoTeste: "Could not send the test Partial Balance"
   }
 };
 var avisos_default2 = avisos2;
@@ -37206,7 +37234,9 @@ var erros2 = {
   },
   saldoParcial: {
     naoEnviado: "The e-mail was not sent.",
-    semHistorico: "The e-mail was sent, but it was not recorded in the sending history: {{detalhe}}"
+    semHistorico: "The e-mail was sent, but it was not recorded in the sending history: {{detalhe}}",
+    semEmailDoUsuario: "Could not read your e-mail to send the test.",
+    semBancos: "The company has no bank the client sees."
   },
   falhas: {
     atribuirODestino: "Could not assign the target: {{detalhe}}",
@@ -39018,7 +39048,9 @@ var comparacaoBancosHoras3 = {
     validar: "Marcar como validada",
     desfazer: "Deshacer validaci\xF3n",
     liberar: "Liberar",
-    voltar: "Volver al legado"
+    voltar: "Volver al legado",
+    verBookTeste: "Ver Book de prueba",
+    enviarSaldoTeste: "Enviarme un Saldo Parcial de prueba"
   },
   colunasMes: {
     mes: "Mes",
@@ -39087,6 +39119,14 @@ var comparacaoBancosHoras3 = {
     validacaoDesfeita: "La validaci\xF3n se deshace y la empresa vuelve a la comparaci\xF3n",
     motivo: "Motivo",
     placeholder: "Ej.: el Book de octubre sali\xF3 con el banco equivocado"
+  },
+  bookTeste: {
+    voltar: "Volver a la empresa",
+    subtitulo: "Book de prueba \xB7 consumo por banco de {{mes}}",
+    aviso: "Calculado ahora por el modelo nuevo, como saldr\xEDa en el Book. No se graba nada, no se cierra ning\xFAn mes y el cliente no recibe nada.",
+    carregando: "Calculando el Book de prueba",
+    erro: "No fue posible calcular el Book de prueba",
+    vazio: "La empresa no tiene banco que el cliente vea"
   },
   exportar: {
     arquivo: "comparacion-legado-nuevo",
@@ -39520,7 +39560,10 @@ var avisos3 = {
     liberada: "Empresa liberada",
     erroLiberar: "No fue posible liberar la empresa",
     voltouParaLegado: "La empresa volvi\xF3 al legado",
-    erroVoltar: "No fue posible volver la empresa al legado"
+    erroVoltar: "No fue posible volver la empresa al legado",
+    saldoTesteEnviado: "Saldo Parcial de prueba enviado",
+    saldoTesteEnviadoDescricao: "Fue solo a su correo, con un bloque por banco. El cliente no recibe nada.",
+    erroSaldoTeste: "No fue posible enviar el Saldo Parcial de prueba"
   }
 };
 var avisos_default3 = avisos3;
@@ -39584,7 +39627,9 @@ var erros3 = {
   },
   saldoParcial: {
     naoEnviado: "El correo no fue enviado.",
-    semHistorico: "El correo fue enviado, pero no qued\xF3 en el historial de env\xEDos: {{detalhe}}"
+    semHistorico: "El correo fue enviado, pero no qued\xF3 en el historial de env\xEDos: {{detalhe}}",
+    semEmailDoUsuario: "No fue posible leer su correo para enviar la prueba.",
+    semBancos: "La empresa no tiene banco que el cliente vea."
   },
   falhas: {
     atribuirODestino: "No fue posible asignar el destino: {{detalhe}}",
@@ -39726,6 +39771,22 @@ var BookConsumoBancosService = class {
    * `fechamentos`: a versão do fechamento de cada banco no mês, quando já se sabe.
    */
   async montar(empresaId, mes, fechamentos) {
+    return (await this.linhas(empresaId, mes, fechamentos)).map(
+      ({ banco_id, ordem, nome_banco, nome_empresa, fechamento_id, dados }) => ({
+        banco_id,
+        ordem,
+        nome_banco,
+        nome_empresa,
+        fechamento_id,
+        dados
+      })
+    );
+  }
+  /** Book de teste (P7): os mesmos blocos, calculados agora, sem fechar mês nem gravar */
+  previa(empresaId, mes) {
+    return this.linhas(empresaId, mes, {});
+  }
+  async linhas(empresaId, mes, fechamentos) {
     const empresas = await this.empresasDoBook(empresaId);
     const linhas = [];
     for (const empresa of empresas) {
@@ -39735,6 +39796,7 @@ var BookConsumoBancosService = class {
           ordem: linhas.length + 1,
           nome_banco: dados.nome,
           nome_empresa: empresa.nome,
+          empresa_id: empresa.id,
           fechamento_id: fechamentos[dados.bancoId] ?? null,
           dados: dados.conteudo
         });

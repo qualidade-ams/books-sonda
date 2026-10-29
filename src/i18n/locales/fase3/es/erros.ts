@@ -59,6 +59,8 @@ const erros = {
   saldoParcial: {
     naoEnviado: 'El correo no fue enviado.',
     semHistorico: 'El correo fue enviado, pero no quedó en el historial de envíos: {{detalhe}}',
+    semEmailDoUsuario: 'No fue posible leer su correo para enviar la prueba.',
+    semBancos: 'La empresa no tiene banco que el cliente vea.',
   },
   falhas: {
     atribuirODestino: 'No fue posible asignar el destino: {{detalhe}}',

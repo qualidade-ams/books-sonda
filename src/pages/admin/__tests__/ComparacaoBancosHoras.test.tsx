@@ -72,9 +72,12 @@ const estado = {
   recalcular: vi.fn(async () => undefined),
   liberar: vi.fn(async () => undefined),
   voltar: vi.fn(async () => undefined),
+  enviarSaldoParcialTeste: vi.fn(async () => undefined),
+  enviandoSaldoParcialTeste: false,
   recalculando: null as string | null,
   isSalvando: false,
 };
+const booksPedidos: unknown[][] = [];
 const meses = {
   meses: [] as MesComparacao[],
   isLoading: false,
@@ -96,6 +99,10 @@ vi.mock('@/hooks/useComparacao', () => ({
       isLoading: false,
       error: null,
     };
+  },
+  useBookDeTeste: (...args: unknown[]) => {
+    booksPedidos.push(args);
+    return { bancos: [], isLoading: false, error: null, recarregar: vi.fn() };
   },
 }));
 let permissoes: string[] = [];
@@ -139,6 +146,9 @@ beforeEach(() => {
   estado.liberar.mockClear();
   estado.voltar.mockClear();
   lancamentosPedidos.length = 0;
+  booksPedidos.length = 0;
+  estado.enviarSaldoParcialTeste.mockClear();
+  estado.enviandoSaldoParcialTeste = false;
   estado.error = null;
   estado.isLoading = false;
   estado.recalculando = null;
@@ -404,6 +414,46 @@ describe('ComparacaoBancosHoras: detalhe', () => {
     });
     fireEvent.click(confirmar);
     expect(estado.voltar).toHaveBeenCalledWith({ empresaId: 'e5', motivo: 'Banco errado' });
+  });
+
+  it('validada: Ver Book de teste abre a prévia do último mês comparado e volta ao detalhe', () => {
+    meses.meses = [mes(8), mes(9)];
+    renderizar();
+    abrir('EMPRESA BETA');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'comparacaoBancosHoras.acoes.verBookTeste' })
+    );
+    expect(booksPedidos.at(-1)).toEqual(['e2', { mes: 9, ano: 2026 }]);
+    expect(screen.getByText(/comparacaoBancosHoras.bookTeste.aviso/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /comparacaoBancosHoras.bookTeste.voltar/ }));
+    expect(
+      screen.getByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' })
+    ).toBeInTheDocument();
+  });
+
+  it('validada: Enviar Saldo Parcial de teste para mim', () => {
+    renderizar();
+    abrir('EMPRESA BETA');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'comparacaoBancosHoras.acoes.enviarSaldoTeste' })
+    );
+    expect(estado.enviarSaldoParcialTeste).toHaveBeenCalledWith({
+      empresaId: 'e2',
+      empresaNome: 'EMPRESA BETA',
+    });
+  });
+
+  it('testes só para a empresa validada e ainda não liberada', () => {
+    renderizar();
+    abrir('EMPRESA ALFA');
+    expect(
+      screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.verBookTeste' })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /comparacaoBancosHoras.titulo/ }));
+    abrir('EMPRESA OMEGA');
+    expect(
+      screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.enviarSaldoTeste' })
+    ).not.toBeInTheDocument();
   });
 
   it('sem permissão de edição: sem Liberar nem Voltar para legado', () => {

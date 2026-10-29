@@ -119,6 +119,10 @@ const avisos = {
     erroLiberar: 'Erro ao liberar a empresa',
     voltouParaLegado: 'Empresa voltou para o legado',
     erroVoltar: 'Erro ao voltar a empresa para o legado',
+    saldoTesteEnviado: 'Saldo Parcial de teste enviado',
+    saldoTesteEnviadoDescricao:
+      'Foi só para o seu e-mail, com um bloco por banco. O cliente não recebe nada.',
+    erroSaldoTeste: 'Erro ao enviar o Saldo Parcial de teste',
   },
 };
 

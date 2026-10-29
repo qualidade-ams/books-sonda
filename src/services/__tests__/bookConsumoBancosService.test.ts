@@ -206,6 +206,20 @@ describe('BookConsumoBancosService.montar', () => {
   });
 });
 
+describe('BookConsumoBancosService.previa', () => {
+  it('Book de teste: os mesmos blocos, com a empresa de cada banco e sem fechamento, sem gravar', async () => {
+    const { servico, fake } = cenario();
+    const linhas = await servico.previa('e1', SET);
+
+    expect(linhas.map((l) => [l.banco_id, l.empresa_id, l.nome_empresa, l.fechamento_id])).toEqual([
+      ['b1', 'e1', 'EMPRESA ALFA', null],
+      ['b9', 'e2', 'ALFA FILIAL', null],
+    ]);
+    expect(linhas[0].dados.porTipo.incidente).toEqual({ minutos: 90, tickets: 0 });
+    expect(fake.chamadasRpc).toEqual([]);
+  });
+});
+
 describe('BookConsumoBancosService: gravar e ler', () => {
   it('grava e lê pelas funções da migration 28', async () => {
     const { servico, fake } = cenario();

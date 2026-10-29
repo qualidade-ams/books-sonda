@@ -93,6 +93,8 @@ const comparacaoBancosHoras = {
     desfazer: 'Desfazer validação',
     liberar: 'Liberar',
     voltar: 'Voltar para legado',
+    verBookTeste: 'Ver Book de teste',
+    enviarSaldoTeste: 'Enviar Saldo Parcial de teste para mim',
   },
   colunasMes: {
     mes: 'Mês',
@@ -167,6 +169,15 @@ const comparacaoBancosHoras = {
     validacaoDesfeita: 'A validação é desfeita e a empresa volta para a comparação',
     motivo: 'Motivo',
     placeholder: 'Ex.: o Book de outubro saiu com o banco errado',
+  },
+  bookTeste: {
+    voltar: 'Voltar para a empresa',
+    subtitulo: 'Book de teste · consumo por banco de {{mes}}',
+    aviso:
+      'Calculado agora pelo modelo novo, como sairia no Book. Nada é gravado, nenhum mês é fechado e o cliente não recebe nada.',
+    carregando: 'Calculando o Book de teste',
+    erro: 'Não foi possível calcular o Book de teste',
+    vazio: 'A empresa não tem banco que o cliente vê',
   },
   exportar: {
     arquivo: 'comparacao-legado-novo',
