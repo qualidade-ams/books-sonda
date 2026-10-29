@@ -105,10 +105,11 @@ describe('useComparacao', () => {
     });
   });
 
-  it('liberar e voltar para legado avisam e recarregam a lista', async () => {
+  it('liberar e voltar para legado avisam e recarregam a lista e o Controle', async () => {
     service.liberar.mockResolvedValue(undefined);
     service.voltar.mockResolvedValue(undefined);
-    const { wrapper } = criarWrapper();
+    const { client, wrapper } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
     const { result } = renderHook(() => useComparacao(), { wrapper });
     await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
     service.listar.mockClear();
@@ -121,6 +122,8 @@ describe('useComparacao', () => {
     expect(toast).toHaveBeenNthCalledWith(1, { title: 'avisos.comparacao.liberada' });
     expect(toast).toHaveBeenNthCalledWith(2, { title: 'avisos.comparacao.voltouParaLegado' });
     await waitFor(() => expect(service.listar).toHaveBeenCalled());
+    // O modelo da empresa mudou: o Controle (atual e novo) relê as empresas
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['controle-bh'] });
   });
 
   it('erro ao liberar ou voltar avisa com o texto do erro', async () => {

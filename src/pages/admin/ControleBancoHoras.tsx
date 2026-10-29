@@ -29,7 +29,10 @@ import {
   AlertCircle,
   Building2,
   Filter,
+  Info,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +59,7 @@ import {
   useVersoesPeriodo,
 } from '@/hooks/useBancoHoras';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useEmpresaLiberada } from '@/hooks/useControleBancoHoras';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { usePercentualRepasseVigentePorPeriodo } from '@/hooks/usePercentualRepasseHistorico';
 import { useToast } from '@/hooks/use-toast';
@@ -157,6 +161,8 @@ export default function ControleBancoHoras() {
     });
     return empresa;
   }, [empresas, empresaSelecionada]);
+  // Fase 5 (P3): empresa liberada usa o Controle novo; aqui fica só para consulta
+  const liberada = useEmpresaLiberada(empresaSelecionada);
 
   // ✅ Buscar percentual de repasse vigente para o período selecionado (usa histórico de vigências)
   const { data: percentualRepasseVigente } = usePercentualRepasseVigentePorPeriodo(
@@ -1036,6 +1042,22 @@ export default function ControleBancoHoras() {
             </CardContent>
           </Card>
 
+          {liberada && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-900">
+                <strong>{t('controleBancoHoras.legadoLiberada.titulo')}</strong>{' '}
+                {t('controleBancoHoras.legadoLiberada.texto')}{' '}
+                <Link
+                  to={`/admin/bancos-horas?empresa=${empresaSelecionada}`}
+                  className="font-medium underline"
+                >
+                  {t('controleBancoHoras.legadoLiberada.abrir')}
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Conteúdo Principal */}
           {isCalculandoPeriodo ? (
             <Card>
@@ -1137,6 +1159,7 @@ export default function ControleBancoHoras() {
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                   empresaAtual={empresaAtual}
+                  lancamentosBloqueados={liberada}
                 />
               </TabsContent>
 
@@ -1160,6 +1183,7 @@ export default function ControleBancoHoras() {
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                   empresaAtual={empresaAtual}
+                  lancamentosBloqueados={liberada}
                 />
               </TabsContent>
             </Tabs>
@@ -1205,6 +1229,7 @@ export default function ControleBancoHoras() {
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                   empresaAtual={empresaAtual}
+                  lancamentosBloqueados={liberada}
                 />
               </TabsContent>
 
@@ -1250,6 +1275,7 @@ export default function ControleBancoHoras() {
               inicioVigencia={empresaAtual?.inicio_vigencia}
               templatePadrao={empresaAtual?.template_padrao}
               empresaAtual={empresaAtual}
+              lancamentosBloqueados={liberada}
             />
           )}
         </div>

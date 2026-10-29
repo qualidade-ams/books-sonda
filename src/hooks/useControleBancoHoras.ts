@@ -57,6 +57,12 @@ export function useControleEmpresas() {
   };
 }
 
+/** Empresa liberada para o modelo novo: o Controle atual fica só para consulta (Fase 5, P3) */
+export function useEmpresaLiberada(empresaId: string | undefined): boolean {
+  const { empresas } = useControleEmpresas();
+  return !!empresaId && empresas.some((e) => e.id === empresaId && e.modelo === 'liberada');
+}
+
 export function useControleBancos(empresaId: string | undefined) {
   const query = useQuery({
     queryKey: [CHAVE, 'bancos', empresaId],

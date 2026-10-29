@@ -129,6 +129,9 @@ export interface VisaoConsolidadaProps {
 
   /** Empresa atual (para cálculo de períodos disponíveis) */
   empresaAtual?: any;
+
+  /** Empresa liberada para o modelo novo (Fase 5, P3): reajuste e observação não gravam aqui */
+  lancamentosBloqueados?: boolean;
 }
 
 /**
@@ -279,6 +282,7 @@ export function VisaoConsolidada({
   inicioVigencia,
   templatePadrao,
   empresaAtual,
+  lancamentosBloqueados = false,
 }: VisaoConsolidadaProps) {
   const { t, i18n } = useTranslation();
 
@@ -1228,7 +1232,7 @@ export function VisaoConsolidada({
                         baselineSegmentado={empresaAtual?.baseline_segmentado || false}
                         empresasSegmentadas={empresaAtual?.segmentacao_config?.empresas || []}
                         onSalvar={handleSalvarReajuste}
-                        disabled={disabled}
+                        disabled={disabled || lancamentosBloqueados}
                         isSaving={isCreating}
                       />
                     </TableCell>
@@ -2138,7 +2142,7 @@ export function VisaoConsolidada({
           empresaId={calculoPrincipal?.empresa_id}
           mesAtual={calculoPrincipal?.mes || 1}
           anoAtual={calculoPrincipal?.ano || new Date().getFullYear()}
-          disabled={disabled}
+          disabled={disabled || lancamentosBloqueados}
           onHistoricoClick={onHistoricoClick}
           mesesDoPeriodo={mesesDoPeriodo}
         />

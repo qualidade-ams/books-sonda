@@ -11,6 +11,8 @@ import type { MesAno } from '@/services/bancosHoras/calculo';
 import type { GrupoComparacao } from '@/types/comparacao';
 
 const CHAVE = ['comparacao-bh'];
+/** Chave das consultas do Controle (useControleBancoHoras) */
+const CHAVE_CONTROLE = 'controle-bh';
 
 /** Recálculo pedido ao sync-api: a empresa e o que ela tinha antes */
 interface Recalculo {
@@ -114,7 +116,13 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
       }),
   });
 
-  // Fase 5: a lista e os meses mudam (grupo, validação desfeita na volta)
+  // Fase 5: a lista e os meses mudam (grupo, validação desfeita na volta), e o Controle
+  // passa a ver o modelo novo da empresa
+  const aposTrocarModelo = () => {
+    queryClient.invalidateQueries({ queryKey: CHAVE });
+    queryClient.invalidateQueries({ queryKey: [CHAVE_CONTROLE] });
+  };
+
   const liberar = useMutation({
     mutationFn: (empresaId: string) => comparacaoService.liberar(empresaId),
     onSuccess: () => toast({ title: t('avisos.comparacao.liberada') }),
@@ -124,7 +132,7 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
         description: textoDoErro(err, t),
         variant: 'destructive',
       }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
+    onSettled: aposTrocarModelo,
   });
 
   const voltar = useMutation({
@@ -137,7 +145,7 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
         description: textoDoErro(err, t),
         variant: 'destructive',
       }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
+    onSettled: aposTrocarModelo,
   });
 
   // Teste antes de liberar (P7): só para quem pediu, sem histórico

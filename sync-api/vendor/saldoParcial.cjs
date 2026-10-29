@@ -33928,7 +33928,13 @@ var controleBancoHoras = {
     descricao: "Exporta o quadro de todos os bancos, uma aba por banco, cada um no per\xEDodo escolhido",
     linha: "Linha"
   },
-  sincronizadoEm: "Consumo do Aranda sincronizado at\xE9 {{data}}"
+  sincronizadoEm: "Consumo do Aranda sincronizado at\xE9 {{data}}",
+  // Controle atual de empresa liberada (Fase 5, P3)
+  legadoLiberada: {
+    titulo: "Empresa liberada para o modelo novo.",
+    texto: "Este Controle fica s\xF3 para consulta: reajustes e observa\xE7\xF5es s\xE3o lan\xE7ados no Controle de Banco de Horas novo.",
+    abrir: "Abrir o Controle novo"
+  }
 };
 var controleBancoHoras_default = controleBancoHoras;
 
@@ -36324,7 +36330,13 @@ var controleBancoHoras2 = {
     descricao: "Exports the grid of all banks, one sheet per bank, each in the chosen period",
     linha: "Line"
   },
-  sincronizadoEm: "Aranda usage synced up to {{data}}"
+  sincronizadoEm: "Aranda usage synced up to {{data}}",
+  // Controle atual de empresa liberada (Fase 5, P3)
+  legadoLiberada: {
+    titulo: "Company released to the new model.",
+    texto: "This Control is read-only: adjustments and notes are posted in the new Hour Bank Control.",
+    abrir: "Open the new Control"
+  }
 };
 var controleBancoHoras_default2 = controleBancoHoras2;
 
@@ -38717,7 +38729,13 @@ var controleBancoHoras3 = {
     descricao: "Exporta el cuadro de todos los bancos, una hoja por banco, cada uno en el per\xEDodo elegido",
     linha: "L\xEDnea"
   },
-  sincronizadoEm: "Consumo de Aranda sincronizado hasta {{data}}"
+  sincronizadoEm: "Consumo de Aranda sincronizado hasta {{data}}",
+  // Controle atual de empresa liberada (Fase 5, P3)
+  legadoLiberada: {
+    titulo: "Empresa liberada al modelo nuevo.",
+    texto: "Este Control queda solo para consulta: los reajustes y observaciones se registran en el nuevo Control de Banco de Horas.",
+    abrir: "Abrir el nuevo Control"
+  }
 };
 var controleBancoHoras_default3 = controleBancoHoras3;
 

@@ -6,6 +6,7 @@ import {
   useBuscarQuadro,
   useControleBancos,
   useControleEmpresas,
+  useEmpresaLiberada,
   useHistoricoControle,
   useLancamentosControle,
   useQuadroControle,
@@ -97,6 +98,23 @@ describe('leituras do Controle', () => {
     await waitFor(() => expect(empresas.result.current.empresas).toHaveLength(1));
     await waitFor(() => expect(bancos.result.current.bancos).toHaveLength(1));
     expect(controle.bancos).toHaveBeenCalledWith('e1');
+  });
+
+  it('empresa liberada: o Controle atual fica só para consulta (Fase 5, P3)', async () => {
+    controle.empresas.mockResolvedValue([
+      { id: 'e1', nome: 'EMPRESA ALFA', modelo: 'liberada', bancosAtivos: 2 },
+      { id: 'e2', nome: 'EMPRESA BETA', modelo: 'multiplo', bancosAtivos: 2 },
+    ]);
+    const { wrapper } = criarWrapper();
+    const { result, rerender } = renderHook(({ id }) => useEmpresaLiberada(id), {
+      wrapper,
+      initialProps: { id: undefined as string | undefined },
+    });
+    expect(result.current).toBe(false);
+    rerender({ id: 'e1' });
+    await waitFor(() => expect(result.current).toBe(true));
+    rerender({ id: 'e2' });
+    expect(result.current).toBe(false);
   });
 
   it('não consulta sem empresa, banco ou meses', () => {
