@@ -38,6 +38,7 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
       explicada: 0,
       divergente: 0,
       validada: 0,
+      liberada: 0,
     };
     for (const e of empresas) {
       const grupo = grupoDaComparacao(e);
@@ -110,6 +111,32 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
       }),
   });
 
+  // Fase 5: a lista e os meses mudam (grupo, validação desfeita na volta)
+  const liberar = useMutation({
+    mutationFn: (empresaId: string) => comparacaoService.liberar(empresaId),
+    onSuccess: () => toast({ title: t('avisos.comparacao.liberada') }),
+    onError: (err: Error) =>
+      toast({
+        title: t('avisos.comparacao.erroLiberar'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
+  });
+
+  const voltar = useMutation({
+    mutationFn: ({ empresaId, motivo }: { empresaId: string; motivo: string }) =>
+      comparacaoService.voltar(empresaId, motivo),
+    onSuccess: () => toast({ title: t('avisos.comparacao.voltouParaLegado') }),
+    onError: (err: Error) =>
+      toast({
+        title: t('avisos.comparacao.erroVoltar'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
+  });
+
   return {
     empresas,
     contagem,
@@ -121,7 +148,24 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
     recalcular: recalcular.mutateAsync,
     /** Empresa com recálculo em andamento no sync-api */
     recalculando: recalculo?.empresaId ?? null,
-    isSalvando: validar.isPending || recalcular.isPending,
+    liberar: liberar.mutateAsync,
+    voltar: voltar.mutateAsync,
+    isSalvando: validar.isPending || recalcular.isPending || liberar.isPending || voltar.isPending,
+  };
+}
+
+/** Reajustes e observações do Controle novo que a volta para o legado copia (P4) */
+export function useLancamentosParaLegado(empresaId: string | null) {
+  const query = useQuery({
+    queryKey: [...CHAVE, 'lancamentos-legado', empresaId],
+    queryFn: () => comparacaoService.lancamentosParaLegado(empresaId!),
+    enabled: !!empresaId,
+    staleTime: 0,
+  });
+  return {
+    lancamentos: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
   };
 }
 

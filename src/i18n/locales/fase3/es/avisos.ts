@@ -115,6 +115,10 @@ const avisos = {
     recalculandoDescricao: 'El resultado aparece aquí en algunos minutos.',
     recalculada: 'Comparación actualizada',
     erroRecalcular: 'No fue posible recalcular la comparación',
+    liberada: 'Empresa liberada',
+    erroLiberar: 'No fue posible liberar la empresa',
+    voltouParaLegado: 'La empresa volvió al legado',
+    erroVoltar: 'No fue posible volver la empresa al legado',
   },
 };
 

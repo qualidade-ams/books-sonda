@@ -1,8 +1,9 @@
 // Detalhe de uma empresa na Comparação Legado x Novo (Fase 4): resumo da situação, mês a mês
-// e as diferenças por chamado do mês escolhido. Validar e recalcular exigem Edição.
+// e as diferenças por chamado do mês escolhido. Validar, recalcular, liberar e voltar para o
+// legado (Fase 5) exigem Edição.
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, ShieldCheck, Undo2 } from 'lucide-react';
+import { RefreshCw, Rocket, RotateCcw, ShieldCheck, Undo2 } from 'lucide-react';
 import { TelaEdicao } from '@/components/ds/Formulario';
 import { DataTable, type ColunaTabela } from '@/components/ds/DataTable';
 import { HoursValue } from '@/components/ds/HoursValue';
@@ -11,7 +12,7 @@ import { Callout } from '@/components/ds/Callout';
 import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { MenuExportar } from '@/components/ds/MenuExportar';
-import { useMesesComparacao } from '@/hooks/useComparacao';
+import { useLancamentosParaLegado, useMesesComparacao } from '@/hooks/useComparacao';
 import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { rotuloMesLocal } from '@/utils/controleTela';
 import { plural } from '@/utils/plural';
@@ -63,6 +64,8 @@ export function DetalheComparacao({
   onValidar,
   onDesfazer,
   onRecalcular,
+  onLiberar,
+  onVoltar,
 }: {
   empresa: ComparacaoEmpresa;
   podeEditar: boolean;
@@ -71,6 +74,8 @@ export function DetalheComparacao({
   onValidar: () => Promise<unknown>;
   onDesfazer: (motivo: string) => Promise<unknown>;
   onRecalcular: () => void;
+  onLiberar: () => Promise<unknown>;
+  onVoltar: (motivo: string) => Promise<unknown>;
 }) {
   const { t, i18n } = useTranslation();
   const a = (chaveTexto: string, valores?: Record<string, unknown>) =>
@@ -79,6 +84,10 @@ export function DetalheComparacao({
   const [mesAberto, setMesAberto] = useState<string | null>(null);
   const [validando, setValidando] = useState(false);
   const [desfazendo, setDesfazendo] = useState(false);
+  const [liberando, setLiberando] = useState(false);
+  const [voltando, setVoltando] = useState(false);
+  // Contados ao abrir a confirmação, para a volta mostrar o que vai para o legado agora
+  const { lancamentos } = useLancamentosParaLegado(voltando ? empresa.empresaId : null);
 
   // Abre no mês mais recente com diferença
   useEffect(() => {
@@ -93,6 +102,14 @@ export function DetalheComparacao({
   const mes = meses.find((m) => chave(m) === mesAberto);
   const divergentes = meses.filter((m) => m.situacao === 'divergente').length;
   const rotulo = (m: MesComparacao) => rotuloMesLocal(m.mes, i18n.language);
+  const liberacao = empresa.liberacao;
+  // A transição é o último mês fechado no legado, o último comparado; o corte é o seguinte
+  const ultimoFechado = meses.at(-1)?.mes ?? null;
+  const corte = ultimoFechado
+    ? ultimoFechado.mes === 12
+      ? { mes: 1, ano: ultimoFechado.ano + 1 }
+      : { mes: ultimoFechado.mes + 1, ano: ultimoFechado.ano }
+    : null;
 
   const colunasMes: ColunaTabela<MesComparacao>[] = [
     {
@@ -266,6 +283,23 @@ export function DetalheComparacao({
   ];
 
   const resumo = () => {
+    if (liberacao)
+      return (
+        <Callout tom="info" titulo={a('liberada')}>
+          {liberacao.desde
+            ? a('liberadaTexto', { mes: rotuloMesLocal(liberacao.desde, i18n.language) })
+            : a('liberadaTextoSemCorte')}
+          {liberacao.por && liberacao.em && (
+            <>
+              {' '}
+              {a('liberadaPor', {
+                nome: liberacao.por,
+                data: formatarDataHora(liberacao.em, i18n.language),
+              })}
+            </>
+          )}
+        </Callout>
+      );
     if (!empresa.situacao) return null;
     const texto =
       empresa.situacao === 'divergente'
@@ -313,16 +347,30 @@ export function DetalheComparacao({
             <Callout tom="warning">{a('erroRotina', { erro: empresa.erro })}</Callout>
           )}
           <div className="flex flex-wrap gap-2">
-            {podeEditar && (
+            {podeEditar && liberacao && (
+              <Button variante="perigo" onClick={() => setVoltando(true)}>
+                <RotateCcw /> {a('acoes.voltar')}
+              </Button>
+            )}
+            {podeEditar && !liberacao && (
               <>
                 <Button onClick={onRecalcular} disabled={recalculando}>
                   <RefreshCw className={recalculando ? 'animate-spin' : undefined} />
                   {recalculando ? a('acoes.recalculando') : a('acoes.recalcular')}
                 </Button>
                 {empresa.validacao ? (
-                  <Button onClick={() => setDesfazendo(true)}>
-                    <Undo2 /> {a('acoes.desfazer')}
-                  </Button>
+                  <>
+                    <Button onClick={() => setDesfazendo(true)}>
+                      <Undo2 /> {a('acoes.desfazer')}
+                    </Button>
+                    <Button
+                      variante="primario"
+                      disabled={empresa.situacao === 'divergente'}
+                      onClick={() => setLiberando(true)}
+                    >
+                      <Rocket /> {a('acoes.liberar')}
+                    </Button>
+                  </>
                 ) : (
                   <Button
                     variante="primario"
@@ -424,6 +472,74 @@ export function DetalheComparacao({
           try {
             await onDesfazer(motivo ?? '');
             setDesfazendo(false);
+          } catch {
+            // O aviso do erro vem do hook; o diálogo fica aberto para tentar de novo
+          }
+        }}
+      />
+      <ConfirmDialog
+        aberto={liberando}
+        onOpenChange={setLiberando}
+        titulo={a('liberar.titulo', { empresa: empresa.empresa })}
+        descricao={
+          corte
+            ? a('liberar.descricao', { mes: rotuloMesLocal(corte, i18n.language) })
+            : a('liberar.descricaoSemCorte')
+        }
+        consequencias={[
+          ...(ultimoFechado
+            ? [
+                a(umBanco ? 'liberar.saldoUmBanco' : 'liberar.saldoVarios', {
+                  mes: rotuloMesLocal(ultimoFechado, i18n.language),
+                }),
+              ]
+            : []),
+          a('liberar.blocoPorBanco'),
+          a('liberar.booksEnviados'),
+          a('liberar.controleConsulta'),
+        ]}
+        rotuloConfirmar={a('acoes.liberar')}
+        onConfirmar={async () => {
+          try {
+            await onLiberar();
+            setLiberando(false);
+          } catch {
+            // O aviso do erro vem do hook; o diálogo fica aberto para tentar de novo
+          }
+        }}
+      />
+      <ConfirmDialog
+        aberto={voltando}
+        onOpenChange={setVoltando}
+        titulo={a('voltar.titulo', { empresa: empresa.empresa })}
+        descricao={a('voltar.descricao')}
+        consequencias={[
+          ...(lancamentos && (lancamentos.reajustes || lancamentos.observacoes)
+            ? [
+                a('voltar.lancamentos', {
+                  reajustes: plural(
+                    t,
+                    'comparacaoBancosHoras.voltar.reajustes',
+                    lancamentos.reajustes
+                  ),
+                  observacoes: plural(
+                    t,
+                    'comparacaoBancosHoras.voltar.observacoes',
+                    lancamentos.observacoes
+                  ),
+                }),
+              ]
+            : []),
+          a('voltar.booksEnviados'),
+          a('voltar.validacaoDesfeita'),
+        ]}
+        rotuloConfirmar={a('acoes.voltar')}
+        tom="perigo"
+        justificativa={{ rotulo: a('voltar.motivo'), placeholder: a('voltar.placeholder') }}
+        onConfirmar={async (motivo) => {
+          try {
+            await onVoltar(motivo ?? '');
+            setVoltando(false);
           } catch {
             // O aviso do erro vem do hook; o diálogo fica aberto para tentar de novo
           }

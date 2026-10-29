@@ -34802,7 +34802,8 @@ var comparacaoBancosHoras = {
     conferem: "Conferem",
     explicada: "Explicadas",
     divergente: "Divergentes",
-    validada: "Validadas"
+    validada: "Validadas",
+    liberada: "Liberadas"
   },
   situacoes: {
     identico: "Id\xEAntico",
@@ -34819,6 +34820,11 @@ var comparacaoBancosHoras = {
   validada: "Validada",
   validadaPor: "Validada por {{nome}} em {{data}}",
   validadaEm: "Validada em {{data}}",
+  liberada: "Liberada",
+  liberadaPor: "Liberada por {{nome}} em {{data}}",
+  liberadaEm: "Liberada em {{data}}",
+  liberadaTexto: "Book, imagem do e-mail e Saldo Parcial saem pelo modelo novo, um bloco por banco, desde {{mes}}.",
+  liberadaTextoSemCorte: "Book, imagem do e-mail e Saldo Parcial saem pelo modelo novo, um bloco por banco.",
   erroRotina: "Falha na \xFAltima rodada: {{erro}}",
   buscar: "Buscar empresa",
   ver: "Ver a compara\xE7\xE3o de {{empresa}}",
@@ -34872,7 +34878,9 @@ var comparacaoBancosHoras = {
     recalcular: "Recalcular",
     recalculando: "Recalculando",
     validar: "Marcar como validada",
-    desfazer: "Desfazer valida\xE7\xE3o"
+    desfazer: "Desfazer valida\xE7\xE3o",
+    liberar: "Liberar",
+    voltar: "Voltar para legado"
   },
   colunasMes: {
     mes: "M\xEAs",
@@ -34920,6 +34928,27 @@ var comparacaoBancosHoras = {
     titulo: "Desfazer a valida\xE7\xE3o de {{empresa}}?",
     motivo: "Motivo",
     placeholder: "Ex.: o Book de setembro foi retificado"
+  },
+  liberar: {
+    titulo: "Liberar {{empresa}}?",
+    descricao: "A partir de {{mes}}, o cliente recebe o Book e o Saldo Parcial pelo modelo novo.",
+    descricaoSemCorte: "O cliente passa a receber o Book e o Saldo Parcial pelo modelo novo.",
+    saldoUmBanco: "O saldo continua do \xFAltimo Book do legado ({{mes}})",
+    saldoVarios: "Cada banco parte do saldo do modelo novo. A diferen\xE7a para o saldo do legado ({{mes}}) vai para o Banco padr\xE3o",
+    blocoPorBanco: "Book, imagem do e-mail e Saldo Parcial passam a ter um bloco por banco que o cliente v\xEA",
+    booksEnviados: "Os Books j\xE1 enviados n\xE3o mudam",
+    controleConsulta: "O Controle atual fica s\xF3 para consulta desta empresa"
+  },
+  voltar: {
+    titulo: "Voltar {{empresa}} para o legado?",
+    descricao: "O cliente volta a receber o Book e o Saldo Parcial do legado a partir do pr\xF3ximo envio.",
+    lancamentos: "{{reajustes}} e {{observacoes}} lan\xE7ados no Controle novo v\xE3o para o Controle atual",
+    reajustes: { um: "{{n}} reajuste", varios: "{{n}} reajustes" },
+    observacoes: { um: "{{n}} observa\xE7\xE3o", varios: "{{n}} observa\xE7\xF5es" },
+    booksEnviados: "Os Books j\xE1 enviados pelo modelo novo continuam como foram enviados",
+    validacaoDesfeita: "A valida\xE7\xE3o \xE9 desfeita e a empresa volta para a compara\xE7\xE3o",
+    motivo: "Motivo",
+    placeholder: "Ex.: o Book de outubro saiu com o banco errado"
   },
   exportar: {
     arquivo: "comparacao-legado-novo",
@@ -35349,7 +35378,11 @@ var avisos = {
     recalculando: "Rec\xE1lculo iniciado",
     recalculandoDescricao: "O resultado aparece aqui em alguns minutos.",
     recalculada: "Compara\xE7\xE3o atualizada",
-    erroRecalcular: "Erro ao recalcular a compara\xE7\xE3o"
+    erroRecalcular: "Erro ao recalcular a compara\xE7\xE3o",
+    liberada: "Empresa liberada",
+    erroLiberar: "Erro ao liberar a empresa",
+    voltouParaLegado: "Empresa voltou para o legado",
+    erroVoltar: "Erro ao voltar a empresa para o legado"
   }
 };
 var avisos_default = avisos;
@@ -35479,7 +35512,19 @@ var erros = {
     salvarOMenu: "Falha ao salvar o menu: {{detalhe}}",
     // Comparação Legado x Novo (Fase 4)
     carregarAComparacao: "Falha ao carregar a compara\xE7\xE3o: {{detalhe}}",
-    validarAComparacao: "Falha ao validar a compara\xE7\xE3o: {{detalhe}}"
+    validarAComparacao: "Falha ao validar a compara\xE7\xE3o: {{detalhe}}",
+    // Liberação por empresa (Fase 5)
+    carregarATransicaoDaEmpresa: "Falha ao carregar a transi\xE7\xE3o da empresa: {{detalhe}}",
+    carregarAsEmpresasDoBook: "Falha ao carregar as empresas do Book: {{detalhe}}",
+    carregarOBookDoMes: "Falha ao carregar o Book do m\xEAs: {{detalhe}}",
+    carregarOConsumoDoBook: "Falha ao carregar o consumo do Book: {{detalhe}}",
+    carregarOModeloDaEmpresa: "Falha ao carregar o modelo da empresa: {{detalhe}}",
+    carregarOsBancosDaEmpresa: "Falha ao carregar os bancos da empresa: {{detalhe}}",
+    carregarOsFechamentosDoMes: "Falha ao carregar os fechamentos do m\xEAs: {{detalhe}}",
+    carregarOsLancamentosDoControleNovo: "Falha ao carregar os lan\xE7amentos do Controle novo: {{detalhe}}",
+    gravarOConsumoDoBook: "Falha ao gravar o consumo do Book: {{detalhe}}",
+    liberarAEmpresa: "Falha ao liberar a empresa: {{detalhe}}",
+    voltarAEmpresaParaOLegado: "Falha ao voltar a empresa para o legado: {{detalhe}}"
   }
 };
 var erros_default = erros;
@@ -37138,7 +37183,8 @@ var comparacaoBancosHoras2 = {
     conferem: "Matching",
     explicada: "Explained",
     divergente: "Divergent",
-    validada: "Validated"
+    validada: "Validated",
+    liberada: "Released"
   },
   situacoes: {
     identico: "Identical",
@@ -37155,6 +37201,11 @@ var comparacaoBancosHoras2 = {
   validada: "Validated",
   validadaPor: "Validated by {{nome}} on {{data}}",
   validadaEm: "Validated on {{data}}",
+  liberada: "Released",
+  liberadaPor: "Released by {{nome}} on {{data}}",
+  liberadaEm: "Released on {{data}}",
+  liberadaTexto: "Book, e-mail image and Partial Balance come from the new model, one block per bank, since {{mes}}.",
+  liberadaTextoSemCorte: "Book, e-mail image and Partial Balance come from the new model, one block per bank.",
   erroRotina: "Last run failed: {{erro}}",
   buscar: "Search company",
   ver: "See the comparison of {{empresa}}",
@@ -37208,7 +37259,9 @@ var comparacaoBancosHoras2 = {
     recalcular: "Recalculate",
     recalculando: "Recalculating",
     validar: "Mark as validated",
-    desfazer: "Undo validation"
+    desfazer: "Undo validation",
+    liberar: "Release",
+    voltar: "Return to legacy"
   },
   colunasMes: {
     mes: "Month",
@@ -37256,6 +37309,27 @@ var comparacaoBancosHoras2 = {
     titulo: "Undo the validation of {{empresa}}?",
     motivo: "Reason",
     placeholder: "E.g.: the September Book was rectified"
+  },
+  liberar: {
+    titulo: "Release {{empresa}}?",
+    descricao: "From {{mes}} on, the client receives the Book and the Partial Balance from the new model.",
+    descricaoSemCorte: "The client starts receiving the Book and the Partial Balance from the new model.",
+    saldoUmBanco: "The balance continues from the last legacy Book ({{mes}})",
+    saldoVarios: "Each bank starts from the new model balance. The difference to the legacy balance ({{mes}}) goes to the default bank",
+    blocoPorBanco: "Book, e-mail image and Partial Balance get one block per bank the client sees",
+    booksEnviados: "Books already sent do not change",
+    controleConsulta: "The current Control becomes read-only for this company"
+  },
+  voltar: {
+    titulo: "Return {{empresa}} to the legacy?",
+    descricao: "The client receives the legacy Book and Partial Balance again from the next delivery.",
+    lancamentos: "{{reajustes}} and {{observacoes}} posted in the new Control go to the current Control",
+    reajustes: { um: "{{n}} adjustment", varios: "{{n}} adjustments" },
+    observacoes: { um: "{{n}} note", varios: "{{n}} notes" },
+    booksEnviados: "Books already sent from the new model stay as they were sent",
+    validacaoDesfeita: "The validation is undone and the company returns to the comparison",
+    motivo: "Reason",
+    placeholder: "E.g.: the October Book went out with the wrong bank"
   },
   exportar: {
     arquivo: "legacy-new-comparison",
@@ -37685,7 +37759,11 @@ var avisos2 = {
     recalculando: "Recalculation started",
     recalculandoDescricao: "The result shows up here in a few minutes.",
     recalculada: "Comparison updated",
-    erroRecalcular: "Could not recalculate the comparison"
+    erroRecalcular: "Could not recalculate the comparison",
+    liberada: "Company released",
+    erroLiberar: "Could not release the company",
+    voltouParaLegado: "Company returned to the legacy",
+    erroVoltar: "Could not return the company to the legacy"
   }
 };
 var avisos_default2 = avisos2;
@@ -37815,7 +37893,19 @@ var erros2 = {
     salvarOMenu: "Could not save the menu: {{detalhe}}",
     // Legacy x New Comparison (Phase 4)
     carregarAComparacao: "Could not load the comparison: {{detalhe}}",
-    validarAComparacao: "Could not validate the comparison: {{detalhe}}"
+    validarAComparacao: "Could not validate the comparison: {{detalhe}}",
+    // Release per company (Phase 5)
+    carregarATransicaoDaEmpresa: "Could not load the company transition: {{detalhe}}",
+    carregarAsEmpresasDoBook: "Could not load the Book companies: {{detalhe}}",
+    carregarOBookDoMes: "Could not load the month Book: {{detalhe}}",
+    carregarOConsumoDoBook: "Could not load the Book usage: {{detalhe}}",
+    carregarOModeloDaEmpresa: "Could not load the company model: {{detalhe}}",
+    carregarOsBancosDaEmpresa: "Could not load the company banks: {{detalhe}}",
+    carregarOsFechamentosDoMes: "Could not load the month closings: {{detalhe}}",
+    carregarOsLancamentosDoControleNovo: "Could not load the entries of the new Control: {{detalhe}}",
+    gravarOConsumoDoBook: "Could not save the Book usage: {{detalhe}}",
+    liberarAEmpresa: "Could not release the company: {{detalhe}}",
+    voltarAEmpresaParaOLegado: "Could not return the company to the legacy: {{detalhe}}"
   }
 };
 var erros_default2 = erros2;
@@ -39471,7 +39561,8 @@ var comparacaoBancosHoras3 = {
     conferem: "Coinciden",
     explicada: "Explicadas",
     divergente: "Divergentes",
-    validada: "Validadas"
+    validada: "Validadas",
+    liberada: "Liberadas"
   },
   situacoes: {
     identico: "Id\xE9ntico",
@@ -39488,6 +39579,11 @@ var comparacaoBancosHoras3 = {
   validada: "Validada",
   validadaPor: "Validada por {{nome}} el {{data}}",
   validadaEm: "Validada el {{data}}",
+  liberada: "Liberada",
+  liberadaPor: "Liberada por {{nome}} el {{data}}",
+  liberadaEm: "Liberada el {{data}}",
+  liberadaTexto: "Book, imagen del e-mail y Saldo Parcial salen por el modelo nuevo, un bloque por banco, desde {{mes}}.",
+  liberadaTextoSemCorte: "Book, imagen del e-mail y Saldo Parcial salen por el modelo nuevo, un bloque por banco.",
   erroRotina: "Falla en la \xFAltima ejecuci\xF3n: {{erro}}",
   buscar: "Buscar empresa",
   ver: "Ver la comparaci\xF3n de {{empresa}}",
@@ -39541,7 +39637,9 @@ var comparacaoBancosHoras3 = {
     recalcular: "Recalcular",
     recalculando: "Recalculando",
     validar: "Marcar como validada",
-    desfazer: "Deshacer validaci\xF3n"
+    desfazer: "Deshacer validaci\xF3n",
+    liberar: "Liberar",
+    voltar: "Volver al legado"
   },
   colunasMes: {
     mes: "Mes",
@@ -39589,6 +39687,27 @@ var comparacaoBancosHoras3 = {
     titulo: "\xBFDeshacer la validaci\xF3n de {{empresa}}?",
     motivo: "Motivo",
     placeholder: "Ej.: el Book de septiembre fue rectificado"
+  },
+  liberar: {
+    titulo: "\xBFLiberar {{empresa}}?",
+    descricao: "A partir de {{mes}}, el cliente recibe el Book y el Saldo Parcial por el modelo nuevo.",
+    descricaoSemCorte: "El cliente pasa a recibir el Book y el Saldo Parcial por el modelo nuevo.",
+    saldoUmBanco: "El saldo contin\xFAa del \xFAltimo Book del legado ({{mes}})",
+    saldoVarios: "Cada banco parte del saldo del modelo nuevo. La diferencia con el saldo del legado ({{mes}}) va al Banco predeterminado",
+    blocoPorBanco: "Book, imagen del e-mail y Saldo Parcial pasan a tener un bloque por banco que el cliente ve",
+    booksEnviados: "Los Books ya enviados no cambian",
+    controleConsulta: "El Control actual queda solo para consulta de esta empresa"
+  },
+  voltar: {
+    titulo: "\xBFVolver {{empresa}} al legado?",
+    descricao: "El cliente vuelve a recibir el Book y el Saldo Parcial del legado a partir del pr\xF3ximo env\xEDo.",
+    lancamentos: "{{reajustes}} y {{observacoes}} registrados en el nuevo Control van al Control actual",
+    reajustes: { um: "{{n}} reajuste", varios: "{{n}} reajustes" },
+    observacoes: { um: "{{n}} observaci\xF3n", varios: "{{n}} observaciones" },
+    booksEnviados: "Los Books ya enviados por el modelo nuevo siguen como fueron enviados",
+    validacaoDesfeita: "La validaci\xF3n se deshace y la empresa vuelve a la comparaci\xF3n",
+    motivo: "Motivo",
+    placeholder: "Ej.: el Book de octubre sali\xF3 con el banco equivocado"
   },
   exportar: {
     arquivo: "comparacion-legado-nuevo",
@@ -40018,7 +40137,11 @@ var avisos3 = {
     recalculando: "Rec\xE1lculo iniciado",
     recalculandoDescricao: "El resultado aparece aqu\xED en algunos minutos.",
     recalculada: "Comparaci\xF3n actualizada",
-    erroRecalcular: "No fue posible recalcular la comparaci\xF3n"
+    erroRecalcular: "No fue posible recalcular la comparaci\xF3n",
+    liberada: "Empresa liberada",
+    erroLiberar: "No fue posible liberar la empresa",
+    voltouParaLegado: "La empresa volvi\xF3 al legado",
+    erroVoltar: "No fue posible volver la empresa al legado"
   }
 };
 var avisos_default3 = avisos3;
@@ -40148,7 +40271,19 @@ var erros3 = {
     salvarOMenu: "No fue posible guardar el men\xFA: {{detalhe}}",
     // Comparación Legado x Nuevo (Fase 4)
     carregarAComparacao: "No fue posible cargar la comparaci\xF3n: {{detalhe}}",
-    validarAComparacao: "No fue posible validar la comparaci\xF3n: {{detalhe}}"
+    validarAComparacao: "No fue posible validar la comparaci\xF3n: {{detalhe}}",
+    // Liberación por empresa (Fase 5)
+    carregarATransicaoDaEmpresa: "No fue posible cargar la transici\xF3n de la empresa: {{detalhe}}",
+    carregarAsEmpresasDoBook: "No fue posible cargar las empresas del Book: {{detalhe}}",
+    carregarOBookDoMes: "No fue posible cargar el Book del mes: {{detalhe}}",
+    carregarOConsumoDoBook: "No fue posible cargar el consumo del Book: {{detalhe}}",
+    carregarOModeloDaEmpresa: "No fue posible cargar el modelo de la empresa: {{detalhe}}",
+    carregarOsBancosDaEmpresa: "No fue posible cargar los bancos de la empresa: {{detalhe}}",
+    carregarOsFechamentosDoMes: "No fue posible cargar los cierres del mes: {{detalhe}}",
+    carregarOsLancamentosDoControleNovo: "No fue posible cargar los registros del nuevo Control: {{detalhe}}",
+    gravarOConsumoDoBook: "No fue posible guardar el consumo del Book: {{detalhe}}",
+    liberarAEmpresa: "No fue posible liberar la empresa: {{detalhe}}",
+    voltarAEmpresaParaOLegado: "No fue posible volver la empresa al legado: {{detalhe}}"
   }
 };
 var erros_default3 = erros3;

@@ -32,7 +32,7 @@ describe('chaves de erro dos services', () => {
     const chaves = [
       ...[...fonte.matchAll(/ErroTraduzivel\(\s*'([^']+)'/g)].map((m) => m[1]),
       ...[...fonte.matchAll(/'(erros\.[\w.]+)'/g)].map((m) => m[1]),
-      ...[...fonte.matchAll(/falha\(\s*'([^']+)'/g)].map(
+      ...[...fonte.matchAll(/(?:falha|falhaDoBanco)\(\s*'([^']+)'/g)].map(
         (m) => `erros.falhas.${chaveDaFalha(m[1])}`
       ),
     ];

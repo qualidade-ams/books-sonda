@@ -133,6 +133,19 @@ const erros = {
     // Comparación Legado x Nuevo (Fase 4)
     carregarAComparacao: 'No fue posible cargar la comparación: {{detalhe}}',
     validarAComparacao: 'No fue posible validar la comparación: {{detalhe}}',
+    // Liberación por empresa (Fase 5)
+    carregarATransicaoDaEmpresa: 'No fue posible cargar la transición de la empresa: {{detalhe}}',
+    carregarAsEmpresasDoBook: 'No fue posible cargar las empresas del Book: {{detalhe}}',
+    carregarOBookDoMes: 'No fue posible cargar el Book del mes: {{detalhe}}',
+    carregarOConsumoDoBook: 'No fue posible cargar el consumo del Book: {{detalhe}}',
+    carregarOModeloDaEmpresa: 'No fue posible cargar el modelo de la empresa: {{detalhe}}',
+    carregarOsBancosDaEmpresa: 'No fue posible cargar los bancos de la empresa: {{detalhe}}',
+    carregarOsFechamentosDoMes: 'No fue posible cargar los cierres del mes: {{detalhe}}',
+    carregarOsLancamentosDoControleNovo:
+      'No fue posible cargar los registros del nuevo Control: {{detalhe}}',
+    gravarOConsumoDoBook: 'No fue posible guardar el consumo del Book: {{detalhe}}',
+    liberarAEmpresa: 'No fue posible liberar la empresa: {{detalhe}}',
+    voltarAEmpresaParaOLegado: 'No fue posible volver la empresa al legado: {{detalhe}}',
   },
 };
 

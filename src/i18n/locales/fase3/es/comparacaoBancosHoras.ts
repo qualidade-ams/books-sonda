@@ -10,6 +10,7 @@ const comparacaoBancosHoras = {
     explicada: 'Explicadas',
     divergente: 'Divergentes',
     validada: 'Validadas',
+    liberada: 'Liberadas',
   },
   situacoes: {
     identico: 'Idéntico',
@@ -26,6 +27,13 @@ const comparacaoBancosHoras = {
   validada: 'Validada',
   validadaPor: 'Validada por {{nome}} el {{data}}',
   validadaEm: 'Validada el {{data}}',
+  liberada: 'Liberada',
+  liberadaPor: 'Liberada por {{nome}} el {{data}}',
+  liberadaEm: 'Liberada el {{data}}',
+  liberadaTexto:
+    'Book, imagen del e-mail y Saldo Parcial salen por el modelo nuevo, un bloque por banco, desde {{mes}}.',
+  liberadaTextoSemCorte:
+    'Book, imagen del e-mail y Saldo Parcial salen por el modelo nuevo, un bloque por banco.',
   erroRotina: 'Falla en la última ejecución: {{erro}}',
   buscar: 'Buscar empresa',
   ver: 'Ver la comparación de {{empresa}}',
@@ -85,6 +93,8 @@ const comparacaoBancosHoras = {
     recalculando: 'Recalculando',
     validar: 'Marcar como validada',
     desfazer: 'Deshacer validación',
+    liberar: 'Liberar',
+    voltar: 'Volver al legado',
   },
   colunasMes: {
     mes: 'Mes',
@@ -134,6 +144,32 @@ const comparacaoBancosHoras = {
     titulo: '¿Deshacer la validación de {{empresa}}?',
     motivo: 'Motivo',
     placeholder: 'Ej.: el Book de septiembre fue rectificado',
+  },
+  liberar: {
+    titulo: '¿Liberar {{empresa}}?',
+    descricao:
+      'A partir de {{mes}}, el cliente recibe el Book y el Saldo Parcial por el modelo nuevo.',
+    descricaoSemCorte: 'El cliente pasa a recibir el Book y el Saldo Parcial por el modelo nuevo.',
+    saldoUmBanco: 'El saldo continúa del último Book del legado ({{mes}})',
+    saldoVarios:
+      'Cada banco parte del saldo del modelo nuevo. La diferencia con el saldo del legado ({{mes}}) va al Banco predeterminado',
+    blocoPorBanco:
+      'Book, imagen del e-mail y Saldo Parcial pasan a tener un bloque por banco que el cliente ve',
+    booksEnviados: 'Los Books ya enviados no cambian',
+    controleConsulta: 'El Control actual queda solo para consulta de esta empresa',
+  },
+  voltar: {
+    titulo: '¿Volver {{empresa}} al legado?',
+    descricao:
+      'El cliente vuelve a recibir el Book y el Saldo Parcial del legado a partir del próximo envío.',
+    lancamentos:
+      '{{reajustes}} y {{observacoes}} registrados en el nuevo Control van al Control actual',
+    reajustes: { um: '{{n}} reajuste', varios: '{{n}} reajustes' },
+    observacoes: { um: '{{n}} observación', varios: '{{n}} observaciones' },
+    booksEnviados: 'Los Books ya enviados por el modelo nuevo siguen como fueron enviados',
+    validacaoDesfeita: 'La validación se deshace y la empresa vuelve a la comparación',
+    motivo: 'Motivo',
+    placeholder: 'Ej.: el Book de octubre salió con el banco equivocado',
   },
   exportar: {
     arquivo: 'comparacion-legado-nuevo',

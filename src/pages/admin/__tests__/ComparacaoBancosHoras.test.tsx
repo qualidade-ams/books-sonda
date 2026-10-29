@@ -37,6 +37,7 @@ const empresa = (v: Partial<ComparacaoEmpresa>): ComparacaoEmpresa => ({
   erro: null,
   erroEm: null,
   validacao: null,
+  liberacao: null,
   ...v,
 });
 
@@ -63,12 +64,14 @@ const mes = (m: number, v: Partial<MesComparacao> = {}): MesComparacao => ({
 
 const estado = {
   empresas: [] as ComparacaoEmpresa[],
-  contagem: { conferem: 1, explicada: 0, divergente: 1, validada: 1 },
+  contagem: { conferem: 1, explicada: 0, divergente: 1, validada: 1, liberada: 1 },
   isLoading: false,
   error: null as Error | null,
   recarregar: vi.fn(),
   validar: vi.fn(async () => undefined),
   recalcular: vi.fn(async () => undefined),
+  liberar: vi.fn(async () => undefined),
+  voltar: vi.fn(async () => undefined),
   recalculando: null as string | null,
   isSalvando: false,
 };
@@ -79,11 +82,20 @@ const meses = {
   recarregar: vi.fn(),
 };
 const mesesPedidos: (string | null)[] = [];
+const lancamentosPedidos: (string | null)[] = [];
 vi.mock('@/hooks/useComparacao', () => ({
   useComparacao: () => estado,
   useMesesComparacao: (id: string | null) => {
     mesesPedidos.push(id);
     return meses;
+  },
+  useLancamentosParaLegado: (id: string | null) => {
+    lancamentosPedidos.push(id);
+    return {
+      lancamentos: id ? { reajustes: 2, observacoes: 1 } : null,
+      isLoading: false,
+      error: null,
+    };
   },
 }));
 let permissoes: string[] = [];
@@ -114,9 +126,19 @@ const ZETA = empresa({
   erroEm: '2026-10-28T11:00:00Z',
 });
 
+const OMEGA = empresa({
+  empresaId: 'e5',
+  empresa: 'EMPRESA OMEGA',
+  validacao: { por: 'Usuário Teste', em: '2026-10-27T15:00:00Z', situacao: 'identico' },
+  liberacao: { por: 'Usuário Dois', em: '2026-10-29T12:00:00Z', desde: { mes: 10, ano: 2026 } },
+});
+
 beforeEach(() => {
   permissoes = ['bancos_horas_comparacao:edit'];
-  estado.empresas = [ALFA, BETA, GAMA, ZETA];
+  estado.empresas = [ALFA, BETA, GAMA, ZETA, OMEGA];
+  estado.liberar.mockClear();
+  estado.voltar.mockClear();
+  lancamentosPedidos.length = 0;
   estado.error = null;
   estado.isLoading = false;
   estado.recalculando = null;
@@ -175,6 +197,20 @@ describe('ComparacaoBancosHoras: lista', () => {
     expect(screen.getByText('comparacaoBancosHoras.vazio.filtro')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'fase3Comum.limparFiltros' })[0]);
     expect(tabela().getByText('EMPRESA ALFA')).toBeInTheDocument();
+  });
+
+  it('liberada: selo, quem liberou no lugar de quem validou, e o indicador Liberadas', () => {
+    renderizar();
+    expect(tabela().getByText('comparacaoBancosHoras.liberada')).toBeInTheDocument();
+    expect(
+      tabela().getByText(/comparacaoBancosHoras.liberadaPor .*Usuário Dois/)
+    ).toBeInTheDocument();
+    // Só a BETA mostra quem validou
+    expect(tabela().getAllByText(/comparacaoBancosHoras.validadaPor/)).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /comparacaoBancosHoras.grupos.liberada/ }));
+    expect(tabela().getByText('EMPRESA OMEGA')).toBeInTheDocument();
+    expect(tabela().queryByText('EMPRESA BETA')).not.toBeInTheDocument();
   });
 
   it('sem empresas: explica de onde vêm os dados', () => {
@@ -322,6 +358,65 @@ describe('ComparacaoBancosHoras: detalhe', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.validar' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('sem validação não há Liberar', () => {
+    renderizar();
+    abrir('EMPRESA ALFA');
+    expect(
+      screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('validada: Liberar pede confirmação com o mês de corte e grava', () => {
+    meses.meses = [mes(8), mes(9)];
+    renderizar();
+    abrir('EMPRESA BETA');
+    fireEvent.click(screen.getByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' }));
+    const dialogo = within(screen.getByRole('alertdialog'));
+    // Corte: o mês seguinte ao último comparado (Set/2026)
+    expect(
+      dialogo.getByText(/comparacaoBancosHoras.liberar.descricao .*"mes":"out/i)
+    ).toBeInTheDocument();
+    expect(dialogo.getByText(/comparacaoBancosHoras.liberar.saldoUmBanco/)).toBeInTheDocument();
+    fireEvent.click(dialogo.getByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' }));
+    expect(estado.liberar).toHaveBeenCalledWith('e2');
+  });
+
+  it('liberada: só Voltar para legado, com o que vai para o legado e o motivo obrigatório', () => {
+    renderizar();
+    abrir('EMPRESA OMEGA');
+    expect(screen.getByText(/comparacaoBancosHoras.liberadaTexto/)).toBeInTheDocument();
+    for (const acao of ['recalcular', 'validar', 'desfazer', 'liberar'])
+      expect(
+        screen.queryByRole('button', { name: `comparacaoBancosHoras.acoes.${acao}` })
+      ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'comparacaoBancosHoras.acoes.voltar' }));
+    expect(lancamentosPedidos).toContain('e5');
+    const dialogo = within(screen.getByRole('alertdialog'));
+    expect(dialogo.getByText(/comparacaoBancosHoras.voltar.lancamentos/)).toBeInTheDocument();
+    const confirmar = dialogo.getByRole('button', { name: 'comparacaoBancosHoras.acoes.voltar' });
+    expect(confirmar).toBeDisabled();
+    fireEvent.change(dialogo.getByLabelText(/comparacaoBancosHoras.voltar.motivo/), {
+      target: { value: 'Banco errado' },
+    });
+    fireEvent.click(confirmar);
+    expect(estado.voltar).toHaveBeenCalledWith({ empresaId: 'e5', motivo: 'Banco errado' });
+  });
+
+  it('sem permissão de edição: sem Liberar nem Voltar para legado', () => {
+    permissoes = ['bancos_horas_comparacao:view'];
+    renderizar();
+    abrir('EMPRESA OMEGA');
+    expect(
+      screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.voltar' })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /comparacaoBancosHoras.titulo/ }));
+    abrir('EMPRESA BETA');
+    expect(
+      screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' })
     ).not.toBeInTheDocument();
   });
 });

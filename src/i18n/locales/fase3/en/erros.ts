@@ -128,6 +128,19 @@ const erros = {
     // Legacy x New Comparison (Phase 4)
     carregarAComparacao: 'Could not load the comparison: {{detalhe}}',
     validarAComparacao: 'Could not validate the comparison: {{detalhe}}',
+    // Release per company (Phase 5)
+    carregarATransicaoDaEmpresa: 'Could not load the company transition: {{detalhe}}',
+    carregarAsEmpresasDoBook: 'Could not load the Book companies: {{detalhe}}',
+    carregarOBookDoMes: 'Could not load the month Book: {{detalhe}}',
+    carregarOConsumoDoBook: 'Could not load the Book usage: {{detalhe}}',
+    carregarOModeloDaEmpresa: 'Could not load the company model: {{detalhe}}',
+    carregarOsBancosDaEmpresa: 'Could not load the company banks: {{detalhe}}',
+    carregarOsFechamentosDoMes: 'Could not load the month closings: {{detalhe}}',
+    carregarOsLancamentosDoControleNovo:
+      'Could not load the entries of the new Control: {{detalhe}}',
+    gravarOConsumoDoBook: 'Could not save the Book usage: {{detalhe}}',
+    liberarAEmpresa: 'Could not release the company: {{detalhe}}',
+    voltarAEmpresaParaOLegado: 'Could not return the company to the legacy: {{detalhe}}',
   },
 };
 

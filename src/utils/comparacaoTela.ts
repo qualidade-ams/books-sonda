@@ -29,8 +29,9 @@ export const TOM_SITUACAO: Record<
   divergente: 'danger',
 };
 
-/** Grupo dos indicadores: validada vale mais que a situação; sem resultado, nenhum */
+/** Grupo dos indicadores: liberada, depois validada, depois a situação; sem resultado, nenhum */
 export function grupoDaComparacao(e: ComparacaoEmpresa): GrupoComparacao | null {
+  if (e.liberacao) return 'liberada';
   if (!e.situacao) return null;
   if (e.validacao) return 'validada';
   if (e.situacao === 'identico' || e.situacao === 'soma_confere') return 'conferem';

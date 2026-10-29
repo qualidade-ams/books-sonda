@@ -115,6 +115,10 @@ const avisos = {
     recalculandoDescricao: 'The result shows up here in a few minutes.',
     recalculada: 'Comparison updated',
     erroRecalcular: 'Could not recalculate the comparison',
+    liberada: 'Company released',
+    erroLiberar: 'Could not release the company',
+    voltouParaLegado: 'Company returned to the legacy',
+    erroVoltar: 'Could not return the company to the legacy',
   },
 };
 
