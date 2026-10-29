@@ -44,17 +44,23 @@ export interface ConsumoDoBanco {
 export type SituacaoMes = 'igual' | 'explicada' | 'divergente';
 export type SituacaoComparacao = 'identico' | 'soma_confere' | 'explicada' | 'divergente';
 
-export type MotivoDiferenca =
-  | 'acima_24h'
-  | 'fuso'
-  | 'depois_do_fechamento'
-  | 'removido_do_aranda'
-  | 'organizacao_so_no_novo'
-  | 'organizacao_curinga'
-  | 'organizacao_fora_do_cadastro'
-  | 'codigo_sem_regra'
-  | 'fora_do_escopo'
-  | 'sem_motivo';
+export const MOTIVOS_DIFERENCA = [
+  'acima_24h',
+  'fuso',
+  'depois_do_fechamento',
+  'removido_do_aranda',
+  'organizacao_so_no_novo',
+  'organizacao_curinga',
+  'codigo_trocado',
+  'regra_do_legado',
+  'lancado_depois_do_mes',
+  'organizacao_fora_do_cadastro',
+  'codigo_sem_regra',
+  'fora_do_escopo',
+  'sem_motivo',
+] as const;
+
+export type MotivoDiferenca = (typeof MOTIVOS_DIFERENCA)[number];
 
 const MOTIVOS_EXPLICADOS = new Set<MotivoDiferenca>([
   'acima_24h',
@@ -63,7 +69,51 @@ const MOTIVOS_EXPLICADOS = new Set<MotivoDiferenca>([
   'removido_do_aranda',
   'organizacao_so_no_novo',
   'organizacao_curinga',
+  'codigo_trocado',
+  'regra_do_legado',
+  'lancado_depois_do_mes',
 ]);
+
+/**
+ * Mudanças na lista de códigos de resolução do legado (bancoHorasIntegracaoService e
+ * bancoHorasQuarentenaService) depois dos primeiros fechamentos: o mês fechado antes
+ * da data seguiu a lista antiga. Datas dos commits que mudaram a lista.
+ */
+export const MUDANCAS_CODIGOS_LEGADO: {
+  em: string;
+  passouAContar: string[];
+  deixouDeContar: string[];
+}[] = [
+  {
+    em: '2026-06-21',
+    passouAContar: [
+      'Nota Publicada (Banco=S| SLA=N)',
+      'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+    ],
+    deixouDeContar: [],
+  },
+  { em: '2026-06-29', passouAContar: ['Alocação T&M'], deixouDeContar: [] },
+  {
+    em: '2026-07-02',
+    passouAContar: ['Monitoramento DBA (Banco=S |SLA=N)'],
+    deixouDeContar: ['Monitoramento DBA (Banco=S |SLA=S)'],
+  },
+  {
+    em: '2026-07-10',
+    passouAContar: ['Parametrização / Funcionalidade (Banco=S| SLA=N)'],
+    deixouDeContar: ['Parametrização / Funcionalidade (Banco=S |SLA=S)'],
+  },
+  {
+    em: '2026-08-01',
+    passouAContar: ['Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocação (Banco=S| SLA=N)'],
+    deixouDeContar: [],
+  },
+  {
+    em: '2026-09-22',
+    passouAContar: ['Alocação - T&M Banco de Horas (Banco=S |SLA=N)'],
+    deixouDeContar: ['Alocação - T&M (Banco=S |SLA=N)'],
+  },
+];
 
 /** Um apontamento ou ticket que contou num dos lados */
 export interface ItemLado {
@@ -84,7 +134,12 @@ export interface DadosItem {
   grupo: string | null;
   organizacao: string | null;
   codigoResolucao: string | null;
+  /** Quando chegou ao Supabase ou mudou no Aranda, o mais recente */
   sincronizadoEm: string | null;
+  /** Quando o apontamento foi lançado no Aranda (data_sistema); null em ticket */
+  lancadoEm: string | null;
+  /** Última troca do código de resolução do chamado no Aranda */
+  codigoTrocadoEm: string | null;
   /** Duração que o legado lê (tempo_gasto_horas, sem os dias inteiros): monta o lado legado */
   minutosTexto: number;
 }
@@ -261,13 +316,34 @@ function casaComoIlike(texto: string, padrao: string): boolean {
   return new RegExp(`^${regex}$`, 'i').test(texto.trim());
 }
 
+const depoisDoFechamento = (data: string | null, ctx: ContextoItens) =>
+  !!ctx.fechadoEm && !!data && data > ctx.fechadoEm;
+
+/** O legado mudou a contagem do código depois de fechar o mês */
+const regraDoLegadoMudou = (
+  codigo: string | null,
+  lista: 'passouAContar' | 'deixouDeContar',
+  ctx: ContextoItens
+) =>
+  !!codigo &&
+  MUDANCAS_CODIGOS_LEGADO.some((m) => m[lista].includes(codigo) && depoisDoFechamento(m.em, ctx));
+
+const indiceMes = (m: MesAno) => m.ano * 12 + m.mes;
+
+function lancadoDepoisDoMes(d: DadosItem): boolean {
+  if (!d.data || !d.lancadoEm) return false;
+  return indiceMes(mesDaData(d.lancadoEm, FUSO)) > indiceMes(mesDaData(d.data, FUSO));
+}
+
 function motivoSoNoNovo(d: DadosItem, ctx: ContextoItens): MotivoDiferenca {
   if (d.data) {
     if (mesmoMes(mesDaData(d.data, FUSO), ctx.mes) && !mesmoMes(mesDaData(d.data, 'UTC'), ctx.mes))
       return 'fuso';
   }
-  if (ctx.fechadoEm && d.sincronizadoEm && d.sincronizadoEm > ctx.fechadoEm)
-    return 'depois_do_fechamento';
+  if (depoisDoFechamento(d.sincronizadoEm, ctx)) return 'depois_do_fechamento';
+  if (depoisDoFechamento(d.codigoTrocadoEm, ctx)) return 'codigo_trocado';
+  if (regraDoLegadoMudou(d.codigoResolucao, 'passouAContar', ctx)) return 'regra_do_legado';
+  if (lancadoDepoisDoMes(d)) return 'lancado_depois_do_mes';
   const organizacao = normalizar(d.organizacao);
   if (
     organizacao &&
@@ -293,7 +369,12 @@ function motivoSoNoLegado(
     const curinga = /[_%]/.test(ctx.nomeLegado) && casaComoIlike(organizacao, ctx.nomeLegado);
     return curinga ? 'organizacao_curinga' : 'organizacao_fora_do_cadastro';
   }
-  if (!ctx.codigoConta(d.codigoResolucao, d.fonte)) return 'codigo_sem_regra';
+  if (depoisDoFechamento(d.codigoTrocadoEm, ctx)) return 'codigo_trocado';
+  if (!ctx.codigoConta(d.codigoResolucao, d.fonte)) {
+    return regraDoLegadoMudou(d.codigoResolucao, 'deixouDeContar', ctx)
+      ? 'regra_do_legado'
+      : 'codigo_sem_regra';
+  }
   if (ctx.semBanco.has(chave)) return 'fora_do_escopo';
   return 'sem_motivo';
 }
@@ -370,6 +451,8 @@ export interface EntradaCompararMes {
   /** Saldo, repasse e excedente só se comparam com 1 banco */
   umBanco: boolean;
   itens: DiferencaItem[];
+  /** Reajustes do novo lançados depois do fechamento do legado (entradas − saídas) */
+  reajustesDepois?: Record<Unidade, number>;
   /** Situação da diferença de saldo que vem de um mês anterior (null: nenhuma) */
   herdada: SituacaoMes | null;
 }
@@ -411,6 +494,8 @@ export function compararMes(e: EntradaCompararMes): ResultadoCompararMes {
       if (deSaldo) saldoDifere = true;
       else if (medida === 'consumo' && consumoExplicado(unidade, novo - legado, e.itens))
         base = pior(base, 'explicada');
+      else if (medida === 'reajustes' && novo - legado === (e.reajustesDepois?.[unidade] ?? 0))
+        base = pior(base, 'explicada');
       else base = 'divergente';
     }
   }
@@ -431,6 +516,7 @@ export interface EntradaMesComparacao {
   unidades: Unidade[];
   bancos: number;
   itens: DiferencaItem[];
+  reajustesDepois?: Record<Unidade, number>;
 }
 
 export interface MesComparado extends EntradaMesComparacao, ResultadoCompararMes {

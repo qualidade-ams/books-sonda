@@ -39,9 +39,22 @@ async function emLotes(
 }
 
 const COLUNAS_APONTAMENTO =
-  'id, id_externo, nro_chamado, data_atividade, caso_grupo, org_us_final, cod_resolucao, synced_at, tempo_gasto_horas';
+  'id, id_externo, nro_chamado, data_atividade, data_sistema, caso_grupo, org_us_final, cod_resolucao, synced_at, created_at, data_ult_modificacao_geral, tempo_gasto_horas';
 const COLUNAS_TICKET =
-  'id, nro_solicitacao, data_fechamento, nome_grupo, organizacao, cod_resolucao, synced_at';
+  'id, nro_solicitacao, data_fechamento, nome_grupo, organizacao, cod_resolucao, synced_at, created_at';
+
+/** A data mais recente; synced_at vem nulo nos apontamentos, então entram as outras */
+function maisRecente(...datas: (string | null | undefined)[]): string | null {
+  let escolhida: string | null = null;
+  for (const d of datas) {
+    if (d && (!escolhida || Date.parse(d) > Date.parse(escolhida))) escolhida = d;
+  }
+  return escolhida;
+}
+
+/** O Aranda grava a troca de código no horário de Brasília, sem fuso (UTC−3 fixo) */
+const TRES_HORAS = 3 * 60 * 60 * 1000;
+const trocaEmUtc = (created: string) => new Date(Date.parse(created) + TRES_HORAS).toISOString();
 
 const doApontamento = (a: Linha): ItemDoLegado => ({
   chave: a.id,
@@ -52,7 +65,9 @@ const doApontamento = (a: Linha): ItemDoLegado => ({
   grupo: a.caso_grupo ?? null,
   organizacao: a.org_us_final ?? null,
   codigoResolucao: a.cod_resolucao ?? null,
-  sincronizadoEm: a.synced_at ?? null,
+  sincronizadoEm: maisRecente(a.synced_at, a.created_at, a.data_ult_modificacao_geral),
+  lancadoEm: a.data_sistema ?? null,
+  codigoTrocadoEm: null,
   // O legado lê o texto, que perde os dias inteiros acima de 24 h (A3)
   minutosTexto: converterHorasParaMinutos(a.tempo_gasto_horas ?? ''),
 });
@@ -66,7 +81,9 @@ const doTicket = (t: Linha): ItemDoLegado => ({
   grupo: t.nome_grupo ?? null,
   organizacao: t.organizacao ?? null,
   codigoResolucao: t.cod_resolucao ?? null,
-  sincronizadoEm: t.synced_at ?? null,
+  sincronizadoEm: maisRecente(t.synced_at, t.created_at),
+  lancadoEm: null,
+  codigoTrocadoEm: null,
   minutosTexto: 0,
 });
 
@@ -79,6 +96,8 @@ const semIdLegado = (d: ItemDoLegado): DadosItem => ({
   organizacao: d.organizacao,
   codigoResolucao: d.codigoResolucao,
   sincronizadoEm: d.sincronizadoEm,
+  lancadoEm: d.lancadoEm,
+  codigoTrocadoEm: d.codigoTrocadoEm,
   minutosTexto: d.minutosTexto,
 });
 
@@ -231,6 +250,61 @@ export function criarRepositorioSombra(cliente: ClienteSupabase): RepositorioSom
         ),
       ]);
       return [...aps.map(doApontamento), ...tks.map(doTicket)].map(semIdLegado);
+    },
+
+    async trocasDeCodigo(chamados) {
+      // A troca guarda só o número do chamado (sem "RF-", "IM-"...)
+      const numero = new Map(chamados.map((c) => [c, c.replace(/\D/g, '')]));
+      const numeros = [...new Set([...numero.values()].filter(Boolean))];
+      const linhas = await emLotes(
+        numeros,
+        (lote) =>
+          cliente
+            .from('codigo_resolucao_modificacoes_aranda')
+            .select('item_id, created')
+            .in('item_id', lote),
+        'trocas de código de resolução'
+      );
+      const ultima = new Map<string, string>();
+      for (const l of linhas) {
+        const atual = ultima.get(l.item_id);
+        if (!atual || Date.parse(l.created) > Date.parse(atual)) ultima.set(l.item_id, l.created);
+      }
+      const trocas = new Map<string, string>();
+      for (const [chamado, n] of numero) {
+        const created = ultima.get(n);
+        if (created) trocas.set(chamado, trocaEmUtc(created));
+      }
+      return trocas;
+    },
+
+    async reajustesDepoisDoFechamento(empresaId, mes, fechadoEm) {
+      const total = { horas: 0, tickets: 0 };
+      const bancos = await consultar(
+        cliente.from('bancos_horas').select('id').eq('empresa_id', empresaId),
+        'bancos de horas'
+      );
+      if (bancos.length === 0) return total;
+      const reajustes = await consultar(
+        cliente
+          .from('bancos_horas_reajustes')
+          .select('tipo, minutos, tickets')
+          .in(
+            'banco_id',
+            bancos.map((b) => b.id)
+          )
+          .eq('mes', mes.mes)
+          .eq('ano', mes.ano)
+          .eq('ativo', true)
+          .gt('created_at', fechadoEm),
+        'reajustes lançados depois do fechamento'
+      );
+      for (const r of reajustes) {
+        const sinal = r.tipo === 'saida' ? -1 : 1;
+        total.horas += sinal * (r.minutos ?? 0);
+        total.tickets += sinal * (r.tickets ?? 0);
+      }
+      return total;
     },
 
     async gravar(payload) {

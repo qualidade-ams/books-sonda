@@ -8,7 +8,7 @@ import {
   type RepositorioSombra,
 } from '../sombra';
 import type { MesAno } from '../calculo';
-import type { BancoCadastro, LinhaConsumo } from '../motorBancosHoras';
+import type { BancoCadastro, LinhaConsumo, ReajusteBanco } from '../motorBancosHoras';
 import type { ItemConsumo, PayloadFechamento, RepositorioFechamento } from '../fechamento';
 import type { DadosItem } from '../comparacao';
 
@@ -77,6 +77,7 @@ interface CenarioMotor {
   bancos?: BancoCadastro[];
   /** mês → itens que contam (o consumo somado sai deles) */
   itens?: Record<string, ItemConsumo[]>;
+  reajustes?: ReajusteBanco[];
 }
 
 function motor(c: CenarioMotor = {}) {
@@ -103,7 +104,7 @@ function motor(c: CenarioMotor = {}) {
     }),
     consumoItens: vi.fn(async (_e: string, m: MesAno) => itensDoMes(m)),
     requerimentos: vi.fn(async () => []),
-    reajustes: vi.fn(async () => []),
+    reajustes: vi.fn(async () => c.reajustes ?? []),
     fechamentos: vi.fn(async () => []),
     taxas: vi.fn(async () => []),
     gravarFechamento: vi.fn(async (p: PayloadFechamento) => {
@@ -145,6 +146,8 @@ const dados = (chaveItem: string, v: Partial<DadosItem> = {}): DadosItem => ({
   organizacao: 'EMPRESA ALFA',
   codigoResolucao: 'RESOLVIDO',
   sincronizadoEm: '2026-01-15T14:00:00Z',
+  lancadoEm: '2026-01-15T14:00:00Z',
+  codigoTrocadoEm: null,
   minutosTexto: 0,
   ...v,
 });
@@ -155,6 +158,9 @@ interface CenarioSombra {
   itensDoLegado?: ItemDoLegado[];
   dadosNovos?: DadosItem[];
   empresas?: { id: string; nomeLegado: string }[];
+  /** chamado → última troca do código de resolução */
+  trocas?: Record<string, string>;
+  reajustesDepois?: { horas: number; tickets: number };
 }
 
 function sombra(c: CenarioSombra = {}) {
@@ -169,6 +175,8 @@ function sombra(c: CenarioSombra = {}) {
     codigos: vi.fn(async () => [{ codigo: 'RESOLVIDO', contaHoras: true, contaTickets: true }]),
     itensDoLegado: vi.fn(async () => c.itensDoLegado ?? []),
     dadosDosItens: vi.fn(async () => c.dadosNovos ?? []),
+    trocasDeCodigo: vi.fn(async () => new Map(Object.entries(c.trocas ?? {}))),
+    reajustesDepoisDoFechamento: vi.fn(async () => c.reajustesDepois ?? { horas: 0, tickets: 0 }),
     gravar: vi.fn(async (p: PayloadComparacao) => {
       gravados.push(p);
     }),
@@ -270,6 +278,57 @@ describe('processarEmpresa', () => {
     expect(mes.itens_total).toBe(2);
     // Os 60 min a mais são do item lançado depois do fechamento; o saldo herda a explicação
     expect(r.situacao).toBe('explicada');
+  });
+
+  it('busca a troca de código dos chamados que estão só de um lado', async () => {
+    const m = motor({ itens: { '1/2026': [item('u1', 600), item('u2', 60)] } });
+    const s = sombra({
+      legado: [fechamentoLegado(JAN, snapshot(600, 1800, 900), { apontamentosIds: ['EXT1'] })],
+      itensDoLegado: [{ ...dados('u1', { minutosTexto: 600 }), idLegado: 'EXT1' }],
+      dadosNovos: [dados('u2')],
+      trocas: { 'CH-u2': '2026-02-20T10:00:00Z' },
+    });
+    const r = await processarEmpresa({ motor: m.repo, sombra: s.repo }, EMPRESA, {
+      hoje: HOJE,
+      fecharDesde: null,
+    });
+
+    expect(s.repo.trocasDeCodigo).toHaveBeenCalledWith(['CH-u2']);
+    const [mes] = s.gravados[0].meses;
+    expect(mes.itens.map((i) => [i.chave, i.motivo])).toEqual([['u2', 'codigo_trocado']]);
+    expect(r.situacao).toBe('explicada');
+  });
+
+  it('reajuste a mais no novo, lançado depois do fechamento do legado: Explicada', async () => {
+    const m = motor({
+      itens: { '1/2026': [item('u1', 600)] },
+      reajustes: [{ bancoId: 'b1', mes: 1, ano: 2026, tipo: 'entrada', minutos: 540, tickets: 0 }],
+    });
+    const s = sombra({
+      legado: [fechamentoLegado(JAN, snapshot(600, 1800, 900))],
+      reajustesDepois: { horas: 540, tickets: 0 },
+    });
+    const r = await processarEmpresa({ motor: m.repo, sombra: s.repo }, EMPRESA, {
+      hoje: HOJE,
+      fecharDesde: null,
+    });
+
+    expect(s.repo.reajustesDepoisDoFechamento).toHaveBeenCalledWith(
+      'e1',
+      JAN,
+      '2026-02-05T12:00:00Z'
+    );
+    expect(r.situacao).toBe('explicada');
+  });
+
+  it('reajustes iguais: não busca os lançados depois do fechamento', async () => {
+    const m = motor({ itens: { '1/2026': [item('u1', 600)] } });
+    const s = sombra({ legado: [fechamentoLegado(JAN, snapshot(600, 1800, 900))] });
+    await processarEmpresa({ motor: m.repo, sombra: s.repo }, EMPRESA, {
+      hoje: HOJE,
+      fecharDesde: null,
+    });
+    expect(s.repo.reajustesDepoisDoFechamento).not.toHaveBeenCalled();
   });
 
   it('guarda no máximo 500 itens por mês, com o total', async () => {

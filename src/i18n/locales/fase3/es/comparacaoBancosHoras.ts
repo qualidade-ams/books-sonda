@@ -110,10 +110,14 @@ const comparacaoBancosHoras = {
   motivos: {
     acima_24h: 'Registro de más de 24 h: el legado pierde los días enteros',
     fuso: 'Huso de Brasilia: el legado cuenta el mes en UTC',
-    depois_do_fechamento: 'Registrado en Aranda después del cierre del legado',
+    depois_do_fechamento: 'Registrado o modificado en Aranda después del cierre del legado',
     removido_do_aranda: 'Salió de Aranda después del cierre del legado',
     organizacao_so_no_novo: 'Organización vinculada solo en el registro nuevo',
     organizacao_curinga: 'El legado encontró la organización por comodín (_ o %)',
+    codigo_trocado: 'Código de resolución cambiado en Aranda después del cierre del legado',
+    regra_do_legado: 'El legado cambió los códigos que cuentan después de cerrar el mes',
+    lancado_depois_do_mes:
+      'Registrado en Aranda en el mes siguiente al de la actividad: el legado lo trata como retroactivo',
     organizacao_fora_do_cadastro: 'Organización que falta en el registro nuevo de la empresa',
     codigo_sem_regra: 'Código de resolución que no cuenta en las Reglas de conteo',
     fora_do_escopo: 'Ningún banco de la empresa recibe este grupo',

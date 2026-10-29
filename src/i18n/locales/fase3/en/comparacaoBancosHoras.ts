@@ -108,10 +108,14 @@ const comparacaoBancosHoras = {
   motivos: {
     acima_24h: 'Time entry over 24 h: the legacy loses the whole days',
     fuso: 'Brasília time zone: the legacy counts the month in UTC',
-    depois_do_fechamento: 'Entered in Aranda after the legacy closing',
+    depois_do_fechamento: 'Entered or changed in Aranda after the legacy closing',
     removido_do_aranda: 'Removed from Aranda after the legacy closing',
     organizacao_so_no_novo: 'Organization linked only in the new register',
     organizacao_curinga: 'The legacy matched the organization by wildcard (_ or %)',
+    codigo_trocado: 'Resolution code changed in Aranda after the legacy closing',
+    regra_do_legado: 'The legacy changed the codes that count after closing the month',
+    lancado_depois_do_mes:
+      'Entered in Aranda in the month after the activity: the legacy treats it as retroactive',
     organizacao_fora_do_cadastro: 'Organization missing in the new company register',
     codigo_sem_regra: 'Resolution code that does not count in the Counting rules',
     fora_do_escopo: 'No bank of the company receives this group',

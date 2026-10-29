@@ -93,8 +93,106 @@ function cenario() {
           org_us_final: 'EMPRESA ALFA LTDA',
           cod_resolucao: 'RESOLVIDO',
           synced_at: '2026-01-15T14:00:00+00:00',
+          created_at: '2026-01-16T09:00:00+00:00',
+          data_ult_modificacao_geral: '2026-01-15T13:10:00+00:00',
+          data_sistema: '2026-02-02T12:00:00+00:00',
           tempo_gasto_horas: '01:30',
           tempo_gasto_minutos: 1530,
+        },
+        {
+          id: 'u2',
+          id_externo: 'EXT2',
+          nro_chamado: 'CH-2',
+          data_atividade: '2026-01-20T13:00:00+00:00',
+          caso_grupo: 'AMS APL - COMEX',
+          org_us_final: 'EMPRESA ALFA LTDA',
+          cod_resolucao: 'RESOLVIDO',
+          synced_at: null,
+          created_at: '2026-01-30T20:11:36+00:00',
+          data_ult_modificacao_geral: '2026-03-05T15:53:30+00:00',
+          data_sistema: '2026-01-20T13:00:00+00:00',
+          tempo_gasto_horas: '04:00',
+          tempo_gasto_minutos: 240,
+        },
+      ],
+      codigo_resolucao_modificacoes_aranda: [
+        { item_id: '8207159', created: '2026-03-01T10:00:00+00:00' },
+        { item_id: '8207159', created: '2026-05-01T10:00:00+00:00' },
+        { item_id: '8648652', created: '2026-07-13T09:00:00+00:00' },
+        { item_id: '1111111', created: '2026-07-13T09:00:00+00:00' },
+      ],
+      bancos_horas_reajustes: [
+        // Jan, lançados depois do fechamento (05/02 12:00)
+        {
+          banco_id: 'b1',
+          mes: 1,
+          ano: 2026,
+          tipo: 'entrada',
+          minutos: 540,
+          tickets: 0,
+          ativo: true,
+          created_at: '2026-02-10T12:00:00+00:00',
+        },
+        {
+          banco_id: 'b2',
+          mes: 1,
+          ano: 2026,
+          tipo: 'saida',
+          minutos: 60,
+          tickets: 0,
+          ativo: true,
+          created_at: '2026-02-06T08:00:00+00:00',
+        },
+        {
+          banco_id: 'b1',
+          mes: 1,
+          ano: 2026,
+          tipo: 'entrada',
+          minutos: 0,
+          tickets: 2,
+          ativo: true,
+          created_at: '2026-03-01T00:00:00+00:00',
+        },
+        // Fora: antes do fechamento, inativo, outro mês, outra empresa
+        {
+          banco_id: 'b1',
+          mes: 1,
+          ano: 2026,
+          tipo: 'entrada',
+          minutos: 30,
+          tickets: 0,
+          ativo: true,
+          created_at: '2026-01-20T00:00:00+00:00',
+        },
+        {
+          banco_id: 'b1',
+          mes: 1,
+          ano: 2026,
+          tipo: 'entrada',
+          minutos: 90,
+          tickets: 0,
+          ativo: false,
+          created_at: '2026-02-10T00:00:00+00:00',
+        },
+        {
+          banco_id: 'b1',
+          mes: 2,
+          ano: 2026,
+          tipo: 'entrada',
+          minutos: 90,
+          tickets: 0,
+          ativo: true,
+          created_at: '2026-02-10T00:00:00+00:00',
+        },
+        {
+          banco_id: 'b9',
+          mes: 1,
+          ano: 2026,
+          tipo: 'entrada',
+          minutos: 90,
+          tickets: 0,
+          ativo: true,
+          created_at: '2026-02-10T00:00:00+00:00',
         },
       ],
       apontamentos_tickets_aranda: [
@@ -173,7 +271,10 @@ describe('criarRepositorioSombra', () => {
         grupo: 'AMS APL - COMEX',
         organizacao: 'EMPRESA ALFA LTDA',
         codigoResolucao: 'RESOLVIDO',
-        sincronizadoEm: '2026-01-15T14:00:00+00:00',
+        // O mais recente entre sincronização, chegada ao Supabase e alteração no Aranda
+        sincronizadoEm: '2026-01-16T09:00:00+00:00',
+        lancadoEm: '2026-02-02T12:00:00+00:00',
+        codigoTrocadoEm: null,
         minutosTexto: 90,
       },
       {
@@ -186,9 +287,34 @@ describe('criarRepositorioSombra', () => {
         organizacao: 'EMPRESA ALFA LTDA',
         codigoResolucao: 'RESOLVIDO',
         sincronizadoEm: '2026-01-20T11:00:00+00:00',
+        lancadoEm: null,
+        codigoTrocadoEm: null,
         minutosTexto: 0,
       },
     ]);
+  });
+
+  it('sem synced_at: usa a chegada ao Supabase ou a alteração no Aranda, a mais recente', async () => {
+    const repo = criarRepositorioSombra(cenario());
+    const [d] = await repo.dadosDosItens({ apontamentos: ['u2'], tickets: [] });
+    expect(d.sincronizadoEm).toBe('2026-03-05T15:53:30+00:00');
+  });
+
+  it('última troca de código de cada chamado, no horário de Brasília convertido para UTC', async () => {
+    const repo = criarRepositorioSombra(cenario());
+    const trocas = await repo.trocasDeCodigo(['8207159', 'RF-8648652', 'SEM-NUMERO']);
+    expect(Object.fromEntries(trocas)).toEqual({
+      '8207159': '2026-05-01T13:00:00.000Z',
+      'RF-8648652': '2026-07-13T12:00:00.000Z',
+    });
+  });
+
+  it('reajustes ativos do mês lançados depois do fechamento, entradas − saídas', async () => {
+    const repo = criarRepositorioSombra(cenario());
+    expect(await repo.reajustesDepoisDoFechamento('e1', JAN, '2026-02-05T12:00:00+00:00')).toEqual({
+      horas: 480,
+      tickets: 2,
+    });
   });
 
   it('sem ids, não consulta', async () => {

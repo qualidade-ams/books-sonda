@@ -731,8 +731,42 @@ var MOTIVOS_EXPLICADOS = /* @__PURE__ */ new Set([
   "depois_do_fechamento",
   "removido_do_aranda",
   "organizacao_so_no_novo",
-  "organizacao_curinga"
+  "organizacao_curinga",
+  "codigo_trocado",
+  "regra_do_legado",
+  "lancado_depois_do_mes"
 ]);
+var MUDANCAS_CODIGOS_LEGADO = [
+  {
+    em: "2026-06-21",
+    passouAContar: [
+      "Nota Publicada (Banco=S| SLA=N)",
+      "Parametriza\xE7\xE3o / Funcionalidade (Banco=S |SLA=S)"
+    ],
+    deixouDeContar: []
+  },
+  { em: "2026-06-29", passouAContar: ["Aloca\xE7\xE3o T&M"], deixouDeContar: [] },
+  {
+    em: "2026-07-02",
+    passouAContar: ["Monitoramento DBA (Banco=S |SLA=N)"],
+    deixouDeContar: ["Monitoramento DBA (Banco=S |SLA=S)"]
+  },
+  {
+    em: "2026-07-10",
+    passouAContar: ["Parametriza\xE7\xE3o / Funcionalidade (Banco=S| SLA=N)"],
+    deixouDeContar: ["Parametriza\xE7\xE3o / Funcionalidade (Banco=S |SLA=S)"]
+  },
+  {
+    em: "2026-08-01",
+    passouAContar: ["Aloca\xE7\xE3o", "Aloca\xE7\xE3o (Banco=S |SLA=N)", "Aloca\xE7\xE3o (Banco=S| SLA=N)"],
+    deixouDeContar: []
+  },
+  {
+    em: "2026-09-22",
+    passouAContar: ["Aloca\xE7\xE3o - T&M Banco de Horas (Banco=S |SLA=N)"],
+    deixouDeContar: ["Aloca\xE7\xE3o - T&M (Banco=S |SLA=N)"]
+  }
+];
 var INTERVALO = /^(?:([+-]?\d+)\s+days?)?\s*(?:([+-])?(\d+):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/;
 function minutosDoIntervalo(texto) {
   const t = (texto ?? "").trim();
@@ -824,13 +858,22 @@ function casaComoIlike(texto, padrao) {
   const regex = padrao.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".");
   return new RegExp(`^${regex}$`, "i").test(texto.trim());
 }
+var depoisDoFechamento = (data, ctx) => !!ctx.fechadoEm && !!data && data > ctx.fechadoEm;
+var regraDoLegadoMudou = (codigo, lista, ctx) => !!codigo && MUDANCAS_CODIGOS_LEGADO.some((m) => m[lista].includes(codigo) && depoisDoFechamento(m.em, ctx));
+var indiceMes = (m) => m.ano * 12 + m.mes;
+function lancadoDepoisDoMes(d) {
+  if (!d.data || !d.lancadoEm) return false;
+  return indiceMes(mesDaData(d.lancadoEm, FUSO)) > indiceMes(mesDaData(d.data, FUSO));
+}
 function motivoSoNoNovo(d, ctx) {
   if (d.data) {
     if (mesmoMes(mesDaData(d.data, FUSO), ctx.mes) && !mesmoMes(mesDaData(d.data, "UTC"), ctx.mes))
       return "fuso";
   }
-  if (ctx.fechadoEm && d.sincronizadoEm && d.sincronizadoEm > ctx.fechadoEm)
-    return "depois_do_fechamento";
+  if (depoisDoFechamento(d.sincronizadoEm, ctx)) return "depois_do_fechamento";
+  if (depoisDoFechamento(d.codigoTrocadoEm, ctx)) return "codigo_trocado";
+  if (regraDoLegadoMudou(d.codigoResolucao, "passouAContar", ctx)) return "regra_do_legado";
+  if (lancadoDepoisDoMes(d)) return "lancado_depois_do_mes";
   const organizacao = normalizar2(d.organizacao);
   if (organizacao && !casaComoIlike(organizacao, ctx.nomeLegado) && ctx.organizacoesNovas.some((o) => normalizar2(o) === organizacao))
     return "organizacao_so_no_novo";
@@ -847,7 +890,10 @@ function motivoSoNoLegado(chave2, d, ctx) {
     const curinga = /[_%]/.test(ctx.nomeLegado) && casaComoIlike(organizacao, ctx.nomeLegado);
     return curinga ? "organizacao_curinga" : "organizacao_fora_do_cadastro";
   }
-  if (!ctx.codigoConta(d.codigoResolucao, d.fonte)) return "codigo_sem_regra";
+  if (depoisDoFechamento(d.codigoTrocadoEm, ctx)) return "codigo_trocado";
+  if (!ctx.codigoConta(d.codigoResolucao, d.fonte)) {
+    return regraDoLegadoMudou(d.codigoResolucao, "deixouDeContar", ctx) ? "regra_do_legado" : "codigo_sem_regra";
+  }
   if (ctx.semBanco.has(chave2)) return "fora_do_escopo";
   return "sem_motivo";
 }
@@ -919,6 +965,8 @@ function compararMes(e) {
       diferencas.push({ unidade, medida, legado, novo });
       if (deSaldo) saldoDifere = true;
       else if (medida === "consumo" && consumoExplicado(unidade, novo - legado, e.itens))
+        base = pior(base, "explicada");
+      else if (medida === "reajustes" && novo - legado === (e.reajustesDepois?.[unidade] ?? 0))
         base = pior(base, "explicada");
       else base = "divergente";
     }
@@ -1049,6 +1097,20 @@ async function itensDoMes({ sombra }, motor, empresa, f, bancosDoMes, fechado, c
     });
     for (const d of buscados) dados.set(d.chave, d);
   }
+  const doNovo = new Set(novo.map((i) => i.chave));
+  const doLado = new Set(legado.map((i) => i.chave));
+  const chamados = [
+    ...new Set(
+      [...dados.values()].filter((d) => d.chamado && doNovo.has(d.chave) !== doLado.has(d.chave)).map((d) => d.chamado)
+    )
+  ];
+  if (chamados.length > 0) {
+    const trocas = await sombra.trocasDeCodigo(chamados);
+    for (const [k, d] of dados) {
+      const em = d.chamado ? trocas.get(d.chamado) : void 0;
+      if (em) dados.set(k, { ...d, codigoTrocadoEm: em });
+    }
+  }
   return diferencasDosItens(legado, novo, dados, {
     mes: f.mes,
     fechadoEm: f.fechadoEm,
@@ -1101,13 +1163,18 @@ async function processarEmpresa(deps, empresa, opcoes) {
       fechado,
       { organizacoes, codigoConta }
     )).filter((i) => novo.unidades.includes(UNIDADE_DA_FONTE[i.fonte])) : [];
+    const reajustesDiferem = novo.unidades.some(
+      (u) => medidasLegado[u].reajustes !== novo.total[u].reajustes
+    );
+    const reajustesDepois = reajustesDiferem ? await sombra.reajustesDepoisDoFechamento(empresa.id, f.mes, f.fechadoEm) : void 0;
     entradas.push({
       mes: f.mes,
       legado: medidasLegado,
       novo: novo.total,
       unidades: novo.unidades,
       bancos: novo.bancos,
-      itens
+      itens,
+      reajustesDepois
     });
   }
   const r = compararEmpresa(entradas);
@@ -1459,8 +1526,17 @@ async function emLotes(ids, consulta, origem) {
   }
   return linhas;
 }
-var COLUNAS_APONTAMENTO = "id, id_externo, nro_chamado, data_atividade, caso_grupo, org_us_final, cod_resolucao, synced_at, tempo_gasto_horas";
-var COLUNAS_TICKET = "id, nro_solicitacao, data_fechamento, nome_grupo, organizacao, cod_resolucao, synced_at";
+var COLUNAS_APONTAMENTO = "id, id_externo, nro_chamado, data_atividade, data_sistema, caso_grupo, org_us_final, cod_resolucao, synced_at, created_at, data_ult_modificacao_geral, tempo_gasto_horas";
+var COLUNAS_TICKET = "id, nro_solicitacao, data_fechamento, nome_grupo, organizacao, cod_resolucao, synced_at, created_at";
+function maisRecente(...datas) {
+  let escolhida = null;
+  for (const d of datas) {
+    if (d && (!escolhida || Date.parse(d) > Date.parse(escolhida))) escolhida = d;
+  }
+  return escolhida;
+}
+var TRES_HORAS = 3 * 60 * 60 * 1e3;
+var trocaEmUtc = (created) => new Date(Date.parse(created) + TRES_HORAS).toISOString();
 var doApontamento = (a) => ({
   chave: a.id,
   idLegado: a.id_externo,
@@ -1470,7 +1546,9 @@ var doApontamento = (a) => ({
   grupo: a.caso_grupo ?? null,
   organizacao: a.org_us_final ?? null,
   codigoResolucao: a.cod_resolucao ?? null,
-  sincronizadoEm: a.synced_at ?? null,
+  sincronizadoEm: maisRecente(a.synced_at, a.created_at, a.data_ult_modificacao_geral),
+  lancadoEm: a.data_sistema ?? null,
+  codigoTrocadoEm: null,
   // O legado lê o texto, que perde os dias inteiros acima de 24 h (A3)
   minutosTexto: converterHorasParaMinutos(a.tempo_gasto_horas ?? "")
 });
@@ -1483,7 +1561,9 @@ var doTicket = (t) => ({
   grupo: t.nome_grupo ?? null,
   organizacao: t.organizacao ?? null,
   codigoResolucao: t.cod_resolucao ?? null,
-  sincronizadoEm: t.synced_at ?? null,
+  sincronizadoEm: maisRecente(t.synced_at, t.created_at),
+  lancadoEm: null,
+  codigoTrocadoEm: null,
   minutosTexto: 0
 });
 var semIdLegado = (d) => ({
@@ -1495,6 +1575,8 @@ var semIdLegado = (d) => ({
   organizacao: d.organizacao,
   codigoResolucao: d.codigoResolucao,
   sincronizadoEm: d.sincronizadoEm,
+  lancadoEm: d.lancadoEm,
+  codigoTrocadoEm: d.codigoTrocadoEm,
   minutosTexto: d.minutosTexto
 });
 function criarRepositorioSombra(cliente) {
@@ -1603,6 +1685,47 @@ function criarRepositorioSombra(cliente) {
         )
       ]);
       return [...aps.map(doApontamento), ...tks.map(doTicket)].map(semIdLegado);
+    },
+    async trocasDeCodigo(chamados) {
+      const numero3 = new Map(chamados.map((c) => [c, c.replace(/\D/g, "")]));
+      const numeros = [...new Set([...numero3.values()].filter(Boolean))];
+      const linhas = await emLotes(
+        numeros,
+        (lote) => cliente.from("codigo_resolucao_modificacoes_aranda").select("item_id, created").in("item_id", lote),
+        "trocas de c\xF3digo de resolu\xE7\xE3o"
+      );
+      const ultima = /* @__PURE__ */ new Map();
+      for (const l of linhas) {
+        const atual = ultima.get(l.item_id);
+        if (!atual || Date.parse(l.created) > Date.parse(atual)) ultima.set(l.item_id, l.created);
+      }
+      const trocas = /* @__PURE__ */ new Map();
+      for (const [chamado, n] of numero3) {
+        const created = ultima.get(n);
+        if (created) trocas.set(chamado, trocaEmUtc(created));
+      }
+      return trocas;
+    },
+    async reajustesDepoisDoFechamento(empresaId, mes, fechadoEm) {
+      const total = { horas: 0, tickets: 0 };
+      const bancos = await consultar2(
+        cliente.from("bancos_horas").select("id").eq("empresa_id", empresaId),
+        "bancos de horas"
+      );
+      if (bancos.length === 0) return total;
+      const reajustes = await consultar2(
+        cliente.from("bancos_horas_reajustes").select("tipo, minutos, tickets").in(
+          "banco_id",
+          bancos.map((b) => b.id)
+        ).eq("mes", mes.mes).eq("ano", mes.ano).eq("ativo", true).gt("created_at", fechadoEm),
+        "reajustes lan\xE7ados depois do fechamento"
+      );
+      for (const r of reajustes) {
+        const sinal = r.tipo === "saida" ? -1 : 1;
+        total.horas += sinal * (r.minutos ?? 0);
+        total.tickets += sinal * (r.tickets ?? 0);
+      }
+      return total;
     },
     async gravar(payload) {
       const { error } = await cliente.rpc("bancos_horas_gravar_comparacao", {
