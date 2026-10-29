@@ -143,6 +143,7 @@ describe('montarWorkbookBancos', () => {
         descricaoTarefa: 'Ajuste',
         descricaoChamado: 'Relatório com erro',
         solucaoChamado: 'Corrigido',
+        tipoChamado: 'IM',
         minutos: 90,
         tickets: 0,
       },
