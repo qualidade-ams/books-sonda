@@ -8,6 +8,7 @@
  *
  *   geracao_book: 1ª geração do Book; mês já fechado não é reaberto
  *   retificacao: recalcula o mês fechado e grava uma nova versão
+ *   transicao: o último mês do legado na liberação da empresa (liberacao.ts)
  */
 
 import { baselineDoMes, percentualDoMes } from './vigencias';
@@ -23,13 +24,13 @@ import {
   type ResultadoUnidade,
 } from './motorBancosHoras';
 
-export type MotivoFechamento = 'geracao_book' | 'retificacao';
+export type MotivoFechamento = 'geracao_book' | 'retificacao' | 'transicao';
 
 export interface ItemConsumo extends LinhaConsumo {
   itemId: string;
 }
 
-interface ItemFechamento {
+export interface ItemFechamento {
   tipo: 'apontamento' | 'ticket' | 'requerimento' | 'reajuste';
   item_id: string;
   minutos: number;
@@ -139,17 +140,21 @@ export async function itensDeConsumoPorBanco(
   return itens;
 }
 
-export async function fecharMes(
+/**
+ * O que gravar no fechamento do mês. Nulo quando o mês já está fechado em todos os
+ * bancos e o motivo não reabre (D-11). Retificação e transição recalculam o mês fechado.
+ */
+export async function montarFechamento(
   repo: RepositorioFechamento,
   empresaId: string,
   mes: MesAno,
   motivo: MotivoFechamento
-): Promise<RetornoFechamento> {
+): Promise<PayloadFechamento | null> {
   const resultado = await calcularEmpresaMes(repo, empresaId, mes, {
-    recalcularMesFechado: motivo === 'retificacao',
+    recalcularMesFechado: motivo !== 'geracao_book',
   });
   if (resultado.bancos.length > 0 && resultado.bancos.every((b) => b.fechado)) {
-    return { acao: 'existente', fechamentos: [] };
+    return null;
   }
 
   const cadastros = new Map((await repo.bancos(empresaId)).map((b) => [b.bancoId, b]));
@@ -210,7 +215,7 @@ export async function fecharMes(
     }
   }
 
-  const payload: PayloadFechamento = {
+  return {
     empresa_id: empresaId,
     ano: mes.ano,
     mes: mes.mes,
@@ -240,5 +245,15 @@ export async function fecharMes(
       quantidade: t.quantidade,
     })),
   };
+}
+
+export async function fecharMes(
+  repo: RepositorioFechamento,
+  empresaId: string,
+  mes: MesAno,
+  motivo: Exclude<MotivoFechamento, 'transicao'>
+): Promise<RetornoFechamento> {
+  const payload = await montarFechamento(repo, empresaId, mes, motivo);
+  if (!payload) return { acao: 'existente', fechamentos: [] };
   return repo.gravarFechamento(payload);
 }

@@ -235,6 +235,18 @@ describe('criarRepositorioSombra', () => {
     ]);
   });
 
+  it('último fechamento do legado da empresa (transição da liberação)', async () => {
+    const repo = criarRepositorioSombra(cenario());
+    expect(await repo.ultimoFechamentoLegado('e1')).toEqual({
+      mes: { mes: 12, ano: 2025 },
+      fechadoEm: '2026-01-05T12:00:00+00:00',
+      snapshot: { consumo_horas: '10:00:00' },
+      apontamentosIds: ['EXT1'],
+      ticketsIds: [],
+    });
+    expect(await repo.ultimoFechamentoLegado('e3')).toBeNull();
+  });
+
   it('fechamentos vigentes do modelo novo, um por banco', async () => {
     const repo = criarRepositorioSombra(cenario());
     expect(await repo.fechamentosNovos('e1', JAN, JAN)).toEqual([

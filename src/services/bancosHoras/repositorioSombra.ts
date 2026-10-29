@@ -8,7 +8,7 @@ import { converterHorasParaMinutos } from '@/utils/horasUtils';
 import type { MesAno } from './calculo';
 import type { DadosItem, ItemLado } from './comparacao';
 import type { ClienteSupabase } from './repositorioSupabase';
-import type { ItemDoLegado, RepositorioSombra } from './sombra';
+import type { FechamentoLegado, ItemDoLegado, RepositorioSombra } from './sombra';
 
 type Linha = Record<string, any>;
 
@@ -37,6 +37,17 @@ async function emLotes(
   }
   return linhas;
 }
+
+const COLUNAS_FECHAMENTO_LEGADO =
+  'mes, ano, fechado_em, snapshot_calculo, apontamentos_ids, tickets_ids';
+
+const doFechamentoLegado = (f: Linha): FechamentoLegado => ({
+  mes: { mes: f.mes, ano: f.ano },
+  fechadoEm: f.fechado_em,
+  snapshot: f.snapshot_calculo ?? {},
+  apontamentosIds: f.apontamentos_ids ?? [],
+  ticketsIds: f.tickets_ids ?? [],
+});
 
 const COLUNAS_APONTAMENTO =
   'id, id_externo, nro_chamado, data_atividade, data_sistema, caso_grupo, org_us_final, cod_resolucao, synced_at, created_at, data_ult_modificacao_geral, tempo_gasto_horas';
@@ -144,7 +155,7 @@ export function criarRepositorioSombra(cliente: ClienteSupabase): RepositorioSom
       const linhas = await consultar(
         cliente
           .from('banco_horas_fechamentos')
-          .select('mes, ano, fechado_em, snapshot_calculo, apontamentos_ids, tickets_ids')
+          .select(COLUNAS_FECHAMENTO_LEGADO)
           .eq('empresa_id', empresaId)
           .gte('ano', de.ano)
           .lte('ano', ate.ano),
@@ -152,13 +163,21 @@ export function criarRepositorioSombra(cliente: ClienteSupabase): RepositorioSom
       );
       return linhas
         .filter((f) => indice(f) >= indice(de) && indice(f) <= indice(ate))
-        .map((f) => ({
-          mes: { mes: f.mes, ano: f.ano },
-          fechadoEm: f.fechado_em,
-          snapshot: f.snapshot_calculo ?? {},
-          apontamentosIds: f.apontamentos_ids ?? [],
-          ticketsIds: f.tickets_ids ?? [],
-        }));
+        .map(doFechamentoLegado);
+    },
+
+    async ultimoFechamentoLegado(empresaId) {
+      const [ultimo] = await consultar(
+        cliente
+          .from('banco_horas_fechamentos')
+          .select(COLUNAS_FECHAMENTO_LEGADO)
+          .eq('empresa_id', empresaId)
+          .order('ano', { ascending: false })
+          .order('mes', { ascending: false })
+          .limit(1),
+        'último fechamento do legado'
+      );
+      return ultimo ? doFechamentoLegado(ultimo) : null;
     },
 
     async fechamentosNovos(empresaId, de, ate) {

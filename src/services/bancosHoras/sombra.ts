@@ -88,6 +88,8 @@ export type PayloadComparacao =
 export interface RepositorioSombra {
   empresasEmLegado(): Promise<EmpresaSombra[]>;
   fechamentosLegado(empresaId: string, de: MesAno, ate: MesAno): Promise<FechamentoLegado[]>;
+  /** O mês mais recente que o legado fechou: a transição da liberação (liberacao.ts) */
+  ultimoFechamentoLegado(empresaId: string): Promise<FechamentoLegado | null>;
   /** fechado_em dos fechamentos vigentes do modelo novo, um por banco e mês */
   fechamentosNovos(
     empresaId: string,

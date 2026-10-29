@@ -635,12 +635,12 @@ async function itensDeConsumoPorBanco(repo, empresaId, mes, cadastros, classific
   }
   return itens;
 }
-async function fecharMes(repo, empresaId, mes, motivo) {
+async function montarFechamento(repo, empresaId, mes, motivo) {
   const resultado = await calcularEmpresaMes(repo, empresaId, mes, {
-    recalcularMesFechado: motivo === "retificacao"
+    recalcularMesFechado: motivo !== "geracao_book"
   });
   if (resultado.bancos.length > 0 && resultado.bancos.every((b) => b.fechado)) {
-    return { acao: "existente", fechamentos: [] };
+    return null;
   }
   const cadastros = new Map((await repo.bancos(empresaId)).map((b) => [b.bancoId, b]));
   const bancosDoMes = resultado.bancos.map((b) => b.bancoId);
@@ -691,7 +691,7 @@ async function fecharMes(repo, empresaId, mes, motivo) {
       );
     }
   }
-  const payload = {
+  return {
     empresa_id: empresaId,
     ano: mes.ano,
     mes: mes.mes,
@@ -721,6 +721,10 @@ async function fecharMes(repo, empresaId, mes, motivo) {
       quantidade: t.quantidade
     }))
   };
+}
+async function fecharMes(repo, empresaId, mes, motivo) {
+  const payload = await montarFechamento(repo, empresaId, mes, motivo);
+  if (!payload) return { acao: "existente", fechamentos: [] };
   return repo.gravarFechamento(payload);
 }
 
@@ -1526,6 +1530,14 @@ async function emLotes(ids, consulta, origem) {
   }
   return linhas;
 }
+var COLUNAS_FECHAMENTO_LEGADO = "mes, ano, fechado_em, snapshot_calculo, apontamentos_ids, tickets_ids";
+var doFechamentoLegado = (f) => ({
+  mes: { mes: f.mes, ano: f.ano },
+  fechadoEm: f.fechado_em,
+  snapshot: f.snapshot_calculo ?? {},
+  apontamentosIds: f.apontamentos_ids ?? [],
+  ticketsIds: f.tickets_ids ?? []
+});
 var COLUNAS_APONTAMENTO = "id, id_externo, nro_chamado, data_atividade, data_sistema, caso_grupo, org_us_final, cod_resolucao, synced_at, created_at, data_ult_modificacao_geral, tempo_gasto_horas";
 var COLUNAS_TICKET = "id, nro_solicitacao, data_fechamento, nome_grupo, organizacao, cod_resolucao, synced_at, created_at";
 function maisRecente(...datas) {
@@ -1604,16 +1616,17 @@ function criarRepositorioSombra(cliente) {
     },
     async fechamentosLegado(empresaId, de, ate) {
       const linhas = await consultar2(
-        cliente.from("banco_horas_fechamentos").select("mes, ano, fechado_em, snapshot_calculo, apontamentos_ids, tickets_ids").eq("empresa_id", empresaId).gte("ano", de.ano).lte("ano", ate.ano),
+        cliente.from("banco_horas_fechamentos").select(COLUNAS_FECHAMENTO_LEGADO).eq("empresa_id", empresaId).gte("ano", de.ano).lte("ano", ate.ano),
         "fechamentos do legado"
       );
-      return linhas.filter((f) => indice5(f) >= indice5(de) && indice5(f) <= indice5(ate)).map((f) => ({
-        mes: { mes: f.mes, ano: f.ano },
-        fechadoEm: f.fechado_em,
-        snapshot: f.snapshot_calculo ?? {},
-        apontamentosIds: f.apontamentos_ids ?? [],
-        ticketsIds: f.tickets_ids ?? []
-      }));
+      return linhas.filter((f) => indice5(f) >= indice5(de) && indice5(f) <= indice5(ate)).map(doFechamentoLegado);
+    },
+    async ultimoFechamentoLegado(empresaId) {
+      const [ultimo] = await consultar2(
+        cliente.from("banco_horas_fechamentos").select(COLUNAS_FECHAMENTO_LEGADO).eq("empresa_id", empresaId).order("ano", { ascending: false }).order("mes", { ascending: false }).limit(1),
+        "\xFAltimo fechamento do legado"
+      );
+      return ultimo ? doFechamentoLegado(ultimo) : null;
     },
     async fechamentosNovos(empresaId, de, ate) {
       return (await fechamentosVigentes(empresaId, de, ate)).map((f) => ({
