@@ -105,6 +105,7 @@ A ANGLO é o caso real. As outras empresas validadas hoje têm um banco só.
 | Gerar de novo (inclusive a geração automática com `forcar_atualizacao`) | Reabre e fecha de novo           | **Não reabre (D-11):** coleta de novo a partir do fechamento vigente                                                                                                                                  |
 | Retificar                                                               | Igual a gerar de novo            | Ação explícita: `fecharMes(..., 'retificacao')` grava nova versão e aplica os reajustes, as observações e os retroativos aprovados pendentes (D-05, D-09). Depois coleta e regera o PDF (pergunta P5) |
 
+- **O botão já existe (P5):** a Geração de Books tem "Retificar" para Book enviado (`booksVersioningService.iniciarRetificacao`: motivo, nova versão do Book, status `desatualizado`, nova geração). Para a empresa liberada, essa geração grava `fecharMes(..., 'retificacao')`. A janela passa a listar o que entra: reajustes, observações e retroativos aprovados pendentes do mês. Não há botão nem protótipo novo.
 - **O legado não fecha** o mês da empresa liberada: `fecharPeriodo` não é chamado.
 - **Book precisa de retificação:** o aviso que já existe (`books.precisa_retificacao`, sino) continua valendo.
 - **sync-api:** a geração automática usa `vendor/geracaoBooks.cjs`, que precisa ser refeito. O teste `pacote*.test.ts` acusa se ficar desatualizado.
