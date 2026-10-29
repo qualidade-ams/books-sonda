@@ -67,6 +67,9 @@ export interface ConsumoBancoBook {
   dados: DadosConsumoBanco;
 }
 
+/** Linha lida de volta (consumo_bancos_do_book), com a empresa dona do banco */
+export type LinhaConsumoBook = ConsumoBancoBook & { empresa_id: string };
+
 const indice = (m: MesAno) => m.ano * 12 + (m.mes - 1);
 const doIndice = (i: number): MesAno => ({ mes: (i % 12) + 1, ano: Math.floor(i / 12) });
 const mesmoMes = (a: MesAno, b: MesAno) => a.mes === b.mes && a.ano === b.ano;
@@ -116,13 +119,13 @@ export class BookConsumoBancosService {
   }
 
   /** O snapshot do Book, na ordem; vazio para Book de empresa em Legado */
-  async doBook(bookId: string): Promise<Linha[]> {
+  async doBook(bookId: string): Promise<LinhaConsumoBook[]> {
     const { data, error } = await (this.cliente as unknown as ClienteSupabase).rpc(
       'consumo_bancos_do_book',
       { p_book_id: bookId }
     );
     if (error) throw falhaDoBanco('carregar o consumo do Book', error);
-    return (data as Linha[]) ?? [];
+    return (data as unknown as LinhaConsumoBook[]) ?? [];
   }
 
   /** A empresa do Book e, depois, as consolidadas dela que já estão liberadas */
