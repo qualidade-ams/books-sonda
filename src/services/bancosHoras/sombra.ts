@@ -100,6 +100,14 @@ export interface RepositorioSombra {
   codigos(): Promise<{ codigo: string; contaHoras: boolean; contaTickets: boolean }[]>;
   itensDoLegado(apontamentos: string[], tickets: string[]): Promise<ItemDoLegado[]>;
   dadosDosItens(chaves: { apontamentos: string[]; tickets: string[] }): Promise<DadosItem[]>;
+  /** Última troca do código de resolução de cada chamado no Aranda (chamado → data) */
+  trocasDeCodigo(chamados: string[]): Promise<Map<string, string>>;
+  /** Reajustes ativos do mês lançados depois de fechadoEm, entradas − saídas */
+  reajustesDepoisDoFechamento(
+    empresaId: string,
+    mes: MesAno,
+    fechadoEm: string
+  ): Promise<Record<Unidade, number>>;
   gravar(payload: PayloadComparacao): Promise<void>;
   registrarErro(empresaId: string, mensagem: string): Promise<void>;
 }
@@ -253,6 +261,24 @@ async function itensDoMes(
     for (const d of buscados) dados.set(d.chave, d);
   }
 
+  // Troca de código depois do fechamento, para os itens que estão só de um lado
+  const doNovo = new Set(novo.map((i) => i.chave));
+  const doLado = new Set(legado.map((i) => i.chave));
+  const chamados = [
+    ...new Set(
+      [...dados.values()]
+        .filter((d) => d.chamado && doNovo.has(d.chave) !== doLado.has(d.chave))
+        .map((d) => d.chamado!)
+    ),
+  ];
+  if (chamados.length > 0) {
+    const trocas = await sombra.trocasDeCodigo(chamados);
+    for (const [k, d] of dados) {
+      const em = d.chamado ? trocas.get(d.chamado) : undefined;
+      if (em) dados.set(k, { ...d, codigoTrocadoEm: em });
+    }
+  }
+
   return diferencasDosItens(legado, novo, dados, {
     mes: f.mes,
     fechadoEm: f.fechadoEm,
@@ -327,6 +353,12 @@ export async function processarEmpresa(
           )
         ).filter((i) => novo.unidades.includes(UNIDADE_DA_FONTE[i.fonte]))
       : [];
+    const reajustesDiferem = novo.unidades.some(
+      (u) => medidasLegado[u].reajustes !== novo.total[u].reajustes
+    );
+    const reajustesDepois = reajustesDiferem
+      ? await sombra.reajustesDepoisDoFechamento(empresa.id, f.mes, f.fechadoEm)
+      : undefined;
 
     entradas.push({
       mes: f.mes,
@@ -335,6 +367,7 @@ export async function processarEmpresa(
       unidades: novo.unidades,
       bancos: novo.bancos,
       itens,
+      reajustesDepois,
     });
   }
 

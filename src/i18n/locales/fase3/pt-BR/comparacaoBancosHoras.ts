@@ -108,10 +108,14 @@ const comparacaoBancosHoras = {
   motivos: {
     acima_24h: 'Apontamento acima de 24 h: o legado perde os dias inteiros',
     fuso: 'Fuso de Brasília: o legado conta o mês em UTC',
-    depois_do_fechamento: 'Lançado no Aranda depois do fechamento do legado',
+    depois_do_fechamento: 'Lançado ou alterado no Aranda depois do fechamento do legado',
     removido_do_aranda: 'Saiu do Aranda depois do fechamento do legado',
     organizacao_so_no_novo: 'Organização vinculada só no cadastro novo',
     organizacao_curinga: 'O legado achou a organização por curinga (_ ou %)',
+    codigo_trocado: 'Código de resolução trocado no Aranda depois do fechamento do legado',
+    regra_do_legado: 'O legado mudou os códigos que contam depois de fechar o mês',
+    lancado_depois_do_mes:
+      'Lançado no Aranda no mês seguinte ao da atividade: o legado trata como retroativo',
     organizacao_fora_do_cadastro: 'Organização que falta no cadastro novo da empresa',
     codigo_sem_regra: 'Código de resolução que não conta nas Regras de contagem',
     fora_do_escopo: 'Nenhum banco da empresa recebe este grupo',

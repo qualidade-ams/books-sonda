@@ -6,12 +6,20 @@ import {
   medidasDoLegado,
   medidasDoNovo,
   minutosDoIntervalo,
+  MOTIVOS_DIFERENCA,
   type DadosItem,
   type EntradaMesComparacao,
   type ItemLado,
   type MedidasMes,
 } from '../comparacao';
 import type { ResultadoBancoMes, ResultadoUnidade } from '../motorBancosHoras';
+import textos from '@/i18n/locales/fase3/pt-BR/comparacaoBancosHoras';
+
+describe('MOTIVOS_DIFERENCA', () => {
+  it('cada motivo tem texto na tela', () => {
+    expect(Object.keys(textos.motivos).sort()).toEqual([...MOTIVOS_DIFERENCA].sort());
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Apoio
@@ -191,6 +199,8 @@ const dados = (chave: string, v: Partial<DadosItem> = {}): DadosItem => ({
   organizacao: 'EMPRESA GAMA',
   codigoResolucao: 'RESOLVIDO',
   sincronizadoEm: '2026-09-15T14:00:00Z',
+  lancadoEm: '2026-09-15T14:00:00Z',
+  codigoTrocadoEm: null,
   minutosTexto: 60,
   ...v,
 });
@@ -268,6 +278,109 @@ describe('diferencasDosItens', () => {
       contexto
     );
     expect(d).toMatchObject({ motivo: 'depois_do_fechamento', explicado: true });
+  });
+
+  it('só no novo, com o código de resolução trocado depois do fechamento (explicado)', () => {
+    const [d] = diferencasDosItens(
+      [],
+      [ap('a', 60)],
+      new Map([['a', dados('a', { codigoTrocadoEm: '2026-10-20T15:00:00Z' })]]),
+      contexto
+    );
+    expect(d).toMatchObject({ motivo: 'codigo_trocado', explicado: true });
+  });
+
+  it('código trocado antes do fechamento não explica', () => {
+    const [d] = diferencasDosItens(
+      [],
+      [ap('a', 60)],
+      new Map([['a', dados('a', { codigoTrocadoEm: '2026-09-20T15:00:00Z' })]]),
+      contexto
+    );
+    expect(d).toMatchObject({ motivo: 'sem_motivo', explicado: false });
+  });
+
+  it('só no legado, com código que não conta e foi trocado depois do fechamento (explicado)', () => {
+    const [d] = diferencasDosItens(
+      [ap('a', 60)],
+      [],
+      new Map([
+        [
+          'a',
+          dados('a', { codigoResolucao: 'CANCELADO', codigoTrocadoEm: '2026-10-20T15:00:00Z' }),
+        ],
+      ]),
+      contexto
+    );
+    expect(d).toMatchObject({ motivo: 'codigo_trocado', explicado: true });
+  });
+
+  it('só no novo, com código que o legado passou a contar depois do fechamento (explicado)', () => {
+    const [d] = diferencasDosItens(
+      [],
+      [ap('a', 240)],
+      new Map([
+        [
+          'a',
+          dados('a', {
+            codigoResolucao: 'Alocação',
+            data: '2026-05-04T12:00:00Z',
+            lancadoEm: '2026-05-28T17:13:30Z',
+            sincronizadoEm: '2026-06-02T10:00:00Z',
+          }),
+        ],
+      ]),
+      { ...contexto, mes: { mes: 5, ano: 2026 }, fechadoEm: '2026-06-30T14:58:05Z' }
+    );
+    expect(d).toMatchObject({ motivo: 'regra_do_legado', explicado: true });
+  });
+
+  it('o legado já contava o código quando fechou: não explica', () => {
+    const [d] = diferencasDosItens(
+      [],
+      [ap('a', 240)],
+      new Map([['a', dados('a', { codigoResolucao: 'Alocação' })]]),
+      contexto
+    );
+    expect(d).toMatchObject({ motivo: 'sem_motivo' });
+  });
+
+  it('só no legado, com código que o legado deixou de contar depois do fechamento (explicado)', () => {
+    const [d] = diferencasDosItens(
+      [ap('a', 60)],
+      [],
+      new Map([['a', dados('a', { codigoResolucao: 'Alocação - T&M (Banco=S |SLA=N)' })]]),
+      {
+        ...contexto,
+        fechadoEm: '2026-07-01T12:00:00Z',
+        codigoConta: (codigo: string | null) => codigo !== 'Alocação - T&M (Banco=S |SLA=N)',
+      }
+    );
+    expect(d).toMatchObject({ motivo: 'regra_do_legado', explicado: true });
+  });
+
+  it('só no novo, lançado no Aranda em mês posterior ao da atividade (explicado)', () => {
+    const [d] = diferencasDosItens(
+      [],
+      [ap('a', 60)],
+      new Map([
+        ['a', dados('a', { data: '2026-09-29T13:00:00Z', lancadoEm: '2026-10-02T13:00:00Z' })],
+      ]),
+      contexto
+    );
+    expect(d).toMatchObject({ motivo: 'lancado_depois_do_mes', explicado: true });
+  });
+
+  it('lançado no mesmo mês da atividade não explica', () => {
+    const [d] = diferencasDosItens(
+      [],
+      [ap('a', 60)],
+      new Map([
+        ['a', dados('a', { data: '2026-09-02T13:00:00Z', lancadoEm: '2026-09-29T13:00:00Z' })],
+      ]),
+      contexto
+    );
+    expect(d).toMatchObject({ motivo: 'sem_motivo' });
   });
 
   it('só no legado e sumiu do Aranda depois do fechamento (explicado)', () => {
@@ -448,6 +561,29 @@ describe('compararMes', () => {
         itens: [],
       }).situacao
     ).toBe('divergente');
+  });
+
+  it('reajuste a mais no novo, lançado depois do fechamento do legado: Explicada', () => {
+    const r = compararMes({
+      ...base,
+      legado: medidas({ reajustes: 0, saldo: 120 }),
+      novo: medidas({ reajustes: 540, saldo: 660 }),
+      reajustesDepois: { horas: 540, tickets: 0 },
+      itens: [],
+    });
+    expect(r.situacao).toBe('explicada');
+    expect(r.origem).toBe('explicada');
+  });
+
+  it('reajustes lançados depois do fechamento que não fecham a diferença: Divergente', () => {
+    const r = compararMes({
+      ...base,
+      legado: medidas({ reajustes: 0 }),
+      novo: medidas({ reajustes: 540 }),
+      reajustesDepois: { horas: 60, tickets: 0 },
+      itens: [],
+    });
+    expect(r.situacao).toBe('divergente');
   });
 
   it('só saldo diferente, herdado de um mês explicado: Explicada, sem virar origem', () => {
