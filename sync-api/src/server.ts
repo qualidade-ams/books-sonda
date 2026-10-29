@@ -4103,8 +4103,18 @@ const orquestradorSync = criarOrquestradorSync({
     codigoResolucao: (pool) => sincronizarCodigoResolucaoIncremental(pool, supabase),
     validacao: (pool) => executarValidacaoSync(pool),
     inconsistencias: () => executarDeteccaoInconsistencias(supabase),
-    // Mesmo período usado pela sincronização manual do frontend
-    ajustesRetroativos: () => deteccaoRetroativos.executarDeteccaoRecente(2),
+    // Mesmo período usado pela sincronização manual do frontend. Fase 5: depois do legado,
+    // os retroativos do modelo novo das empresas liberadas (pelo pacote da comparação)
+    ajustesRetroativos: async () => {
+      const legado = await deteccaoRetroativos.executarDeteccaoRecente(2);
+      if (!modoSombra) return { legado, novos: null };
+      try {
+        return { legado, novos: await modoSombra.retroativos() };
+      } catch (e) {
+        console.error('[RETROATIVOS] Detecção do modelo novo falhou:', e instanceof Error ? e.message : e);
+        return { legado, novos: { empresas: 0, registrados: 0, erros: 1 } };
+      }
+    },
     ...(modoSombra ? { modoSombra: () => modoSombra!.executarEtapa() } : {}),
   },
 });

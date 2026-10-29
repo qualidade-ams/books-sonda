@@ -382,11 +382,22 @@ export function criarDeteccaoAjustesRetroativos(supabase: SupabaseClient) {
 
       if (error || !fechamentos || fechamentos.length === 0) return [];
 
+      // Fase 5: a empresa liberada tem a detecção do modelo novo (vendor/comparacao.cjs)
+      const empresaIds = [...new Set(fechamentos.map((f: any) => f.empresa_id))];
+      const { data: liberadas, error: erroLiberadas } = await db
+        .from('empresas')
+        .select('id')
+        .eq('modelo_calculo', 'multiplo')
+        .in('id', empresaIds);
+      if (erroLiberadas) throw erroLiberadas;
+      const foraDoLegado = new Set((liberadas || []).map((e: any) => e.id));
+      const doLegado = fechamentos.filter((f: any) => !foraDoLegado.has(f.empresa_id));
+
       const BATCH_SIZE = 5;
       const todosAjustes: any[] = [];
 
-      for (let i = 0; i < fechamentos.length; i += BATCH_SIZE) {
-        const batch = fechamentos.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < doLegado.length; i += BATCH_SIZE) {
+        const batch = doLegado.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(
           batch.map((f: any) => executarDeteccaoCompleta(f.empresa_id, f.mes, f.ano))
         );

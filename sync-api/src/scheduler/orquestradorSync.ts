@@ -41,7 +41,10 @@ export interface EtapasSync {
   codigoResolucao(pool: sql.ConnectionPool): Promise<any>;
   validacao(pool: sql.ConnectionPool): Promise<any>;
   inconsistencias(): Promise<any>;
-  ajustesRetroativos(): Promise<any[]>;
+  /** Lista do legado; com a Fase 5, também o resumo dos retroativos do modelo novo */
+  ajustesRetroativos(): Promise<
+    any[] | { legado: any[]; novos: { empresas: number; registrados: number; erros: number } | null }
+  >;
   /** Modo sombra da Fase 4 (vendor/comparacao.cjs); ausente quando o pacote não carregou */
   modoSombra?(): Promise<ResumoModoSombra>;
 }
@@ -360,10 +363,15 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       }
 
       if (tabelas.apontamentos && tabelas.ajustesRetroativos !== false) {
-        await rodar('ajustesRetroativos', () => etapas.ajustesRetroativos(), (r) => ({
-          sucesso: true,
-          total: Array.isArray(r) ? r.length : 0,
-        }));
+        await rodar('ajustesRetroativos', () => etapas.ajustesRetroativos(), (r) => {
+          if (Array.isArray(r)) return { sucesso: true, total: r.length };
+          const erros = r?.novos?.erros ?? 0;
+          return {
+            sucesso: erros === 0,
+            total: (r?.legado?.length ?? 0) + (r?.novos?.registrados ?? 0),
+            ...(erros > 0 ? { erro: `${erros} empresa(s) com erro nos retroativos do modelo novo` } : {}),
+          };
+        });
       }
 
       if (tabelas.apontamentos && tabelas.modoSombra !== false && etapas.modoSombra) {

@@ -125,6 +125,25 @@ describe('orquestradorSync', () => {
     expect(etapas.ajustesRetroativos).not.toHaveBeenCalled();
   });
 
+  it('retroativos do modelo novo (Fase 5): somam no total e o erro aparece na etapa', async () => {
+    const etapas = criarEtapas({
+      ajustesRetroativos: vi.fn(async () => ({
+        legado: [{ id: 'aj' }],
+        novos: { empresas: 3, registrados: 2, erros: 1 },
+      })),
+    });
+    const { orq } = criar(etapas);
+    const inicio = await orq.iniciar({ tabelas: { apontamentos: true }, origem: 'manual' });
+    await inicio.conclusao;
+
+    const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+    expect(updates[updates.length - 1].resultado.ajustesRetroativos).toMatchObject({
+      sucesso: false,
+      total: 3,
+      erro: '1 empresa(s) com erro nos retroativos do modelo novo',
+    });
+  });
+
   describe('modo sombra (Comparação Legado x Novo)', () => {
     const resumoSombra = { completa: true, empresas: 3, comparadas: 2, removidas: 1, fechamentos: 1, erros: 0 };
 
