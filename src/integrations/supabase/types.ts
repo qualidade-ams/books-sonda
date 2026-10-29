@@ -2535,6 +2535,84 @@ export type Database = {
           },
         ]
       }
+      books_consumo_bancos: {
+        Row: {
+          banco_id: string
+          book_id: string
+          created_at: string
+          created_by: string | null
+          dados: Json
+          empresa_id: string
+          fechamento_id: string | null
+          id: string
+          nome_banco: string
+          nome_empresa: string
+          ordem: number
+        }
+        Insert: {
+          banco_id: string
+          book_id: string
+          created_at?: string
+          created_by?: string | null
+          dados: Json
+          empresa_id: string
+          fechamento_id?: string | null
+          id?: string
+          nome_banco: string
+          nome_empresa: string
+          ordem: number
+        }
+        Update: {
+          banco_id?: string
+          book_id?: string
+          created_at?: string
+          created_by?: string | null
+          dados?: Json
+          empresa_id?: string
+          fechamento_id?: string | null
+          id?: string
+          nome_banco?: string
+          nome_empresa?: string
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_consumo_bancos_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books_com_empresa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books_historico_geracao: {
         Row: {
           acao: string
@@ -6547,6 +6625,18 @@ export type Database = {
           tickets: number
         }[]
       }
+      consumo_bancos_do_book: {
+        Args: { p_book_id: string }
+        Returns: {
+          banco_id: string
+          dados: Json
+          empresa_id: string
+          fechamento_id: string
+          nome_banco: string
+          nome_empresa: string
+          ordem: number
+        }[]
+      }
       create_banco_horas_audit_log: {
         Args: {
           p_acao: string
@@ -6731,6 +6821,10 @@ export type Database = {
           permission_level: string
           screen_key: string
         }[]
+      }
+      gravar_consumo_bancos_do_book: {
+        Args: { p_bancos: Json; p_book_id: string }
+        Returns: number
       }
       grupos_aranda_nao_mapeados: {
         Args: { p_meses?: number }
