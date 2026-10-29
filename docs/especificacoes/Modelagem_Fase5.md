@@ -1,6 +1,6 @@
 # Modelagem da Fase 5: liberação por empresa
 
-Versão 0.2, 29/10/2026. As perguntas da seção 13 foram respondidas em 29/10/2026: P4 com a cópia para o legado; as demais conforme a proposta. Nenhuma migration foi escrita ainda.
+Versão 1.0, 29/10/2026: entregue (etapas 1 a 8 da seção 12). As perguntas da seção 13 foram respondidas em 29/10/2026: P4 com a cópia para o legado; as demais conforme a proposta. A seção 15 resume o que a entrega mudou em relação à v0.2.
 
 Base:
 
@@ -241,3 +241,14 @@ Cada etapa, um commit aprovado. As etapas 3 a 7 não mudam nada para as empresas
 - **Pacotes do sync-api:** `geracaoBooks.cjs` e `saldoParcial.cjs` são cópias do código do front. Cada etapa que mexer nesses serviços refaz o pacote. Já existe um teste que acusa pacote desatualizado.
 - **Arquivos gigantes:** `booksDataCollectorService` e `booksDisparoService` têm mais de 2.000 linhas. A lógica nova fica em arquivos próprios (`src/services/bancosHoras/book*.ts`), e os atuais só ganham o desvio pela empresa liberada.
 - **Achado fora do escopo:** `booksDataCollectorService.ts:3869` lê `banco_horas_calculos_segmentados` só pelo `calculo_id`, com `.maybeSingle()`. Com dois ou mais segmentos, isso falha em silêncio e zera o consumo do segmento. Afeta a ANGLO no legado hoje. Fica registrado para corrigir à parte, com o usuário decidindo.
+
+---
+
+## 15. O que a entrega mudou em relação à v0.2
+
+- **`liberar_empresa(p_empresa_id, p_fechamento)`:** recebe o fechamento de transição montado no front (`montarTransicao`), não um motivo. A função confere que ele é o último mês fechado no legado e o grava com `app.liberacao`, a única forma de gravar o motivo `transicao`. Empresa sem mês fechado no legado é liberada sem transição.
+- **Migration 29 não foi necessária:** a detecção de retroativos lê as tabelas que já existiam.
+- **Retroativos (seção 9):** o mês da transição fica de fora, porque os itens dele são os do último Book do legado. Uma alteração no Aranda nesse mês, ou antes dele, depois da liberação, não vira retroativo.
+- **Testes antes de liberar (P7):** o Book de teste mostra o último mês comparado, o último Book que o cliente recebeu pelo legado, para conferir lado a lado; nada é gravado. O Saldo Parcial de teste é o do mês atual, vai só para o e-mail de quem pediu, com "[TESTE]" no assunto, e não entra no histórico de envios.
+- **Controle atual (seção 10, P3):** o bloqueio de reajuste e observação é só na tela. Uma trava no banco barraria também a cópia do `voltar_para_legado`, que grava nessas tabelas com a empresa ainda liberada.
+- **Liberar e Voltar** recarregam também o cache do Controle, para a tela atual e a nova perceberem a troca de modelo na hora.
