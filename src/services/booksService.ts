@@ -17,6 +17,8 @@ import { MESES_LABELS } from '@/types/books';
 import { booksDataCollectorService } from './booksDataCollectorService';
 import { bancoHorasQuarentenaService } from './bancoHorasQuarentenaService';
 import { bancoHorasService } from './bancoHorasService';
+import { geracaoBookLiberada } from './geracaoBookLiberada';
+import type { ConsumoBancoBook } from './bookConsumoBancosService';
 
 class BooksService {
   /**
@@ -528,10 +530,16 @@ class BooksService {
             continue;
           }
 
+          // Empresa liberada (Fase 5): o mês sai pelo modelo novo, um bloco por banco
+          const noModeloNovo = await geracaoBookLiberada.noModeloNovo(empresaId, {
+            mes: config.mes,
+            ano: config.ano,
+          });
+
           // Verificar se já existe book para este período
           const { data: bookExistente } = await (supabase as any)
             .from('books')
-            .select('id')
+            .select('id, status')
             .eq('empresa_id', empresaId)
             .eq('mes', config.mes)
             .eq('ano', config.ano)
@@ -556,14 +564,20 @@ class BooksService {
           // para que a coleta de dados use valores em tempo real (não o snapshot antigo)
           if (config.forcar_atualizacao) {
             // 1. Reabrir período (deleta o fechamento/snapshot antigo)
-            // Não-crítico: se falhar, calcularMes() usará dados em tempo real de qualquer forma
-            try {
-              await bancoHorasQuarentenaService.reabrirPeriodo(empresaId, config.mes, config.ano);
-              console.log(
-                `🔓 Período ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retificação)`
-              );
-            } catch (reabrirError) {
-              console.warn('⚠️ Erro ao reabrir período (não crítico, continuando):', reabrirError);
+            // Não-crítico: se falhar, calcularMes() usará dados em tempo real de qualquer forma.
+            // Empresa liberada: o legado não fecha o mês dela, não há o que reabrir.
+            if (!noModeloNovo) {
+              try {
+                await bancoHorasQuarentenaService.reabrirPeriodo(empresaId, config.mes, config.ano);
+                console.log(
+                  `🔓 Período ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retificação)`
+                );
+              } catch (reabrirError) {
+                console.warn(
+                  '⚠️ Erro ao reabrir período (não crítico, continuando):',
+                  reabrirError
+                );
+              }
             }
 
             // 2. Recalcular banco de horas para atualizar banco_horas_calculos com dados frescos
@@ -605,6 +619,28 @@ class BooksService {
                 empresa_id: empresaId,
                 empresa_nome: empresa.nome_completo,
                 erro: `Banco de horas não pôde ser calculado: ${calcError.message || 'Erro desconhecido'}`,
+              });
+              continue;
+            }
+          }
+
+          // Empresa liberada: fecha o mês no modelo novo e monta o consumo de cada banco antes
+          // de gravar o Book. Só a retificação (Book desatualizado) reabre o mês (D-11).
+          let consumoBancos: ConsumoBancoBook[] | null = null;
+          if (noModeloNovo) {
+            try {
+              consumoBancos = await geracaoBookLiberada.preparar(
+                empresaId,
+                { mes: config.mes, ano: config.ano },
+                !!config.forcar_atualizacao && bookExistente?.status === 'desatualizado'
+              );
+            } catch (fechamentoError: any) {
+              console.error('❌ Erro ao fechar o mês no modelo novo:', fechamentoError?.message);
+              resultados.push({
+                sucesso: false,
+                empresa_id: empresaId,
+                empresa_nome: empresa.nome_completo,
+                erro: `O mês não pôde ser fechado nos bancos de horas: ${fechamentoError?.message || 'Erro desconhecido'}`,
               });
               continue;
             }
@@ -678,6 +714,10 @@ class BooksService {
             bookId = novoBook.id;
           }
 
+          if (consumoBancos) {
+            await geracaoBookLiberada.gravar(bookId, consumoBancos);
+          }
+
           resultados.push({
             sucesso: true,
             book_id: bookId,
@@ -685,24 +725,29 @@ class BooksService {
             empresa_nome: empresa.nome_completo,
           });
 
-          // Fechar período do banco de horas (snapshot para proteção contra extemporâneos)
-          try {
-            const {
-              data: { user },
-            } = await supabase.auth.getUser();
-            await bancoHorasQuarentenaService.fecharPeriodo(
-              empresaId,
-              config.mes,
-              config.ano,
-              user?.id
-            );
-            console.log(`🔒 Período ${config.mes}/${config.ano} fechado para empresa ${empresaId}`);
-          } catch (fechamentoError) {
-            // Não falhar a geração do book se o fechamento falhar
-            console.warn(
-              '⚠️ Erro ao fechar período do banco de horas (não crítico):',
-              fechamentoError
-            );
+          // Fechar período do banco de horas (snapshot para proteção contra extemporâneos).
+          // Empresa liberada: o mês já foi fechado no modelo novo.
+          if (!noModeloNovo) {
+            try {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+              await bancoHorasQuarentenaService.fecharPeriodo(
+                empresaId,
+                config.mes,
+                config.ano,
+                user?.id
+              );
+              console.log(
+                `🔒 Período ${config.mes}/${config.ano} fechado para empresa ${empresaId}`
+              );
+            } catch (fechamentoError) {
+              // Não falhar a geração do book se o fechamento falhar
+              console.warn(
+                '⚠️ Erro ao fechar período do banco de horas (não crítico):',
+                fechamentoError
+              );
+            }
           }
         } catch (error: any) {
           console.error(`Erro ao gerar book para empresa ${empresaId}:`, error);

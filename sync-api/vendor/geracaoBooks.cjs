@@ -422,9 +422,9 @@ var init_bancoHorasRepasseService = __esm({
   }
 });
 
-// ../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/cpexcel.js
+// node_modules/xlsx-js-style/dist/cpexcel.js
 var require_cpexcel = __commonJS({
-  "../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/cpexcel.js"(exports2, module2) {
+  "node_modules/xlsx-js-style/dist/cpexcel.js"(exports2, module2) {
     var cptable2 = { version: "1.15.0" };
     cptable2[437] = (function() {
       var d = "\0\x07\b	\n\v\f\r\x1B !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F\xC7\xFC\xE9\xE2\xE4\xE0\xE5\xE7\xEA\xEB\xE8\xEF\xEE\xEC\xC4\xC5\xC9\xE6\xC6\xF4\xF6\xF2\xFB\xF9\xFF\xD6\xDC\xA2\xA3\xA5\u20A7\u0192\xE1\xED\xF3\xFA\xF1\xD1\xAA\xBA\xBF\u2310\xAC\xBD\xBC\xA1\xAB\xBB\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255D\u255C\u255B\u2510\u2514\u2534\u252C\u251C\u2500\u253C\u255E\u255F\u255A\u2554\u2569\u2566\u2560\u2550\u256C\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256B\u256A\u2518\u250C\u2588\u2584\u258C\u2590\u2580\u03B1\xDF\u0393\u03C0\u03A3\u03C3\xB5\u03C4\u03A6\u0398\u03A9\u03B4\u221E\u03C6\u03B5\u2229\u2261\xB1\u2265\u2264\u2320\u2321\xF7\u2248\xB0\u2219\xB7\u221A\u207F\xB2\u25A0\xA0", D = [], e = {};
@@ -3676,9 +3676,9 @@ var require_cpexcel = __commonJS({
   }
 });
 
-// ../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/xlsx.min.js
+// node_modules/xlsx-js-style/dist/xlsx.min.js
 var require_xlsx_min = __commonJS({
-  "../../../../OneDrive - Sonda S.A/Documentos/books-sonda/node_modules/xlsx-js-style/dist/xlsx.min.js"(exports2, module2) {
+  "node_modules/xlsx-js-style/dist/xlsx.min.js"(exports2, module2) {
     var XLSX2 = {};
     function make_xlsx_lib(a) {
       a.version = "0.18.5", a.style_version = "1.2.0";
@@ -15863,9 +15863,9 @@ var BooksDataCollectorService = class {
     });
     const ticketsMap = /* @__PURE__ */ new Map();
     [...ticketsAbertosFiltrados, ...ticketsFechadosFiltrados].forEach((a) => {
-      const chave = a.nro_solicitacao;
-      if (!ticketsMap.has(chave)) {
-        ticketsMap.set(chave, a);
+      const chave3 = a.nro_solicitacao;
+      if (!ticketsMap.has(chave3)) {
+        ticketsMap.set(chave3, a);
       }
     });
     const ticketsData = Array.from(ticketsMap.values());
@@ -17658,8 +17658,8 @@ var BooksDataCollectorService = class {
         if (book.mes === mesAtual && book.ano === anoAtual) continue;
         const dadosSla = book.dados_sla;
         if (dadosSla && dadosSla.sla_percentual !== void 0) {
-          const chave = `${book.mes}/${book.ano}`;
-          snapshotMap.set(chave, {
+          const chave3 = `${book.mes}/${book.ano}`;
+          snapshotMap.set(chave3, {
             percentual: Number(dadosSla.sla_percentual) || 0,
             status: dadosSla.status || "no_prazo",
             elegivel: dadosSla.sla_elegivel !== false
@@ -17673,9 +17673,9 @@ var BooksDataCollectorService = class {
     });
     const resultado = [];
     for (const { mes, ano } of mesesInfo) {
-      const chave = `${mes}/${ano}`;
-      if (snapshotMap.has(chave)) {
-        const snapshot = snapshotMap.get(chave);
+      const chave3 = `${mes}/${ano}`;
+      if (snapshotMap.has(chave3)) {
+        const snapshot = snapshotMap.get(chave3);
         console.log(`\u{1F4F8} ${MESES_NOMES[mes - 1]}/${ano}: Usando SNAPSHOT (${snapshot.percentual}%)`);
         resultado.push({
           mes: MESES_NOMES[mes - 1],
@@ -18204,12 +18204,12 @@ var BooksDataCollectorService = class {
           mesesCiclo.push(m <= 12 ? { mes: m, ano } : { mes: m - 12, ano: ano + 1 });
         }
       }
-      let taxaHora = 0;
+      let taxaHora2 = 0;
       const { data: taxas } = await supabase.from("taxas_clientes").select("id").eq("cliente_id", empresaId).lte("vigencia_inicio", dataRef).order("vigencia_inicio", { ascending: false }).limit(1);
       if (taxas?.[0]) {
         const { data: valores } = await supabase.from("valores_taxas_funcoes").select("valor_base, valor_adicional").eq("taxa_id", taxas[0].id).eq("tipo_hora", "remota").eq("funcao", "Funcional").limit(1);
         if (valores?.[0]) {
-          taxaHora = valores[0].valor_adicional && valores[0].valor_adicional > 0 ? valores[0].valor_adicional : Math.round(valores[0].valor_base * 1.15 * 100) / 100;
+          taxaHora2 = valores[0].valor_adicional && valores[0].valor_adicional > 0 ? valores[0].valor_adicional : Math.round(valores[0].valor_base * 1.15 * 100) / 100;
         }
       }
       const resultado = [];
@@ -18276,7 +18276,7 @@ var BooksDataCollectorService = class {
         }
         const ultimoMes = dadosPorMes[dadosPorMes.length - 1];
         const excedentes = ultimoMes && ultimoMes.saldo < 0 ? Math.abs(ultimoMes.saldo) : 0;
-        const valorTotalExcedentes = taxaHora > 0 && excedentes > 0 ? excedentes / 60 * taxaHora : 0;
+        const valorTotalExcedentes = taxaHora2 > 0 && excedentes > 0 ? excedentes / 60 * taxaHora2 : 0;
         resultado.push({
           nome: emp.nome,
           percentual: emp.percentual,
@@ -19977,15 +19977,15 @@ async function calcularExcedente(empresaId, saldo, mes, ano, tipoContrato) {
         alerta
       };
     }
-    const valorExcedente = excedenteMagnitude * taxa;
+    const valorExcedente2 = excedenteMagnitude * taxa;
     console.log("\u2705 Excedente calculado com sucesso:", {
       excedente,
       taxa,
-      valorExcedente: `R$ ${valorExcedente.toFixed(2)}`
+      valorExcedente: `R$ ${valorExcedente2.toFixed(2)}`
     });
     return {
       excedente,
-      valorExcedente,
+      valorExcedente: valorExcedente2,
       taxaUtilizada: taxa,
       taxaEncontrada: true
     };
@@ -20256,21 +20256,21 @@ async function buscarTaxaMes(empresaId, mes, ano, tipoContrato) {
     );
   }
 }
-function gerarDescricaoFaturamento(empresaNome, saldoNegativo, mes, ano, valorExcedente, tipoContrato) {
+function gerarDescricaoFaturamento(empresaNome, saldoNegativo, mes, ano, valorExcedente2, tipoContrato) {
   try {
     console.log("\u{1F50D} BancoHorasExcedentesService.gerarDescricaoFaturamento:", {
       empresaNome,
       saldoNegativo,
       mes,
       ano,
-      valorExcedente,
+      valorExcedente: valorExcedente2,
       tipoContrato
     });
     const periodo = `${String(mes).padStart(2, "0")}/${ano}`;
     const valorFormatado = new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL"
-    }).format(valorExcedente);
+    }).format(valorExcedente2);
     const unidade = tipoContrato === "tickets" ? "tickets" : "horas";
     const descricao = `Excedente de ${saldoNegativo} ${unidade} no per\xEDodo ${periodo} - Valor: ${valorFormatado}`;
     console.log("\u2705 Descri\xE7\xE3o gerada:", descricao);
@@ -20279,7 +20279,7 @@ function gerarDescricaoFaturamento(empresaNome, saldoNegativo, mes, ano, valorEx
       empresaNome,
       periodo,
       saldoNegativo,
-      valorFaturar: valorExcedente
+      valorFaturar: valorExcedente2
     };
   } catch (error) {
     console.error("\u274C Erro ao gerar descri\xE7\xE3o de faturamento:", error);
@@ -20300,13 +20300,13 @@ var ExcedentesService = class {
    * Gera descrição para faturamento
    * @see gerarDescricaoFaturamento
    */
-  gerarDescricaoFaturamento(empresaNome, saldoNegativo, mes, ano, valorExcedente, tipoContrato) {
+  gerarDescricaoFaturamento(empresaNome, saldoNegativo, mes, ano, valorExcedente2, tipoContrato) {
     return gerarDescricaoFaturamento(
       empresaNome,
       saldoNegativo,
       mes,
       ano,
-      valorExcedente,
+      valorExcedente2,
       tipoContrato
     );
   }
@@ -20575,13 +20575,13 @@ var BancoHorasService = class {
           ano,
           tipo_contrato: parametros.tipo_contrato
         });
-        const taxaHora = await excedentesService.buscarTaxaMes(
+        const taxaHora2 = await excedentesService.buscarTaxaMes(
           empresaId,
           mes,
           ano,
           parametros.tipo_contrato
         );
-        taxaHoraUtilizada = taxaHora;
+        taxaHoraUtilizada = taxaHora2;
         console.log("\u{1F4CA} [bancoHorasService] Taxa de hora buscada para exibi\xE7\xE3o:", {
           taxaHoraUtilizada,
           tipo: typeof taxaHoraUtilizada,
@@ -20596,13 +20596,13 @@ var BancoHorasService = class {
           ano,
           tipo_contrato: parametros.tipo_contrato
         });
-        const taxaTicket = await excedentesService.buscarTaxaMes(
+        const taxaTicket2 = await excedentesService.buscarTaxaMes(
           empresaId,
           mes,
           ano,
           parametros.tipo_contrato
         );
-        taxaTicketUtilizada = taxaTicket;
+        taxaTicketUtilizada = taxaTicket2;
         console.log("\u{1F4CA} Taxa de ticket buscada para exibi\xE7\xE3o:", taxaTicketUtilizada);
       }
       const saldoHorasNegativo = saldoHoras.startsWith("-");
@@ -21356,6 +21356,2082 @@ var BancoHorasService = class {
 };
 var bancoHorasService = new BancoHorasService();
 
+// src/errors/erroTraduzivel.ts
+var ErroTraduzivel = class extends Error {
+  constructor(chave3, valores, mensagem) {
+    super(mensagem);
+    this.chave = chave3;
+    this.valores = valores;
+    this.name = "ErroTraduzivel";
+  }
+};
+var chaveDaFalha = (acao) => acao.normalize("NFD").replace(new RegExp("\\p{Diacritic}", "gu"), "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).map((parte, i) => i ? parte[0].toUpperCase() + parte.slice(1) : parte).join("");
+var falhaDoBanco = (acao, erro) => new ErroTraduzivel(
+  `erros.falhas.${chaveDaFalha(acao)}`,
+  { detalhe: erro.message },
+  `Falha ao ${acao}: ${erro.message}`
+);
+
+// src/services/bancosHoras/vigencias.ts
+var primeiroDia = (m) => `${m.ano}-${String(m.mes).padStart(2, "0")}-01`;
+function vigenteNoMes(vigencias, m) {
+  const dia = primeiroDia(m);
+  return vigencias.find((v) => v.dataInicio <= dia && (v.dataFim === null || v.dataFim >= dia));
+}
+function baselineDoMes(vigencias, m) {
+  const v = vigenteNoMes(vigencias, m);
+  if (!v) return { horas: 0, tickets: 0 };
+  if (v.credito === "anual" && Number(v.dataInicio.slice(5, 7)) !== m.mes)
+    return { horas: 0, tickets: 0 };
+  return { horas: v.baselineMinutos ?? 0, tickets: v.baselineTickets ?? 0 };
+}
+function percentualDoMes(vigencias, m) {
+  const v = vigenteNoMes(vigencias, m);
+  if (!v) {
+    throw new Error(`Banco sem percentual de repasse vigente em ${m.mes}/${m.ano}`);
+  }
+  const percentuais = { mensal: Number(v.percentualMensal) };
+  if (v.percentualDentroPeriodo !== null)
+    percentuais.dentroPeriodo = Number(v.percentualDentroPeriodo);
+  if (v.percentualEntrePeriodos !== null)
+    percentuais.entrePeriodos = Number(v.percentualEntrePeriodos);
+  return percentuais;
+}
+
+// src/services/bancosHoras/calculo.ts
+function mesesDesdeVigencia(p, m) {
+  return (m.ano - p.inicioVigencia.ano) * 12 + (m.mes - p.inicioVigencia.mes);
+}
+var depoisDoFim = (p, m) => !!p.fimVigencia && m.ano * 12 + m.mes > p.fimVigencia.ano * 12 + p.fimVigencia.mes;
+function estaVigente(p, m) {
+  return mesesDesdeVigencia(p, m) >= 0 && !depoisDoFim(p, m);
+}
+function ehFimDePeriodo(p, m) {
+  if (!estaVigente(p, m)) return false;
+  if (p.fimVigencia && p.fimVigencia.mes === m.mes && p.fimVigencia.ano === m.ano) return true;
+  return (mesesDesdeVigencia(p, m) + 1) % p.periodoApuracao === 0;
+}
+function exigirVigente(p, m) {
+  const indice7 = mesesDesdeVigencia(p, m);
+  if (indice7 < 0) {
+    throw new Error(`M\xEAs ${m.mes}/${m.ano} \xE9 antes do in\xEDcio da vig\xEAncia do banco`);
+  }
+  if (depoisDoFim(p, m)) {
+    throw new Error(`M\xEAs ${m.mes}/${m.ano} \xE9 depois do fim da vig\xEAncia do banco`);
+  }
+  return indice7;
+}
+function inicioDoCiclo(p, m) {
+  const indice7 = exigirVigente(p, m);
+  const inicio = indice7 - indice7 % p.periodoApuracao;
+  const total = p.inicioVigencia.ano * 12 + (p.inicioVigencia.mes - 1) + inicio;
+  return { mes: total % 12 + 1, ano: Math.floor(total / 12) };
+}
+function validarPercentual(percentual) {
+  if (percentual === void 0 || percentual === null || percentual < 0 || percentual > 100) {
+    throw new Error(`Percentual de repasse inv\xE1lido: ${percentual}. Deve estar entre 0 e 100.`);
+  }
+  return percentual;
+}
+function calcularRepasse2(saldo, percentual, unidade) {
+  validarPercentual(percentual);
+  if (saldo < 0) return saldo;
+  const valor = saldo * percentual / 100;
+  return unidade === "horas" ? Math.round(valor) : Math.floor(valor);
+}
+function calcularSaldo(entrada, repasseAnterior) {
+  const saldoAUtilizar = entrada.baseline + repasseAnterior;
+  const consumoTotal = entrada.consumo + entrada.requerimentos + entrada.reajusteSaida - entrada.reajusteEntrada;
+  return {
+    baseline: entrada.baseline,
+    repasseAnterior,
+    saldoAUtilizar,
+    consumo: entrada.consumo,
+    requerimentos: entrada.requerimentos,
+    reajustes: entrada.reajusteEntrada - entrada.reajusteSaida,
+    consumoTotal,
+    saldo: saldoAUtilizar - consumoTotal
+  };
+}
+function validarPorPeriodo(p) {
+  const duracao = p.duracaoPeriodoMeses;
+  const periodos = p.periodosAteZerar;
+  if (!duracao || !periodos) {
+    throw new Error("Repasse por per\xEDodo sem dura\xE7\xE3o ou quantidade de per\xEDodos");
+  }
+  if (duracao * periodos !== p.periodoApuracao) {
+    throw new Error(
+      `Repasse por per\xEDodo: o per\xEDodo de apura\xE7\xE3o (${p.periodoApuracao}) deve ser igual a dura\xE7\xE3o \xD7 per\xEDodos (${duracao} \xD7 ${periodos})`
+    );
+  }
+  return { duracao, ciclo: duracao * periodos };
+}
+function aplicarRegraDeSaida(p, m, saldo, percentuais, unidade) {
+  const indice7 = exigirVigente(p, m);
+  const porPeriodo = p.repasseEspecial === "por_periodo" ? validarPorPeriodo(p) : null;
+  if (ehFimDePeriodo(p, m)) {
+    return {
+      repasse: 0,
+      excedente: saldo < 0 ? -saldo : 0,
+      fimPeriodo: true,
+      transicaoPeriodo: false
+    };
+  }
+  if (porPeriodo) {
+    const posicao = indice7 % porPeriodo.ciclo;
+    const transicao = posicao % porPeriodo.duracao === porPeriodo.duracao - 1;
+    const percentual = transicao ? percentuais.entrePeriodos : percentuais.dentroPeriodo;
+    return {
+      repasse: calcularRepasse2(saldo, validarPercentual(percentual), unidade),
+      excedente: 0,
+      fimPeriodo: false,
+      transicaoPeriodo: transicao
+    };
+  }
+  return {
+    repasse: calcularRepasse2(saldo, percentuais.mensal, unidade),
+    excedente: 0,
+    fimPeriodo: false,
+    transicaoPeriodo: false
+  };
+}
+function valorExcedente(quantidade, unidade, taxa) {
+  if (taxa === null || taxa === void 0) return 0;
+  const valor = unidade === "horas" ? quantidade / 60 * taxa : quantidade * taxa;
+  return Math.round(valor * 100) / 100;
+}
+
+// src/services/bancosHoras/classificacao.ts
+var normalizar = (texto) => (texto ?? "").trim().toLowerCase();
+function atendeEscopo(banco, produtoId, moduloId) {
+  if (banco.escopo.length === 0) return true;
+  if (!produtoId) return false;
+  return banco.escopo.some(
+    (e) => e.produtoId === produtoId && (e.moduloId === null || e.moduloId === moduloId)
+  );
+}
+function atendeFiltro(banco, itemConfiguracao) {
+  if (!banco.filtroIc) return true;
+  if (itemConfiguracao === null || itemConfiguracao === void 0) return false;
+  const item = normalizar(itemConfiguracao);
+  const valor = normalizar(banco.filtroIc.valor);
+  return banco.filtroIc.operador === "igual" ? item === valor : item.includes(valor);
+}
+function criarClassificador(bancos, dePara, mes) {
+  const vigentes = bancos.filter((b) => b.ativo && estaVigente(b, mes));
+  const solto = vigentes.find((b) => !b.padrao && b.escopo.length === 0 && !b.filtroIc);
+  if (solto) {
+    throw new Error(
+      `Banco ${solto.bancoId} sem escopo e sem filtro: receberia tudo. Defina o escopo ou o filtro.`
+    );
+  }
+  const candidatos = vigentes.filter((b) => !b.padrao).sort((a, b) => a.ordem - b.ordem);
+  const padrao = vigentes.find((b) => b.padrao) ?? null;
+  const grupos = new Map(dePara.filter((d) => d.ativo).map((d) => [normalizar(d.grupoAranda), d]));
+  const porProdutoModulo = (produtoId, moduloId, itemConfiguracao) => {
+    const banco = candidatos.find(
+      (b) => atendeEscopo(b, produtoId, moduloId) && atendeFiltro(b, itemConfiguracao)
+    );
+    return (banco ?? padrao)?.bancoId ?? null;
+  };
+  return {
+    porProdutoModulo,
+    porGrupo(grupo, itemConfiguracao) {
+      const d = grupos.get(normalizar(grupo));
+      return porProdutoModulo(d?.produtoId ?? null, d?.moduloId ?? null, itemConfiguracao);
+    }
+  };
+}
+
+// src/services/bancosHoras/consumoEntreBancos.ts
+var UNIDADES = ["horas", "tickets"];
+var podeCeder = (cedente, consumidor) => cedente.bancoId !== consumidor.bancoId && cedente.ativo && cedente.fimPeriodo && cedente.tipoContrato === consumidor.tipoContrato && cedente.periodoApuracao === consumidor.periodoApuracao;
+function calcularConsumoEntreBancos(bancos) {
+  const porOrdem = [...bancos].sort((a, b) => a.ordem - b.ordem);
+  const porBanco = {};
+  for (const b of bancos) {
+    porBanco[b.bancoId] = {};
+    for (const u of UNIDADES) {
+      if (b.saldos[u] === void 0) continue;
+      porBanco[b.bancoId][u] = {
+        consumidoDeOutros: 0,
+        cedidoAOutros: 0,
+        saldoAposConsumoEntreBancos: b.saldos[u]
+      };
+    }
+  }
+  const transferencias = [];
+  for (const consumidor of porOrdem.filter(
+    (b) => b.ativo && b.consomeOutrosBancos && b.fimPeriodo
+  )) {
+    for (const unidade of UNIDADES) {
+      const mov = porBanco[consumidor.bancoId][unidade];
+      if (!mov || mov.saldoAposConsumoEntreBancos >= 0) continue;
+      for (const cedente of porOrdem.filter((b) => podeCeder(b, consumidor))) {
+        const deficit = -mov.saldoAposConsumoEntreBancos;
+        if (deficit === 0) break;
+        const movCedente = porBanco[cedente.bancoId][unidade];
+        if (!movCedente || movCedente.saldoAposConsumoEntreBancos <= 0) continue;
+        const quantidade = Math.min(deficit, movCedente.saldoAposConsumoEntreBancos);
+        movCedente.saldoAposConsumoEntreBancos -= quantidade;
+        movCedente.cedidoAOutros += quantidade;
+        mov.saldoAposConsumoEntreBancos += quantidade;
+        mov.consumidoDeOutros += quantidade;
+        transferencias.push({
+          cedenteId: cedente.bancoId,
+          consumidorId: consumidor.bancoId,
+          unidade,
+          quantidade
+        });
+      }
+    }
+  }
+  return { transferencias, porBanco };
+}
+var formatarHoras = (minutos) => `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
+var referenciaBanco = (preposicao, nome) => /^banco\b/i.test(nome.trim()) ? `${preposicao} ${nome}` : `${preposicao} banco ${nome}`;
+function observacoesDaTransferencia(t, nomes) {
+  if (t.unidade === "horas") {
+    const q = formatarHoras(t.quantidade);
+    return {
+      consumidor: `${q} horas consumidas ${referenciaBanco("do", nomes.cedente)}`,
+      cedente: `${q} horas cedidas ${referenciaBanco("ao", nomes.consumidor)}`
+    };
+  }
+  const plural = t.quantidade === 1 ? "" : "s";
+  return {
+    consumidor: `${t.quantidade} ticket${plural} consumido${plural} ${referenciaBanco("do", nomes.cedente)}`,
+    cedente: `${t.quantidade} ticket${plural} cedido${plural} ${referenciaBanco("ao", nomes.consumidor)}`
+  };
+}
+
+// src/services/bancosHoras/taxas.ts
+var FUNCOES_MEDIA = ["Funcional", "T\xE9cnico (Instala\xE7\xE3o / Atualiza\xE7\xE3o)", "ABAP - PL/SQL"];
+var arredondar = (valor) => Math.round(valor * 100) / 100;
+var preenchido = (valor) => valor !== null && valor !== void 0 && valor > 0;
+function escolherTaxa(taxas, m, taxaProduto) {
+  const dia = `${m.ano}-${String(m.mes).padStart(2, "0")}-01`;
+  const candidatas = taxas.filter((t) => t.tipoProduto === taxaProduto && t.vigenciaInicio <= dia).sort((a, b) => b.vigenciaInicio.localeCompare(a.vigenciaInicio));
+  return candidatas[0] ?? null;
+}
+var horaExcedenteDaFuncao = (f) => preenchido(f.valorAdicional) ? f.valorAdicional : arredondar(f.valorBase * 1.15);
+function taxaHora(taxa, tipoHora) {
+  const funcional = taxa.funcoesRemotas.find((f) => f.funcao === "Funcional");
+  if (!funcional) return null;
+  if (tipoHora === "normal") return funcional.valorBase;
+  if (preenchido(funcional.valorAdicional)) return funcional.valorAdicional;
+  if (taxa.tipoCalculoAdicional === "normal") return arredondar(funcional.valorBase * 1.15);
+  const principais = taxa.funcoesRemotas.filter((f) => FUNCOES_MEDIA.includes(f.funcao));
+  const soma = principais.reduce((s, f) => s + horaExcedenteDaFuncao(f), 0);
+  return arredondar(soma / principais.length);
+}
+function taxaTicket(taxa) {
+  const valor = [taxa.valorTicketExcedente, taxa.ticketExcedente2, taxa.ticketExcedente].find(
+    preenchido
+  );
+  return valor ?? null;
+}
+var formatarHoras2 = (minutos) => `${Math.floor(minutos / 60)}:${String(minutos % 60).padStart(2, "0")}`;
+function descricaoFaturamento(quantidade, unidade, m, valor) {
+  const periodo = `${String(m.mes).padStart(2, "0")}/${m.ano}`;
+  const valorFormatado = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(valor);
+  const qtd = unidade === "horas" ? formatarHoras2(quantidade) : String(quantidade);
+  return `Excedente de ${qtd} ${unidade} no per\xEDodo ${periodo} - Valor: ${valorFormatado}`;
+}
+var ALERTA_SEM_TAXA = "Taxa n\xE3o encontrada para o per\xEDodo. Excedente n\xE3o pode ser calculado.";
+
+// src/services/bancosHoras/motorBancosHoras.ts
+var indice = (m) => m.ano * 12 + (m.mes - 1);
+var doIndice = (i) => ({ mes: i % 12 + 1, ano: Math.floor(i / 12) });
+var chave = (m) => `${m.ano}-${m.mes}`;
+var unidadesDoContrato = (b) => b.tipoContrato === "ambos" ? ["horas", "tickets"] : [b.tipoContrato];
+var movimentoVazio = () => ({
+  consumo: { minutos: 0, tickets: 0 },
+  requerimentosHoras: 0,
+  requerimentosTickets: 0,
+  entrada: { minutos: 0, tickets: 0 },
+  saida: { minutos: 0, tickets: 0 }
+});
+function entradaDaUnidade(b, m, mov, unidade) {
+  const baseline = baselineDoMes(b.baselines, m);
+  if (unidade === "horas") {
+    return {
+      baseline: baseline.horas,
+      // D-02: em "ambos", os chamados não consomem horas
+      consumo: b.tipoContrato === "ambos" ? 0 : mov.consumo.minutos,
+      requerimentos: Math.round(mov.requerimentosHoras * 60),
+      reajusteEntrada: mov.entrada.minutos,
+      reajusteSaida: mov.saida.minutos
+    };
+  }
+  return {
+    baseline: baseline.tickets,
+    consumo: mov.consumo.tickets,
+    requerimentos: mov.requerimentosTickets,
+    reajusteEntrada: mov.entrada.tickets,
+    reajusteSaida: mov.saida.tickets
+  };
+}
+function bancoDoRequerimento(r, classificador, bancosDoMes) {
+  if (r.bancoAjustadoId && bancosDoMes.includes(r.bancoAjustadoId)) return r.bancoAjustadoId;
+  return classificador.porProdutoModulo(r.produtoId, r.moduloId, null);
+}
+async function calcularEmpresaMes(repo, empresaId, mes, opcoes = {}) {
+  const todos = await repo.bancos(empresaId);
+  const vigentes = todos.filter((b) => b.ativo && estaVigente(b, mes)).sort((a, b) => a.ordem - b.ordem);
+  const vazio = {
+    empresaId,
+    mes,
+    bancos: [],
+    transferencias: [],
+    semBanco: { minutos: 0, tickets: 0 },
+    alertas: []
+  };
+  if (vigentes.length === 0) return vazio;
+  const inicioMaisAntigo = Math.min(...vigentes.map((b) => indice(inicioDoCiclo(b, mes))));
+  const fechados = await repo.fechamentos(
+    vigentes.map((b) => b.bancoId),
+    doIndice(inicioMaisAntigo),
+    mes
+  );
+  const fechadoEm = new Map(fechados.map((f) => [`${f.bancoId}|${chave(f.mes)}`, f]));
+  const partida = /* @__PURE__ */ new Map();
+  const congelados = [];
+  for (const b of vigentes) {
+    const doMes = opcoes.recalcularMesFechado ? void 0 : fechadoEm.get(`${b.bancoId}|${chave(mes)}`);
+    if (doMes) {
+      congelados.push(doMes);
+      continue;
+    }
+    let inicio = indice(inicioDoCiclo(b, mes));
+    let repasse = { horas: 0, tickets: 0 };
+    for (let i = indice(mes) - 1; i >= inicio; i--) {
+      const f = fechadoEm.get(`${b.bancoId}|${chave(doIndice(i))}`);
+      if (f) {
+        inicio = i + 1;
+        repasse = { horas: f.horas?.repasse ?? 0, tickets: f.tickets?.repasse ?? 0 };
+        break;
+      }
+    }
+    partida.set(b.bancoId, { inicio, repasse });
+  }
+  const abertos = vigentes.filter((b) => partida.has(b.bancoId));
+  if (abertos.length === 0) {
+    return { ...vazio, bancos: congelados };
+  }
+  const primeiro = Math.min(...abertos.map((b) => partida.get(b.bancoId).inicio));
+  const [dePara, reajustes, taxas] = await Promise.all([
+    repo.dePara(),
+    repo.reajustes(
+      abertos.map((b) => b.bancoId),
+      doIndice(primeiro),
+      mes
+    ),
+    repo.taxas(empresaId)
+  ]);
+  const movimentos = /* @__PURE__ */ new Map();
+  const movimentoDe = (bancoId, m) => {
+    const k = `${bancoId}|${chave(m)}`;
+    if (!movimentos.has(k)) movimentos.set(k, movimentoVazio());
+    return movimentos.get(k);
+  };
+  let semBanco = { minutos: 0, tickets: 0 };
+  for (let i = primeiro; i <= indice(mes); i++) {
+    const m = doIndice(i);
+    const precisam = abertos.filter((b) => partida.get(b.bancoId).inicio <= i);
+    if (precisam.length === 0) continue;
+    const classificador = criarClassificador(todos, dePara, m);
+    const semBancoMes = { minutos: 0, tickets: 0 };
+    const janelas = /* @__PURE__ */ new Map();
+    for (const b of precisam) {
+      const k = `${b.diaInicioApuracao}-${b.diaFimApuracao}`;
+      janelas.set(k, [...janelas.get(k) ?? [], b]);
+    }
+    let primeiraJanela = true;
+    for (const [k, bancosDaJanela] of janelas) {
+      const [di, df] = k.split("-").map(Number);
+      const ids = new Set(bancosDaJanela.map((b) => b.bancoId));
+      for (const l of await repo.consumo(empresaId, m, di, df)) {
+        const bancoId = classificador.porGrupo(l.grupo, l.itemConfiguracao);
+        if (bancoId === null) {
+          if (!primeiraJanela) continue;
+          semBancoMes.minutos += l.minutos;
+          semBancoMes.tickets += l.tickets;
+        } else if (ids.has(bancoId)) {
+          const mov = movimentoDe(bancoId, m);
+          mov.consumo.minutos += l.minutos;
+          mov.consumo.tickets += l.tickets;
+        }
+      }
+      primeiraJanela = false;
+    }
+    for (const r of await repo.requerimentos(empresaId, m)) {
+      const bancoId = bancoDoRequerimento(
+        r,
+        classificador,
+        precisam.map((b) => b.bancoId)
+      );
+      if (bancoId === null) {
+        semBancoMes.minutos += Math.round(r.horas * 60);
+        semBancoMes.tickets += r.tickets;
+        continue;
+      }
+      const mov = movimentoDe(bancoId, m);
+      mov.requerimentosHoras += r.horas;
+      mov.requerimentosTickets += r.tickets;
+    }
+    if (i === indice(mes)) semBanco = semBancoMes;
+  }
+  for (const r of reajustes) {
+    const mov = movimentoDe(r.bancoId, { mes: r.mes, ano: r.ano });
+    const destino = r.tipo === "entrada" ? mov.entrada : mov.saida;
+    destino.minutos += r.minutos;
+    destino.tickets += r.tickets;
+  }
+  const saldosDoMes = /* @__PURE__ */ new Map();
+  for (const b of abertos) {
+    const { inicio, repasse } = partida.get(b.bancoId);
+    const repasseAnterior = { ...repasse };
+    const saldos = {};
+    for (let i = inicio; i <= indice(mes); i++) {
+      const m = doIndice(i);
+      const mov = movimentos.get(`${b.bancoId}|${chave(m)}`) ?? movimentoVazio();
+      for (const u of unidadesDoContrato(b)) {
+        const saldo = calcularSaldo(entradaDaUnidade(b, m, mov, u), repasseAnterior[u]);
+        if (i < indice(mes)) {
+          repasseAnterior[u] = aplicarRegraDeSaida(
+            b,
+            m,
+            saldo.saldo,
+            percentualDoMes(b.repasses, m),
+            u
+          ).repasse;
+        } else {
+          saldos[u] = saldo;
+        }
+      }
+    }
+    saldosDoMes.set(b.bancoId, saldos);
+  }
+  const entreBancos = calcularConsumoEntreBancos(
+    abertos.map((b) => ({
+      bancoId: b.bancoId,
+      nome: b.nome,
+      ordem: b.ordem,
+      ativo: b.ativo,
+      tipoContrato: b.tipoContrato,
+      periodoApuracao: b.periodoApuracao,
+      fimPeriodo: ehFimDePeriodo(b, mes),
+      consomeOutrosBancos: b.consomeOutrosBancos,
+      saldos: Object.fromEntries(
+        Object.entries(saldosDoMes.get(b.bancoId)).map(([u, s]) => [u, s.saldo])
+      )
+    }))
+  );
+  const nomes = new Map(todos.map((b) => [b.bancoId, b.nome]));
+  const calculados = abertos.map((b) => {
+    const percentuais = percentualDoMes(b.repasses, mes);
+    const taxa = escolherTaxa(taxas, mes, b.taxaProduto);
+    const taxaPorUnidade = {
+      horas: taxa ? taxaHora(taxa, b.taxaTipoHora) : null,
+      tickets: taxa ? taxaTicket(taxa) : null
+    };
+    const resultado = {
+      bancoId: b.bancoId,
+      nome: b.nome,
+      mes,
+      fechado: false,
+      fimPeriodo: ehFimDePeriodo(b, mes),
+      transicaoPeriodo: false,
+      percentualRepasse: percentuais.mensal,
+      horas: null,
+      tickets: null,
+      valorAFaturar: 0,
+      observacoes: [],
+      alertas: []
+    };
+    for (const u of unidadesDoContrato(b)) {
+      const saldo = saldosDoMes.get(b.bancoId)[u];
+      const mov = entreBancos.porBanco[b.bancoId][u];
+      const saida = aplicarRegraDeSaida(b, mes, mov.saldoAposConsumoEntreBancos, percentuais, u);
+      const valor = valorExcedente(saida.excedente, u, taxaPorUnidade[u]);
+      resultado.transicaoPeriodo = saida.transicaoPeriodo;
+      resultado[u] = {
+        ...saldo,
+        consumidoDeOutros: mov.consumidoDeOutros,
+        cedidoAOutros: mov.cedidoAOutros,
+        saldoFinal: mov.saldoAposConsumoEntreBancos,
+        repasse: saida.repasse,
+        excedente: saida.excedente,
+        valorExcedente: valor,
+        taxa: taxaPorUnidade[u]
+      };
+      if (saida.excedente > 0) {
+        if (taxaPorUnidade[u] === null) {
+          if (!resultado.alertas.includes(ALERTA_SEM_TAXA)) resultado.alertas.push(ALERTA_SEM_TAXA);
+        } else {
+          resultado.observacoes.push({
+            origem: "faturamento",
+            texto: descricaoFaturamento(saida.excedente, u, mes, valor)
+          });
+        }
+      }
+      resultado.valorAFaturar = Math.round((resultado.valorAFaturar + valor) * 100) / 100;
+    }
+    for (const t of entreBancos.transferencias) {
+      if (t.consumidorId !== b.bancoId && t.cedenteId !== b.bancoId) continue;
+      const textos = observacoesDaTransferencia(t, {
+        cedente: nomes.get(t.cedenteId),
+        consumidor: nomes.get(t.consumidorId)
+      });
+      resultado.observacoes.unshift({
+        origem: "consumo_entre_bancos",
+        texto: t.consumidorId === b.bancoId ? textos.consumidor : textos.cedente
+      });
+    }
+    return resultado;
+  });
+  const alertas = [];
+  if (semBanco.minutos > 0 || semBanco.tickets > 0) {
+    alertas.push(
+      "H\xE1 consumo sem banco no m\xEAs: a empresa n\xE3o tem Banco padr\xE3o vigente para receber o que n\xE3o se encaixa nos outros bancos."
+    );
+  }
+  const bancos = [...congelados, ...calculados].sort(
+    (a, b) => vigentes.findIndex((v) => v.bancoId === a.bancoId) - vigentes.findIndex((v) => v.bancoId === b.bancoId)
+  );
+  return { empresaId, mes, bancos, transferencias: entreBancos.transferencias, semBanco, alertas };
+}
+
+// src/services/bancosHoras/fechamento.ts
+var unidadeParaPayload = (u) => u && {
+  baseline: u.baseline,
+  repasse_anterior: u.repasseAnterior,
+  saldo_a_utilizar: u.saldoAUtilizar,
+  consumo: u.consumo,
+  requerimentos: u.requerimentos,
+  reajustes: u.reajustes,
+  consumo_total: u.consumoTotal,
+  saldo: u.saldo,
+  consumido_outros: u.consumidoDeOutros,
+  cedido_outros: u.cedidoAOutros,
+  saldo_final: u.saldoFinal,
+  repasse: u.repasse,
+  excedente: u.excedente
+};
+function parametrosDoBanco(b, mes) {
+  return {
+    tipo_contrato: b.tipoContrato,
+    periodo_apuracao: b.periodoApuracao,
+    inicio_vigencia: `${b.inicioVigencia.ano}-${String(b.inicioVigencia.mes).padStart(2, "0")}-01`,
+    dia_inicio_apuracao: b.diaInicioApuracao,
+    dia_fim_apuracao: b.diaFimApuracao,
+    taxa_produto: b.taxaProduto,
+    taxa_tipo_hora: b.taxaTipoHora,
+    repasse_especial: b.repasseEspecial,
+    duracao_periodo_meses: b.duracaoPeriodoMeses,
+    periodos_ate_zerar: b.periodosAteZerar,
+    consome_outros_bancos: b.consomeOutrosBancos,
+    visivel_cliente: b.visivelCliente,
+    padrao: b.padrao,
+    ordem: b.ordem,
+    escopo: b.escopo,
+    filtro_ic: b.filtroIc,
+    baseline: baselineDoMes(b.baselines, mes),
+    percentuais: percentualDoMes(b.repasses, mes)
+  };
+}
+async function itensDeConsumoPorBanco(repo, empresaId, mes, cadastros, classificador, bancosDoMes) {
+  const itens = new Map(bancosDoMes.map((id) => [id, []]));
+  const janelas = new Set(
+    bancosDoMes.map(
+      (id) => `${cadastros.get(id).diaInicioApuracao}-${cadastros.get(id).diaFimApuracao}`
+    )
+  );
+  for (const janela of janelas) {
+    const [di, df] = janela.split("-").map(Number);
+    for (const item of await repo.consumoItens(empresaId, mes, di, df)) {
+      const bancoId = classificador.porGrupo(item.grupo, item.itemConfiguracao);
+      const b = bancoId && cadastros.get(bancoId);
+      if (!b || `${b.diaInicioApuracao}-${b.diaFimApuracao}` !== janela || !itens.has(bancoId))
+        continue;
+      itens.get(bancoId).push(item);
+    }
+  }
+  return itens;
+}
+async function montarFechamento(repo, empresaId, mes, motivo) {
+  const resultado = await calcularEmpresaMes(repo, empresaId, mes, {
+    recalcularMesFechado: motivo !== "geracao_book"
+  });
+  if (resultado.bancos.length > 0 && resultado.bancos.every((b) => b.fechado)) {
+    return null;
+  }
+  const cadastros = new Map((await repo.bancos(empresaId)).map((b) => [b.bancoId, b]));
+  const bancosDoMes = resultado.bancos.map((b) => b.bancoId);
+  const classificador = criarClassificador([...cadastros.values()], await repo.dePara(), mes);
+  const consumo = await itensDeConsumoPorBanco(
+    repo,
+    empresaId,
+    mes,
+    cadastros,
+    classificador,
+    bancosDoMes
+  );
+  const itens = new Map(
+    bancosDoMes.map((id) => [
+      id,
+      consumo.get(id).map((item) => ({
+        tipo: item.fonte,
+        item_id: item.itemId,
+        minutos: item.minutos,
+        tickets: item.tickets
+      }))
+    ])
+  );
+  for (const r of await repo.requerimentos(empresaId, mes)) {
+    const bancoId = bancoDoRequerimento(r, classificador, bancosDoMes);
+    if (bancoId && itens.has(bancoId)) {
+      itens.get(bancoId).push({
+        tipo: "requerimento",
+        item_id: r.requerimentoId,
+        minutos: Math.round(r.horas * 60),
+        tickets: r.tickets
+      });
+    }
+  }
+  for (const r of await repo.reajustes(bancosDoMes, mes, mes)) {
+    if (r.id && itens.has(r.bancoId)) {
+      itens.get(r.bancoId).push({ tipo: "reajuste", item_id: r.id, minutos: r.minutos, tickets: r.tickets });
+    }
+  }
+  for (const b of resultado.bancos) {
+    const doBanco = itens.get(b.bancoId);
+    const soma = (tipo, campo) => doBanco.filter((i) => i.tipo === tipo).reduce((s, i) => s + i[campo], 0);
+    const horasNaoBatem = b.horas && cadastros.get(b.bancoId).tipoContrato !== "ambos" && soma("apontamento", "minutos") !== b.horas.consumo;
+    const ticketsNaoBatem = b.tickets && soma("ticket", "tickets") !== b.tickets.consumo;
+    if (horasNaoBatem || ticketsNaoBatem) {
+      throw new Error(
+        `Os itens do fechamento n\xE3o batem com o consumo calculado do banco "${b.nome}". Tente de novo.`
+      );
+    }
+  }
+  return {
+    empresa_id: empresaId,
+    ano: mes.ano,
+    mes: mes.mes,
+    motivo,
+    bancos: resultado.bancos.map((b) => ({
+      banco_id: b.bancoId,
+      nome_banco: b.nome,
+      fim_periodo: b.fimPeriodo,
+      transicao_periodo: b.transicaoPeriodo,
+      percentual_repasse: b.percentualRepasse,
+      taxa_hora: b.horas?.taxa ?? null,
+      taxa_ticket: b.tickets?.taxa ?? null,
+      valor_excedente_horas: b.horas?.valorExcedente ?? 0,
+      valor_excedente_tickets: b.tickets?.valorExcedente ?? 0,
+      valor_a_faturar: b.valorAFaturar,
+      alertas: b.alertas,
+      parametros: parametrosDoBanco(cadastros.get(b.bancoId), mes),
+      horas: unidadeParaPayload(b.horas),
+      tickets: unidadeParaPayload(b.tickets),
+      observacoes: b.observacoes,
+      itens: itens.get(b.bancoId)
+    })),
+    transferencias: resultado.transferencias.map((t) => ({
+      cedente_id: t.cedenteId,
+      consumidor_id: t.consumidorId,
+      unidade: t.unidade,
+      quantidade: t.quantidade
+    }))
+  };
+}
+async function fecharMes(repo, empresaId, mes, motivo) {
+  const payload = await montarFechamento(repo, empresaId, mes, motivo);
+  if (!payload) return { acao: "existente", fechamentos: [] };
+  return repo.gravarFechamento(payload);
+}
+
+// src/services/bancosHoras/repositorioSupabase.ts
+var numero = (v) => v === null || v === void 0 ? null : Number(v);
+var mesAno = (data) => ({
+  ano: Number(data.slice(0, 4)),
+  mes: Number(data.slice(5, 7))
+});
+var indice2 = (m) => m.ano * 12 + (m.mes - 1);
+var OBSERVACOES_AUTOMATICAS = ["consumo_entre_bancos", "faturamento"];
+async function consultar(promessa, origem) {
+  const { data, error } = await promessa;
+  if (error) throw new Error(`Falha ao ler ${origem}: ${error.message}`);
+  return data ?? [];
+}
+function unidadeDoFechamento(f, sufixo) {
+  if (f[`baseline_${sufixo}`] === null || f[`baseline_${sufixo}`] === void 0) return null;
+  const v = (campo) => numero(f[`${campo}_${sufixo}`]) ?? 0;
+  const horas = sufixo === "minutos";
+  return {
+    baseline: v("baseline"),
+    repasseAnterior: v("repasse_anterior"),
+    saldoAUtilizar: v("saldo_a_utilizar"),
+    consumo: v("consumo"),
+    requerimentos: v("requerimentos"),
+    reajustes: v("reajustes"),
+    consumoTotal: v("consumo_total"),
+    saldo: v("saldo"),
+    consumidoDeOutros: v("consumido_outros"),
+    cedidoAOutros: v("cedido_outros"),
+    saldoFinal: v("saldo_final"),
+    repasse: v("repasse"),
+    excedente: v("excedente"),
+    valorExcedente: numero(horas ? f.valor_excedente_horas : f.valor_excedente_tickets) ?? 0,
+    taxa: numero(horas ? f.taxa_hora : f.taxa_ticket)
+  };
+}
+function criarRepositorioSupabase(cliente2) {
+  return {
+    async bancos(empresaId) {
+      const bancos = await consultar(
+        cliente2.from("bancos_horas").select("*").eq("empresa_id", empresaId).order("ordem"),
+        "bancos de horas"
+      );
+      if (bancos.length === 0) return [];
+      const ids = bancos.map((b) => b.id);
+      const [escopos, baselines, repasses] = await Promise.all([
+        consultar(
+          cliente2.from("bancos_horas_escopo").select("*").in("banco_id", ids),
+          "escopo dos bancos"
+        ),
+        consultar(
+          cliente2.from("bancos_horas_baseline").select("*").in("banco_id", ids),
+          "baselines"
+        ),
+        consultar(
+          cliente2.from("bancos_horas_repasse").select("*").in("banco_id", ids),
+          "percentuais de repasse"
+        )
+      ]);
+      return bancos.map((b) => ({
+        bancoId: b.id,
+        nome: b.nome,
+        ordem: b.ordem,
+        padrao: b.padrao,
+        ativo: b.ativo,
+        visivelCliente: b.visivel_cliente,
+        tipoContrato: b.tipo_contrato,
+        periodoApuracao: b.periodo_apuracao,
+        inicioVigencia: mesAno(b.inicio_vigencia),
+        fimVigencia: b.fim_vigencia ? mesAno(b.fim_vigencia) : null,
+        diaInicioApuracao: b.dia_inicio_apuracao,
+        diaFimApuracao: b.dia_fim_apuracao,
+        taxaProduto: b.taxa_produto,
+        taxaTipoHora: b.taxa_tipo_hora,
+        repasseEspecial: b.repasse_especial,
+        duracaoPeriodoMeses: b.duracao_periodo_meses,
+        periodosAteZerar: b.periodos_ate_zerar,
+        consomeOutrosBancos: b.consome_outros_bancos,
+        escopo: escopos.filter((e) => e.banco_id === b.id).map((e) => ({ produtoId: e.produto_id, moduloId: e.modulo_id })),
+        filtroIc: b.filtro_ic_operador ? { operador: b.filtro_ic_operador, valor: b.filtro_ic_valor } : null,
+        baselines: baselines.filter((v) => v.banco_id === b.id).map((v) => ({
+          dataInicio: v.data_inicio,
+          dataFim: v.data_fim,
+          baselineMinutos: numero(v.baseline_minutos),
+          baselineTickets: numero(v.baseline_tickets),
+          credito: v.credito
+        })),
+        repasses: repasses.filter((v) => v.banco_id === b.id).map((v) => ({
+          dataInicio: v.data_inicio,
+          dataFim: v.data_fim,
+          percentualMensal: numero(v.percentual_mensal),
+          percentualDentroPeriodo: numero(v.percentual_dentro_periodo),
+          percentualEntrePeriodos: numero(v.percentual_entre_periodos)
+        }))
+      }));
+    },
+    async dePara() {
+      const grupos = await consultar(
+        cliente2.from("grupos_aranda").select("*"),
+        "de-para dos grupos"
+      );
+      return grupos.map((g) => ({
+        grupoAranda: g.grupo_aranda,
+        produtoId: g.produto_id,
+        moduloId: g.modulo_id,
+        ativo: g.ativo
+      }));
+    },
+    async consumo(empresaId, m, diaInicio, diaFim) {
+      const linhas = await consultar(
+        cliente2.rpc("bancos_horas_consumo", {
+          p_empresa_id: empresaId,
+          p_ano: m.ano,
+          p_mes: m.mes,
+          p_dia_inicio: diaInicio,
+          p_dia_fim: diaFim
+        }),
+        "bancos_horas_consumo"
+      );
+      return linhas.map((l) => ({
+        fonte: l.fonte,
+        grupo: l.grupo,
+        itemConfiguracao: l.item_configuracao,
+        minutos: numero(l.minutos) ?? 0,
+        tickets: numero(l.tickets) ?? 0
+      }));
+    },
+    async consumoItens(empresaId, m, diaInicio, diaFim) {
+      const linhas = await consultar(
+        cliente2.rpc("bancos_horas_consumo_itens", {
+          p_empresa_id: empresaId,
+          p_ano: m.ano,
+          p_mes: m.mes,
+          p_dia_inicio: diaInicio,
+          p_dia_fim: diaFim
+        }),
+        "bancos_horas_consumo_itens"
+      );
+      return linhas.map((l) => ({
+        itemId: l.item_id,
+        fonte: l.fonte,
+        grupo: l.grupo,
+        itemConfiguracao: l.item_configuracao,
+        minutos: numero(l.minutos) ?? 0,
+        tickets: numero(l.tickets) ?? 0
+      }));
+    },
+    async gravarFechamento(payload) {
+      const { data, error } = await cliente2.rpc("bancos_horas_registrar_fechamento", {
+        p_fechamento: payload
+      });
+      if (error) throw new Error(`Falha ao gravar o fechamento: ${error.message}`);
+      return data;
+    },
+    async requerimentos(empresaId, m) {
+      const linhas = await consultar(
+        cliente2.rpc("bancos_horas_requerimentos", {
+          p_empresa_id: empresaId,
+          p_ano: m.ano,
+          p_mes: m.mes
+        }),
+        "bancos_horas_requerimentos"
+      );
+      return linhas.map((r) => ({
+        requerimentoId: r.requerimento_id,
+        produtoId: r.produto_id,
+        moduloId: r.modulo_id,
+        bancoAjustadoId: r.banco_ajustado_id,
+        horas: numero(r.horas) ?? 0,
+        tickets: numero(r.tickets) ?? 0
+      }));
+    },
+    async reajustes(bancoIds, de, ate) {
+      if (bancoIds.length === 0) return [];
+      const linhas = await consultar(
+        cliente2.from("bancos_horas_reajustes").select("*").in("banco_id", bancoIds).eq("ativo", true).gte("ano", de.ano).lte("ano", ate.ano),
+        "reajustes"
+      );
+      return linhas.filter((r) => indice2(r) >= indice2(de) && indice2(r) <= indice2(ate)).map((r) => ({
+        id: r.id,
+        bancoId: r.banco_id,
+        mes: r.mes,
+        ano: r.ano,
+        tipo: r.tipo,
+        minutos: r.minutos,
+        tickets: r.tickets
+      }));
+    },
+    async fechamentos(bancoIds, de, ate) {
+      if (bancoIds.length === 0) return [];
+      const linhas = (await consultar(
+        cliente2.from("bancos_horas_fechamentos").select("*").in("banco_id", bancoIds).eq("vigente", true).gte("ano", de.ano).lte("ano", ate.ano),
+        "fechamentos"
+      )).filter((f) => indice2(f) >= indice2(de) && indice2(f) <= indice2(ate));
+      if (linhas.length === 0) return [];
+      const observacoes = await consultar(
+        cliente2.from("bancos_horas_observacoes").select("*").in(
+          "fechamento_id",
+          linhas.map((f) => f.id)
+        ).eq("ativo", true),
+        "observa\xE7\xF5es dos fechamentos"
+      );
+      return linhas.map((f) => ({
+        bancoId: f.banco_id,
+        nome: f.nome_banco,
+        mes: { mes: f.mes, ano: f.ano },
+        fechado: true,
+        fimPeriodo: f.fim_periodo,
+        transicaoPeriodo: f.transicao_periodo,
+        percentualRepasse: numero(f.percentual_repasse) ?? 0,
+        horas: unidadeDoFechamento(f, "minutos"),
+        tickets: unidadeDoFechamento(f, "tickets"),
+        valorAFaturar: numero(f.valor_a_faturar) ?? 0,
+        observacoes: observacoes.filter((o) => o.fechamento_id === f.id && OBSERVACOES_AUTOMATICAS.includes(o.origem)).map((o) => ({ origem: o.origem, texto: o.texto })),
+        alertas: f.alertas ?? []
+      }));
+    },
+    async taxas(empresaId) {
+      const taxas = await consultar(
+        cliente2.from("taxas_clientes").select("*").eq("cliente_id", empresaId),
+        "taxas"
+      );
+      if (taxas.length === 0) return [];
+      const funcoes = await consultar(
+        cliente2.from("valores_taxas_funcoes").select("*").in(
+          "taxa_id",
+          taxas.map((t) => t.id)
+        ).eq("tipo_hora", "remota"),
+        "valores das taxas"
+      );
+      return taxas.map((t) => ({
+        id: t.id,
+        vigenciaInicio: t.vigencia_inicio,
+        tipoProduto: t.tipo_produto,
+        tipoCalculoAdicional: t.tipo_calculo_adicional ?? null,
+        valorTicketExcedente: numero(t.valor_ticket_excedente),
+        ticketExcedente2: numero(t.ticket_excedente_2),
+        ticketExcedente: numero(t.ticket_excedente),
+        funcoesRemotas: funcoes.filter((f) => f.taxa_id === t.id).map((f) => ({
+          funcao: f.funcao,
+          valorBase: numero(f.valor_base) ?? 0,
+          valorAdicional: numero(f.valor_adicional)
+        }))
+      }));
+    }
+  };
+}
+
+// src/services/bancosHoras/cache.ts
+function comCache(repo) {
+  const guardadas = /* @__PURE__ */ new Map();
+  const embrulhado = {};
+  for (const nome of Object.keys(repo)) {
+    const original = repo[nome];
+    embrulhado[nome] = (...args) => {
+      const chave3 = `${nome}:${JSON.stringify(args)}`;
+      if (!guardadas.has(chave3)) {
+        const promessa = original.apply(repo, args);
+        promessa.catch(() => guardadas.delete(chave3));
+        guardadas.set(chave3, promessa);
+      }
+      return guardadas.get(chave3);
+    };
+  }
+  return embrulhado;
+}
+
+// src/services/empresasService.ts
+var LIMITE_JUSTIFICATIVA = 200;
+var LIMITE_DESCRICAO = 500;
+var falha = falhaDoBanco;
+var chaveNome = (nome) => nome.trim().toLowerCase();
+var textoOuNulo = (texto) => texto?.trim() || null;
+var numeroOuNulo = (valor) => valor === null || valor === void 0 ? null : Number(valor);
+var umOuNulo = (valor) => Array.isArray(valor) ? valor[0] ?? null : valor ?? null;
+function modeloDaEmpresa(modeloCalculo, bancosAtivos) {
+  if (modeloCalculo === "multiplo") return "liberada";
+  return bancosAtivos > 1 ? "multiplo" : "legado";
+}
+function fiscalIncompleto(f) {
+  if (f.modalidade === null || f.edocs24x7 === null || f.atualizacaoContratada === null)
+    return true;
+  if (f.atualizacaoContratada && f.atualizacoesPorAno === null) return true;
+  if (f.modalidade !== "on_premise") return false;
+  if (f.dba === null || f.bancoDados === null) return true;
+  const atendimento = f.dba === "atendimento" || f.dba === "atendimento_monitoramento";
+  const monitoramento = f.dba === "monitoramento" || f.dba === "atendimento_monitoramento";
+  return atendimento && f.minutosAtendimento === null || monitoramento && f.minutosMonitoramento === null;
+}
+function calcularPendencias(e) {
+  const pendencias = [];
+  if (!e.informacoes?.ramoId) pendencias.push("ramo");
+  if (e.solucoes.some((s) => s.codigo === "FISCAIS") && (!e.informacoes || fiscalIncompleto(e.informacoes.fiscal)))
+    pendencias.push("contrato_fiscal");
+  if (e.solucoes.some((s) => s.temAms) && e.organizacoesAtivas === 0)
+    pendencias.push("organizacao");
+  if (e.emProjeto && !e.solucoes.some((s) => s.emProjeto)) pendencias.push("projeto_sem_solucao");
+  return pendencias;
+}
+var solucoesDaLinha = (linhas) => [...linhas ?? []].sort((a, b) => (a.solucoes?.ordem ?? 0) - (b.solucoes?.ordem ?? 0)).map((s) => ({
+  id: s.id,
+  solucaoId: s.solucao_id,
+  codigo: s.solucoes?.codigo ?? "",
+  nome: s.solucoes?.nome ?? "",
+  temAms: s.tem_ams,
+  emProjeto: s.em_projeto,
+  justificativaProjeto: s.justificativa_projeto
+}));
+function informacoesDaLinha(c) {
+  return {
+    ramoId: c?.ramo_atividade_id ?? null,
+    ramoSecundarioId: c?.ramo_secundario_id ?? null,
+    descricaoAtividade: c?.descricao_atividade ?? null,
+    fiscal: {
+      modalidade: c?.fiscal_modalidade ?? null,
+      edocs24x7: c?.fiscal_edocs_24x7 ?? null,
+      atualizacaoContratada: c?.fiscal_atualizacao_contratada ?? null,
+      atualizacoesPorAno: c?.fiscal_atualizacoes_por_ano ?? null,
+      dba: c?.fiscal_dba ?? null,
+      minutosAtendimento: c?.fiscal_dba_minutos_atendimento ?? null,
+      minutosMonitoramento: c?.fiscal_dba_minutos_monitoramento ?? null,
+      bancoDados: c?.fiscal_banco_dados ?? null
+    }
+  };
+}
+var informacoesParaBanco = (empresaId, i) => ({
+  empresa_id: empresaId,
+  ramo_atividade_id: i.ramoId,
+  ramo_secundario_id: i.ramoSecundarioId,
+  descricao_atividade: textoOuNulo(i.descricaoAtividade),
+  fiscal_modalidade: i.fiscal.modalidade,
+  fiscal_edocs_24x7: i.fiscal.edocs24x7,
+  fiscal_atualizacao_contratada: i.fiscal.atualizacaoContratada,
+  fiscal_atualizacoes_por_ano: i.fiscal.atualizacoesPorAno,
+  fiscal_dba: i.fiscal.dba,
+  fiscal_dba_minutos_atendimento: i.fiscal.minutosAtendimento,
+  fiscal_dba_minutos_monitoramento: i.fiscal.minutosMonitoramento,
+  fiscal_banco_dados: i.fiscal.bancoDados
+});
+function validarInformacoes(i) {
+  if (i.ramoId && i.ramoSecundarioId === i.ramoId) {
+    throw new ErroTraduzivel(
+      "erros.empresas.ramoSecundarioIgual",
+      {},
+      "O ramo secund\xE1rio precisa ser diferente do principal."
+    );
+  }
+  if ((i.descricaoAtividade?.trim().length ?? 0) > LIMITE_DESCRICAO) {
+    throw new ErroTraduzivel(
+      "erros.empresas.descricaoLonga",
+      { limite: LIMITE_DESCRICAO },
+      `A descri\xE7\xE3o da atividade passa de ${LIMITE_DESCRICAO} caracteres.`
+    );
+  }
+  if (i.fiscal.atualizacoesPorAno !== null && i.fiscal.atualizacoesPorAno < 1) {
+    throw new ErroTraduzivel(
+      "erros.empresas.atualizacoesPorAno",
+      {},
+      "Informe ao menos uma atualiza\xE7\xE3o por ano."
+    );
+  }
+  if ((i.fiscal.minutosAtendimento ?? 0) < 0 || (i.fiscal.minutosMonitoramento ?? 0) < 0) {
+    throw new ErroTraduzivel(
+      "erros.empresas.dbaNegativo",
+      {},
+      "As horas de DBA n\xE3o podem ser negativas."
+    );
+  }
+}
+var COLUNAS_LISTA = `id, nome_abreviado, nome_completo, status, modelo_calculo, email_gestor,
+  email_comercial, observacao, em_projeto,
+  empresas_solucoes(id, solucao_id, tem_ams, em_projeto, justificativa_projeto, solucoes(codigo, nome, ordem)),
+  empresas_informacoes_contrato(*),
+  empresas_organizacoes_aranda(ativo),
+  bancos_horas(ativo)`;
+var COLUNAS_SOLUCAO = "id, solucao_id, tem_ams, em_projeto, justificativa_projeto, solucoes(codigo, nome, ordem)";
+var EmpresasService = class {
+  constructor(cliente2 = supabase) {
+    this.cliente = cliente2;
+  }
+  /** Nome de cada e-mail (minúsculo) pelo cadastro de usuários; sem permissão, nenhum */
+  async nomesPorEmail(emails) {
+    const unicos = [...new Set(emails.filter(Boolean).map((e) => e.toLowerCase()))];
+    if (unicos.length === 0) return /* @__PURE__ */ new Map();
+    const { data, error } = await this.cliente.rpc("perfis_resumo", {
+      p_ids: null,
+      p_emails: unicos
+    });
+    if (error) return /* @__PURE__ */ new Map();
+    return new Map(
+      (data ?? []).filter((p) => p.full_name).map((p) => [p.email.toLowerCase(), p.full_name])
+    );
+  }
+  async listar() {
+    const { data, error } = await this.cliente.from("empresas").select(COLUNAS_LISTA).order("nome_abreviado");
+    if (error) throw falha("carregar as empresas", error);
+    const linhas = data;
+    const nomes = await this.nomesPorEmail(
+      linhas.flatMap((e) => [e.email_gestor, e.email_comercial])
+    );
+    const nomeDe = (email) => email ? nomes.get(email.toLowerCase()) ?? null : null;
+    return linhas.map((e) => {
+      const solucoes = solucoesDaLinha(e.empresas_solucoes);
+      const contrato = umOuNulo(e.empresas_informacoes_contrato);
+      return {
+        id: e.id,
+        nomeAbreviado: e.nome_abreviado,
+        nomeCompleto: e.nome_completo,
+        status: e.status,
+        modelo: modeloDaEmpresa(
+          e.modelo_calculo,
+          (e.bancos_horas ?? []).filter((b) => b.ativo).length
+        ),
+        solucoes,
+        temAms: solucoes.some((s) => s.temAms),
+        emProjeto: e.em_projeto,
+        pendencias: calcularPendencias({
+          solucoes,
+          informacoes: contrato ? informacoesDaLinha(contrato) : null,
+          organizacoesAtivas: (e.empresas_organizacoes_aranda ?? []).filter((o) => o.ativo).length,
+          emProjeto: e.em_projeto
+        }),
+        emailCs: e.email_gestor,
+        emailComercial: e.email_comercial,
+        nomeCs: nomeDe(e.email_gestor),
+        nomeComercial: nomeDe(e.email_comercial),
+        observacao: e.observacao
+      };
+    });
+  }
+  async carregar(empresaId) {
+    const [empresa, solucoes, contrato, organizacoes, contatos, grupos, anexos, bancos] = await Promise.all([
+      this.cliente.from("empresas").select("*").eq("id", empresaId).single(),
+      this.cliente.from("empresas_solucoes").select(COLUNAS_SOLUCAO).eq("empresa_id", empresaId),
+      this.cliente.from("empresas_informacoes_contrato").select("*").eq("empresa_id", empresaId).maybeSingle(),
+      this.cliente.from("empresas_organizacoes_aranda").select("id, nome_organizacao").eq("empresa_id", empresaId).eq("ativo", true).order("nome_organizacao"),
+      this.cliente.from("clientes").select("id, nome_completo, email, finalidade_envio, principal_contato, status").eq("empresa_id", empresaId).order("nome_completo"),
+      this.cliente.from("empresa_grupos").select("grupos_responsaveis(id, nome, descricao)").eq("empresa_id", empresaId),
+      this.cliente.from("empresa_anexos").select("id, nome_original, tamanho_bytes, storage_path, ordem").eq("empresa_id", empresaId).order("ordem"),
+      this.cliente.from("bancos_horas").select("ativo").eq("empresa_id", empresaId)
+    ]);
+    const erro = empresa.error ?? solucoes.error ?? contrato.error ?? organizacoes.error ?? contatos.error ?? grupos.error ?? anexos.error ?? bancos.error;
+    if (erro) throw falha("carregar a empresa", erro);
+    const e = empresa.data;
+    let consolidadora = null;
+    if (e.empresa_consolidadora_id) {
+      const { data, error } = await this.cliente.from("empresas").select("id, nome_abreviado").eq("id", e.empresa_consolidadora_id).maybeSingle();
+      if (error) throw falha("carregar a empresa", error);
+      if (data) consolidadora = { id: data.id, nomeAbreviado: data.nome_abreviado };
+    }
+    const listaSolucoes = solucoesDaLinha(solucoes.data);
+    const informacoes = informacoesDaLinha(contrato.data);
+    return {
+      id: e.id,
+      nomeAbreviado: e.nome_abreviado,
+      nomeCompleto: e.nome_completo,
+      grupoEmpresarial: e.grupo_empresarial ?? null,
+      status: e.status,
+      modelo: modeloDaEmpresa(e.modelo_calculo, bancos.data.filter((b) => b.ativo).length),
+      vigenciaInicio: e.vigencia_inicio ?? null,
+      vigenciaFim: e.vigencia_fim ?? null,
+      emailCs: e.email_gestor ?? null,
+      emailComercial: e.email_comercial ?? null,
+      emailTm: e.email_tm ?? null,
+      observacao: e.observacao ?? null,
+      emProjeto: e.em_projeto,
+      idAranda: e.id_aranda ?? null,
+      solucoes: listaSolucoes,
+      informacoes,
+      organizacoes: organizacoes.data.map((o) => ({ id: o.id, nome: o.nome_organizacao })),
+      contatos: contatos.data.map((c) => ({
+        id: c.id,
+        nome: c.nome_completo,
+        email: c.email,
+        finalidade: c.finalidade_envio,
+        principal: !!c.principal_contato,
+        ativo: c.status === "ativo"
+      })),
+      grupos: grupos.data.map((g) => umOuNulo(g.grupos_responsaveis)).filter(Boolean).map((g) => ({ id: g.id, nome: g.nome, descricao: g.descricao })),
+      anexos: anexos.data.map((a) => ({
+        id: a.id,
+        nome: a.nome_original,
+        tamanhoBytes: a.tamanho_bytes,
+        storagePath: a.storage_path
+      })),
+      book: {
+        tipoBook: e.tipo_book,
+        templatePadrao: e.template_padrao ?? null,
+        linkSharepoint: e.link_sharepoint ?? null,
+        bookPersonalizado: !!e.book_personalizado,
+        bookAnexo: !!e.book_anexo,
+        consolidadora,
+        metaSlaPercentual: numeroOuNulo(e.meta_sla_percentual),
+        quantidadeMinimaChamadosSla: numeroOuNulo(e.quantidade_minima_chamados_sla)
+      },
+      pendencias: calcularPendencias({
+        solucoes: listaSolucoes,
+        informacoes: contrato.data ? informacoes : null,
+        organizacoesAtivas: organizacoes.data.length,
+        emProjeto: e.em_projeto
+      }),
+      atualizadoEm: e.updated_at,
+      atualizadoPor: e.updated_by
+    };
+  }
+  /** AMS e projeto por solução; quais soluções a empresa contrata vem da tela atual */
+  async salvarSolucoes(solucoes) {
+    for (const s of solucoes) {
+      if (!s.emProjeto) continue;
+      const justificativa = s.justificativaProjeto?.trim() ?? "";
+      if (!justificativa)
+        throw new ErroTraduzivel(
+          "erros.empresas.justificativaVazia",
+          {},
+          "Explique brevemente o projeto."
+        );
+      if (justificativa.length > LIMITE_JUSTIFICATIVA) {
+        throw new ErroTraduzivel(
+          "erros.empresas.justificativaLonga",
+          { limite: LIMITE_JUSTIFICATIVA },
+          `A justificativa do projeto passa de ${LIMITE_JUSTIFICATIVA} caracteres.`
+        );
+      }
+    }
+    for (const s of solucoes) {
+      const { error } = await this.cliente.from("empresas_solucoes").update({
+        tem_ams: s.temAms,
+        em_projeto: s.emProjeto,
+        justificativa_projeto: s.emProjeto ? s.justificativaProjeto.trim() : null
+      }).eq("id", s.id);
+      if (error) throw falha("salvar AMS e projetos", error);
+    }
+  }
+  /** Aba Informações: ID e organizações do Aranda, ramo e Contrato FISCAL */
+  async salvarInformacoes(empresaId, input) {
+    validarInformacoes(input.informacoes);
+    const { error: erroEmpresa } = await this.cliente.from("empresas").update({ id_aranda: textoOuNulo(input.idAranda) }).eq("id", empresaId);
+    if (erroEmpresa) throw falha("salvar as informa\xE7\xF5es", erroEmpresa);
+    const { error: erroContrato } = await this.cliente.from("empresas_informacoes_contrato").upsert(informacoesParaBanco(empresaId, input.informacoes), { onConflict: "empresa_id" });
+    if (erroContrato) throw falha("salvar as informa\xE7\xF5es do contrato", erroContrato);
+    await this.salvarOrganizacoes(empresaId, input.organizacoes);
+  }
+  async salvarOrganizacoes(empresaId, nomes) {
+    const desejadas = /* @__PURE__ */ new Map();
+    for (const nome of nomes) {
+      const limpo = nome.trim().toUpperCase();
+      if (limpo) desejadas.set(chaveNome(limpo), limpo);
+    }
+    const { data: atuais, error } = await this.cliente.from("empresas_organizacoes_aranda").select("id, nome_organizacao, ativo").eq("empresa_id", empresaId);
+    if (error) throw falha("salvar as organiza\xE7\xF5es", error);
+    for (const o of atuais.filter(
+      (o2) => o2.ativo && !desejadas.has(chaveNome(o2.nome_organizacao))
+    )) {
+      const { error: e } = await this.cliente.from("empresas_organizacoes_aranda").update({ ativo: false }).eq("id", o.id);
+      if (e) throw falha("salvar as organiza\xE7\xF5es", e);
+    }
+    for (const [chave3, nome] of desejadas) {
+      const existentes = atuais.filter((o) => chaveNome(o.nome_organizacao) === chave3);
+      if (existentes.some((o) => o.ativo)) continue;
+      const inativa = existentes[0];
+      const { error: e } = inativa ? await this.cliente.from("empresas_organizacoes_aranda").update({ ativo: true }).eq("id", inativa.id) : await this.cliente.from("empresas_organizacoes_aranda").insert({ empresa_id: empresaId, nome_organizacao: nome });
+      if (e?.code === "23505") throw await this.organizacaoDeOutra(nome);
+      if (e) throw falha("salvar as organiza\xE7\xF5es", e);
+    }
+  }
+  /** Um nome de organização pertence a uma única empresa: diz qual */
+  async organizacaoDeOutra(nome) {
+    const { data } = await this.cliente.from("empresas_organizacoes_aranda").select("nome_organizacao, empresas(nome_abreviado)").eq("ativo", true);
+    const dona = data?.find(
+      (o) => chaveNome(o.nome_organizacao) === chaveNome(nome)
+    );
+    const empresa = umOuNulo(dona?.empresas)?.nome_abreviado;
+    return empresa ? new ErroTraduzivel(
+      "erros.empresas.organizacaoDeOutra",
+      { organizacao: nome, empresa },
+      `A organiza\xE7\xE3o ${nome} j\xE1 pertence \xE0 ${empresa}.`
+    ) : new ErroTraduzivel(
+      "erros.empresas.organizacaoDeOutraEmpresa",
+      { organizacao: nome },
+      `A organiza\xE7\xE3o ${nome} j\xE1 pertence a outra empresa.`
+    );
+  }
+};
+var empresasService = new EmpresasService();
+
+// src/services/controleBancoHorasService.ts
+var chaveMes = (m) => `${m.ano}-${String(m.mes).padStart(2, "0")}`;
+var ControleBancoHorasService = class {
+  constructor(cliente2 = supabase, criarRepositorio = criarRepositorioSupabase) {
+    this.cliente = cliente2;
+    this.criarRepositorio = criarRepositorio;
+  }
+  async empresas() {
+    const { data, error } = await this.cliente.from("empresas").select("id, nome_abreviado, modelo_calculo, bancos_horas(ativo)").eq("status", "ativo").order("nome_abreviado");
+    if (error) throw falhaDoBanco("carregar as empresas", error);
+    return data.map((e) => {
+      const bancosAtivos = (e.bancos_horas ?? []).filter((b) => b.ativo).length;
+      return {
+        id: e.id,
+        nome: e.nome_abreviado,
+        modelo: modeloDaEmpresa(e.modelo_calculo, bancosAtivos),
+        bancosAtivos
+      };
+    });
+  }
+  /** Bancos da empresa no formato do motor (períodos e vigências em MesAno) */
+  async bancos(empresaId) {
+    return this.criarRepositorio(this.cliente).bancos(empresaId);
+  }
+  /** Um cálculo por mês, em sequência, sobre um repositório com cache */
+  async quadro(empresaId, meses) {
+    const repo = comCache(this.criarRepositorio(this.cliente));
+    const quadro = {};
+    for (const m of meses) {
+      quadro[chaveMes(m)] = await calcularEmpresaMes(repo, empresaId, m);
+    }
+    return quadro;
+  }
+  /**
+   * Requerimentos cobrados no banco de horas nos meses, com o banco pelo módulo e
+   * o banco que recebe. O ajuste manual só vale se o banco participa do mês (RN-09).
+   */
+  async requerimentos(empresaId, meses) {
+    const repo = this.criarRepositorio(this.cliente);
+    const [bancos, dePara] = await Promise.all([repo.bancos(empresaId), repo.dePara()]);
+    const lista = [];
+    for (const m of meses) {
+      const { data, error } = await this.cliente.rpc("bancos_horas_requerimentos_controle", {
+        p_empresa_id: empresaId,
+        p_ano: m.ano,
+        p_mes: m.mes
+      });
+      if (error) throw falhaDoBanco("carregar os requerimentos", error);
+      const classificador = criarClassificador(bancos, dePara, m);
+      const doMes = bancos.filter((b) => b.ativo && estaVigente(b, m)).map((b) => b.bancoId);
+      for (const r of data) {
+        const horas = Number(r.horas);
+        const linha = {
+          requerimentoId: r.requerimento_id,
+          produtoId: r.produto_id,
+          moduloId: r.modulo_id,
+          bancoAjustadoId: r.banco_ajustado_id,
+          horas,
+          tickets: r.tickets
+        };
+        lista.push({
+          id: r.requerimento_id,
+          chamado: r.chamado,
+          titulo: r.descricao,
+          modulo: r.modulo,
+          mes: m,
+          minutos: Math.round(horas * 60),
+          tickets: r.tickets,
+          situacao: r.consome ? "enviado" : "desenvolvimento",
+          bancoAutomaticoId: classificador.porProdutoModulo(r.produto_id, r.modulo_id, null),
+          bancoId: bancoDoRequerimento(linha, classificador, doMes),
+          ajuste: r.banco_ajustado_id ? {
+            bancoId: r.banco_ajustado_id,
+            motivo: r.ajuste_motivo,
+            atualizadoEm: r.ajuste_em,
+            atualizadoPor: r.ajuste_por
+          } : null
+        });
+      }
+    }
+    return lista;
+  }
+};
+var controleBancoHorasService = new ControleBancoHorasService();
+
+// src/services/bancosHoras/periodos.ts
+var MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+var indice3 = (m) => m.ano * 12 + (m.mes - 1);
+var doIndice2 = (i) => ({ mes: i % 12 + 1, ano: Math.floor(i / 12) });
+var rotuloMes = (m) => `${MESES[m.mes - 1]}/${m.ano}`;
+function rotuloPeriodo(meses) {
+  const primeiro = meses[0];
+  const ultimo = meses[meses.length - 1];
+  if (meses.length === 1) return rotuloMes(primeiro);
+  if (primeiro.ano === ultimo.ano) return `${MESES[primeiro.mes - 1]} \u2013 ${rotuloMes(ultimo)}`;
+  return `${rotuloMes(primeiro)} \u2013 ${rotuloMes(ultimo)}`;
+}
+function periodosDoBanco(banco, ate) {
+  const inicio = indice3(banco.inicioVigencia);
+  const fim = banco.fimVigencia ? indice3(banco.fimVigencia) : Infinity;
+  const limite = Math.min(Math.max(indice3(ate), inicio), fim);
+  const periodos = [];
+  for (let p = 0; inicio + p * banco.periodoApuracao <= limite; p++) {
+    const primeiro = inicio + p * banco.periodoApuracao;
+    const ultimo = Math.min(primeiro + banco.periodoApuracao - 1, fim);
+    const meses = Array.from({ length: ultimo - primeiro + 1 }, (_, i) => doIndice2(primeiro + i));
+    periodos.push({ indice: p, meses, rotulo: rotuloPeriodo(meses) });
+  }
+  return periodos;
+}
+function situacaoDoMes(m, hoje, fechado) {
+  if (fechado) return "fechado";
+  return indice3(m) > indice3(hoje) ? "futuro" : "aberto";
+}
+
+// src/services/controleLancamentosService.ts
+var LIMITE_TEXTO = 700;
+var falha2 = falhaDoBanco;
+var chave2 = (mes, ano) => `${ano}-${mes}`;
+var chavesDoPeriodo = (meses) => new Set(meses.map((m) => chave2(m.mes, m.ano)));
+var anosDoPeriodo = (meses) => [...new Set(meses.map((m) => m.ano))];
+var ControleLancamentosService = class {
+  constructor(cliente2 = supabase) {
+    this.cliente = cliente2;
+  }
+  /** Reajustes do banco no período, inclusive os inativos, com a pendência de retificação */
+  async reajustes(bancoId, meses) {
+    const { linhas, aguardando } = await this.lerReajustes(bancoId, meses, "*");
+    return linhas.map((r) => ({
+      id: r.id,
+      bancoId: r.banco_id,
+      mes: { mes: r.mes, ano: r.ano },
+      tipo: r.tipo,
+      minutos: r.minutos,
+      tickets: r.tickets,
+      justificativa: r.justificativa,
+      anotacaoInterna: r.anotacao_interna ?? null,
+      origem: r.origem,
+      ativo: r.ativo,
+      motivoInativacao: r.motivo_inativacao ?? null,
+      inativadoEm: r.inativado_em ?? null,
+      criadoEm: r.created_at,
+      criadoPor: r.created_by,
+      aguardandoRetificacao: aguardando(r)
+    }));
+  }
+  /**
+   * Reajustes que o cliente vê no Saldo Parcial: ativos e já valendo (sem os que aguardam a
+   * retificação do Book). A anotação interna e o autor nem são lidos (D-08).
+   */
+  async reajustesParaCliente(bancoId, meses) {
+    const { linhas, aguardando } = await this.lerReajustes(
+      bancoId,
+      meses,
+      "id, mes, ano, tipo, minutos, tickets, justificativa, ativo"
+    );
+    return linhas.filter((r) => r.ativo && !aguardando(r)).sort((a, b) => a.ano * 12 + a.mes - (b.ano * 12 + b.mes)).map((r) => ({
+      mes: { mes: r.mes, ano: r.ano },
+      tipo: r.tipo,
+      minutos: r.minutos,
+      tickets: r.tickets,
+      justificativa: r.justificativa
+    }));
+  }
+  /**
+   * Reajustes do banco no período e quem aguarda a retificação: no mês fechado, o ativo que não
+   * está no Book e o inativo que ainda está
+   */
+  async lerReajustes(bancoId, meses, colunas) {
+    const [reajustes, fechamentos] = await Promise.all([
+      this.cliente.from("bancos_horas_reajustes").select(colunas).eq("banco_id", bancoId).in("ano", anosDoPeriodo(meses)).order("created_at"),
+      this.cliente.from("bancos_horas_fechamentos").select("id, mes, ano").eq("banco_id", bancoId).eq("vigente", true)
+    ]);
+    const erro = reajustes.error ?? fechamentos.error;
+    if (erro) throw falha2("carregar os reajustes", erro);
+    const fechamentoDoMes = new Map(
+      fechamentos.data.map((f) => [chave2(f.mes, f.ano), f.id])
+    );
+    let noBook = /* @__PURE__ */ new Set();
+    if (fechamentoDoMes.size > 0) {
+      const { data: itens, error: erroItens } = await this.cliente.from("bancos_horas_fechamento_itens").select("item_id, fechamento_id").in("fechamento_id", [...fechamentoDoMes.values()]).eq("tipo", "reajuste");
+      if (erroItens) throw falha2("carregar os reajustes", erroItens);
+      noBook = new Set(itens.map((i) => i.item_id));
+    }
+    const doPeriodo = chavesDoPeriodo(meses);
+    return {
+      linhas: reajustes.data.filter(
+        (r) => doPeriodo.has(chave2(r.mes, r.ano))
+      ),
+      aguardando: (r) => fechamentoDoMes.has(chave2(r.mes, r.ano)) && (r.ativo ? !noBook.has(r.id) : noBook.has(r.id))
+    };
+  }
+  async lancarReajuste(input) {
+    const justificativa = input.justificativa.trim();
+    const anotacao = input.anotacaoInterna?.trim() || null;
+    if (!(input.minutos > 0 || input.tickets > 0) || input.minutos < 0 || input.tickets < 0) {
+      throw new ErroTraduzivel(
+        "erros.controle.reajusteVazio",
+        {},
+        "Informe as horas ou os tickets do reajuste."
+      );
+    }
+    if (!justificativa)
+      throw new ErroTraduzivel(
+        "erros.controle.motivoReajuste",
+        {},
+        "Informe o motivo do reajuste."
+      );
+    if (justificativa.length > LIMITE_TEXTO) {
+      throw new ErroTraduzivel(
+        "erros.controle.motivoLongo",
+        { limite: LIMITE_TEXTO },
+        `O motivo passa de ${LIMITE_TEXTO} caracteres.`
+      );
+    }
+    if ((anotacao?.length ?? 0) > LIMITE_TEXTO) {
+      throw new ErroTraduzivel(
+        "erros.controle.anotacaoLonga",
+        { limite: LIMITE_TEXTO },
+        `As anota\xE7\xF5es internas passam de ${LIMITE_TEXTO} caracteres.`
+      );
+    }
+    const { error } = await this.cliente.from("bancos_horas_reajustes").insert({
+      banco_id: input.bancoId,
+      mes: input.mes.mes,
+      ano: input.mes.ano,
+      tipo: input.tipo,
+      minutos: input.minutos,
+      tickets: input.tickets,
+      justificativa,
+      anotacao_interna: anotacao,
+      origem: "manual"
+    });
+    if (error) throw falha2("lan\xE7ar o reajuste", error);
+  }
+  /** Nada é apagado: o reajuste continua no histórico, com o motivo */
+  async inativarReajuste(reajusteId, motivo) {
+    const limpo = motivo.trim();
+    if (!limpo)
+      throw new ErroTraduzivel(
+        "erros.controle.motivoInativacao",
+        {},
+        "Informe o motivo da inativa\xE7\xE3o."
+      );
+    const { error } = await this.cliente.from("bancos_horas_reajustes").update({ ativo: false, motivo_inativacao: limpo, inativado_em: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", reajusteId);
+    if (error) throw falha2("inativar o reajuste", error);
+  }
+  /**
+   * Observações que o cliente vê no Saldo Parcial: só mês e texto, sem autor (D-08). As de
+   * reajuste ficam de fora porque repetem o motivo, que já vai na lista de reajustes.
+   */
+  async observacoesParaCliente(bancoId, meses) {
+    const { data, error } = await this.cliente.from("bancos_horas_observacoes").select("mes, ano, texto, origem, created_at").eq("banco_id", bancoId).eq("ativo", true).in("ano", anosDoPeriodo(meses));
+    if (error) throw falha2("carregar as observa\xE7\xF5es", error);
+    const doPeriodo = chavesDoPeriodo(meses);
+    return data.filter((o) => o.origem !== "ajuste" && doPeriodo.has(chave2(o.mes, o.ano))).sort(
+      (a, b) => a.ano * 12 + a.mes - (b.ano * 12 + b.mes) || String(a.created_at).localeCompare(b.created_at)
+    ).map((o) => ({ mes: { mes: o.mes, ano: o.ano }, texto: o.texto }));
+  }
+  /** Observações ativas do banco no período, das mais recentes */
+  async observacoes(bancoId, meses) {
+    const { data, error } = await this.cliente.from("bancos_horas_observacoes").select("*").eq("banco_id", bancoId).eq("ativo", true).in("ano", anosDoPeriodo(meses));
+    if (error) throw falha2("carregar as observa\xE7\xF5es", error);
+    const doPeriodo = chavesDoPeriodo(meses);
+    return data.filter((o) => doPeriodo.has(chave2(o.mes, o.ano))).sort(
+      (a, b) => b.ano * 12 + b.mes - (a.ano * 12 + a.mes) || String(b.created_at).localeCompare(a.created_at)
+    ).map((o) => ({
+      id: o.id,
+      bancoId: o.banco_id,
+      mes: { mes: o.mes, ano: o.ano },
+      texto: o.texto,
+      origem: o.origem,
+      reajusteId: o.reajuste_id ?? null,
+      criadoEm: o.created_at,
+      criadoPor: o.created_by,
+      editada: !!o.updated_at && o.updated_at !== o.created_at
+    }));
+  }
+  /** Observação manual; em mês fechado, pede a retificação do Book (gatilho) */
+  async salvarObservacao(input) {
+    const texto = input.texto.trim();
+    if (!texto)
+      throw new ErroTraduzivel("erros.controle.observacaoVazia", {}, "Escreva a observa\xE7\xE3o.");
+    if (texto.length > LIMITE_TEXTO) {
+      throw new ErroTraduzivel(
+        "erros.controle.observacaoLonga",
+        { limite: LIMITE_TEXTO },
+        `A observa\xE7\xE3o passa de ${LIMITE_TEXTO} caracteres.`
+      );
+    }
+    const campos = { texto, mes: input.mes.mes, ano: input.mes.ano };
+    const { error } = input.id ? await this.cliente.from("bancos_horas_observacoes").update(campos).eq("id", input.id) : await this.cliente.from("bancos_horas_observacoes").insert({ ...campos, banco_id: input.bancoId, origem: "manual" });
+    if (error) throw falha2("salvar a observa\xE7\xE3o", error);
+  }
+  /**
+   * Troca o banco dos requerimentos, com um motivo para todos (decisão de
+   * 23/10/2026). Banco nulo apaga o ajuste: volta para o banco pelo módulo.
+   */
+  async salvarAjustesRequerimentos(ajustes, motivo) {
+    const limpo = motivo.trim();
+    if (ajustes.length === 0)
+      throw new ErroTraduzivel(
+        "erros.controle.semAjustes",
+        {},
+        "Nenhum requerimento com banco alterado."
+      );
+    if (!limpo)
+      throw new ErroTraduzivel(
+        "erros.controle.motivoTroca",
+        {},
+        "Informe o motivo da troca de banco."
+      );
+    const voltam = ajustes.filter((a) => a.bancoId === null).map((a) => a.requerimentoId);
+    if (voltam.length > 0) {
+      const { error } = await this.cliente.from("requerimentos_bancos").delete().in("requerimento_id", voltam);
+      if (error) throw falha2("salvar a troca de banco", error);
+    }
+    const trocados = ajustes.filter((a) => a.bancoId !== null);
+    if (trocados.length > 0) {
+      const { error } = await this.cliente.from("requerimentos_bancos").upsert(
+        trocados.map((a) => ({
+          requerimento_id: a.requerimentoId,
+          banco_id: a.bancoId,
+          motivo: limpo
+        })),
+        { onConflict: "requerimento_id" }
+      );
+      if (error) throw falha2("salvar a troca de banco", error);
+    }
+  }
+  /** Sai do Controle; a exclusão fica registrada na auditoria */
+  async excluirObservacao(observacaoId) {
+    const { error } = await this.cliente.from("bancos_horas_observacoes").update({ ativo: false, inativado_em: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", observacaoId);
+    if (error) throw falha2("excluir a observa\xE7\xE3o", error);
+  }
+};
+var controleLancamentosService = new ControleLancamentosService();
+
+// src/components/ds/horas.ts
+init_horasUtils();
+
+// src/utils/controleTela.ts
+var resultadoDoBanco = (quadro, mes, bancoId) => quadro[chaveMes(mes)]?.bancos.find((b) => b.bancoId === bancoId);
+var mesesComSituacao = (meses, quadro, bancoId, hoje) => meses.map((mes) => {
+  const resultado = resultadoDoBanco(quadro, mes, bancoId);
+  return {
+    mes,
+    chave: chaveMes(mes),
+    situacao: situacaoDoMes(mes, hoje, !!resultado?.fechado),
+    resultado
+  };
+});
+
+// src/utils/bancoHorasI18n.ts
+function isEnglishTemplateByName(templateName) {
+  if (!templateName) return false;
+  const nameLower = templateName.toLowerCase();
+  return nameLower.includes("english") || nameLower.includes("ingl\xEAs") || nameLower.includes("ingles") || nameLower.includes("ingles") || nameLower.includes("en ") || // "en " com espaço para evitar falsos positivos
+  nameLower.startsWith("en") || // Começa com "en"
+  nameLower.includes(" en") || // " en" precedido de espaço
+  nameLower.includes("template en") || nameLower.includes("template ingl\xEAs") || nameLower.includes("template ingles") || nameLower.includes("template english");
+}
+
+// src/services/controleSaldoParcialService.ts
+var LOTE = 200;
+var TIPO_DO_TICKET = {
+  Incidente: "IM",
+  Solicita\u00E7\u00E3o: "RF",
+  Problema: "PM"
+};
+var falha3 = falhaDoBanco;
+var indice4 = (m) => m.ano * 12 + m.mes;
+var emLotes = (lista) => Array.from(
+  { length: Math.ceil(lista.length / LOTE) },
+  (_, i) => lista.slice(i * LOTE, (i + 1) * LOTE)
+);
+var ControleSaldoParcialService = class {
+  constructor(cliente2 = supabase, controle = controleBancoHorasService, lancamentos = controleLancamentosService, criarRepositorio = criarRepositorioSupabase) {
+    this.cliente = cliente2;
+    this.controle = controle;
+    this.lancamentos = lancamentos;
+    this.criarRepositorio = criarRepositorio;
+  }
+  /** Bancos que o cliente vê, ativos e vigentes, na ordem, cada um no período atual */
+  async bancos(empresaId, hoje) {
+    const visiveis = (await this.controle.bancos(empresaId)).filter((b) => b.ativo && b.visivelCliente && estaVigente(b, hoje)).sort((a, b) => a.ordem - b.ordem);
+    if (visiveis.length === 0) return [];
+    const periodos = new Map(
+      visiveis.map((b) => [b.bancoId, periodosDoBanco(b, hoje).at(-1)?.meses ?? []])
+    );
+    const todos = [
+      ...new Map([...periodos.values()].flat().map((m) => [chaveMes(m), m])).values()
+    ].sort((a, b) => indice4(a) - indice4(b));
+    const [quadro, requerimentos] = await Promise.all([
+      this.controle.quadro(empresaId, todos),
+      this.controle.requerimentos(empresaId, todos)
+    ]);
+    return Promise.all(
+      visiveis.map(async (b) => {
+        const meses = periodos.get(b.bancoId);
+        const doPeriodo = new Set(meses.map(chaveMes));
+        const [reajustes, observacoes] = await Promise.all([
+          this.lancamentos.reajustesParaCliente(b.bancoId, meses),
+          this.lancamentos.observacoesParaCliente(b.bancoId, meses)
+        ]);
+        return {
+          bancoId: b.bancoId,
+          nome: b.nome,
+          tipoContrato: b.tipoContrato,
+          consomeOutrosBancos: b.consomeOutrosBancos,
+          meses: mesesComSituacao(meses, quadro, b.bancoId, hoje),
+          requerimentos: requerimentos.filter((r) => r.bancoId === b.bancoId && doPeriodo.has(chaveMes(r.mes))).map((r) => ({
+            chamado: r.chamado,
+            titulo: r.titulo,
+            modulo: r.modulo,
+            mes: r.mes,
+            minutos: r.minutos,
+            tickets: r.tickets,
+            situacao: r.situacao
+          })),
+          reajustes,
+          observacoes
+        };
+      })
+    );
+  }
+  /**
+   * Chamados de cada banco nos meses já iniciados do período. Mês fechado: os itens congelados
+   * no fechamento vigente, os mesmos do Book. Mês aberto: a classificação do fechamento, na hora.
+   */
+  async chamados(empresaId, bancos) {
+    const itens = [
+      ...await this.itensFechados(bancos),
+      ...await this.itensAbertos(empresaId, bancos)
+    ];
+    const detalhes = await this.detalhes(itens);
+    const porBanco = Object.fromEntries(
+      bancos.map((b) => [b.bancoId, []])
+    );
+    for (const item of itens) {
+      const d = detalhes.get(`${item.fonte}:${item.itemId}`);
+      if (!d) continue;
+      porBanco[item.bancoId].push({
+        ...d,
+        mes: item.mes,
+        minutos: item.minutos,
+        tickets: item.tickets
+      });
+    }
+    for (const lista of Object.values(porBanco)) {
+      lista.sort(
+        (a, b) => indice4(a.mes) - indice4(b.mes) || String(a.data).localeCompare(String(b.data))
+      );
+    }
+    return porBanco;
+  }
+  async itensFechados(bancos) {
+    const fechados = bancos.flatMap(
+      (b) => b.meses.filter((m) => m.situacao === "fechado").map((m) => ({ bancoId: b.bancoId, m }))
+    );
+    if (fechados.length === 0) return [];
+    const { data: fechamentos, error } = await this.cliente.from("bancos_horas_fechamentos").select("id, banco_id, mes, ano").in("banco_id", [...new Set(fechados.map((f) => f.bancoId))]).eq("vigente", true);
+    if (error) throw falha3("carregar os chamados dos meses fechados", error);
+    const procurados = new Set(fechados.map((f) => `${f.bancoId}:${f.m.chave}`));
+    const doFechamento = /* @__PURE__ */ new Map();
+    for (const f of fechamentos) {
+      const mes = { mes: f.mes, ano: f.ano };
+      if (procurados.has(`${f.banco_id}:${chaveMes(mes)}`)) {
+        doFechamento.set(f.id, { bancoId: f.banco_id, mes });
+      }
+    }
+    const itens = [];
+    for (const lote of emLotes([...doFechamento.keys()])) {
+      const { data, error: erroItens } = await this.cliente.from("bancos_horas_fechamento_itens").select("fechamento_id, tipo, item_id, minutos, tickets").in("fechamento_id", lote).in("tipo", ["apontamento", "ticket"]);
+      if (erroItens) throw falha3("carregar os chamados dos meses fechados", erroItens);
+      for (const i of data) {
+        const origem = doFechamento.get(i.fechamento_id);
+        if (!origem) continue;
+        itens.push({
+          ...origem,
+          fonte: i.tipo,
+          itemId: i.item_id,
+          minutos: i.minutos,
+          tickets: i.tickets
+        });
+      }
+    }
+    return itens;
+  }
+  async itensAbertos(empresaId, bancos) {
+    const abertos = /* @__PURE__ */ new Map();
+    for (const b of bancos) {
+      for (const m of b.meses.filter((x) => x.situacao === "aberto")) {
+        const grupo = abertos.get(m.chave) ?? { mes: m.mes, bancos: [] };
+        grupo.bancos.push(b.bancoId);
+        abertos.set(m.chave, grupo);
+      }
+    }
+    if (abertos.size === 0) return [];
+    const repo = this.criarRepositorio(this.cliente);
+    const [lista, dePara] = await Promise.all([repo.bancos(empresaId), repo.dePara()]);
+    const cadastros = new Map(lista.map((b) => [b.bancoId, b]));
+    const itens = [];
+    for (const { mes, bancos: pedidos } of abertos.values()) {
+      const doMes = lista.filter((b) => b.ativo && estaVigente(b, mes)).map((b) => b.bancoId);
+      const classificador = criarClassificador(lista, dePara, mes);
+      const porBanco = await itensDeConsumoPorBanco(
+        repo,
+        empresaId,
+        mes,
+        cadastros,
+        classificador,
+        doMes
+      );
+      for (const bancoId of pedidos) {
+        for (const i of porBanco.get(bancoId) ?? []) {
+          itens.push({
+            bancoId,
+            mes,
+            fonte: i.fonte,
+            itemId: i.itemId,
+            minutos: i.minutos,
+            tickets: i.tickets
+          });
+        }
+      }
+    }
+    return itens;
+  }
+  /**
+   * Idioma do e-mail: o do template padrão da empresa ('ingles', ou um template cadastrado com
+   * nome em inglês, como no legado); sem template, português
+   */
+  async idiomaDoEmail(empresaId) {
+    const cliente2 = this.cliente;
+    const { data: empresa, error } = await cliente2.from("empresas").select("template_padrao").eq("id", empresaId).maybeSingle();
+    if (error) throw falha3("carregar o idioma do e-mail", error);
+    const template = empresa?.template_padrao;
+    if (!template || template === "portugues") return "pt-BR";
+    if (template === "ingles") return "en";
+    const { data: cadastrado, error: erroTemplate } = await cliente2.from("email_templates").select("nome").eq("id", template).maybeSingle();
+    if (erroTemplate) throw falha3("carregar o idioma do e-mail", erroTemplate);
+    return isEnglishTemplateByName(cadastrado?.nome) ? "en" : "pt-BR";
+  }
+  /**
+   * Registra o envio no histórico de envios do Saldo Parcial (manual, sem agendamento). O app
+   * não grava direto na tabela: a função do banco confere a permissão e o modelo da empresa.
+   */
+  async registrarEnvio(empresaId, envio) {
+    const { error } = await this.cliente.rpc(
+      "registrar_envio_saldo_parcial_controle",
+      {
+        p_empresa_id: empresaId,
+        p_sucesso: envio.sucesso,
+        p_qtd_destinatarios: envio.destinatarios,
+        p_erro: envio.erro ?? null
+      }
+    );
+    if (error) throw falha3("registrar o envio do Saldo Parcial", error);
+  }
+  /** Dados de cada chamado, pela fonte e pelo id do item */
+  async detalhes(itens) {
+    const ids = (fonte) => [
+      ...new Set(itens.filter((i) => i.fonte === fonte).map((i) => i.itemId))
+    ];
+    const ler = async (tabela, colunas, coluna, valores) => {
+      const linhas = [];
+      for (const lote of emLotes(valores)) {
+        const { data, error } = await this.cliente.from(tabela).select(colunas).in(coluna, lote);
+        if (error) throw falha3("carregar os chamados", error);
+        linhas.push(...data);
+      }
+      return linhas;
+    };
+    const [apontamentos, tickets] = await Promise.all([
+      ler(
+        "apontamentos_aranda",
+        "id, nro_chamado, nro_tarefa, data_atividade, analista_tarefa, solicitante, grupo_tarefa, item_configuracao, descricao_tarefa, tipo_chamado",
+        "id",
+        ids("apontamento")
+      ),
+      ler(
+        "apontamentos_tickets_aranda",
+        "id, nro_solicitacao, data_solucao, data_fechamento, nome_responsavel, solicitante, nome_grupo, item_configuracao, descricao, solucao, cod_tipo",
+        "id",
+        ids("ticket")
+      )
+    ]);
+    const nros = [...new Set(apontamentos.map((a) => a.nro_chamado).filter(Boolean))];
+    const chamados = new Map(
+      (await ler(
+        "apontamentos_tickets_aranda",
+        "nro_solicitacao, descricao, solucao",
+        "nro_solicitacao",
+        nros
+      )).map((t) => [t.nro_solicitacao, t])
+    );
+    const mapa = /* @__PURE__ */ new Map();
+    for (const a of apontamentos) {
+      const chamado = chamados.get(a.nro_chamado);
+      mapa.set(`apontamento:${a.id}`, {
+        fonte: "apontamento",
+        chamado: a.nro_chamado ?? null,
+        tarefa: a.nro_tarefa ?? null,
+        data: a.data_atividade ?? null,
+        grupo: a.grupo_tarefa ?? null,
+        itemConfiguracao: a.item_configuracao ?? null,
+        analista: a.analista_tarefa ?? null,
+        solicitante: a.solicitante ?? null,
+        descricaoTarefa: a.descricao_tarefa ?? null,
+        descricaoChamado: chamado?.descricao ?? null,
+        solucaoChamado: chamado?.solucao ?? null,
+        tipoChamado: a.tipo_chamado ?? null
+      });
+    }
+    for (const t of tickets) {
+      mapa.set(`ticket:${t.id}`, {
+        fonte: "ticket",
+        chamado: t.nro_solicitacao ?? null,
+        tarefa: null,
+        data: t.data_solucao ?? t.data_fechamento ?? null,
+        grupo: t.nome_grupo ?? null,
+        itemConfiguracao: t.item_configuracao ?? null,
+        analista: t.nome_responsavel ?? null,
+        solicitante: t.solicitante ?? null,
+        descricaoTarefa: null,
+        descricaoChamado: t.descricao ?? null,
+        solucaoChamado: t.solucao ?? null,
+        tipoChamado: TIPO_DO_TICKET[t.cod_tipo] ?? null
+      });
+    }
+    return mapa;
+  }
+};
+var controleSaldoParcialService = new ControleSaldoParcialService();
+
+// src/services/bookConsumoBancosService.ts
+var MESES_HISTORICO = 6;
+var indice5 = (m) => m.ano * 12 + (m.mes - 1);
+var doIndice3 = (i) => ({ mes: i % 12 + 1, ano: Math.floor(i / 12) });
+var mesmoMes = (a, b) => a.mes === b.mes && a.ano === b.ano;
+var BookConsumoBancosService = class {
+  constructor(cliente2 = supabase, saldoParcial = controleSaldoParcialService, controle = controleBancoHorasService) {
+    this.cliente = cliente2;
+    this.saldoParcial = saldoParcial;
+    this.controle = controle;
+  }
+  /**
+   * Uma linha por banco que o cliente vê, da empresa e das consolidadas liberadas.
+   * `fechamentos`: a versão do fechamento de cada banco no mês, quando já se sabe.
+   */
+  async montar(empresaId, mes, fechamentos) {
+    const empresas = await this.empresasDoBook(empresaId);
+    const linhas = [];
+    for (const empresa of empresas) {
+      for (const dados of await this.bancosDaEmpresa(empresa.id, mes)) {
+        linhas.push({
+          banco_id: dados.bancoId,
+          ordem: linhas.length + 1,
+          nome_banco: dados.nome,
+          nome_empresa: empresa.nome,
+          fechamento_id: fechamentos[dados.bancoId] ?? null,
+          dados: dados.conteudo
+        });
+      }
+    }
+    return linhas;
+  }
+  async gravar(bookId, linhas) {
+    const { error } = await this.cliente.rpc(
+      "gravar_consumo_bancos_do_book",
+      { p_book_id: bookId, p_bancos: linhas }
+    );
+    if (error) throw falhaDoBanco("gravar o consumo do Book", error);
+  }
+  /** O snapshot do Book, na ordem; vazio para Book de empresa em Legado */
+  async doBook(bookId) {
+    const { data, error } = await this.cliente.rpc(
+      "consumo_bancos_do_book",
+      { p_book_id: bookId }
+    );
+    if (error) throw falhaDoBanco("carregar o consumo do Book", error);
+    return data ?? [];
+  }
+  /** A empresa do Book e, depois, as consolidadas dela que já estão liberadas */
+  async empresasDoBook(empresaId) {
+    const cliente2 = this.cliente;
+    const [principal, consolidadas] = await Promise.all([
+      cliente2.from("empresas").select("id, nome_abreviado").eq("id", empresaId).maybeSingle(),
+      cliente2.from("empresas").select("id, nome_abreviado").eq("empresa_consolidadora_id", empresaId).eq("modelo_calculo", "multiplo").order("nome_abreviado")
+    ]);
+    const erro = principal.error ?? consolidadas.error;
+    if (erro) throw falhaDoBanco("carregar as empresas do Book", erro);
+    return [principal.data, ...consolidadas.data ?? []].filter(Boolean).map((e) => ({ id: e.id, nome: e.nome_abreviado ?? "" }));
+  }
+  async bancosDaEmpresa(empresaId, mes) {
+    const bancos = await this.saldoParcial.bancos(empresaId, mes);
+    if (bancos.length === 0) return [];
+    const meses = Array.from(
+      { length: MESES_HISTORICO },
+      (_, i) => doIndice3(indice5(mes) - MESES_HISTORICO + 1 + i)
+    );
+    const [quadro, chamados] = await Promise.all([
+      this.controle.quadro(empresaId, meses),
+      this.saldoParcial.chamados(empresaId, bancos)
+    ]);
+    return bancos.map((b) => {
+      const doMes = (chamados[b.bancoId] ?? []).filter((c) => mesmoMes(c.mes, mes));
+      const somaTipo = (tipo) => doMes.filter((c) => c.tipoChamado === tipo).reduce((s, c) => ({ minutos: s.minutos + c.minutos, tickets: s.tickets + c.tickets }), {
+        minutos: 0,
+        tickets: 0
+      });
+      const conteudo = {
+        mes,
+        tipoContrato: b.tipoContrato,
+        meses: b.meses.map((m) => ({
+          mes: m.mes,
+          situacao: m.situacao,
+          resultado: m.resultado ?? null
+        })),
+        historico: meses.map((m) => {
+          const r = resultadoDoBanco(quadro, m, b.bancoId);
+          return {
+            mes: m,
+            minutos: r?.horas?.consumo ?? 0,
+            tickets: r?.tickets?.consumo ?? 0,
+            requerimentosMinutos: r?.horas?.requerimentos ?? 0,
+            requerimentosTickets: r?.tickets?.requerimentos ?? 0
+          };
+        }),
+        requerimentos: b.requerimentos.filter((r) => mesmoMes(r.mes, mes)),
+        reajustes: b.reajustes,
+        observacoes: b.observacoes,
+        porTipo: { incidente: somaTipo("IM"), solicitacao: somaTipo("RF") }
+      };
+      return { bancoId: b.bancoId, nome: b.nome, conteudo };
+    });
+  }
+};
+var bookConsumoBancosService = new BookConsumoBancosService();
+
+// src/services/geracaoBookLiberada.ts
+var indice6 = (m) => m.ano * 12 + (m.mes - 1);
+var GeracaoBookLiberada = class {
+  constructor(cliente2 = supabase, consumo = bookConsumoBancosService, criarRepositorio = criarRepositorioSupabase, fechar = fecharMes) {
+    this.cliente = cliente2;
+    this.consumo = consumo;
+    this.criarRepositorio = criarRepositorio;
+    this.fechar = fechar;
+  }
+  get db() {
+    return this.cliente;
+  }
+  async noModeloNovo(empresaId, mes) {
+    const { data: empresa, error } = await this.db.from("empresas").select("modelo_calculo").eq("id", empresaId).maybeSingle();
+    if (error) throw falhaDoBanco("carregar o modelo da empresa", error);
+    if (empresa?.modelo_calculo !== "multiplo") return false;
+    const bancos = await this.bancosDaEmpresa(empresaId);
+    if (bancos.length === 0) return true;
+    const { data: transicoes, error: erroTransicao } = await this.db.from("bancos_horas_fechamentos").select("mes, ano").in("banco_id", bancos).eq("motivo", "transicao");
+    if (erroTransicao) throw falhaDoBanco("carregar a transi\xE7\xE3o da empresa", erroTransicao);
+    const ultima = Math.max(-1, ...(transicoes ?? []).map((t) => indice6(t)));
+    return indice6(mes) > ultima;
+  }
+  async preparar(empresaId, mes, retificacao) {
+    await this.fechar(
+      this.criarRepositorio(this.db),
+      empresaId,
+      mes,
+      retificacao ? "retificacao" : "geracao_book"
+    );
+    return this.consumo.montar(empresaId, mes, await this.versoesVigentes(empresaId, mes));
+  }
+  async gravar(bookId, linhas) {
+    await this.consumo.gravar(bookId, linhas);
+  }
+  async bancosDaEmpresa(empresaId) {
+    const { data, error } = await this.db.from("bancos_horas").select("id").eq("empresa_id", empresaId);
+    if (error) throw falhaDoBanco("carregar os bancos da empresa", error);
+    return (data ?? []).map((b) => b.id);
+  }
+  /** Banco → fechamento vigente do mês, para o snapshot apontar a versão usada */
+  async versoesVigentes(empresaId, mes) {
+    const bancos = await this.bancosDaEmpresa(empresaId);
+    if (bancos.length === 0) return {};
+    const { data, error } = await this.db.from("bancos_horas_fechamentos").select("id, banco_id").in("banco_id", bancos).eq("mes", mes.mes).eq("ano", mes.ano).eq("vigente", true);
+    if (error) throw falhaDoBanco("carregar os fechamentos do m\xEAs", error);
+    return Object.fromEntries((data ?? []).map((f) => [f.banco_id, f.id]));
+  }
+};
+var geracaoBookLiberada = new GeracaoBookLiberada();
+
 // src/services/booksService.ts
 var BooksService = class {
   /**
@@ -21723,7 +23799,11 @@ var BooksService = class {
             });
             continue;
           }
-          const { data: bookExistente } = await supabase.from("books").select("id").eq("empresa_id", empresaId).eq("mes", config.mes).eq("ano", config.ano).order("created_at", { ascending: false }).limit(1).maybeSingle();
+          const noModeloNovo = await geracaoBookLiberada.noModeloNovo(empresaId, {
+            mes: config.mes,
+            ano: config.ano
+          });
+          const { data: bookExistente } = await supabase.from("books").select("id, status").eq("empresa_id", empresaId).eq("mes", config.mes).eq("ano", config.ano).order("created_at", { ascending: false }).limit(1).maybeSingle();
           let bookId;
           if (bookExistente && !config.forcar_atualizacao) {
             resultados.push({
@@ -21735,13 +23815,18 @@ var BooksService = class {
             continue;
           }
           if (config.forcar_atualizacao) {
-            try {
-              await bancoHorasQuarentenaService.reabrirPeriodo(empresaId, config.mes, config.ano);
-              console.log(
-                `\u{1F513} Per\xEDodo ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retifica\xE7\xE3o)`
-              );
-            } catch (reabrirError) {
-              console.warn("\u26A0\uFE0F Erro ao reabrir per\xEDodo (n\xE3o cr\xEDtico, continuando):", reabrirError);
+            if (!noModeloNovo) {
+              try {
+                await bancoHorasQuarentenaService.reabrirPeriodo(empresaId, config.mes, config.ano);
+                console.log(
+                  `\u{1F513} Per\xEDodo ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retifica\xE7\xE3o)`
+                );
+              } catch (reabrirError) {
+                console.warn(
+                  "\u26A0\uFE0F Erro ao reabrir per\xEDodo (n\xE3o cr\xEDtico, continuando):",
+                  reabrirError
+                );
+              }
             }
             try {
               await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
@@ -21777,6 +23862,25 @@ var BooksService = class {
                 empresa_id: empresaId,
                 empresa_nome: empresa.nome_completo,
                 erro: `Banco de horas n\xE3o p\xF4de ser calculado: ${calcError.message || "Erro desconhecido"}`
+              });
+              continue;
+            }
+          }
+          let consumoBancos = null;
+          if (noModeloNovo) {
+            try {
+              consumoBancos = await geracaoBookLiberada.preparar(
+                empresaId,
+                { mes: config.mes, ano: config.ano },
+                !!config.forcar_atualizacao && bookExistente?.status === "desatualizado"
+              );
+            } catch (fechamentoError) {
+              console.error("\u274C Erro ao fechar o m\xEAs no modelo novo:", fechamentoError?.message);
+              resultados.push({
+                sucesso: false,
+                empresa_id: empresaId,
+                empresa_nome: empresa.nome_completo,
+                erro: `O m\xEAs n\xE3o p\xF4de ser fechado nos bancos de horas: ${fechamentoError?.message || "Erro desconhecido"}`
               });
               continue;
             }
@@ -21823,28 +23927,35 @@ var BooksService = class {
             if (error) throw error;
             bookId = novoBook.id;
           }
+          if (consumoBancos) {
+            await geracaoBookLiberada.gravar(bookId, consumoBancos);
+          }
           resultados.push({
             sucesso: true,
             book_id: bookId,
             empresa_id: empresaId,
             empresa_nome: empresa.nome_completo
           });
-          try {
-            const {
-              data: { user }
-            } = await supabase.auth.getUser();
-            await bancoHorasQuarentenaService.fecharPeriodo(
-              empresaId,
-              config.mes,
-              config.ano,
-              user?.id
-            );
-            console.log(`\u{1F512} Per\xEDodo ${config.mes}/${config.ano} fechado para empresa ${empresaId}`);
-          } catch (fechamentoError) {
-            console.warn(
-              "\u26A0\uFE0F Erro ao fechar per\xEDodo do banco de horas (n\xE3o cr\xEDtico):",
-              fechamentoError
-            );
+          if (!noModeloNovo) {
+            try {
+              const {
+                data: { user }
+              } = await supabase.auth.getUser();
+              await bancoHorasQuarentenaService.fecharPeriodo(
+                empresaId,
+                config.mes,
+                config.ano,
+                user?.id
+              );
+              console.log(
+                `\u{1F512} Per\xEDodo ${config.mes}/${config.ano} fechado para empresa ${empresaId}`
+              );
+            } catch (fechamentoError) {
+              console.warn(
+                "\u26A0\uFE0F Erro ao fechar per\xEDodo do banco de horas (n\xE3o cr\xEDtico):",
+                fechamentoError
+              );
+            }
           }
         } catch (error) {
           console.error(`Erro ao gerar book para empresa ${empresaId}:`, error);
