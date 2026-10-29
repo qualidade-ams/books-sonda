@@ -19,7 +19,7 @@ import type {
   ControleMensalCompleto,
   AnexoWebhookData,
   AnexosSummaryWebhook,
-  DisparoComAnexos
+  DisparoComAnexos,
 } from '@/types/clientBooks';
 import { FINALIDADES_BOOK } from '@/types/clientBooksTypes';
 import { emailService, RATE_LIMIT_CONFIG } from './emailService';
@@ -27,6 +27,8 @@ import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
 import { auditService } from './auditService';
 import { gerarImagemBancoHoras } from './bancoHorasTableService';
+import { aplicarImagemNoCorpo, imagemBancoHorasDoBook } from './imagemBancoHorasBook';
+import { isEnglishTemplateByName } from '@/utils/bancoHorasI18n';
 import type { EmailTemplate } from '@/types/approval';
 
 /** Anexo em base64 pronto para envio (ex.: Excel de consumo) */
@@ -64,13 +66,15 @@ export interface PreviewBookEmpresa {
 class BooksDisparoService {
   /** Utilitário de sleep para rate limiting */
   private sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /** Obtém o ID do usuário autenticado na sessão atual */
   private async getUsuarioLogadoId(): Promise<string | null> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       return session?.user?.id || null;
     } catch {
       return null;
@@ -101,7 +105,7 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      
+
       // Obter o último dia válido do mês de referência
       const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
       const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
@@ -127,7 +131,7 @@ class BooksDisparoService {
           sucesso: 0,
           falhas: 0,
           total: 0,
-          detalhes: []
+          detalhes: [],
         };
       }
 
@@ -152,7 +156,7 @@ class BooksDisparoService {
           sucesso: 0,
           falhas: 0,
           total: 0,
-          detalhes: []
+          detalhes: [],
         };
       }
 
@@ -186,25 +190,32 @@ class BooksDisparoService {
             .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
-            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
+            await this.registrarFalhaControle(
+              mes,
+              ano,
+              empresa.id,
+              'Nenhum cliente ativo encontrado'
+            );
             continue;
           }
 
           // Buscar grupos de e-mail para CC
           const { data: gruposEmpresas } = await supabase
             .from('empresa_grupos')
-            .select(`
+            .select(
+              `
               grupos_responsaveis(
                 grupo_emails(email, nome)
               )
-            `)
+            `
+            )
             .eq('empresa_id', empresa.id);
 
           const emailsCC: string[] = [];
           if (gruposEmpresas) {
-            gruposEmpresas.forEach(grupo => {
+            gruposEmpresas.forEach((grupo) => {
               if (grupo.grupos_responsaveis?.grupo_emails) {
-                grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+                grupo.grupos_responsaveis.grupo_emails.forEach((email) => {
                   emailsCC.push(email.email);
                 });
               }
@@ -228,50 +239,66 @@ class BooksDisparoService {
 
             if (resultadoDisparo.sucesso) {
               // Registrar sucesso para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'enviado',
                   erro: undefined,
-                  emailsEnviados: [cliente.email, ...emailsCC]
+                  emailsEnviados: [cliente.email, ...emailsCC],
                 });
               });
 
-              await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `E-mail consolidado enviado para ${clientes.length} clientes`);
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'enviado',
+                `E-mail consolidado enviado para ${clientes.length} clientes`
+              );
               sucessos++;
             } else {
               // Registrar falha para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'falhou',
                   erro: resultadoDisparo.erro,
-                  emailsEnviados: []
+                  emailsEnviados: [],
                 });
               });
 
-              await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Falha no envio consolidado: ${resultadoDisparo.erro}`);
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'falhou',
+                `Falha no envio consolidado: ${resultadoDisparo.erro}`
+              );
               falhas++;
             }
-
           } catch (error) {
             // Registrar erro para todos os clientes da empresa
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
 
-            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Erro no processamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+            await this.atualizarControleMensal(
+              mes,
+              ano,
+              empresa.id,
+              'falhou',
+              `Erro no processamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+            );
             falhas++;
           }
-
         } catch (error) {
           falhas++;
           await this.registrarFalhaControle(
@@ -287,11 +314,12 @@ class BooksDisparoService {
         sucesso: sucessos,
         falhas: falhas,
         total: empresas.length,
-        detalhes
+        detalhes,
       };
-
     } catch (error) {
-      throw new Error(`Erro no disparo mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro no disparo mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -315,7 +343,7 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      
+
       // Obter o último dia válido do mês de referência
       const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
       const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
@@ -390,25 +418,34 @@ class BooksDisparoService {
             .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
-            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
+            await this.registrarFalhaControle(
+              mes,
+              ano,
+              empresa.id,
+              'Nenhum cliente ativo encontrado'
+            );
             continue;
           }
 
           // Coletar e-mails em cópia
           const { data: gruposEmpresas } = await supabase
             .from('empresa_grupos')
-            .select(`
+            .select(
+              `
               grupos_responsaveis(
                 grupo_emails(email, nome)
               )
-            `)
+            `
+            )
             .eq('empresa_id', empresa.id);
 
           const emailsCC: string[] = [];
           if (gruposEmpresas) {
-            gruposEmpresas.forEach(grupo => {
+            gruposEmpresas.forEach((grupo) => {
               if (grupo.grupos_responsaveis?.grupo_emails) {
-                grupo.grupos_responsaveis.grupo_emails.forEach(email => emailsCC.push(email.email));
+                grupo.grupos_responsaveis.grupo_emails.forEach((email) =>
+                  emailsCC.push(email.email)
+                );
               }
             });
           }
@@ -426,13 +463,13 @@ class BooksDisparoService {
 
             if (resultadoDisparo.sucesso) {
               // Registrar sucesso para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'enviado',
                   erro: undefined,
-                  emailsEnviados: [cliente.email, ...emailsCC]
+                  emailsEnviados: [cliente.email, ...emailsCC],
                 });
               });
 
@@ -441,18 +478,20 @@ class BooksDisparoService {
                 ano,
                 empresa.id,
                 'enviado',
-                forceResend ? `Reenvio manual: E-mail consolidado para ${clientes.length} clientes` : `E-mail consolidado enviado para ${clientes.length} clientes`
+                forceResend
+                  ? `Reenvio manual: E-mail consolidado para ${clientes.length} clientes`
+                  : `E-mail consolidado enviado para ${clientes.length} clientes`
               );
               sucessos++;
             } else {
               // Registrar falha para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'falhou',
                   erro: resultadoDisparo.erro,
-                  emailsEnviados: []
+                  emailsEnviados: [],
                 });
               });
 
@@ -461,20 +500,21 @@ class BooksDisparoService {
                 ano,
                 empresa.id,
                 'falhou',
-                forceResend ? 'Reenvio manual: Nenhum e-mail foi enviado com sucesso' : 'Nenhum e-mail foi enviado com sucesso'
+                forceResend
+                  ? 'Reenvio manual: Nenhum e-mail foi enviado com sucesso'
+                  : 'Nenhum e-mail foi enviado com sucesso'
               );
               falhas++;
             }
-
           } catch (error) {
             // Registrar erro para todos os clientes da empresa
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
 
@@ -483,11 +523,12 @@ class BooksDisparoService {
               ano,
               empresa.id,
               'falhou',
-              forceResend ? `Reenvio manual: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}` : `Erro no processamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+              forceResend
+                ? `Reenvio manual: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+                : `Erro no processamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
             );
             falhas++;
           }
-
         } catch (error) {
           falhas++;
           await this.registrarFalhaControle(
@@ -501,7 +542,9 @@ class BooksDisparoService {
 
       return { sucesso: sucessos, falhas, total: empresaIds.length, detalhes };
     } catch (error) {
-      throw new Error(`Erro no disparo por seleção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro no disparo por seleção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -514,31 +557,34 @@ class BooksDisparoService {
       const usuarioLogadoId = await this.getUsuarioLogadoId();
 
       // Registrar agendamentos no histórico
-      const agendamentos: HistoricoDisparoInsert[] = agendamento.clienteIds.map(clienteId => ({
+      const agendamentos: HistoricoDisparoInsert[] = agendamento.clienteIds.map((clienteId) => ({
         empresa_id: agendamento.empresaId,
         cliente_id: clienteId,
         colaborador_id: usuarioLogadoId,
         template_id: agendamento.templateId,
         status: 'agendado',
         data_agendamento: agendamento.dataAgendamento.toISOString(),
-        erro_detalhes: agendamento.observacoes
+        erro_detalhes: agendamento.observacoes,
       }));
 
-      const { error } = await supabase
-        .from('historico_disparos')
-        .insert(agendamentos);
+      const { error } = await supabase.from('historico_disparos').insert(agendamentos);
 
       if (error) {
         throw new Error(`Erro ao agendar disparo: ${error.message}`);
       }
 
       // Registrar audit log do agendamento
-      await this.registrarAuditLog('INSERT', agendamento.empresaId, {
-        empresa_id: agendamento.empresaId,
-        status: 'agendado',
-        data_agendamento: agendamento.dataAgendamento.toISOString(),
-        clientes_count: agendamento.clienteIds.length,
-      }, usuarioLogadoId);
+      await this.registrarAuditLog(
+        'INSERT',
+        agendamento.empresaId,
+        {
+          empresa_id: agendamento.empresaId,
+          status: 'agendado',
+          data_agendamento: agendamento.dataAgendamento.toISOString(),
+          clientes_count: agendamento.clienteIds.length,
+        },
+        usuarioLogadoId
+      );
 
       // Atualizar controle mensal se necessário
       const mes = agendamento.dataAgendamento.getMonth() + 1;
@@ -551,9 +597,10 @@ class BooksDisparoService {
         'agendado',
         `Agendado para ${agendamento.dataAgendamento.toLocaleDateString()}`
       );
-
     } catch (error) {
-      throw new Error(`Erro ao agendar disparo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao agendar disparo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -564,7 +611,7 @@ class BooksDisparoService {
     try {
       // Consulta otimizada única com JOINs para evitar N+1 queries
       const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
-      
+
       // Calcular próximo mês corretamente (lidar com dezembro -> janeiro)
       const proximoMes = mes === 12 ? 1 : mes + 1;
       const proximoAno = mes === 12 ? ano + 1 : ano;
@@ -573,14 +620,16 @@ class BooksDisparoService {
       // Buscar empresas com book personalizado
       const { data: empresasData, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select(`
+        .select(
+          `
           *,
           controle_mensal!left(
             status,
             data_processamento,
             observacoes
           )
-        `)
+        `
+        )
         .eq('status', 'ativo')
         .eq('book_personalizado', true)
         .is('empresa_consolidadora_id', null)
@@ -597,8 +646,8 @@ class BooksDisparoService {
       }
 
       // Buscar clientes ativos para cada empresa
-      const empresasIds = empresasData.map(e => e.id);
-      
+      const empresasIds = empresasData.map((e) => e.id);
+
       const { data: clientesData } = await supabase
         .from('clientes')
         .select('id, empresa_id')
@@ -639,11 +688,11 @@ class BooksDisparoService {
             vigencia_inicial: row.vigencia_inicial,
             vigencia_final: row.vigencia_final,
             created_at: row.created_at,
-            updated_at: row.updated_at
+            updated_at: row.updated_at,
           },
           controle: row.controle_mensal?.[0] || null,
           clientesAtivos: new Set(),
-          emailsEnviados: new Set()
+          emailsEnviados: new Set(),
         });
       }
 
@@ -670,37 +719,48 @@ class BooksDisparoService {
       // Converter para formato final, aplicando filtro de vigência inicial
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      
+
       // Obter o último dia válido do mês de referência
       const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
-      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`);
+      const dataReferenciaFim = new Date(
+        `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`
+      );
 
       const statusMensal: StatusMensal[] = Array.from(empresasMap.values())
-        .filter(empresaData => {
+        .filter((empresaData) => {
           // Se já foi efetivamente processada (enviado, falhou, agendado), sempre incluir
-          if (empresaData.controle && ['enviado', 'falhou', 'agendado'].includes(empresaData.controle.status)) {
+          if (
+            empresaData.controle &&
+            ['enviado', 'falhou', 'agendado'].includes(empresaData.controle.status)
+          ) {
             return true;
           }
-          
+
           // Para empresas pendentes ou sem controle mensal, aplicar filtro de vigência inicial
-          const vigenciaInicial = empresaData.empresa.vigencia_inicial ? new Date(empresaData.empresa.vigencia_inicial) : null;
+          const vigenciaInicial = empresaData.empresa.vigencia_inicial
+            ? new Date(empresaData.empresa.vigencia_inicial)
+            : null;
           if (vigenciaInicial) {
             // A vigência inicial deve ser <= primeiro dia do mês de referência
-            const dataReferenciaInicio = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-01`);
+            const dataReferenciaInicio = new Date(
+              `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-01`
+            );
             return vigenciaInicial <= dataReferenciaInicio;
           }
-          
+
           // Se não tem vigência inicial definida, incluir (comportamento padrão)
           return true;
         })
-        .map(empresaData => ({
+        .map((empresaData) => ({
           empresaId: empresaData.empresa.id,
           empresa: empresaData.empresa,
-          status: empresaData.controle?.status as StatusControleMensal || 'pendente',
-          dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
+          status: (empresaData.controle?.status as StatusControleMensal) || 'pendente',
+          dataProcessamento: empresaData.controle?.data_processamento
+            ? new Date(empresaData.controle.data_processamento)
+            : undefined,
           observacoes: empresaData.controle?.observacoes || undefined,
           clientesAtivos: empresaData.clientesAtivos.size,
-          emailsEnviados: empresaData.emailsEnviados.size
+          emailsEnviados: empresaData.emailsEnviados.size,
         }));
 
       // Ordenação alfabética por nome abreviado da empresa
@@ -709,9 +769,10 @@ class BooksDisparoService {
         const nomeB = (b.empresa.nome_abreviado || b.empresa.nome_completo || '').toLowerCase();
         return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
       });
-
     } catch (error) {
-      throw new Error(`Erro ao obter status mensal personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao obter status mensal personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -726,7 +787,7 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      
+
       // Obter o último dia válido do mês de referência
       const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
       const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
@@ -750,7 +811,7 @@ class BooksDisparoService {
           sucesso: 0,
           falhas: 0,
           total: 0,
-          detalhes: []
+          detalhes: [],
         };
       }
 
@@ -775,7 +836,7 @@ class BooksDisparoService {
           sucesso: 0,
           falhas: 0,
           total: 0,
-          detalhes: []
+          detalhes: [],
         };
       }
 
@@ -809,25 +870,32 @@ class BooksDisparoService {
             .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
-            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
+            await this.registrarFalhaControle(
+              mes,
+              ano,
+              empresa.id,
+              'Nenhum cliente ativo encontrado'
+            );
             continue;
           }
 
           // Buscar grupos de e-mail para CC
           const { data: gruposEmpresas } = await supabase
             .from('empresa_grupos')
-            .select(`
+            .select(
+              `
               grupos_responsaveis(
                 grupo_emails(email, nome)
               )
-            `)
+            `
+            )
             .eq('empresa_id', empresa.id);
 
           const emailsCC: string[] = [];
           if (gruposEmpresas) {
-            gruposEmpresas.forEach(grupo => {
+            gruposEmpresas.forEach((grupo) => {
               if (grupo.grupos_responsaveis?.grupo_emails) {
-                grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+                grupo.grupos_responsaveis.grupo_emails.forEach((email) => {
                   emailsCC.push(email.email);
                 });
               }
@@ -851,50 +919,66 @@ class BooksDisparoService {
 
             if (resultadoDisparo.sucesso) {
               // Registrar sucesso para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'enviado',
                   erro: undefined,
-                  emailsEnviados: [cliente.email, ...emailsCC]
+                  emailsEnviados: [cliente.email, ...emailsCC],
                 });
               });
 
-              await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `E-mail consolidado enviado para ${clientes.length} clientes (personalizado)`);
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'enviado',
+                `E-mail consolidado enviado para ${clientes.length} clientes (personalizado)`
+              );
               sucessos++;
             } else {
               // Registrar falha para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'falhou',
                   erro: resultadoDisparo.erro,
-                  emailsEnviados: []
+                  emailsEnviados: [],
                 });
               });
 
-              await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Falha no envio consolidado (personalizado): ${resultadoDisparo.erro}`);
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'falhou',
+                `Falha no envio consolidado (personalizado): ${resultadoDisparo.erro}`
+              );
               falhas++;
             }
-
           } catch (error) {
             // Registrar erro para todos os clientes da empresa
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
 
-            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Erro no processamento (personalizado): ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+            await this.atualizarControleMensal(
+              mes,
+              ano,
+              empresa.id,
+              'falhou',
+              `Erro no processamento (personalizado): ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+            );
             falhas++;
           }
-
         } catch (error) {
           falhas++;
           await this.registrarFalhaControle(
@@ -910,11 +994,12 @@ class BooksDisparoService {
         sucesso: sucessos,
         falhas: falhas,
         total: empresas.length,
-        detalhes
+        detalhes,
       };
-
     } catch (error) {
-      throw new Error(`Erro no disparo personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro no disparo personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -939,7 +1024,7 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      
+
       // Obter o último dia válido do mês de referência
       const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
       const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
@@ -1012,25 +1097,34 @@ class BooksDisparoService {
             .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientesError || !clientes || clientes.length === 0) {
-            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
+            await this.registrarFalhaControle(
+              mes,
+              ano,
+              empresa.id,
+              'Nenhum cliente ativo encontrado'
+            );
             continue;
           }
 
           // Coletar e-mails em cópia
           const { data: gruposEmpresas } = await supabase
             .from('empresa_grupos')
-            .select(`
+            .select(
+              `
               grupos_responsaveis(
                 grupo_emails(email, nome)
               )
-            `)
+            `
+            )
             .eq('empresa_id', empresa.id);
 
           const emailsCC: string[] = [];
           if (gruposEmpresas) {
-            gruposEmpresas.forEach(grupo => {
+            gruposEmpresas.forEach((grupo) => {
               if (grupo.grupos_responsaveis?.grupo_emails) {
-                grupo.grupos_responsaveis.grupo_emails.forEach(email => emailsCC.push(email.email));
+                grupo.grupos_responsaveis.grupo_emails.forEach((email) =>
+                  emailsCC.push(email.email)
+                );
               }
             });
           }
@@ -1048,13 +1142,13 @@ class BooksDisparoService {
 
             if (resultadoDisparo.sucesso) {
               // Registrar sucesso para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'enviado',
                   erro: undefined,
-                  emailsEnviados: [cliente.email, ...emailsCC]
+                  emailsEnviados: [cliente.email, ...emailsCC],
                 });
               });
 
@@ -1063,26 +1157,30 @@ class BooksDisparoService {
                 ano,
                 empresa.id,
                 'enviado',
-                forceResend ? `Reenvio manual personalizado: E-mail consolidado para ${clientes.length} clientes` : `E-mail consolidado enviado para ${clientes.length} clientes (personalizado)`
+                forceResend
+                  ? `Reenvio manual personalizado: E-mail consolidado para ${clientes.length} clientes`
+                  : `E-mail consolidado enviado para ${clientes.length} clientes (personalizado)`
               );
               sucessos++;
             } else {
               // Registrar falha para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: empresa.id,
                   clienteId: cliente.id,
                   status: 'falhou',
                   erro: resultadoDisparo.erro,
-                  emailsEnviados: []
+                  emailsEnviados: [],
                 });
               });
 
               // ✅ CORREÇÃO: Registrar falha no histórico de disparos personalizados
               try {
                 // Buscar template para o histórico
-                const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
-                const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
+                const templatePadrao =
+                  ((empresa as any).template_padrao as 'portugues' | 'ingles') ?? 'portugues';
+                const template =
+                  await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
 
                 if (template && clientes.length > 0) {
                   // Preparar informações sobre anexos para o histórico
@@ -1091,14 +1189,17 @@ class BooksDisparoService {
 
                   try {
                     const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-                    const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+                    const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
                     if (anexosEnviando.length > 0) {
                       anexoId = anexosEnviando[0].id;
                       detalhesAnexos = ` | Anexos: ${anexosEnviando.length} arquivo(s) (falha no envio personalizado)`;
                     }
                   } catch (anexoError) {
-                    console.error('Erro ao verificar anexos para histórico de falha personalizada:', anexoError);
+                    console.error(
+                      'Erro ao verificar anexos para histórico de falha personalizada:',
+                      anexoError
+                    );
                   }
 
                   // Registrar falha no histórico
@@ -1113,21 +1214,31 @@ class BooksDisparoService {
                     emails_cc: emailsCC,
                     erro_detalhes: `Falha no envio personalizado para ${clientes.length} clientes: ${resultadoDisparo.erro}${detalhesAnexos}`,
                     anexo_id: anexoId,
-                    anexo_processado: false
+                    anexo_processado: false,
                   };
 
                   await supabase.from('historico_disparos').insert(historicoFalhaData);
 
                   // Registrar audit log da falha personalizada
-                  await this.registrarAuditLog('INSERT', historicoFalhaData.empresa_id || '', {
-                    ...historicoFalhaData,
-                    empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
-                  }, usuarioLogadoId);
+                  await this.registrarAuditLog(
+                    'INSERT',
+                    historicoFalhaData.empresa_id || '',
+                    {
+                      ...historicoFalhaData,
+                      empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+                    },
+                    usuarioLogadoId
+                  );
 
-                  console.log(`📝 Falha personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoDisparo.erro}`);
+                  console.log(
+                    `📝 Falha personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoDisparo.erro}`
+                  );
                 }
               } catch (historicoError) {
-                console.error('Erro ao registrar falha personalizada no histórico:', historicoError);
+                console.error(
+                  'Erro ao registrar falha personalizada no histórico:',
+                  historicoError
+                );
               }
 
               await this.atualizarControleMensal(
@@ -1135,29 +1246,31 @@ class BooksDisparoService {
                 ano,
                 empresa.id,
                 'falhou',
-                forceResend ? `Reenvio manual personalizado: Falha no envio consolidado - ${resultadoDisparo.erro}` : `Falha no envio consolidado (personalizado): ${resultadoDisparo.erro}`
+                forceResend
+                  ? `Reenvio manual personalizado: Falha no envio consolidado - ${resultadoDisparo.erro}`
+                  : `Falha no envio consolidado (personalizado): ${resultadoDisparo.erro}`
               );
               falhas++;
             }
-
           } catch (error) {
             const erroMensagem = error instanceof Error ? error.message : 'Erro desconhecido';
 
             // Registrar erro para todos os clientes da empresa
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: erroMensagem,
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
 
             // ✅ CORREÇÃO: Registrar exceção no histórico de disparos personalizados
             try {
               // Buscar template para o histórico
-              const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+              const templatePadrao =
+                ((empresa as any).template_padrao as 'portugues' | 'ingles') ?? 'portugues';
               const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
 
               if (template && clientes.length > 0) {
@@ -1167,14 +1280,17 @@ class BooksDisparoService {
 
                 try {
                   const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-                  const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+                  const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
                   if (anexosEnviando.length > 0) {
                     anexoId = anexosEnviando[0].id;
                     detalhesAnexos = ` | Anexos: ${anexosEnviando.length} arquivo(s) (exceção no processamento personalizado)`;
                   }
                 } catch (anexoError) {
-                  console.error('Erro ao verificar anexos para histórico de exceção personalizada:', anexoError);
+                  console.error(
+                    'Erro ao verificar anexos para histórico de exceção personalizada:',
+                    anexoError
+                  );
                 }
 
                 // Registrar exceção no histórico
@@ -1189,21 +1305,31 @@ class BooksDisparoService {
                   emails_cc: emailsCC,
                   erro_detalhes: `Exceção no processamento personalizado para ${clientes.length} clientes: ${erroMensagem}${detalhesAnexos}`,
                   anexo_id: anexoId,
-                  anexo_processado: false
+                  anexo_processado: false,
                 };
 
                 await supabase.from('historico_disparos').insert(historicoExcecaoData);
 
                 // Registrar audit log da exceção personalizada
-                await this.registrarAuditLog('INSERT', historicoExcecaoData.empresa_id || '', {
-                  ...historicoExcecaoData,
-                  empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
-                }, usuarioLogadoId);
+                await this.registrarAuditLog(
+                  'INSERT',
+                  historicoExcecaoData.empresa_id || '',
+                  {
+                    ...historicoExcecaoData,
+                    empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+                  },
+                  usuarioLogadoId
+                );
 
-                console.log(`📝 Exceção personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
+                console.log(
+                  `📝 Exceção personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`
+                );
               }
             } catch (historicoError) {
-              console.error('Erro ao registrar exceção personalizada no histórico:', historicoError);
+              console.error(
+                'Erro ao registrar exceção personalizada no histórico:',
+                historicoError
+              );
             }
 
             await this.atualizarControleMensal(
@@ -1211,11 +1337,12 @@ class BooksDisparoService {
               ano,
               empresa.id,
               'falhou',
-              forceResend ? `Reenvio manual personalizado: Erro no processamento - ${erroMensagem}` : `Erro no processamento (personalizado): ${erroMensagem}`
+              forceResend
+                ? `Reenvio manual personalizado: Erro no processamento - ${erroMensagem}`
+                : `Erro no processamento (personalizado): ${erroMensagem}`
             );
             falhas++;
           }
-
         } catch (error) {
           falhas++;
           await this.registrarFalhaControle(
@@ -1229,7 +1356,9 @@ class BooksDisparoService {
 
       return { sucesso: sucessos, falhas, total: empresaIds.length, detalhes };
     } catch (error) {
-      throw new Error(`Erro no disparo personalizado por seleção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro no disparo personalizado por seleção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -1241,10 +1370,12 @@ class BooksDisparoService {
       // Buscar controles mensais com falha para empresas com book personalizado
       const { data: controlesFalha, error } = await supabase
         .from('controle_mensal')
-        .select(`
+        .select(
+          `
           *,
           empresas_clientes!inner(*)
-        `)
+        `
+        )
         .eq('mes', mes)
         .eq('ano', ano)
         .eq('status', 'falhou')
@@ -1259,7 +1390,7 @@ class BooksDisparoService {
           sucesso: 0,
           falhas: 0,
           total: 0,
-          detalhes: []
+          detalhes: [],
         };
       }
 
@@ -1291,18 +1422,20 @@ class BooksDisparoService {
           // Buscar e-mails CC
           const { data: gruposEmpresas } = await supabase
             .from('empresa_grupos')
-            .select(`
+            .select(
+              `
               grupos_responsaveis(
                 grupo_emails(email, nome)
               )
-            `)
+            `
+            )
             .eq('empresa_id', controle.empresa_id);
 
           const emailsCC: string[] = [];
           if (gruposEmpresas) {
-            gruposEmpresas.forEach(grupo => {
+            gruposEmpresas.forEach((grupo) => {
               if (grupo.grupos_responsaveis?.grupo_emails) {
-                grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+                grupo.grupos_responsaveis.grupo_emails.forEach((email) => {
                   emailsCC.push(email.email);
                 });
               }
@@ -1325,13 +1458,13 @@ class BooksDisparoService {
 
             if (resultado.sucesso) {
               // Registrar sucesso para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: controle.empresa_id!,
                   clienteId: cliente.id,
                   status: 'enviado',
                   erro: undefined,
-                  emailsEnviados: [cliente.email, ...emailsCC]
+                  emailsEnviados: [cliente.email, ...emailsCC],
                 });
               });
 
@@ -1345,13 +1478,13 @@ class BooksDisparoService {
               sucessos++;
             } else {
               // Registrar falha para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: controle.empresa_id!,
                   clienteId: cliente.id,
                   status: 'falhou',
                   erro: resultado.erro,
-                  emailsEnviados: []
+                  emailsEnviados: [],
                 });
               });
 
@@ -1364,16 +1497,15 @@ class BooksDisparoService {
               );
               falhas++;
             }
-
           } catch (error) {
             // Registrar erro interno para todos os clientes da empresa
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: controle.empresa_id!,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
 
@@ -1386,16 +1518,15 @@ class BooksDisparoService {
             );
             falhas++;
           }
-
         } catch (error) {
           // Registrar erro para todos os clientes da empresa (agora clientes está no escopo)
-          clientes.forEach(cliente => {
+          clientes.forEach((cliente) => {
             detalhes.push({
               empresaId: controle.empresa_id!,
               clienteId: cliente.id,
               status: 'falhou',
               erro: error instanceof Error ? error.message : 'Erro desconhecido',
-              emailsEnviados: []
+              emailsEnviados: [],
             });
           });
 
@@ -1414,11 +1545,12 @@ class BooksDisparoService {
         sucesso: sucessos,
         falhas: falhas,
         total: controlesFalha.length,
-        detalhes
+        detalhes,
       };
-
     } catch (error) {
-      throw new Error(`Erro ao reenviar falhas personalizadas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao reenviar falhas personalizadas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -1429,7 +1561,7 @@ class BooksDisparoService {
     try {
       // Consulta otimizada única com JOINs para evitar N+1 queries
       const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
-      
+
       // Calcular próximo mês corretamente (lidar com dezembro -> janeiro)
       const proximoMes = mes === 12 ? 1 : mes + 1;
       const proximoAno = mes === 12 ? ano + 1 : ano;
@@ -1438,14 +1570,16 @@ class BooksDisparoService {
       // Buscar empresas com book padrão (não personalizado)
       const { data: empresasData, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select(`
+        .select(
+          `
           *,
           controle_mensal!left(
             status,
             data_processamento,
             observacoes
           )
-        `)
+        `
+        )
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
@@ -1464,8 +1598,8 @@ class BooksDisparoService {
       }
 
       // Buscar clientes ativos para cada empresa
-      const empresasIds = empresasData.map(e => e.id);
-      
+      const empresasIds = empresasData.map((e) => e.id);
+
       const { data: clientesData } = await supabase
         .from('clientes')
         .select('id, empresa_id')
@@ -1506,11 +1640,11 @@ class BooksDisparoService {
             vigencia_inicial: row.vigencia_inicial,
             vigencia_final: row.vigencia_final,
             created_at: row.created_at,
-            updated_at: row.updated_at
+            updated_at: row.updated_at,
           },
           controle: row.controle_mensal?.[0] || null,
           clientesAtivos: new Set(),
-          emailsEnviados: new Set()
+          emailsEnviados: new Set(),
         });
       }
 
@@ -1537,37 +1671,48 @@ class BooksDisparoService {
       // Converter para formato final, aplicando filtro de vigência inicial
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      
+
       // Obter o último dia válido do mês de referência
       const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
-      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`);
+      const dataReferenciaFim = new Date(
+        `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`
+      );
 
       const statusMensal: StatusMensal[] = Array.from(empresasMap.values())
-        .filter(empresaData => {
+        .filter((empresaData) => {
           // Se já foi efetivamente processada (enviado, falhou, agendado), sempre incluir
-          if (empresaData.controle && ['enviado', 'falhou', 'agendado'].includes(empresaData.controle.status)) {
+          if (
+            empresaData.controle &&
+            ['enviado', 'falhou', 'agendado'].includes(empresaData.controle.status)
+          ) {
             return true;
           }
-          
+
           // Para empresas pendentes ou sem controle mensal, aplicar filtro de vigência inicial
-          const vigenciaInicial = empresaData.empresa.vigencia_inicial ? new Date(empresaData.empresa.vigencia_inicial) : null;
+          const vigenciaInicial = empresaData.empresa.vigencia_inicial
+            ? new Date(empresaData.empresa.vigencia_inicial)
+            : null;
           if (vigenciaInicial) {
             // A vigência inicial deve ser <= primeiro dia do mês de referência
-            const dataReferenciaInicio = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-01`);
+            const dataReferenciaInicio = new Date(
+              `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-01`
+            );
             return vigenciaInicial <= dataReferenciaInicio;
           }
-          
+
           // Se não tem vigência inicial definida, incluir (comportamento padrão)
           return true;
         })
-        .map(empresaData => ({
+        .map((empresaData) => ({
           empresaId: empresaData.empresa.id,
           empresa: empresaData.empresa,
-          status: empresaData.controle?.status as StatusControleMensal || 'pendente',
-          dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
+          status: (empresaData.controle?.status as StatusControleMensal) || 'pendente',
+          dataProcessamento: empresaData.controle?.data_processamento
+            ? new Date(empresaData.controle.data_processamento)
+            : undefined,
           observacoes: empresaData.controle?.observacoes || undefined,
           clientesAtivos: empresaData.clientesAtivos.size,
-          emailsEnviados: empresaData.emailsEnviados.size
+          emailsEnviados: empresaData.emailsEnviados.size,
         }));
 
       // Ordenação alfabética por nome abreviado da empresa
@@ -1576,9 +1721,10 @@ class BooksDisparoService {
         const nomeB = (b.empresa.nome_abreviado || b.empresa.nome_completo || '').toLowerCase();
         return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
       });
-
     } catch (error) {
-      throw new Error(`Erro ao obter status mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao obter status mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -1590,10 +1736,12 @@ class BooksDisparoService {
       // Buscar controles mensais com falha
       const { data: controlesFalha, error } = await supabase
         .from('controle_mensal')
-        .select(`
+        .select(
+          `
           *,
           empresas_clientes(*)
-        `)
+        `
+        )
         .eq('mes', mes)
         .eq('ano', ano)
         .eq('status', 'falhou');
@@ -1607,7 +1755,7 @@ class BooksDisparoService {
           sucesso: 0,
           falhas: 0,
           total: 0,
-          detalhes: []
+          detalhes: [],
         };
       }
 
@@ -1634,18 +1782,20 @@ class BooksDisparoService {
           // Buscar e-mails CC
           const { data: gruposEmpresas } = await supabase
             .from('empresa_grupos')
-            .select(`
+            .select(
+              `
               grupos_responsaveis(
                 grupo_emails(email, nome)
               )
-            `)
+            `
+            )
             .eq('empresa_id', controle.empresa_id);
 
           const emailsCC: string[] = [];
           if (gruposEmpresas) {
-            gruposEmpresas.forEach(grupo => {
+            gruposEmpresas.forEach((grupo) => {
               if (grupo.grupos_responsaveis?.grupo_emails) {
-                grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+                grupo.grupos_responsaveis.grupo_emails.forEach((email) => {
                   emailsCC.push(email.email);
                 });
               }
@@ -1668,26 +1818,26 @@ class BooksDisparoService {
 
             if (resultado.sucesso) {
               // Registrar sucesso para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: controle.empresa_id!,
                   clienteId: cliente.id,
                   status: 'enviado',
                   erro: undefined,
-                  emailsEnviados: [cliente.email, ...emailsCC]
+                  emailsEnviados: [cliente.email, ...emailsCC],
                 });
               });
 
               sucessos++;
             } else {
               // Registrar falha para todos os clientes da empresa
-              clientes.forEach(cliente => {
+              clientes.forEach((cliente) => {
                 detalhes.push({
                   empresaId: controle.empresa_id!,
                   clienteId: cliente.id,
                   status: 'falhou',
                   erro: resultado.erro,
-                  emailsEnviados: []
+                  emailsEnviados: [],
                 });
               });
 
@@ -1700,16 +1850,15 @@ class BooksDisparoService {
               );
               falhas++;
             }
-
           } catch (error) {
             // Registrar erro interno para todos os clientes da empresa
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: controle.empresa_id!,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
 
@@ -1722,7 +1871,6 @@ class BooksDisparoService {
             );
             falhas++;
           }
-
         } catch (error) {
           // Registrar erro do loop principal para todos os clientes da empresa
           const { data: clientes } = await supabase
@@ -1733,13 +1881,13 @@ class BooksDisparoService {
             .in('finalidade_envio', FINALIDADES_BOOK);
 
           if (clientes) {
-            clientes.forEach(cliente => {
+            clientes.forEach((cliente) => {
               detalhes.push({
                 empresaId: controle.empresa_id!,
                 clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
+                emailsEnviados: [],
               });
             });
           }
@@ -1759,11 +1907,12 @@ class BooksDisparoService {
         sucesso: sucessos,
         falhas: falhas,
         total: controlesFalha.length,
-        detalhes
+        detalhes,
       };
-
     } catch (error) {
-      throw new Error(`Erro ao reenviar falhas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao reenviar falhas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -1773,9 +1922,7 @@ class BooksDisparoService {
   async buscarHistorico(filtros: HistoricoFiltros): Promise<HistoricoDisparoCompleto[]> {
     try {
       // Primeiro, buscar apenas os dados do histórico
-      let query = supabase
-        .from('historico_disparos')
-        .select('*');
+      let query = supabase.from('historico_disparos').select('*');
 
       // Aplicar filtros
       if (filtros.empresaId) {
@@ -1802,7 +1949,8 @@ class BooksDisparoService {
       if (filtros.mes && filtros.ano) {
         const dataInicio = new Date(filtros.ano, filtros.mes - 1, 1);
         const dataFim = new Date(filtros.ano, filtros.mes, 0, 23, 59, 59);
-        query = query.gte('data_disparo', dataInicio.toISOString())
+        query = query
+          .gte('data_disparo', dataInicio.toISOString())
           .lte('data_disparo', dataFim.toISOString());
       }
 
@@ -1819,8 +1967,8 @@ class BooksDisparoService {
       }
 
       // Buscar dados relacionados separadamente
-      const empresaIds = [...new Set(historicoData.map(h => h.empresa_id).filter(Boolean))];
-      const clienteIds = [...new Set(historicoData.map(h => h.cliente_id).filter(Boolean))];
+      const empresaIds = [...new Set(historicoData.map((h) => h.empresa_id).filter(Boolean))];
+      const clienteIds = [...new Set(historicoData.map((h) => h.cliente_id).filter(Boolean))];
 
       // Buscar empresas
       const { data: empresas } = await supabase
@@ -1829,22 +1977,20 @@ class BooksDisparoService {
         .in('id', empresaIds);
 
       // Buscar clientes
-      const { data: clientes } = await supabase
-        .from('clientes')
-        .select('*')
-        .in('id', clienteIds);
+      const { data: clientes } = await supabase.from('clientes').select('*').in('id', clienteIds);
 
       // Combinar os dados
-      const resultado: HistoricoDisparoCompleto[] = historicoData.map(historico => ({
+      const resultado: HistoricoDisparoCompleto[] = historicoData.map((historico) => ({
         ...historico,
-        empresas_clientes: empresas?.find(e => e.id === historico.empresa_id),
-        clientes: clientes?.find(c => c.id === historico.cliente_id)
+        empresas_clientes: empresas?.find((e) => e.id === historico.empresa_id),
+        clientes: clientes?.find((c) => c.id === historico.cliente_id),
       }));
 
       return resultado;
-
     } catch (error) {
-      throw new Error(`Erro ao buscar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao buscar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -1853,9 +1999,7 @@ class BooksDisparoService {
    */
   async buscarControlesMensais(filtros: ControleMensalFiltros): Promise<ControleMensalCompleto[]> {
     try {
-      let query = supabase
-        .from('controle_mensal')
-        .select(`
+      let query = supabase.from('controle_mensal').select(`
           *,
           empresas_clientes(*)
         `);
@@ -1876,8 +2020,7 @@ class BooksDisparoService {
         query = query.in('empresa_id', filtros.empresaIds);
       }
 
-      query = query.order('ano', { ascending: false })
-        .order('mes', { ascending: false });
+      query = query.order('ano', { ascending: false }).order('mes', { ascending: false });
 
       const { data, error } = await query;
 
@@ -1885,10 +2028,14 @@ class BooksDisparoService {
         throw new Error(`Erro ao buscar controles mensais: ${error.message}`);
       }
 
-      return (data?.filter(item => item.empresas_clientes) as unknown) as ControleMensalCompleto[] || [];
-
+      return (
+        (data?.filter((item) => item.empresas_clientes) as unknown as ControleMensalCompleto[]) ||
+        []
+      );
     } catch (error) {
-      throw new Error(`Erro ao buscar controles mensais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao buscar controles mensais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -1927,18 +2074,20 @@ class BooksDisparoService {
     // Buscar grupos de e-mail para CC
     const { data: gruposEmpresas } = await supabase
       .from('empresa_grupos')
-      .select(`
+      .select(
+        `
         grupos_responsaveis(
           grupo_emails(email, nome)
         )
-      `)
+      `
+      )
       .eq('empresa_id', empresaId);
 
     const emailsCC: string[] = [];
     if (gruposEmpresas) {
-      gruposEmpresas.forEach(grupo => {
+      gruposEmpresas.forEach((grupo) => {
         if (grupo.grupos_responsaveis?.grupo_emails) {
-          grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+          grupo.grupos_responsaveis.grupo_emails.forEach((email) => {
             emailsCC.push(email.email);
           });
         }
@@ -1953,7 +2102,7 @@ class BooksDisparoService {
     return {
       empresa: empresa as unknown as EmpresaCliente,
       clientes: clientes as unknown as Cliente[],
-      emailsCC
+      emailsCC,
     };
   }
 
@@ -1971,8 +2120,8 @@ class BooksDisparoService {
     const emailMontado = await this.montarEmailBookEmpresa(empresa, clientes, emailsCC, mes, ano);
 
     const nomesAnexos: string[] = [
-      ...emailMontado.anexosWebhook.map(a => a.nome),
-      ...(emailMontado.excelAttachment ? [emailMontado.excelAttachment.filename] : [])
+      ...emailMontado.anexosWebhook.map((a) => a.nome),
+      ...(emailMontado.excelAttachment ? [emailMontado.excelAttachment.filename] : []),
     ];
 
     return {
@@ -1981,7 +2130,7 @@ class BooksDisparoService {
       emailsPara: emailMontado.emailsClientes,
       emailsCC: emailMontado.emailsCC,
       temAnexos: nomesAnexos.length > 0,
-      nomesAnexos
+      nomesAnexos,
     };
   }
 
@@ -2015,7 +2164,7 @@ class BooksDisparoService {
       const emailData: any = {
         to: emailNormalizado,
         subject: assuntoTeste,
-        html: emailMontado.corpo
+        html: emailMontado.corpo,
       };
 
       // Incluir attachments base64 (ex: Excel de consumo) — igual ao envio real
@@ -2040,7 +2189,7 @@ class BooksDisparoService {
     } catch (error) {
       return {
         sucesso: false,
-        erro: error instanceof Error ? error.message : 'Erro desconhecido'
+        erro: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
@@ -2068,7 +2217,8 @@ class BooksDisparoService {
     }
 
     // Debug: verificar template_padrao da empresa
-    const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+    const templatePadrao =
+      ((empresa as any).template_padrao as 'portugues' | 'ingles') ?? 'portugues';
     console.log(`🏢 Empresa: ${empresa.nome_completo}`);
     console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
 
@@ -2092,150 +2242,192 @@ class BooksDisparoService {
       throw new Error('Template de e-mail não encontrado para books');
     }
 
-      // Usar o primeiro cliente como referência para o template (todos da mesma empresa)
-      const clienteReferencia = clientes[0];
+    // Usar o primeiro cliente como referência para o template (todos da mesma empresa)
+    const clienteReferencia = clientes[0];
 
-      // Validar template antes do processamento
-      const validacao = clientBooksTemplateService.validarTemplate(template, empresa as any, clienteReferencia as any);
+    // Validar template antes do processamento
+    const validacao = clientBooksTemplateService.validarTemplate(
+      template,
+      empresa as any,
+      clienteReferencia as any
+    );
 
-      if (!validacao.valido) {
-        console.warn('Template possui variáveis não encontradas:', validacao.variaveisNaoEncontradas);
-        // Continuar mesmo com avisos, mas registrar no log
-      }
+    if (!validacao.valido) {
+      console.warn('Template possui variáveis não encontradas:', validacao.variaveisNaoEncontradas);
+      // Continuar mesmo com avisos, mas registrar no log
+    }
 
-      // Processar template com dados reais
-      const templateProcessado = await clientBooksTemplateService.processarTemplate(
-        template,
-        empresa as any,
-        clienteReferencia as any,
-        { mes, ano, dataDisparo: new Date() }
+    // Processar template com dados reais
+    const templateProcessado = await clientBooksTemplateService.processarTemplate(
+      template,
+      empresa as any,
+      clienteReferencia as any,
+      { mes, ano, dataDisparo: new Date() }
+    );
+
+    // ===== Geração condicional da imagem do Banco de Horas =====
+    // Só gera se o template usar {{bancoHoras.imagemUrl}} ou {{bancoHoras.imagem}}
+    const templateUsaBancoHoras =
+      (template.corpo || '').includes('{{bancoHoras.imagemUrl}}') ||
+      (template.corpo || '').includes('{{bancoHoras.imagem}}');
+
+    // Empresa liberada (Fase 5): uma tabela por banco, do snapshot do Book. Erro aqui sobe e o
+    // envio da empresa falha, para não sair o e-mail sem o banco de horas certo.
+    const imagemPorBanco = templateUsaBancoHoras
+      ? await imagemBancoHorasDoBook({
+          empresaId: empresa.id,
+          empresaNome: empresa.nome_abreviado || empresa.nome_completo || '',
+          mes,
+          ano,
+          idioma:
+            templatePadrao === 'ingles' || isEnglishTemplateByName((template as any).nome)
+              ? 'en'
+              : 'pt-BR',
+        })
+      : null;
+
+    if (imagemPorBanco) {
+      templateProcessado.corpo = aplicarImagemNoCorpo(
+        templateProcessado.corpo,
+        imagemPorBanco,
+        empresa.nome_abreviado || empresa.nome_completo || ''
       );
+    } else if (templateUsaBancoHoras) {
+      try {
+        const empresaNome = empresa.nome_abreviado || empresa.nome_completo || '';
+        console.log(`📊 Template usa banco de horas - gerando imagem para ${empresaNome}...`);
 
-      // ===== Geração condicional da imagem do Banco de Horas =====
-      // Só gera se o template usar {{bancoHoras.imagemUrl}} ou {{bancoHoras.imagem}}
-      const templateUsaBancoHoras = 
-        (template.corpo || '').includes('{{bancoHoras.imagemUrl}}') || 
-        (template.corpo || '').includes('{{bancoHoras.imagem}}');
+        const resultadoImagem = await gerarImagemBancoHoras({
+          empresaId: empresa.id,
+          empresaNome,
+          mes,
+          ano,
+        });
 
-      if (templateUsaBancoHoras) {
-        try {
-          const empresaNome = empresa.nome_abreviado || empresa.nome_completo || '';
-          console.log(`📊 Template usa banco de horas - gerando imagem para ${empresaNome}...`);
+        if (resultadoImagem.sucesso && resultadoImagem.imagemUrl) {
+          // Substituir variáveis de banco de horas no corpo processado
+          const imgWidth = resultadoImagem.largura || 700;
+          const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" width="${imgWidth}" style="display:block;width:100%;max-width:${imgWidth}px;height:auto;border:0;margin:8px 0;" />`;
 
-          const resultadoImagem = await gerarImagemBancoHoras({
-            empresaId: empresa.id,
-            empresaNome,
-            mes,
-            ano
-          });
+          templateProcessado.corpo = templateProcessado.corpo
+            .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, resultadoImagem.imagemUrl)
+            .replace(/\{\{bancoHoras\.imagem\}\}/g, imgTag);
 
-          if (resultadoImagem.sucesso && resultadoImagem.imagemUrl) {
-            // Substituir variáveis de banco de horas no corpo processado
-            const imgWidth = resultadoImagem.largura || 700;
-            const imgTag = `<img src="${resultadoImagem.imagemUrl}" alt="Banco de Horas - ${empresaNome}" width="${imgWidth}" style="display:block;width:100%;max-width:${imgWidth}px;height:auto;border:0;margin:8px 0;" />`;
-            
-            templateProcessado.corpo = templateProcessado.corpo
-              .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, resultadoImagem.imagemUrl)
-              .replace(/\{\{bancoHoras\.imagem\}\}/g, imgTag);
-
-            console.log(`✅ Imagem do banco de horas inserida no template`);
-          } else {
-            // Remover variáveis não preenchidas para não aparecer {{...}} no email
-            templateProcessado.corpo = templateProcessado.corpo
-              .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, '')
-              .replace(/\{\{bancoHoras\.imagem\}\}/g, '');
-
-            console.warn(`⚠️ Não foi possível gerar imagem do banco de horas: ${resultadoImagem.erro || 'sem dados'}`);
-          }
-        } catch (bancoHorasError) {
-          // Não bloquear envio do book por erro na imagem do banco de horas
+          console.log(`✅ Imagem do banco de horas inserida no template`);
+        } else {
+          // Remover variáveis não preenchidas para não aparecer {{...}} no email
           templateProcessado.corpo = templateProcessado.corpo
             .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, '')
             .replace(/\{\{bancoHoras\.imagem\}\}/g, '');
 
-          console.warn(`⚠️ Erro ao gerar imagem do banco de horas (não bloqueia envio):`, bancoHorasError);
+          console.warn(
+            `⚠️ Não foi possível gerar imagem do banco de horas: ${resultadoImagem.erro || 'sem dados'}`
+          );
         }
+      } catch (bancoHorasError) {
+        // Não bloquear envio do book por erro na imagem do banco de horas
+        templateProcessado.corpo = templateProcessado.corpo
+          .replace(/\{\{bancoHoras\.imagemUrl\}\}/g, '')
+          .replace(/\{\{bancoHoras\.imagem\}\}/g, '');
+
+        console.warn(
+          `⚠️ Erro ao gerar imagem do banco de horas (não bloqueia envio):`,
+          bancoHorasError
+        );
       }
+    }
 
-      // ===== Geração condicional das imagens Novo Nordisk =====
-      const empresasEspecificas = [
-        { 
-          varPrefix: 'bancoHorasNovoNordisk', 
-          empresaId: '736f75b8-7067-43e2-844b-5d1360148e12', 
-          nome: 'NOVO NORDISK' 
-        },
-        { 
-          varPrefix: 'bancoHorasNovoNordiskMOC', 
-          empresaId: 'b45d433e-89c1-45fe-9e93-4757c0d39d91', 
-          nome: 'NOVO NORDISK MOC' 
-        }
-      ];
+    // ===== Geração condicional das imagens Novo Nordisk =====
+    const empresasEspecificas = [
+      {
+        varPrefix: 'bancoHorasNovoNordisk',
+        empresaId: '736f75b8-7067-43e2-844b-5d1360148e12',
+        nome: 'NOVO NORDISK',
+      },
+      {
+        varPrefix: 'bancoHorasNovoNordiskMOC',
+        empresaId: 'b45d433e-89c1-45fe-9e93-4757c0d39d91',
+        nome: 'NOVO NORDISK MOC',
+      },
+    ];
 
-      for (const empEspecifica of empresasEspecificas) {
-        const templateUsaEsta = 
-          (templateProcessado.corpo || '').includes(`{{${empEspecifica.varPrefix}.imagemUrl}}`) || 
-          (templateProcessado.corpo || '').includes(`{{${empEspecifica.varPrefix}.imagem}}`);
+    for (const empEspecifica of empresasEspecificas) {
+      const templateUsaEsta =
+        (templateProcessado.corpo || '').includes(`{{${empEspecifica.varPrefix}.imagemUrl}}`) ||
+        (templateProcessado.corpo || '').includes(`{{${empEspecifica.varPrefix}.imagem}}`);
 
-        if (templateUsaEsta) {
-          try {
-            console.log(`📊 Template usa ${empEspecifica.varPrefix} - gerando imagem para ${empEspecifica.nome}...`);
+      if (templateUsaEsta) {
+        try {
+          console.log(
+            `📊 Template usa ${empEspecifica.varPrefix} - gerando imagem para ${empEspecifica.nome}...`
+          );
 
-            const resultadoImg = await gerarImagemBancoHoras({
-              empresaId: empEspecifica.empresaId,
-              empresaNome: empEspecifica.nome,
-              mes,
-              ano
-            });
+          const resultadoImg = await gerarImagemBancoHoras({
+            empresaId: empEspecifica.empresaId,
+            empresaNome: empEspecifica.nome,
+            mes,
+            ano,
+          });
 
-            if (resultadoImg.sucesso && resultadoImg.imagemUrl) {
-              const imgWidth = resultadoImg.largura || 700;
-              const imgTag = `<img src="${resultadoImg.imagemUrl}" alt="Banco de Horas - ${empEspecifica.nome}" width="${imgWidth}" style="display:block;width:100%;max-width:${imgWidth}px;height:auto;border:0;margin:8px 0;" />`;
-              
-              templateProcessado.corpo = templateProcessado.corpo
-                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), resultadoImg.imagemUrl)
-                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), imgTag);
+          if (resultadoImg.sucesso && resultadoImg.imagemUrl) {
+            const imgWidth = resultadoImg.largura || 700;
+            const imgTag = `<img src="${resultadoImg.imagemUrl}" alt="Banco de Horas - ${empEspecifica.nome}" width="${imgWidth}" style="display:block;width:100%;max-width:${imgWidth}px;height:auto;border:0;margin:8px 0;" />`;
 
-              console.log(`✅ Imagem ${empEspecifica.varPrefix} inserida no template`);
-            } else {
-              templateProcessado.corpo = templateProcessado.corpo
-                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), '')
-                .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), '');
+            templateProcessado.corpo = templateProcessado.corpo
+              .replace(
+                new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'),
+                resultadoImg.imagemUrl
+              )
+              .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), imgTag);
 
-              console.warn(`⚠️ Não foi possível gerar imagem ${empEspecifica.varPrefix}: ${resultadoImg.erro || 'sem dados'}`);
-            }
-          } catch (empError) {
+            console.log(`✅ Imagem ${empEspecifica.varPrefix} inserida no template`);
+          } else {
             templateProcessado.corpo = templateProcessado.corpo
               .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), '')
               .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), '');
 
-            console.warn(`⚠️ Erro ao gerar imagem ${empEspecifica.varPrefix} (não bloqueia envio):`, empError);
+            console.warn(
+              `⚠️ Não foi possível gerar imagem ${empEspecifica.varPrefix}: ${resultadoImg.erro || 'sem dados'}`
+            );
           }
+        } catch (empError) {
+          templateProcessado.corpo = templateProcessado.corpo
+            .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagemUrl\\}\\}`, 'g'), '')
+            .replace(new RegExp(`\\{\\{${empEspecifica.varPrefix}\\.imagem\\}\\}`, 'g'), '');
+
+          console.warn(
+            `⚠️ Erro ao gerar imagem ${empEspecifica.varPrefix} (não bloqueia envio):`,
+            empError
+          );
         }
       }
+    }
 
-      // ===== Renderização do Email Completo como Imagem =====
-      // Renderiza o template processado inteiro como screenshot para garantir
-      // visual idêntico em qualquer cliente de email (Outlook, Gmail, etc.)
-      // Só renderiza como imagem se o template estiver configurado para isso
-      if ((template as any).converter_em_imagem) {
+    // ===== Renderização do Email Completo como Imagem =====
+    // Renderiza o template processado inteiro como screenshot para garantir
+    // visual idêntico em qualquer cliente de email (Outlook, Gmail, etc.)
+    // Só renderiza como imagem se o template estiver configurado para isso
+    if ((template as any).converter_em_imagem) {
       try {
         console.log(`🖼️ Renderizando email completo como imagem...`);
-        
+
         // Extrair o link do SharePoint do corpo processado
-        const linkMatch = templateProcessado.corpo.match(/href="([^"]*linkSharepoint[^"]*|https?:\/\/[^"]*sharepoint[^"]*|https?:\/\/[^"]*\.com[^"]*)"/i);
+        const linkMatch = templateProcessado.corpo.match(
+          /href="([^"]*linkSharepoint[^"]*|https?:\/\/[^"]*sharepoint[^"]*|https?:\/\/[^"]*\.com[^"]*)"/i
+        );
         // Buscar link direto da empresa se não encontrar no corpo
         const sharepointLink = (empresa as any).link_sharepoint || (linkMatch ? linkMatch[1] : '#');
-        
+
         // Renderizar o HTML completo do email como imagem
         const emailRenderResponse = await fetch('/api/email/render-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ html: templateProcessado.corpo, width: 1100 })
+          body: JSON.stringify({ html: templateProcessado.corpo, width: 1100 }),
         });
-        
+
         if (emailRenderResponse.ok) {
           const emailRenderData = await emailRenderResponse.json();
-          
+
           if (emailRenderData.success && emailRenderData.image) {
             // Upload da imagem do email para Supabase Storage
             const byteCharacters = atob(emailRenderData.image);
@@ -2245,17 +2437,22 @@ class BooksDisparoService {
             }
             const byteArray = new Uint8Array(byteNumbers);
             const blob = new Blob([byteArray], { type: 'image/png' });
-            
-            const empresaNomeSlug = (empresa.nome_abreviado || empresa.nome_completo || '').replace(/[^a-zA-Z0-9-]/g, '-');
+
+            const empresaNomeSlug = (empresa.nome_abreviado || empresa.nome_completo || '').replace(
+              /[^a-zA-Z0-9-]/g,
+              '-'
+            );
             const emailImgFileName = `email-book-${empresaNomeSlug}-${mes}-${ano}-${Date.now()}.png`;
-            
+
             const { error: uploadError } = await supabase.storage
               .from('email-images')
               .upload(emailImgFileName, blob, { contentType: 'image/png', upsert: false });
-            
+
             if (!uploadError) {
-              const { data: urlData } = supabase.storage.from('email-images').getPublicUrl(emailImgFileName);
-              
+              const { data: urlData } = supabase.storage
+                .from('email-images')
+                .getPublicUrl(emailImgFileName);
+
               if (urlData?.publicUrl) {
                 // Substituir todo o corpo por uma imagem clicável com link do SharePoint
                 templateProcessado.corpo = `
@@ -2278,7 +2475,7 @@ class BooksDisparoService {
                   </body>
                   </html>
                 `;
-                
+
                 console.log(`✅ Email renderizado como imagem com link: ${sharepointLink}`);
               } else {
                 console.warn(`⚠️ Não foi possível obter URL pública da imagem do email`);
@@ -2290,83 +2487,100 @@ class BooksDisparoService {
             console.warn(`⚠️ Resposta inválida ao renderizar email como imagem`);
           }
         } else {
-          console.warn(`⚠️ Falha ao renderizar email como imagem (HTTP ${emailRenderResponse.status})`);
+          console.warn(
+            `⚠️ Falha ao renderizar email como imagem (HTTP ${emailRenderResponse.status})`
+          );
         }
       } catch (emailImgError) {
-        console.warn(`⚠️ Erro ao renderizar email como imagem (não bloqueia envio):`, emailImgError);
+        console.warn(
+          `⚠️ Erro ao renderizar email como imagem (não bloqueia envio):`,
+          emailImgError
+        );
         // Se falhar, envia o HTML normalmente como fallback
       }
-      } else {
-        console.log(`📧 Template configurado para enviar como HTML (sem conversão em imagem)`);
+    } else {
+      console.log(`📧 Template configurado para enviar como HTML (sem conversão em imagem)`);
+    }
+
+    // ===== Resolução condicional da imagem de fundo da sidebar =====
+    // Se o template usa {{sidebar.imagemFundo}}, mede a altura do conteúdo
+    // e escolhe a imagem apropriada (menor ou maior que 768px)
+    if (
+      templateProcessado.corpo.includes('{{sidebar.imagemFundo}}') ||
+      templateProcessado.corpo.includes('{{sidebar.alturaConteudo}}')
+    ) {
+      let alturaConteudo = 750; // fallback padrão
+      try {
+        console.log('📐 Medindo altura do conteúdo para escolher imagem da sidebar...');
+        const measureResponse = await fetch('/api/email/render-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: templateProcessado.corpo, width: 1000 }),
+        });
+
+        if (measureResponse.ok) {
+          const measureData = await measureResponse.json();
+          if (measureData.success && measureData.image) {
+            // Calcular altura a partir do base64 PNG
+            // O header PNG contém dimensões nos bytes 16-23 (width) e 24-31 (height)
+            const binaryStr = atob(measureData.image.substring(0, 100));
+            // PNG height está nos bytes 20-23 (big-endian uint32)
+            const heightBytes = [
+              binaryStr.charCodeAt(20),
+              binaryStr.charCodeAt(21),
+              binaryStr.charCodeAt(22),
+              binaryStr.charCodeAt(23),
+            ];
+            const imgHeight =
+              (heightBytes[0] << 24) |
+              (heightBytes[1] << 16) |
+              (heightBytes[2] << 8) |
+              heightBytes[3];
+            // deviceScaleFactor é 2, então a altura real é metade
+            alturaConteudo = Math.round(imgHeight / 2);
+            console.log(
+              `📐 Altura medida do conteúdo: ${alturaConteudo}px (imagem: ${imgHeight}px com scale 2x)`
+            );
+          }
+        }
+      } catch (measureError) {
+        console.warn('⚠️ Erro ao medir altura (usando fallback 750px):', measureError);
       }
 
-      // ===== Resolução condicional da imagem de fundo da sidebar =====
-      // Se o template usa {{sidebar.imagemFundo}}, mede a altura do conteúdo
-      // e escolhe a imagem apropriada (menor ou maior que 768px)
-      if (templateProcessado.corpo.includes('{{sidebar.imagemFundo}}') || templateProcessado.corpo.includes('{{sidebar.alturaConteudo}}')) {
-        let alturaConteudo = 750; // fallback padrão
-        try {
-          console.log('📐 Medindo altura do conteúdo para escolher imagem da sidebar...');
-          const measureResponse = await fetch('/api/email/render-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ html: templateProcessado.corpo, width: 1000 })
-          });
-
-          if (measureResponse.ok) {
-            const measureData = await measureResponse.json();
-            if (measureData.success && measureData.image) {
-              // Calcular altura a partir do base64 PNG
-              // O header PNG contém dimensões nos bytes 16-23 (width) e 24-31 (height)
-              const binaryStr = atob(measureData.image.substring(0, 100));
-              // PNG height está nos bytes 20-23 (big-endian uint32)
-              const heightBytes = [
-                binaryStr.charCodeAt(20),
-                binaryStr.charCodeAt(21),
-                binaryStr.charCodeAt(22),
-                binaryStr.charCodeAt(23)
-              ];
-              const imgHeight = (heightBytes[0] << 24) | (heightBytes[1] << 16) | (heightBytes[2] << 8) | heightBytes[3];
-              // deviceScaleFactor é 2, então a altura real é metade
-              alturaConteudo = Math.round(imgHeight / 2);
-              console.log(`📐 Altura medida do conteúdo: ${alturaConteudo}px (imagem: ${imgHeight}px com scale 2x)`);
-            }
-          }
-        } catch (measureError) {
-          console.warn('⚠️ Erro ao medir altura (usando fallback 750px):', measureError);
-        }
-
-        // Escolher imagem baseado na altura
-        const imagemFundo = alturaConteudo < 768
+      // Escolher imagem baseado na altura
+      const imagemFundo =
+        alturaConteudo < 768
           ? 'https://www.sondalyze.com.br/images/book_fundo_novo_nordisk.jpg'
           : 'https://www.sondalyze.com.br/images/book_fundo_novo_nordisk_2.jpg';
 
-        console.log(`🖼️ Altura: ${alturaConteudo}px → Usando imagem: ${alturaConteudo < 768 ? 'pequena' : 'grande'}`);
+      console.log(
+        `🖼️ Altura: ${alturaConteudo}px → Usando imagem: ${alturaConteudo < 768 ? 'pequena' : 'grande'}`
+      );
 
-        // Substituir variáveis
-        templateProcessado.corpo = templateProcessado.corpo
-          .replace(/\{\{sidebar\.imagemFundo\}\}/g, imagemFundo)
-          .replace(/\{\{sidebar\.alturaConteudo\}\}/g, String(alturaConteudo));
-      }
+      // Substituir variáveis
+      templateProcessado.corpo = templateProcessado.corpo
+        .replace(/\{\{sidebar\.imagemFundo\}\}/g, imagemFundo)
+        .replace(/\{\{sidebar\.alturaConteudo\}\}/g, String(alturaConteudo));
+    }
 
-      // Coletar todos os e-mails dos clientes para o campo "Para"
-      const emailsClientes = clientes.map(cliente => cliente.email).filter(email => email);
+    // Coletar todos os e-mails dos clientes para o campo "Para"
+    const emailsClientes = clientes.map((cliente) => cliente.email).filter((email) => email);
 
-      if (emailsClientes.length === 0) {
-        throw new Error('Nenhum cliente possui e-mail válido');
-      }
+    if (emailsClientes.length === 0) {
+      throw new Error('Nenhum cliente possui e-mail válido');
+    }
 
-      // Retornar o e-mail totalmente montado (sem enviar nem gravar histórico)
-      return {
-        template,
-        clienteReferencia,
-        emailsClientes,
-        emailsCC,
-        assunto: templateProcessado.assunto,
-        corpo: templateProcessado.corpo,
-        anexosWebhook,
-        excelAttachment: null
-      };
+    // Retornar o e-mail totalmente montado (sem enviar nem gravar histórico)
+    return {
+      template,
+      clienteReferencia,
+      emailsClientes,
+      emailsCC,
+      assunto: templateProcessado.assunto,
+      corpo: templateProcessado.corpo,
+      anexosWebhook,
+      excelAttachment: null,
+    };
   }
 
   /**
@@ -2416,11 +2630,13 @@ class BooksDisparoService {
           // Buscar o primeiro anexo para referência no histórico
           try {
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-            const anexosPendentes = anexos.filter(a => a.status === 'enviando' || a.status === 'processado');
+            const anexosPendentes = anexos.filter(
+              (a) => a.status === 'enviando' || a.status === 'processado'
+            );
 
             if (anexosPendentes.length > 0) {
               anexoId = anexosPendentes[0].id;
-              anexoProcessado = anexosPendentes.every(a => a.status === 'processado');
+              anexoProcessado = anexosPendentes.every((a) => a.status === 'processado');
               detalhesAnexos = ` | Anexos: ${anexosWebhook.length} arquivo(s) (${Math.round(anexosWebhook.reduce((total, a) => total + a.tamanho, 0) / 1024)} KB)`;
             }
           } catch (error) {
@@ -2440,26 +2656,35 @@ class BooksDisparoService {
           emails_cc: emailsCC,
           erro_detalhes: `E-mail consolidado enviado para ${emailsClientes.length} clientes: ${emailsClientes.join(', ')}${detalhesAnexos}`,
           anexo_id: anexoId,
-          anexo_processado: anexoProcessado
+          anexo_processado: anexoProcessado,
         };
 
         await supabase.from('historico_disparos').insert(historicoData);
 
         // Registrar audit log do disparo
-        await this.registrarAuditLog('INSERT', historicoData.empresa_id || '', {
-          ...historicoData,
-          empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
-          clientes_count: emailsClientes.length,
-        }, usuarioLogadoId);
+        await this.registrarAuditLog(
+          'INSERT',
+          historicoData.empresa_id || '',
+          {
+            ...historicoData,
+            empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+            clientes_count: emailsClientes.length,
+          },
+          usuarioLogadoId
+        );
 
-        console.log(`✅ Histórico registrado - Empresa: ${empresa.nome_completo}, Clientes: ${emailsClientes.length}, Anexos: ${anexosWebhook.length}`);
+        console.log(
+          `✅ Histórico registrado - Empresa: ${empresa.nome_completo}, Clientes: ${emailsClientes.length}, Anexos: ${anexosWebhook.length}`
+        );
 
         return {
           sucesso: true,
-          clientesProcessados: clientes.map(c => c.id)
+          clientesProcessados: clientes.map((c) => c.id),
         };
       } else {
-        console.log(`❌ Falha no envio - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
+        console.log(
+          `❌ Falha no envio - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`
+        );
 
         // ✅ CORREÇÃO: Registrar falha no histórico de disparos
         try {
@@ -2470,7 +2695,7 @@ class BooksDisparoService {
           if (anexosWebhook.length > 0) {
             try {
               const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-              const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+              const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
               if (anexosEnviando.length > 0) {
                 anexoId = anexosEnviando[0].id;
@@ -2493,18 +2718,25 @@ class BooksDisparoService {
             emails_cc: emailsCC,
             erro_detalhes: `Falha no envio consolidado para ${emailsClientes.length} clientes: ${resultadoEnvio.erro}${detalhesAnexos}`,
             anexo_id: anexoId,
-            anexo_processado: false
+            anexo_processado: false,
           };
 
           await supabase.from('historico_disparos').insert(historicoFalhaData);
 
           // Registrar audit log da falha
-          await this.registrarAuditLog('INSERT', historicoFalhaData.empresa_id || '', {
-            ...historicoFalhaData,
-            empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
-          }, usuarioLogadoId);
+          await this.registrarAuditLog(
+            'INSERT',
+            historicoFalhaData.empresa_id || '',
+            {
+              ...historicoFalhaData,
+              empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+            },
+            usuarioLogadoId
+          );
 
-          console.log(`📝 Falha registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
+          console.log(
+            `📝 Falha registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`
+          );
         } catch (historicoError) {
           console.error('Erro ao registrar falha no histórico:', historicoError);
         }
@@ -2512,13 +2744,14 @@ class BooksDisparoService {
         return {
           sucesso: false,
           erro: resultadoEnvio.erro,
-          clientesProcessados: []
+          clientesProcessados: [],
         };
       }
-
     } catch (error) {
       const erroMensagem = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.log(`💥 Exceção no processamento - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
+      console.log(
+        `💥 Exceção no processamento - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`
+      );
 
       // ✅ CORREÇÃO: Registrar exceção no histórico de disparos
       try {
@@ -2527,7 +2760,8 @@ class BooksDisparoService {
         let clienteReferenciaId: string | null = null;
 
         try {
-          const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+          const templatePadrao =
+            ((empresa as any).template_padrao as 'portugues' | 'ingles') ?? 'portugues';
           const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
           templateId = template?.id || null;
         } catch (templateError) {
@@ -2546,7 +2780,7 @@ class BooksDisparoService {
           if (anexosWebhook.length > 0) {
             try {
               const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-              const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+              const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
               if (anexosEnviando.length > 0) {
                 anexoId = anexosEnviando[0].id;
@@ -2569,18 +2803,25 @@ class BooksDisparoService {
             emails_cc: emailsCC,
             erro_detalhes: `Exceção no processamento para ${clientes.length} clientes: ${erroMensagem}${detalhesAnexos}`,
             anexo_id: anexoId,
-            anexo_processado: false
+            anexo_processado: false,
           };
 
           await supabase.from('historico_disparos').insert(historicoExcecaoData);
 
           // Registrar audit log da exceção
-          await this.registrarAuditLog('INSERT', historicoExcecaoData.empresa_id || '', {
-            ...historicoExcecaoData,
-            empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
-          }, usuarioLogadoId);
+          await this.registrarAuditLog(
+            'INSERT',
+            historicoExcecaoData.empresa_id || '',
+            {
+              ...historicoExcecaoData,
+              empresa_nome: empresa.nome_completo || empresa.nome_abreviado,
+            },
+            usuarioLogadoId
+          );
 
-          console.log(`📝 Exceção registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
+          console.log(
+            `📝 Exceção registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`
+          );
         }
       } catch (historicoError) {
         console.error('Erro ao registrar exceção no histórico:', historicoError);
@@ -2589,7 +2830,7 @@ class BooksDisparoService {
       return {
         sucesso: false,
         erro: erroMensagem,
-        clientesProcessados: []
+        clientesProcessados: [],
       };
     }
   }
@@ -2603,7 +2844,8 @@ class BooksDisparoService {
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
       // Debug: verificar template_padrao da empresa
-      const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+      const templatePadrao =
+        ((empresa as any).template_padrao as 'portugues' | 'ingles') ?? 'portugues';
       console.log(`🏢 Empresa: ${empresa.nome_completo}`);
       console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
       console.log(`📧 Enviando para: ${cliente.email}`);
@@ -2614,15 +2856,22 @@ class BooksDisparoService {
       if (!template) {
         return {
           sucesso: false,
-          erro: 'Template de e-mail não encontrado para books'
+          erro: 'Template de e-mail não encontrado para books',
         };
       }
 
       // Validar template antes do processamento
-      const validacao = clientBooksTemplateService.validarTemplate(template, empresa as any, cliente as any);
+      const validacao = clientBooksTemplateService.validarTemplate(
+        template,
+        empresa as any,
+        cliente as any
+      );
 
       if (!validacao.valido) {
-        console.warn('Template possui variáveis não encontradas:', validacao.variaveisNaoEncontradas);
+        console.warn(
+          'Template possui variáveis não encontradas:',
+          validacao.variaveisNaoEncontradas
+        );
         // Continuar mesmo com avisos, mas registrar no log
       }
 
@@ -2653,17 +2902,16 @@ class BooksDisparoService {
         data_disparo: new Date().toISOString(),
         assunto: templateProcessado.assunto,
         emails_cc: emailsCC,
-        erro_detalhes: resultadoEnvio.erro
+        erro_detalhes: resultadoEnvio.erro,
       };
 
       await supabase.from('historico_disparos').insert(historicoData);
 
       return resultadoEnvio;
-
     } catch (error) {
       return {
         sucesso: false,
-        erro: error instanceof Error ? error.message : 'Erro desconhecido'
+        erro: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
@@ -2685,7 +2933,9 @@ class BooksDisparoService {
       console.log(`📧 Preparando e-mail consolidado para ${destinatarios.length} destinatários`);
       console.log(`📎 Anexos incluídos: ${anexosWebhook.length}`);
       if (attachments && attachments.length > 0) {
-        console.log(`📊 Attachments base64 incluídos: ${attachments.length} (${attachments.map(a => a.filename).join(', ')})`);
+        console.log(
+          `📊 Attachments base64 incluídos: ${attachments.length} (${attachments.map((a) => a.filename).join(', ')})`
+        );
       }
 
       // Preparar dados básicos para o emailService
@@ -2693,7 +2943,7 @@ class BooksDisparoService {
         to: destinatarios,
         cc: emailsCC.length > 0 ? emailsCC : [],
         subject: assunto,
-        html: corpo
+        html: corpo,
       };
 
       // Incluir attachments base64 (ex: Excel de consumo)
@@ -2706,7 +2956,9 @@ class BooksDisparoService {
         const dadosAnexos = this.prepararDadosAnexosWebhook(anexosWebhook);
         if (dadosAnexos) {
           emailData.anexos = dadosAnexos;
-          console.log(`📎 Dados de anexos adicionados ao payload: ${dadosAnexos.totalArquivos} arquivos, ${dadosAnexos.tamanhoTotal} bytes`);
+          console.log(
+            `📎 Dados de anexos adicionados ao payload: ${dadosAnexos.totalArquivos} arquivos, ${dadosAnexos.tamanhoTotal} bytes`
+          );
         }
       }
 
@@ -2722,11 +2974,11 @@ class BooksDisparoService {
           try {
             // Buscar anexos da empresa que estão sendo enviados
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-            const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+            const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
             // Atualizar status para 'processado' imediatamente após envio bem-sucedido
             await Promise.all(
-              anexosEnviando.map(anexo =>
+              anexosEnviando.map((anexo) =>
                 this.atualizarStatusAnexoComLog(
                   anexo.id,
                   'processado',
@@ -2742,12 +2994,15 @@ class BooksDisparoService {
                   .from('historico_disparos')
                   .update({
                     anexo_processado: true,
-                    erro_detalhes: null // Limpar erros anteriores
+                    erro_detalhes: null, // Limpar erros anteriores
                   })
                   .eq('anexo_id', anexo.id);
 
                 if (historicoError) {
-                  console.error(`Erro ao atualizar histórico para anexo ${anexo.id}:`, historicoError);
+                  console.error(
+                    `Erro ao atualizar histórico para anexo ${anexo.id}:`,
+                    historicoError
+                  );
                 }
               })
             );
@@ -2755,13 +3010,14 @@ class BooksDisparoService {
             // Registrar que os anexos foram processados com sucesso
             await this.registrarEventoAnexos(
               empresa.id,
-              anexosEnviando.map(a => a.id),
+              anexosEnviando.map((a) => a.id),
               'processados_com_sucesso',
               `${anexosEnviando.length} anexos processados com sucesso via Power Automate`
             );
 
-            console.log(`✅ ${anexosEnviando.length} anexos marcados como processados após envio bem-sucedido`);
-
+            console.log(
+              `✅ ${anexosEnviando.length} anexos marcados como processados após envio bem-sucedido`
+            );
           } catch (error) {
             console.error('Erro ao atualizar status dos anexos para processado:', error);
             // Não falhar o disparo por erro nos anexos pós-envio
@@ -2777,11 +3033,11 @@ class BooksDisparoService {
           try {
             // Buscar anexos da empresa e marcar como erro
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-            const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+            const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
             // Atualizar status com detalhes do erro
             await Promise.all(
-              anexosEnviando.map(anexo =>
+              anexosEnviando.map((anexo) =>
                 this.atualizarStatusAnexoComLog(
                   anexo.id,
                   'erro',
@@ -2793,12 +3049,14 @@ class BooksDisparoService {
             // Registrar evento de erro
             await this.registrarEventoAnexos(
               empresa.id,
-              anexosEnviando.map(a => a.id),
+              anexosEnviando.map((a) => a.id),
               'erro_envio_email',
               `Falha no envio do e-mail impediu processamento dos anexos: ${resultado.error}`
             );
 
-            console.log(`📎 ${anexosEnviando.length} anexos marcados como erro devido a falha no envio`);
+            console.log(
+              `📎 ${anexosEnviando.length} anexos marcados como erro devido a falha no envio`
+            );
           } catch (error) {
             console.error('Erro ao atualizar status dos anexos para erro:', error);
           }
@@ -2806,10 +3064,9 @@ class BooksDisparoService {
 
         return {
           sucesso: false,
-          erro: resultado.error || 'Falha no envio do e-mail consolidado'
+          erro: resultado.error || 'Falha no envio do e-mail consolidado',
         };
       }
-
     } catch (error) {
       console.error('Erro no envio consolidado com anexos:', error);
 
@@ -2817,13 +3074,14 @@ class BooksDisparoService {
       if (anexosWebhook.length > 0) {
         try {
           const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
-          const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+          const anexosEnviando = anexos.filter((a) => a.status === 'enviando');
 
-          const erroDetalhes = error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado';
+          const erroDetalhes =
+            error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado';
 
           // Atualizar status com detalhes do erro
           await Promise.all(
-            anexosEnviando.map(anexo =>
+            anexosEnviando.map((anexo) =>
               this.atualizarStatusAnexoComLog(anexo.id, 'erro', erroDetalhes)
             )
           );
@@ -2831,7 +3089,7 @@ class BooksDisparoService {
           // Registrar evento de erro geral
           await this.registrarEventoAnexos(
             empresa.id,
-            anexosEnviando.map(a => a.id),
+            anexosEnviando.map((a) => a.id),
             'erro_geral_disparo',
             `Erro geral no processo de disparo: ${erroDetalhes}`
           );
@@ -2844,7 +3102,7 @@ class BooksDisparoService {
 
       return {
         sucesso: false,
-        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado'
+        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado',
       };
     }
   }
@@ -2886,7 +3144,7 @@ class BooksDisparoService {
         to: destinatario,
         cc: emailsCC.length > 0 ? emailsCC : undefined,
         subject: assunto,
-        html: corpo
+        html: corpo,
       };
 
       // Enviar e-mail usando o método padrão
@@ -2897,14 +3155,13 @@ class BooksDisparoService {
       } else {
         return {
           sucesso: false,
-          erro: resultado.error || 'Falha no envio do e-mail'
+          erro: resultado.error || 'Falha no envio do e-mail',
         };
       }
-
     } catch (error) {
       return {
         sucesso: false,
-        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio'
+        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio',
       };
     }
   }
@@ -2922,14 +3179,12 @@ class BooksDisparoService {
       empresa_id: empresaId,
       status,
       data_processamento: new Date().toISOString(),
-      observacoes
+      observacoes,
     };
 
-    const { error } = await supabase
-      .from('controle_mensal')
-      .upsert(controleData, {
-        onConflict: 'mes,ano,empresa_id'
-      });
+    const { error } = await supabase.from('controle_mensal').upsert(controleData, {
+      onConflict: 'mes,ano,empresa_id',
+    });
 
     if (error) {
       console.error('Erro ao atualizar controle mensal:', error);
@@ -2972,12 +3227,10 @@ class BooksDisparoService {
         data_disparo: dadosAdicionais?.dataDisparo || new Date().toISOString(),
         assunto: dadosAdicionais?.assunto || null,
         emails_cc: dadosAdicionais?.emailsCC || null,
-        erro_detalhes: dadosAdicionais?.erroDetalhes || null
+        erro_detalhes: dadosAdicionais?.erroDetalhes || null,
       };
 
-      const { error } = await supabase
-        .from('historico_disparos')
-        .insert(historicoData);
+      const { error } = await supabase.from('historico_disparos').insert(historicoData);
 
       if (error) {
         console.error('Erro ao registrar histórico com anexo:', error);
@@ -2987,7 +3240,9 @@ class BooksDisparoService {
       console.log(`✅ Histórico registrado com anexo: ${anexoId ? 'com anexo' : 'sem anexo'}`);
     } catch (error) {
       console.error('Erro ao registrar histórico com anexo:', error);
-      throw new Error(`Erro ao registrar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao registrar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -3001,7 +3256,7 @@ class BooksDisparoService {
   ): Promise<void> {
     try {
       const updateData: any = {
-        anexo_processado: anexoProcessado
+        anexo_processado: anexoProcessado,
       };
 
       if (erroDetalhes) {
@@ -3018,10 +3273,14 @@ class BooksDisparoService {
         throw error;
       }
 
-      console.log(`✅ Status do anexo atualizado no histórico: ${anexoProcessado ? 'processado' : 'erro'}`);
+      console.log(
+        `✅ Status do anexo atualizado no histórico: ${anexoProcessado ? 'processado' : 'erro'}`
+      );
     } catch (error) {
       console.error('Erro ao atualizar status do anexo:', error);
-      throw new Error(`Erro ao atualizar status do anexo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao atualizar status do anexo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -3034,14 +3293,16 @@ class BooksDisparoService {
 
       // Buscar anexos pendentes da empresa
       const anexos = await anexoService.obterAnexosEmpresa(empresaId);
-      const anexosPendentes = anexos.filter(anexo => anexo.status === 'pendente');
+      const anexosPendentes = anexos.filter((anexo) => anexo.status === 'pendente');
 
       if (anexosPendentes.length === 0) {
         console.log(`📎 Nenhum anexo pendente encontrado para empresa: ${empresaId}`);
         return [];
       }
 
-      console.log(`📎 Encontrados ${anexosPendentes.length} anexos pendentes para empresa: ${empresaId}`);
+      console.log(
+        `📎 Encontrados ${anexosPendentes.length} anexos pendentes para empresa: ${empresaId}`
+      );
 
       // Gerar tokens de acesso para cada anexo
       const anexosComToken: AnexoWebhookData[] = [];
@@ -3050,7 +3311,11 @@ class BooksDisparoService {
       for (const anexo of anexosPendentes) {
         try {
           // Atualizar status para "enviando" com timestamp
-          await this.atualizarStatusAnexoComLog(anexo.id, 'enviando', `Iniciando processo de disparo para empresa ${empresaId}`);
+          await this.atualizarStatusAnexoComLog(
+            anexo.id,
+            'enviando',
+            `Iniciando processo de disparo para empresa ${empresaId}`
+          );
 
           // Gerar token de acesso
           const token = await anexoService.gerarTokenAcessoPublico(anexo.id);
@@ -3060,7 +3325,7 @@ class BooksDisparoService {
             nome: anexo.nome,
             tipo: anexo.tipo,
             tamanho: anexo.tamanho,
-            token: token
+            token: token,
           });
 
           anexosProcessados.push(anexo.id);
@@ -3090,7 +3355,9 @@ class BooksDisparoService {
       return anexosComToken;
     } catch (error) {
       console.error('Erro ao buscar anexos da empresa:', error);
-      throw new Error(`Erro ao buscar anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao buscar anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -3100,7 +3367,7 @@ class BooksDisparoService {
   private prepararDadosAnexosWebhook(anexos: AnexoWebhookData[]): AnexosSummaryWebhook | undefined {
     console.log(`🔧 Preparando dados de anexos para webhook:`, {
       anexosRecebidos: anexos?.length || 0,
-      anexos: anexos?.map(a => ({ nome: a.nome, tamanho: a.tamanho })) || []
+      anexos: anexos?.map((a) => ({ nome: a.nome, tamanho: a.tamanho })) || [],
     });
 
     if (!anexos || anexos.length === 0) {
@@ -3113,13 +3380,13 @@ class BooksDisparoService {
     const dadosPreparados = {
       totalArquivos: anexos.length,
       tamanhoTotal,
-      arquivos: anexos
+      arquivos: anexos,
     };
 
     console.log(`✅ Dados de anexos preparados:`, {
       totalArquivos: dadosPreparados.totalArquivos,
       tamanhoTotal: dadosPreparados.tamanhoTotal,
-      tamanhoMB: (dadosPreparados.tamanhoTotal / 1024 / 1024).toFixed(2)
+      tamanhoMB: (dadosPreparados.tamanhoTotal / 1024 / 1024).toFixed(2),
     });
 
     return dadosPreparados;
@@ -3138,7 +3405,9 @@ class BooksDisparoService {
       await anexoService.atualizarStatusAnexo(anexoId, novoStatus);
 
       // Registrar log detalhado
-      console.log(`📎 Anexo ${anexoId}: ${novoStatus.toUpperCase()}${detalhes ? ` - ${detalhes}` : ''}`);
+      console.log(
+        `📎 Anexo ${anexoId}: ${novoStatus.toUpperCase()}${detalhes ? ` - ${detalhes}` : ''}`
+      );
 
       // Se for erro, salvar detalhes no banco
       if (novoStatus === 'erro' && detalhes) {
@@ -3168,7 +3437,9 @@ class BooksDisparoService {
   ): Promise<void> {
     try {
       // Registrar evento no log de auditoria (se disponível)
-      console.log(`📋 Evento de anexos - Empresa: ${empresaId}, Evento: ${evento}, Anexos: ${anexoIds.join(', ')}, Detalhes: ${detalhes}`);
+      console.log(
+        `📋 Evento de anexos - Empresa: ${empresaId}, Evento: ${evento}, Anexos: ${anexoIds.join(', ')}, Detalhes: ${detalhes}`
+      );
 
       // Aqui poderia ser integrado com um sistema de auditoria mais robusto
       // Por enquanto, apenas log no console
@@ -3210,7 +3481,7 @@ class BooksDisparoService {
               .from('historico_disparos')
               .update({
                 anexo_processado: true,
-                erro_detalhes: null // Limpar erros anteriores
+                erro_detalhes: null, // Limpar erros anteriores
               })
               .eq('anexo_id', anexoId);
 
@@ -3233,7 +3504,7 @@ class BooksDisparoService {
               .from('historico_disparos')
               .update({
                 anexo_processado: false,
-                erro_detalhes: erroDetalhes || 'Erro no processamento pelo Power Automate'
+                erro_detalhes: erroDetalhes || 'Erro no processamento pelo Power Automate',
               })
               .eq('anexo_id', anexoId);
 
@@ -3290,10 +3561,11 @@ class BooksDisparoService {
           `${anexosComErro.length} anexos falharam no processamento: ${erroDetalhes || 'Erro não especificado'}`
         );
       }
-
     } catch (error) {
       console.error('Erro ao processar confirmação de anexo:', error);
-      throw new Error(`Erro ao processar confirmação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao processar confirmação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -3320,24 +3592,26 @@ class BooksDisparoService {
 
       const status = {
         total: anexos.length,
-        pendentes: anexos.filter(a => a.status === 'pendente').length,
-        enviando: anexos.filter(a => a.status === 'enviando').length,
-        processados: anexos.filter(a => a.status === 'processado').length,
-        comErro: anexos.filter(a => a.status === 'erro').length,
-        detalhes: anexos.map(anexo => ({
+        pendentes: anexos.filter((a) => a.status === 'pendente').length,
+        enviando: anexos.filter((a) => a.status === 'enviando').length,
+        processados: anexos.filter((a) => a.status === 'processado').length,
+        comErro: anexos.filter((a) => a.status === 'erro').length,
+        detalhes: anexos.map((anexo) => ({
           id: anexo.id,
           nome: anexo.nome,
           status: anexo.status,
           dataUpload: anexo.dataUpload || '',
           dataProcessamento: anexo.dataExpiracao,
-          erroDetalhes: undefined // Será buscado do banco se necessário
-        }))
+          erroDetalhes: undefined, // Será buscado do banco se necessário
+        })),
       };
 
       return status;
     } catch (error) {
       console.error('Erro ao obter status dos anexos:', error);
-      throw new Error(`Erro ao obter status dos anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro ao obter status dos anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 
@@ -3346,12 +3620,12 @@ class BooksDisparoService {
    */
   async limparAnexosOrfaos(empresaId?: string): Promise<number> {
     try {
-      console.log(`🧹 Iniciando limpeza de anexos órfãos${empresaId ? ` para empresa ${empresaId}` : ''}`);
+      console.log(
+        `🧹 Iniciando limpeza de anexos órfãos${empresaId ? ` para empresa ${empresaId}` : ''}`
+      );
 
       // Buscar anexos que não têm referência no histórico
-      let query = supabase
-        .from('anexos_temporarios')
-        .select(`
+      let query = supabase.from('anexos_temporarios').select(`
           id,
           empresa_id,
           nome_original,
@@ -3411,7 +3685,9 @@ class BooksDisparoService {
       return anexosOrfaos;
     } catch (error) {
       console.error('Erro na limpeza de anexos órfãos:', error);
-      throw new Error(`Erro na limpeza: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(
+        `Erro na limpeza: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      );
     }
   }
 }
