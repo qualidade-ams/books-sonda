@@ -35,6 +35,11 @@ const estado = vi.hoisted(() => ({
   consultas: [] as { tabela: string; chamadas: [string, any[]][] }[],
 }));
 
+// Empresa em Legado: a caracterização é do Excel atual (a empresa liberada tem abas por banco)
+vi.mock('@/services/geracaoBookLiberada', () => ({
+  geracaoBookLiberada: { noModeloNovo: async () => false },
+}));
+
 vi.mock('@/integrations/supabase/client', () => {
   /** Builder que registra cada chamada e resolve com as linhas configuradas para a tabela (respeitando o limit) */
   const from = (tabela: string) => {
@@ -47,7 +52,8 @@ vi.mock('@/integrations/supabase/client', () => {
         get(_alvo, prop: string) {
           if (prop === 'then') {
             const configurado = estado.resultados[tabela];
-            let linhas: any[] = (typeof configurado === 'function' ? configurado(consulta) : configurado) ?? [];
+            let linhas: any[] =
+              (typeof configurado === 'function' ? configurado(consulta) : configurado) ?? [];
             const limite = consulta.chamadas.find(([metodo]) => metodo === 'limit');
             if (limite) linhas = linhas.slice(0, limite[1][0]);
             const resultado = unico
@@ -74,7 +80,11 @@ import { gerarExcelConsumoHoras } from '../gerarExcelConsumoHoras';
 import { gerarExcelDetalhadoBook } from '../gerarExcelDetalhadoBook';
 import { bancoHorasIntegracaoService } from '@/services/bancoHorasIntegracaoService';
 
-const EMPRESA = { nome_abreviado: 'ACME', nome_completo: 'ACME INDÚSTRIA S.A.', tipo_contrato: 'horas' };
+const EMPRESA = {
+  nome_abreviado: 'ACME',
+  nome_completo: 'ACME INDÚSTRIA S.A.',
+  tipo_contrato: 'horas',
+};
 const GRUPOS_AMS_APONTAMENTOS =
   'caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%';
 const GRUPOS_AMS_TICKETS =
@@ -82,7 +92,11 @@ const GRUPOS_AMS_TICKETS =
 const SELECT_APONTAMENTOS =
   'nro_chamado, cod_resolucao, org_us_final, item_configuracao, categoria, caso_estado, nro_tarefa, tipo_chamado, data_sistema, data_atividade, data_abertura, data_fechamento, analista_tarefa, analista_caso, solicitante, tempo_gasto_horas, tempo_gasto_minutos, ativi_interna, grupo_tarefa, descricao_tarefa';
 const ABAS_FIXAS_ANTES = ['Abertos', 'Fechados', 'SLA', 'Backlog'];
-const ABAS_FIXAS_DEPOIS = ['Pesquisas_Enviadas', 'Pesquisas_Respondidas', 'Enviadas_E_Não_Respondidas'];
+const ABAS_FIXAS_DEPOIS = [
+  'Pesquisas_Enviadas',
+  'Pesquisas_Respondidas',
+  'Enviadas_E_Não_Respondidas',
+];
 const ALOCACAO_SEM_TM = ['Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocação (Banco=S| SLA=N)'];
 
 // ---------------------------------------------------------------------------
@@ -91,7 +105,9 @@ const ALOCACAO_SEM_TM = ['Alocação', 'Alocação (Banco=S |SLA=N)', 'Alocaçã
 
 /** Consulta de tickets de CONSUMO do Excel detalhado (a única com o filtro de grupos AMS em nome_grupo) */
 function ehConsultaTicketsConsumo(consulta: Consulta): boolean {
-  return consulta.chamadas.some(([metodo, args]) => metodo === 'or' && String(args[0]).startsWith('nome_grupo.ilike'));
+  return consulta.chamadas.some(
+    ([metodo, args]) => metodo === 'or' && String(args[0]).startsWith('nome_grupo.ilike')
+  );
 }
 
 function consultasDe(tabela: string): Consulta[] {
@@ -106,7 +122,8 @@ function semSelect(consulta: Consulta): Chamada[] {
 /** Chamadas de filtro (sem o select) da única consulta à tabela */
 function filtros(tabela: string): Chamada[] {
   const consultas = consultasDe(tabela);
-  if (consultas.length !== 1) throw new Error(`Esperada 1 consulta a ${tabela}, houve ${consultas.length}`);
+  if (consultas.length !== 1)
+    throw new Error(`Esperada 1 consulta a ${tabela}, houve ${consultas.length}`);
   return semSelect(consultas[0]);
 }
 
@@ -127,7 +144,10 @@ async function listasDoMotor(): Promise<{ horas: string[]; tickets: string[] }> 
   await bancoHorasIntegracaoService.buscarConsumo('emp-1', 1, 2026);
   const codigos = (tabela: string): string[] =>
     filtros(tabela).find(([metodo, args]) => metodo === 'in' && args[0] === 'cod_resolucao')![1][1];
-  const listas = { horas: codigos('apontamentos_aranda'), tickets: codigos('apontamentos_tickets_aranda') };
+  const listas = {
+    horas: codigos('apontamentos_aranda'),
+    tickets: codigos('apontamentos_tickets_aranda'),
+  };
   estado.consultas = anteriores;
   return listas;
 }
@@ -145,14 +165,21 @@ async function lerPlanilha(arquivo: File | null): Promise<XLSX.WorkBook> {
 
 /** Todas as linhas da aba (a primeira é o cabeçalho) */
 function linhasDaAba(planilha: XLSX.WorkBook, aba: string): any[][] {
-  return XLSX.utils.sheet_to_json(planilha.Sheets[aba], { header: 1, defval: '', blankrows: true, raw: true }) as any[][];
+  return XLSX.utils.sheet_to_json(planilha.Sheets[aba], {
+    header: 1,
+    defval: '',
+    blankrows: true,
+    raw: true,
+  }) as any[][];
 }
 
 /** Valores da coluna CHAMADO nas linhas de dados (linhas com chamado preenchido) */
 function chamadosDaAba(planilha: XLSX.WorkBook, aba: string): string[] {
   const [cabecalho, ...linhas] = linhasDaAba(planilha, aba);
   const coluna = cabecalho.indexOf('CHAMADO');
-  return linhas.map((linha) => String(linha[coluna] ?? '')).filter((chamado) => /^\d+$/.test(chamado));
+  return linhas
+    .map((linha) => String(linha[coluna] ?? ''))
+    .filter((chamado) => /^\d+$/.test(chamado));
 }
 
 function apontamento(extra: Record<string, any> = {}) {
@@ -201,7 +228,9 @@ function ticketConsumo(extra: Record<string, any> = {}) {
 
 /** Uma linha por código candidato, com chamado numérico distinto, para descobrir a lista aceita pelo filtro em JS */
 function linhasPorCodigo(codigos: string[]) {
-  return codigos.map((cod_resolucao, i) => apontamento({ nro_chamado: String(2000 + i), cod_resolucao }));
+  return codigos.map((cod_resolucao, i) =>
+    apontamento({ nro_chamado: String(2000 + i), cod_resolucao })
+  );
 }
 
 function codigosAceitos(candidatos: string[], chamados: string[]): string[] {
@@ -211,7 +240,13 @@ function codigosAceitos(candidatos: string[], chamados: string[]): string[] {
 const unicosOrdenados = (lista: string[]) => [...new Set(lista)].sort();
 
 function gerarDetalhado(extra: Record<string, any> = {}) {
-  return gerarExcelDetalhadoBook({ empresaId: 'emp-1', empresaNome: 'ACME', mes: 1, ano: 2026, ...extra });
+  return gerarExcelDetalhadoBook({
+    empresaId: 'emp-1',
+    empresaNome: 'ACME',
+    mes: 1,
+    ano: 2026,
+    ...extra,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -242,7 +277,10 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
         ['eq', ['id', 'emp-1']],
         ['single', []],
       ]);
-      expect(consultasDe('apontamentos_aranda')[0].chamadas[0]).toEqual(['select', [SELECT_APONTAMENTOS]]);
+      expect(consultasDe('apontamentos_aranda')[0].chamadas[0]).toEqual([
+        'select',
+        [SELECT_APONTAMENTOS],
+      ]);
       expect(filtros('apontamentos_aranda')).toEqual([
         ['eq', ['ativi_interna', 'Não']],
         ['neq', ['item_configuracao', '000000 - PROJETOS APL']],
@@ -275,7 +313,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
     it('[Inv. 8.1-E] período em UTC literal ("T00:00:00.000Z"); o motor usa a hora LOCAL convertida para UTC', async () => {
       await gerarExcelConsumoHoras('emp-1', 'ACME', 1, 2026);
-      const inicioExcel = filtros('apontamentos_aranda').find(([metodo]) => metodo === 'gte')![1][1];
+      const inicioExcel = filtros('apontamentos_aranda').find(
+        ([metodo]) => metodo === 'gte'
+      )![1][1];
 
       expect(inicioExcel).toBe('2026-01-01T00:00:00.000Z');
       // Motor: new Date(2026, 0, 1).toISOString(). Só coincidem quando o processo roda em UTC;
@@ -376,10 +416,28 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
       expect(planilha.SheetNames).toEqual(['Consumo de Horas']);
       const [cabecalho, ...resto] = linhasDaAba(planilha, 'Consumo de Horas');
       expect(cabecalho).toEqual([
-        'CHAMADO', 'CÓDIGO RESOLUÇÃO', 'EMPRESA', 'CATEGORIA', 'ESTADO', 'TAREFA', 'TIPO TAREFA',
-        'SERVIÇO TAREFA', 'DATA SISTEMA', 'DATA ATIVIDADE', 'DATA ABERTURA', 'DATA SOLUÇÃO', 'ANALISTA',
-        'RESPONSÁVEL PELO CHAMADO', 'SOLICITANTE', 'HORAS', 'TEMPO (MINUTOS)', 'ATIVIDADE INTERNA',
-        'GRUPO SOLUÇÃO', 'DESCRIÇÃO TAREFA', 'DESCRIÇÃO DA SOLICITAÇÃO', 'SOLUÇÃO',
+        'CHAMADO',
+        'CÓDIGO RESOLUÇÃO',
+        'EMPRESA',
+        'CATEGORIA',
+        'ESTADO',
+        'TAREFA',
+        'TIPO TAREFA',
+        'SERVIÇO TAREFA',
+        'DATA SISTEMA',
+        'DATA ATIVIDADE',
+        'DATA ABERTURA',
+        'DATA SOLUÇÃO',
+        'ANALISTA',
+        'RESPONSÁVEL PELO CHAMADO',
+        'SOLICITANTE',
+        'HORAS',
+        'TEMPO (MINUTOS)',
+        'ATIVIDADE INTERNA',
+        'GRUPO SOLUÇÃO',
+        'DESCRIÇÃO TAREFA',
+        'DESCRIÇÃO DA SOLICITAÇÃO',
+        'SOLUÇÃO',
       ]);
       const total = resto[resto.length - 1];
       expect(total[14]).toBe('Total de Horas:');
@@ -388,20 +446,40 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
     it('planilha: abas "Requerimentos" e "Observações" só aparecem quando recebidas', async () => {
       const planilha = await lerPlanilha(
-        await gerarExcelConsumoHoras('emp-1', 'ACME', 1, 2026, [{ chamado: 'R-1', horas_funcional: 1.5 }], [{ tipo: 'manual', texto: 'obs' }])
+        await gerarExcelConsumoHoras(
+          'emp-1',
+          'ACME',
+          1,
+          2026,
+          [{ chamado: 'R-1', horas_funcional: 1.5 }],
+          [{ tipo: 'manual', texto: 'obs' }]
+        )
       );
 
       expect(planilha.SheetNames).toEqual(['Consumo de Horas', 'Requerimentos', 'Observações']);
-      expect(linhasDaAba(planilha, 'Requerimentos')[1].slice(0, 5)).toEqual(['R-1', '', '', '', '1:30']);
+      expect(linhasDaAba(planilha, 'Requerimentos')[1].slice(0, 5)).toEqual([
+        'R-1',
+        '',
+        '',
+        '',
+        '1:30',
+      ]);
     });
 
     it('linhas: HORAS em fração de dia priorizando tempo_gasto_horas; código sem o sufixo "(Banco=...)"; descrição/solução vêm dos tickets', async () => {
       estado.resultados.apontamentos_aranda = [
-        apontamento({ nro_chamado: '1001', cod_resolucao: 'Consultoria (Banco=S |SLA=S)', tempo_gasto_horas: '1:30', tempo_gasto_minutos: 999 }),
+        apontamento({
+          nro_chamado: '1001',
+          cod_resolucao: 'Consultoria (Banco=S |SLA=S)',
+          tempo_gasto_horas: '1:30',
+          tempo_gasto_minutos: 999,
+        }),
         apontamento({ nro_chamado: '1002', tempo_gasto_horas: null, tempo_gasto_minutos: 45 }),
         apontamento({ nro_chamado: '1001', tempo_gasto_horas: '0:15', tempo_gasto_minutos: 15 }),
       ];
-      estado.resultados.apontamentos_tickets_aranda = [{ nro_solicitacao: '1001', descricao: 'Pedido', solucao: 'Resolvido' }];
+      estado.resultados.apontamentos_tickets_aranda = [
+        { nro_solicitacao: '1001', descricao: 'Pedido', solucao: 'Resolvido' },
+      ];
 
       const planilha = await lerPlanilha(await gerarExcelConsumoHoras('emp-1', 'ACME', 1, 2026));
       const [, ...linhas] = linhasDaAba(planilha, 'Consumo de Horas');
@@ -415,7 +493,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
       // Linha vazia e, em seguida, o total (90 + 45 + 15 = 150 min)
       expect(linhas[4][15]).toBeCloseTo(150 / 1440, 10);
       // Descrição/solução: consulta extra por número de chamado, sem repetição
-      expect(semSelect(consultasDe('apontamentos_tickets_aranda')[0])).toEqual([['in', ['nro_solicitacao', ['1001', '1002']]]]);
+      expect(semSelect(consultasDe('apontamentos_tickets_aranda')[0])).toEqual([
+        ['in', ['nro_solicitacao', ['1001', '1002']]],
+      ]);
     });
   });
 
@@ -469,7 +549,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
       const colunas = filtros('apontamentos_aranda').map(([, args]) => args[0]);
       expect(colunas).not.toContain('cod_resolucao');
       expect(chamadosDaAba(planilha, 'Horas')).toEqual([]);
-      expect(linhasDaAba(planilha, 'Horas')[2][0]).toBe('Não houve registros no período de Janeiro/2026.');
+      expect(linhasDaAba(planilha, 'Horas')[2][0]).toBe(
+        'Não houve registros no período de Janeiro/2026.'
+      );
     });
 
     it('[Inv. 8.1-F] a lista em JS aceita exatamente os 48 códigos distintos da lista de horas do motor', async () => {
@@ -491,17 +573,41 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
     it('linhas ordenadas por número de chamado; TIPO traduzido; código sem parênteses; total ao final', async () => {
       estado.resultados.apontamentos_aranda = [
-        apontamento({ nro_chamado: '1002', tipo_chamado: 'RF', tempo_gasto_horas: null, tempo_gasto_minutos: 45 }),
-        apontamento({ nro_chamado: '1001', tipo_chamado: 'IM', cod_resolucao: 'Consultoria (Banco=S |SLA=S)', tempo_gasto_horas: '1:30' }),
+        apontamento({
+          nro_chamado: '1002',
+          tipo_chamado: 'RF',
+          tempo_gasto_horas: null,
+          tempo_gasto_minutos: 45,
+        }),
+        apontamento({
+          nro_chamado: '1001',
+          tipo_chamado: 'IM',
+          cod_resolucao: 'Consultoria (Banco=S |SLA=S)',
+          tempo_gasto_horas: '1:30',
+        }),
       ];
 
       const planilha = await lerPlanilha(await gerarDetalhado());
       const [cabecalho, ...linhas] = linhasDaAba(planilha, 'Horas');
 
       expect(cabecalho).toEqual([
-        'TIPO', 'CHAMADO', 'TAREFA', 'SOLICITANTE', 'CATEGORIA', 'GRUPO DE SOLUÇÃO', 'ANALISTA',
-        'RESPONSÁVEL PELO CHAMADO', 'CÓDIGO RESOLUÇÃO', 'ESTADO', 'DATA SISTEMA', 'DATA ATIVIDADE',
-        'DATA ABERTURA', 'DATA SOLUÇÃO', 'HORAS', 'TEMPO (MINUTOS)', 'DESCRIÇÃO TAREFA',
+        'TIPO',
+        'CHAMADO',
+        'TAREFA',
+        'SOLICITANTE',
+        'CATEGORIA',
+        'GRUPO DE SOLUÇÃO',
+        'ANALISTA',
+        'RESPONSÁVEL PELO CHAMADO',
+        'CÓDIGO RESOLUÇÃO',
+        'ESTADO',
+        'DATA SISTEMA',
+        'DATA ATIVIDADE',
+        'DATA ABERTURA',
+        'DATA SOLUÇÃO',
+        'HORAS',
+        'TEMPO (MINUTOS)',
+        'DESCRIÇÃO TAREFA',
       ]);
       expect(linhas.slice(0, 2).map((l) => [l[0], l[1], l[8], l[14]])).toEqual([
         ['Incidente', '1001', 'Consultoria', 90 / 1440],
@@ -539,7 +645,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
       expect(consultaTicketsConsumo().chamadas[0]).toEqual([
         'select',
-        ['nro_solicitacao, cod_tipo, cod_resolucao, categoria, status, nome_grupo, data_abertura, data_fechamento, nome_responsavel, solicitante, cliente, organizacao'],
+        [
+          'nro_solicitacao, cod_tipo, cod_resolucao, categoria, status, nome_grupo, data_abertura, data_fechamento, nome_responsavel, solicitante, cliente, organizacao',
+        ],
       ]);
       expect(semSelect(consultaTicketsConsumo())).toEqual([
         ['ilike', ['organizacao', 'ACME INDÚSTRIA S.A.']],
@@ -558,19 +666,28 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
       const motor = await listasDoMotor();
       await gerarDetalhado();
 
-      const codigos: string[] = semSelect(consultaTicketsConsumo()).find(([metodo]) => metodo === 'in')![1][1];
+      const codigos: string[] = semSelect(consultaTicketsConsumo()).find(
+        ([metodo]) => metodo === 'in'
+      )![1][1];
       const lista = new Set(codigos);
       const motorTickets = new Set(motor.tickets);
       expect(codigos).toHaveLength(46);
       expect(lista.size).toBe(46);
       expect(motorTickets.size).toBe(47);
-      expect([...motorTickets].filter((c) => !lista.has(c)).sort()).toEqual([...ALOCACAO_SEM_TM].sort());
+      expect([...motorTickets].filter((c) => !lista.has(c)).sort()).toEqual(
+        [...ALOCACAO_SEM_TM].sort()
+      );
       expect([...lista].filter((c) => !motorTickets.has(c)).sort()).toEqual(
-        ['Nota Publicada (Banco=S| SLA=N)', 'Parametrização / Funcionalidade (Banco=S |SLA=S)'].sort()
+        [
+          'Nota Publicada (Banco=S| SLA=N)',
+          'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+        ].sort()
       );
       // Contra a lista de HORAS do motor: faltam as 3 "Alocação" e sobra só a de SLA=S
       const motorHoras = new Set(motor.horas);
-      expect([...lista].filter((c) => !motorHoras.has(c))).toEqual(['Parametrização / Funcionalidade (Banco=S |SLA=S)']);
+      expect([...lista].filter((c) => !motorHoras.has(c))).toEqual([
+        'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+      ]);
     });
 
     it('[Inv. 8.1-T-F] período em UTC literal e SÓ mês civil: ignora a apuração customizada (a aba Horas respeita)', async () => {
@@ -590,7 +707,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
     it('[novo] código de resolução filtrado NA CONSULTA (não em JS, diferente de E/F): o que o banco devolver vai para a aba', async () => {
       estado.resultados.apontamentos_tickets_aranda = (consulta: Consulta) =>
-        ehConsultaTicketsConsumo(consulta) ? [ticketConsumo({ nro_solicitacao: '5001', cod_resolucao: 'Código fora da lista' })] : [];
+        ehConsultaTicketsConsumo(consulta)
+          ? [ticketConsumo({ nro_solicitacao: '5001', cod_resolucao: 'Código fora da lista' })]
+          : [];
 
       const planilha = await lerPlanilha(await gerarDetalhado());
 
@@ -600,15 +719,28 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
     it('linhas ordenadas por chamado; ANALISTA e RESPONSÁVEL repetem nome_responsavel; código sem parênteses; sem linha de total', async () => {
       estado.resultados.apontamentos_tickets_aranda = (consulta: Consulta) =>
         ehConsultaTicketsConsumo(consulta)
-          ? [ticketConsumo({ nro_solicitacao: '5002' }), ticketConsumo({ nro_solicitacao: '5001', cod_tipo: 'IM' })]
+          ? [
+              ticketConsumo({ nro_solicitacao: '5002' }),
+              ticketConsumo({ nro_solicitacao: '5001', cod_tipo: 'IM' }),
+            ]
           : [];
 
       const planilha = await lerPlanilha(await gerarDetalhado());
       const [cabecalho, ...linhas] = linhasDaAba(planilha, 'Tickets');
 
       expect(cabecalho).toEqual([
-        'TIPO', 'CHAMADO', 'SOLICITANTE', 'CLIENTE', 'CATEGORIA', 'GRUPO SOLUÇÃO', 'ANALISTA',
-        'RESPONSÁVEL PELO CHAMADO', 'CÓDIGO RESOLUÇÃO', 'ESTADO', 'DATA ABERTURA', 'DATA FECHAMENTO',
+        'TIPO',
+        'CHAMADO',
+        'SOLICITANTE',
+        'CLIENTE',
+        'CATEGORIA',
+        'GRUPO SOLUÇÃO',
+        'ANALISTA',
+        'RESPONSÁVEL PELO CHAMADO',
+        'CÓDIGO RESOLUÇÃO',
+        'ESTADO',
+        'DATA ABERTURA',
+        'DATA FECHAMENTO',
       ]);
       expect(linhas.map((l) => [l[0], l[1], l[6], l[7], l[8]])).toEqual([
         ['Incidente', '5001', 'Responsável', 'Responsável', 'Consultoria'],
@@ -620,7 +752,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
       const planilha = await lerPlanilha(await gerarDetalhado());
 
       expect(chamadosDaAba(planilha, 'Tickets')).toEqual([]);
-      expect(linhasDaAba(planilha, 'Tickets')[2][0]).toBe('Não houve registros no período de Janeiro/2026.');
+      expect(linhasDaAba(planilha, 'Tickets')[2][0]).toBe(
+        'Não houve registros no período de Janeiro/2026.'
+      );
     });
   });
 
@@ -630,7 +764,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
       expect(planilha.SheetNames).toEqual([...ABAS_FIXAS_ANTES, 'Horas', ...ABAS_FIXAS_DEPOIS]);
       expect(consultasDe('apontamentos_aranda')).toHaveLength(1);
-      expect(consultasDe('apontamentos_tickets_aranda').filter(ehConsultaTicketsConsumo)).toHaveLength(0);
+      expect(
+        consultasDe('apontamentos_tickets_aranda').filter(ehConsultaTicketsConsumo)
+      ).toHaveLength(0);
     });
 
     it('contrato "tickets": aba Tickets no lugar de Horas, sem consulta de apontamentos', async () => {
@@ -640,7 +776,9 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
       expect(planilha.SheetNames).toEqual([...ABAS_FIXAS_ANTES, 'Tickets', ...ABAS_FIXAS_DEPOIS]);
       expect(consultasDe('apontamentos_aranda')).toHaveLength(0);
-      expect(consultasDe('apontamentos_tickets_aranda').filter(ehConsultaTicketsConsumo)).toHaveLength(1);
+      expect(
+        consultasDe('apontamentos_tickets_aranda').filter(ehConsultaTicketsConsumo)
+      ).toHaveLength(1);
     });
 
     it('contrato "ambos": abas Horas e Tickets (9 abas)', async () => {
@@ -648,9 +786,16 @@ describe('Caracterização — regra de consumo nas planilhas Excel', () => {
 
       const planilha = await lerPlanilha(await gerarDetalhado());
 
-      expect(planilha.SheetNames).toEqual([...ABAS_FIXAS_ANTES, 'Horas', 'Tickets', ...ABAS_FIXAS_DEPOIS]);
+      expect(planilha.SheetNames).toEqual([
+        ...ABAS_FIXAS_ANTES,
+        'Horas',
+        'Tickets',
+        ...ABAS_FIXAS_DEPOIS,
+      ]);
       expect(consultasDe('apontamentos_aranda')).toHaveLength(1);
-      expect(consultasDe('apontamentos_tickets_aranda').filter(ehConsultaTicketsConsumo)).toHaveLength(1);
+      expect(
+        consultasDe('apontamentos_tickets_aranda').filter(ehConsultaTicketsConsumo)
+      ).toHaveLength(1);
     });
 
     it('empresa sem tipo de contrato cadastrado: tratada como "horas"', async () => {

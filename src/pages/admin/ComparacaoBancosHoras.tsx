@@ -3,7 +3,15 @@
 // resultados; aqui a área confere, valida e pede o recálculo de uma empresa.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CheckCircle2, Info, Search, SearchX, ShieldCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Rocket,
+  Search,
+  SearchX,
+  ShieldCheck,
+} from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { DsPage } from '@/components/ds/DsPage';
 import { FaixaPagina } from '@/components/ds/FaixaPagina';
@@ -41,8 +49,20 @@ export default function ComparacaoBancosHoras() {
     t(`comparacaoBancosHoras.${chave}`, valores);
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('bancos_horas_comparacao', 'edit');
-  const { empresas, contagem, isLoading, error, recarregar, validar, recalcular, recalculando } =
-    useComparacao();
+  const {
+    empresas,
+    contagem,
+    isLoading,
+    error,
+    recarregar,
+    validar,
+    recalcular,
+    recalculando,
+    liberar,
+    voltar,
+    enviarSaldoParcialTeste,
+    enviandoSaldoParcialTeste,
+  } = useComparacao();
 
   const [filtro, setFiltro] = useState<FiltroComparacao>(SEM_FILTRO);
   const [abertaId, setAbertaId] = useState<string | null>(null);
@@ -71,6 +91,15 @@ export default function ComparacaoBancosHoras() {
                 validar({ empresaId: aberta.empresaId, validar: false, motivo })
               }
               onRecalcular={() => recalcular(aberta.empresaId).catch(() => undefined)}
+              onLiberar={() => liberar(aberta.empresaId)}
+              onVoltar={(motivo) => voltar({ empresaId: aberta.empresaId, motivo })}
+              onEnviarSaldoTeste={() =>
+                enviarSaldoParcialTeste({
+                  empresaId: aberta.empresaId,
+                  empresaNome: aberta.empresa,
+                }).catch(() => undefined)
+              }
+              enviandoSaldoTeste={enviandoSaldoParcialTeste}
             />
           </DsPage>
         </div>
@@ -95,16 +124,27 @@ export default function ComparacaoBancosHoras() {
           >
             {e.empresa}
           </button>
-          {e.validacao && (
-            <div className="text-xs text-ds-fg-muted">
-              {e.validacao.por
-                ? a('validadaPor', {
-                    nome: e.validacao.por,
-                    data: formatarDataHora(e.validacao.em, i18n.language),
-                  })
-                : a('validadaEm', { data: formatarDataHora(e.validacao.em, i18n.language) })}
-            </div>
-          )}
+          {e.liberacao
+            ? e.liberacao.em && (
+                <div className="text-xs text-ds-fg-muted">
+                  {e.liberacao.por
+                    ? a('liberadaPor', {
+                        nome: e.liberacao.por,
+                        data: formatarDataHora(e.liberacao.em, i18n.language),
+                      })
+                    : a('liberadaEm', { data: formatarDataHora(e.liberacao.em, i18n.language) })}
+                </div>
+              )
+            : e.validacao && (
+                <div className="text-xs text-ds-fg-muted">
+                  {e.validacao.por
+                    ? a('validadaPor', {
+                        nome: e.validacao.por,
+                        data: formatarDataHora(e.validacao.em, i18n.language),
+                      })
+                    : a('validadaEm', { data: formatarDataHora(e.validacao.em, i18n.language) })}
+                </div>
+              )}
           {e.erro && (
             <div className="text-xs text-ds-warning-fg">{a('erroRotina', { erro: e.erro })}</div>
           )}
@@ -162,7 +202,11 @@ export default function ComparacaoBancosHoras() {
           ) : (
             <StatusBadge tom="neutral">{a('semResultado')}</StatusBadge>
           )}
-          {e.validacao && <StatusBadge tom="success">{a('validada')}</StatusBadge>}
+          {e.liberacao ? (
+            <StatusBadge tom="info">{a('liberada')}</StatusBadge>
+          ) : (
+            e.validacao && <StatusBadge tom="success">{a('validada')}</StatusBadge>
+          )}
         </div>
       ),
     },
@@ -177,6 +221,7 @@ export default function ComparacaoBancosHoras() {
     { grupo: 'explicada', icone: <Info /> },
     { grupo: 'divergente', icone: <AlertTriangle />, tom: 'warning' },
     { grupo: 'validada', icone: <ShieldCheck />, tom: 'success' },
+    { grupo: 'liberada', icone: <Rocket /> },
   ];
 
   const conteudo = () => {
@@ -244,7 +289,7 @@ export default function ComparacaoBancosHoras() {
             </div>
           </FaixaPagina>
 
-          <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-4">
+          <div className="relative !-mt-16 grid grid-cols-2 gap-3 md:!-mt-20 lg:grid-cols-5">
             {indicadores.map((ind, i) => (
               <Indicador
                 key={ind.grupo}

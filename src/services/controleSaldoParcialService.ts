@@ -79,9 +79,20 @@ export interface ChamadoDoBanco {
   descricaoTarefa: string | null;
   descricaoChamado: string | null;
   solucaoChamado: string | null;
+  /** IM (incidente), RF (solicitação) ou PM, como na página de consumo do Book */
+  tipoChamado: TipoChamado | null;
   minutos: number;
   tickets: number;
 }
+
+export type TipoChamado = 'IM' | 'RF' | 'PM';
+
+/** O ticket traz o tipo por extenso (cod_tipo) */
+const TIPO_DO_TICKET: Record<string, TipoChamado> = {
+  Incidente: 'IM',
+  Solicitação: 'RF',
+  Problema: 'PM',
+};
 
 interface ItemDoBanco {
   bancoId: string;
@@ -362,13 +373,13 @@ export class ControleSaldoParcialService {
     const [apontamentos, tickets] = await Promise.all([
       ler(
         'apontamentos_aranda',
-        'id, nro_chamado, nro_tarefa, data_atividade, analista_tarefa, solicitante, grupo_tarefa, item_configuracao, descricao_tarefa',
+        'id, nro_chamado, nro_tarefa, data_atividade, analista_tarefa, solicitante, grupo_tarefa, item_configuracao, descricao_tarefa, tipo_chamado',
         'id',
         ids('apontamento')
       ),
       ler(
         'apontamentos_tickets_aranda',
-        'id, nro_solicitacao, data_solucao, data_fechamento, nome_responsavel, solicitante, nome_grupo, item_configuracao, descricao, solucao',
+        'id, nro_solicitacao, data_solucao, data_fechamento, nome_responsavel, solicitante, nome_grupo, item_configuracao, descricao, solucao, cod_tipo',
         'id',
         ids('ticket')
       ),
@@ -401,6 +412,7 @@ export class ControleSaldoParcialService {
         descricaoTarefa: a.descricao_tarefa ?? null,
         descricaoChamado: chamado?.descricao ?? null,
         solucaoChamado: chamado?.solucao ?? null,
+        tipoChamado: a.tipo_chamado ?? null,
       });
     }
     for (const t of tickets) {
@@ -416,6 +428,7 @@ export class ControleSaldoParcialService {
         descricaoTarefa: null,
         descricaoChamado: t.descricao ?? null,
         solucaoChamado: t.solucao ?? null,
+        tipoChamado: TIPO_DO_TICKET[t.cod_tipo] ?? null,
       });
     }
     return mapa;

@@ -1,16 +1,16 @@
 /**
  * VisaoConsolidada Component
- * 
+ *
  * Displays all calculated fields for the consolidated view of monthly hours bank calculations
  * in a table format similar to the reference image provided.
- * 
+ *
  * @module components/admin/banco-horas/VisaoConsolidada
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { 
+import {
   History,
   Eye,
   FileText,
@@ -21,7 +21,7 @@ import {
   Filter,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,12 +48,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -74,7 +69,10 @@ import { converterParaHorasDecimal } from '@/utils/horasUtils'; // ✅ ADICIONAD
 import { calcularNomePeriodoComIdioma } from '@/utils/periodoVigenciaUtils';
 import { getLabels, getMonthName } from '@/utils/bancoHorasI18n';
 import { useTemplateLanguage } from '@/hooks/useTemplateLanguage';
-import { useTaxasEspecificasCliente, type TaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
+import {
+  useTaxasEspecificasCliente,
+  type TaxasEspecificasCliente,
+} from '@/hooks/useTaxasEspecificasCliente';
 import { filtrarObservacoesDoPeriodo } from '@/services/saldoParcial/periodoSaldoParcial';
 
 /**
@@ -83,54 +81,57 @@ import { filtrarObservacoesDoPeriodo } from '@/services/saldoParcial/periodoSald
 export interface VisaoConsolidadaProps {
   /** Array of monthly calculations (one for each month in the period) */
   calculos: BancoHorasCalculo[];
-  
+
   /** Period of appraisal (1=monthly, 3=quarterly, etc.) */
   periodoApuracao: number;
-  
+
   /** Callback when "Ver Histórico" button is clicked */
   onHistoricoClick: () => void;
-  
+
   /** Callback when "Filtros" button is clicked */
   onFiltrosClick: () => void;
-  
+
   /** Whether filters area is visible */
   showFilters: boolean;
-  
+
   /** Current month/year selection */
   mesAno: { mes: number; ano: number };
-  
+
   /** Callback when period is changed via filter */
   onPeriodoChange: (mes: number, ano: number) => void;
-  
+
   /** Whether actions are disabled (e.g., during loading) */
   disabled?: boolean;
-  
+
   /** Percentual de repasse mensal cadastrado no cliente (0-100) */
   percentualRepasseMensal?: number;
-  
+
   /** Array com os meses reais do período (calculados baseado na vigência) */
   mesesDoPeriodo?: Array<{ mes: number; ano: number }>;
-  
+
   /** Requerimentos concluídos do período para exibição */
   requerimentos?: Requerimento[];
-  
+
   /** Requerimentos não concluídos do período para exibição */
   requerimentosNaoConcluidos?: Requerimento[];
-  
+
   /** Requerimentos em desenvolvimento (não enviados) do período para exibição */
   requerimentosEmDesenvolvimento?: Requerimento[];
-  
+
   /** Tipo de cobrança do cliente ('Banco de Horas' ou 'Ticket') */
   tipoCobranca?: string;
-  
+
   /** Início da vigência da empresa (para cálculo do período) */
   inicioVigencia?: string;
-  
+
   /** Template padrão da empresa (para detectar idioma) */
   templatePadrao?: string;
-  
+
   /** Empresa atual (para cálculo de períodos disponíveis) */
   empresaAtual?: any;
+
+  /** Empresa liberada para o modelo novo (Fase 5, P3): reajuste e observação não gravam aqui */
+  lancamentosBloqueados?: boolean;
 }
 
 /**
@@ -140,13 +141,13 @@ export interface VisaoConsolidadaProps {
  */
 const formatarHoras = (horas?: string): string => {
   if (!horas || horas === '0:00' || horas === '00:00') return '';
-  
+
   // Detectar se é negativo
   const isNegativo = horas.startsWith('-');
-  
+
   // Remover TODOS os sinais de menos para sanitizar valores malformados (ex: "-4:-40")
   const horasLimpa = horas.replace(/-/g, '');
-  
+
   // Garantir formato HH:MM (remover segundos se existir e garantir zero à esquerda nos minutos)
   const parts = horasLimpa.split(':');
   if (parts.length >= 2) {
@@ -164,17 +165,17 @@ const formatarHoras = (horas?: string): string => {
  */
 const converterHorasParaTickets = (horas?: string): number => {
   if (!horas || horas === '0:00' || horas === '00:00') return 0;
-  
+
   // Verificar se é negativo
   const isNegativo = horas.startsWith('-');
   const horasSemSinal = isNegativo ? horas.substring(1) : horas;
-  
+
   // Converter para decimal (ex: "15:30" -> 15.5)
   const horasDecimal = converterParaHorasDecimal(horasSemSinal);
-  
+
   // Arredondar para inteiro
   const tickets = Math.round(horasDecimal);
-  
+
   return isNegativo ? -tickets : tickets;
 };
 
@@ -183,18 +184,14 @@ const converterHorasParaTickets = (horas?: string): number => {
  * - 'ticket': Exibe tickets como número inteiro (ex: "15" ou "0")
  * - Outros: Exibe como horas (ex: "15:30" ou "00:00")
  */
-const formatarValor = (
-  horas?: string, 
-  tickets?: number, 
-  tipoCobranca?: string
-): string => {
+const formatarValor = (horas?: string, tickets?: number, tipoCobranca?: string): string => {
   // Se for tipo ticket (singular ou plural), usar o campo de tickets diretamente
   if (tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') {
     // Se não tem valor ou é undefined/null, retornar "0"
     if (tickets === undefined || tickets === null) return '0';
     return tickets.toString();
   }
-  
+
   // Caso contrário, usar horas
   if (!horas || horas === '0:00' || horas === '00:00' || horas === '00:00:00') return '00:00';
   return formatarHoras(horas);
@@ -207,7 +204,7 @@ const formatarMoeda = (valor?: number): string => {
   if (valor === undefined || valor === null) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
-    currency: 'BRL'
+    currency: 'BRL',
   }).format(valor);
 };
 
@@ -220,10 +217,10 @@ const horasParaMinutos = (horas: string): number => {
   const isNegativo = horas.startsWith('-');
   // Sanitizar: remover TODOS os sinais de menos para tratar formatos malformados como "-4:-40"
   const horasLimpa = horas.replace(/-/g, '');
-  
+
   const [h, m] = horasLimpa.split(':').map(Number);
-  const minutos = (h * 60) + (m || 0);
-  
+  const minutos = h * 60 + (m || 0);
+
   return isNegativo ? -minutos : minutos;
 };
 
@@ -232,16 +229,16 @@ const horasParaMinutos = (horas: string): number => {
  */
 const getColorClass = (horas?: string): string => {
   if (!horas) return 'text-gray-900';
-  
+
   // Verificar se é negativo pelo sinal de menos
   const isNegativo = horas.startsWith('-');
-  
+
   if (isNegativo) return 'text-red-600';
-  
+
   // Se não tem sinal de menos, verificar se é positivo
   const minutos = horasParaMinutos(horas);
   if (minutos > 0) return 'text-green-600';
-  
+
   return 'text-gray-900';
 };
 
@@ -249,11 +246,7 @@ const getColorClass = (horas?: string): string => {
  * Determines color class based on value (works for both hours and tickets)
  * Usa horas OU tickets dependendo do tipo de cobrança
  */
-const getColorClassDinamico = (
-  horas?: string, 
-  tickets?: number, 
-  tipoCobranca?: string
-): string => {
+const getColorClassDinamico = (horas?: string, tickets?: number, tipoCobranca?: string): string => {
   // Se for tipo ticket (singular ou plural), usar valor de tickets
   if (tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') {
     if (tickets === undefined || tickets === null) return 'text-gray-900';
@@ -261,14 +254,14 @@ const getColorClassDinamico = (
     if (tickets < 0) return 'text-red-600';
     return 'text-gray-900';
   }
-  
+
   // Caso contrário, usar horas
   return getColorClass(horas);
 };
 
 /**
  * VisaoConsolidada Component
- * 
+ *
  * Displays the consolidated view of monthly hours bank calculations in a table format.
  */
 export function VisaoConsolidada({
@@ -288,41 +281,44 @@ export function VisaoConsolidada({
   tipoCobranca,
   inicioVigencia,
   templatePadrao,
-  empresaAtual
+  empresaAtual,
+  lancamentosBloqueados = false,
 }: VisaoConsolidadaProps) {
   const { t, i18n } = useTranslation();
-  
+
   // Helper para traduzir valores de dados do banco (tipo_cobranca, status)
   const translateDataValue = (value: string): string => {
     const map: Record<string, string> = {
       'Banco de Horas': t('bankHours.hoursBank'),
-      'banco_horas': t('bankHours.hoursBank'),
-      'Faturado': t('bankHours.billed'),
-      'faturado': t('bankHours.billed'),
+      banco_horas: t('bankHours.hoursBank'),
+      Faturado: t('bankHours.billed'),
+      faturado: t('bankHours.billed'),
       'Enviado para Faturamento': t('bankHours.sentToBilling'),
-      'enviado_faturamento': t('bankHours.sentToBilling'),
-      'Lançado': t('bankHours.launched'),
-      'lancado': t('bankHours.launched'),
+      enviado_faturamento: t('bankHours.sentToBilling'),
+      Lançado: t('bankHours.launched'),
+      lancado: t('bankHours.launched'),
     };
     return map[value] || value;
   };
-  
+
   // Usar primeiro cálculo para informações gerais (DEVE SER PRIMEIRO)
   const calculoPrincipal = calculos[0];
-  
+
   // Detectar idioma do template baseado no nome na tabela email_templates
   const { isEnglish, isLoading: isLoadingTemplate } = useTemplateLanguage(templatePadrao);
-  
+
   // Para a UI da tabela: usar o idioma da interface do usuário (i18n), não o idioma do template
   const uiLanguage = i18n.language === 'en' ? true : i18n.language === 'es' ? 'es' : false;
   const labels = getLabels(uiLanguage);
-  
+
   // Buscar taxas específicas do cliente (para casos especiais como EXXONMOBIL)
-  const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(calculoPrincipal?.empresa_id) as {
+  const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(
+    calculoPrincipal?.empresa_id
+  ) as {
     taxasEspecificas: TaxasEspecificasCliente | null | undefined;
     isLoading: boolean;
   };
-  
+
   // Log para debug
   console.log('📊 [VisaoConsolidada] Props recebidas:', {
     requerimentosConcluidos: requerimentos.length,
@@ -332,45 +328,47 @@ export function VisaoConsolidada({
     templatePadrao,
     isEnglish,
     isLoadingTemplate,
-    taxasEspecificas
+    taxasEspecificas,
   });
-  
+
   // Calcular total de horas/tickets dos requerimentos do período
   const totalRequerimentosPeriodo = useMemo(() => {
     let totalHorasDecimal = 0;
     let totalTickets = 0;
-    
-    requerimentos.forEach(req => {
+
+    requerimentos.forEach((req) => {
       // Somar horas funcional
       if (req.horas_funcional) {
-        const horas = typeof req.horas_funcional === 'string' 
-          ? converterParaHorasDecimal(req.horas_funcional)
-          : req.horas_funcional;
+        const horas =
+          typeof req.horas_funcional === 'string'
+            ? converterParaHorasDecimal(req.horas_funcional)
+            : req.horas_funcional;
         totalHorasDecimal += horas;
       }
-      
+
       // Somar horas técnico
       if (req.horas_tecnico) {
-        const horas = typeof req.horas_tecnico === 'string'
-          ? converterParaHorasDecimal(req.horas_tecnico)
-          : req.horas_tecnico;
+        const horas =
+          typeof req.horas_tecnico === 'string'
+            ? converterParaHorasDecimal(req.horas_tecnico)
+            : req.horas_tecnico;
         totalHorasDecimal += horas;
       }
-      
+
       // Somar tickets
       if (req.quantidade_tickets) {
         totalTickets += req.quantidade_tickets;
       }
     });
-    
+
     // Converter total de horas decimais para HH:MM
     const horas = Math.floor(totalHorasDecimal);
     const minutos = Math.round((totalHorasDecimal % 1) * 60);
     const horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
-    
+
     return {
       horas: horasFormatadas,
-      tickets: totalTickets
+      tickets: totalTickets,
     };
   }, [requerimentos]);
 
@@ -378,82 +376,87 @@ export function VisaoConsolidada({
   const totalRequerimentosEmDesenvolvimento = useMemo(() => {
     let totalHorasDecimal = 0;
     let totalTickets = 0;
-    
-    requerimentosEmDesenvolvimento.forEach(req => {
+
+    requerimentosEmDesenvolvimento.forEach((req) => {
       // Somar horas funcional
       if (req.horas_funcional) {
-        const horas = typeof req.horas_funcional === 'string' 
-          ? converterParaHorasDecimal(req.horas_funcional)
-          : req.horas_funcional;
+        const horas =
+          typeof req.horas_funcional === 'string'
+            ? converterParaHorasDecimal(req.horas_funcional)
+            : req.horas_funcional;
         totalHorasDecimal += horas;
       }
-      
+
       // Somar horas técnico
       if (req.horas_tecnico) {
-        const horas = typeof req.horas_tecnico === 'string'
-          ? converterParaHorasDecimal(req.horas_tecnico)
-          : req.horas_tecnico;
+        const horas =
+          typeof req.horas_tecnico === 'string'
+            ? converterParaHorasDecimal(req.horas_tecnico)
+            : req.horas_tecnico;
         totalHorasDecimal += horas;
       }
-      
+
       // Somar tickets
       if (req.quantidade_tickets) {
         totalTickets += req.quantidade_tickets;
       }
     });
-    
+
     // Converter total de horas decimais para HH:MM
     const horas = Math.floor(totalHorasDecimal);
     const minutos = Math.round((totalHorasDecimal % 1) * 60);
     const horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
-    
+
     return {
       horas: horasFormatadas,
-      tickets: totalTickets
+      tickets: totalTickets,
     };
   }, [requerimentosEmDesenvolvimento]);
-  
+
   // Hook de autenticação
   const { user } = useAuth();
-  
+
   // Hook de toast para notificações
   const { toast } = useToast();
-  
+
   // Hook de reajustes
   const { criarReajuste, isCreating } = useBancoHorasReajustes();
-  
+
   // Hook de observações (para email)
   const { observacoesUnificadas } = useBancoHorasObservacoes(calculoPrincipal?.empresa_id);
-  
+
   // Query client para invalidar cache
   const queryClient = useQueryClient();
-  
+
   // Estados para visualização de requerimento
   const [requerimentoSelecionado, setRequerimentoSelecionado] = useState<Requerimento | null>(null);
   const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
 
   // Verificar se a coluna Ticket Externo deve ser exibida (pelo menos 1 requerimento tem ticket_externo)
-  const showTicketExternoReqPeriodo = requerimentos.some(r => r.ticket_externo);
-  const showTicketExternoReqDesenv = requerimentosEmDesenvolvimento.some(r => r.ticket_externo);
-  const showTicketExternoReqNaoConcluidos = requerimentosNaoConcluidos.some(r => r.ticket_externo);
+  const showTicketExternoReqPeriodo = requerimentos.some((r) => r.ticket_externo);
+  const showTicketExternoReqDesenv = requerimentosEmDesenvolvimento.some((r) => r.ticket_externo);
+  const showTicketExternoReqNaoConcluidos = requerimentosNaoConcluidos.some(
+    (r) => r.ticket_externo
+  );
   // Flag geral (para simplificar nas 3 tabelas que compartilham a mesma estrutura)
-  const showTicketExterno = showTicketExternoReqPeriodo || showTicketExternoReqDesenv || showTicketExternoReqNaoConcluidos;
-  
+  const showTicketExterno =
+    showTicketExternoReqPeriodo || showTicketExternoReqDesenv || showTicketExternoReqNaoConcluidos;
+
   // Estado para última sincronização de apontamentos
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
   const [carregandoSincronizacao, setCarregandoSincronizacao] = useState(true);
-  
+
   // Buscar data da última sincronização de apontamentos_aranda
   useEffect(() => {
     const buscarUltimaSincronizacao = async () => {
       try {
         setCarregandoSincronizacao(true);
-        
+
         // Criar timeout de 5 segundos para evitar travamento
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout ao buscar sincronização')), 5000)
         );
-        
+
         // Buscar o registro mais recente da tabela apontamentos_aranda
         // OTIMIZADO: Usa índice idx_apontamentos_aranda_updated_at para performance
         const queryPromise = supabase
@@ -462,9 +465,9 @@ export function VisaoConsolidada({
           .order('updated_at', { ascending: false })
           .limit(1)
           .single();
-        
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-        
+
+        const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any;
+
         if (error) {
           console.error('Erro ao buscar última sincronização:', error);
           setUltimaSincronizacao(null);
@@ -479,13 +482,13 @@ export function VisaoConsolidada({
         setCarregandoSincronizacao(false);
       }
     };
-    
+
     buscarUltimaSincronizacao();
   }, []); // Executar apenas uma vez ao montar o componente
-  
+
   // Usar último cálculo do período para valor_a_faturar (é onde o valor é calculado)
-  const calculoFimPeriodo = calculos.find(c => c.is_fim_periodo) || calculos[calculos.length - 1];
-  
+  const calculoFimPeriodo = calculos.find((c) => c.is_fim_periodo) || calculos[calculos.length - 1];
+
   // Debug: verificar taxa_hora_utilizada
   console.log('🔍 [VisaoConsolidada] Taxa hora utilizada:', {
     calculoPrincipal_taxa: calculoPrincipal?.taxa_hora_utilizada,
@@ -493,26 +496,27 @@ export function VisaoConsolidada({
     calculoPrincipal_taxa_ticket: calculoPrincipal?.taxa_ticket_utilizada,
     calculoFimPeriodo_taxa_ticket: calculoFimPeriodo?.taxa_ticket_utilizada,
     tipoCobranca,
-    todos_calculos: calculos.map(c => ({
+    todos_calculos: calculos.map((c) => ({
       mes: c.mes,
       ano: c.ano,
       taxa_hora_utilizada: c.taxa_hora_utilizada,
-      taxa_ticket_utilizada: c.taxa_ticket_utilizada
-    }))
+      taxa_ticket_utilizada: c.taxa_ticket_utilizada,
+    })),
   });
-  
+
   // Buscar taxa conforme tipo de cobrança (singular ou plural)
-  const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
-  
+  const isTicket =
+    tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
+
   // Buscar taxa de qualquer cálculo que tenha o valor (fallback robusto)
   const taxaHoraCalculada = isTicket
-    ? (calculoFimPeriodo?.taxa_ticket_utilizada || 
-       calculoPrincipal?.taxa_ticket_utilizada || 
-       calculos.find(c => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada)
-    : (calculoFimPeriodo?.taxa_hora_utilizada || 
-       calculoPrincipal?.taxa_hora_utilizada || 
-       calculos.find(c => c.taxa_hora_utilizada)?.taxa_hora_utilizada);
-  
+    ? calculoFimPeriodo?.taxa_ticket_utilizada ||
+      calculoPrincipal?.taxa_ticket_utilizada ||
+      calculos.find((c) => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada
+    : calculoFimPeriodo?.taxa_hora_utilizada ||
+      calculoPrincipal?.taxa_hora_utilizada ||
+      calculos.find((c) => c.taxa_hora_utilizada)?.taxa_hora_utilizada;
+
   // Função para determinar qual taxa usar baseada na empresa
   const getTaxaExcedente = useMemo(() => {
     console.log('🔍 [VisaoConsolidada] Debug taxas completo:', {
@@ -524,55 +528,68 @@ export function VisaoConsolidada({
       tipoCobranca: tipoCobranca,
       isTicket: isTicket,
       // ✅ ADICIONADO: Debug detalhado dos cálculos
-      calculos_debug: calculos.map(c => ({
+      calculos_debug: calculos.map((c) => ({
         mes: c.mes,
         ano: c.ano,
         taxa_hora_utilizada: c.taxa_hora_utilizada,
         taxa_ticket_utilizada: c.taxa_ticket_utilizada,
-        is_fim_periodo: c.is_fim_periodo
+        is_fim_periodo: c.is_fim_periodo,
       })),
       calculoPrincipal_taxa_hora: calculoPrincipal?.taxa_hora_utilizada,
-      calculoFimPeriodo_taxa_hora: calculoFimPeriodo?.taxa_hora_utilizada
+      calculoFimPeriodo_taxa_hora: calculoFimPeriodo?.taxa_hora_utilizada,
     });
-    
+
     // Verificar se tem taxa específica cadastrada (para clientes especiais como EXXONMOBIL)
-    if (taxasEspecificas?.ticket_excedente_simples && taxasEspecificas.ticket_excedente_simples > 0) {
+    if (
+      taxasEspecificas?.ticket_excedente_simples &&
+      taxasEspecificas.ticket_excedente_simples > 0
+    ) {
       console.log('💰 [VisaoConsolidada] Usando taxa específica cadastrada:', {
         cliente_id: taxasEspecificas.cliente_id,
         ticket_excedente_simples: taxasEspecificas.ticket_excedente_simples,
-        valor_formatado: new Intl.NumberFormat('pt-BR', { 
-          style: 'currency', 
-          currency: 'BRL' 
-        }).format(taxasEspecificas.ticket_excedente_simples)
+        valor_formatado: new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        }).format(taxasEspecificas.ticket_excedente_simples),
       });
       return taxasEspecificas.ticket_excedente_simples;
     }
-    
+
     // ✅ CORREÇÃO: Se não tem taxa específica, usar taxa calculada do banco de horas
     if (taxaHoraCalculada && taxaHoraCalculada > 0) {
       console.log('💰 [VisaoConsolidada] Usando taxa calculada do banco de horas:', {
         taxaHoraCalculada: taxaHoraCalculada,
-        valor_formatado: new Intl.NumberFormat('pt-BR', { 
-          style: 'currency', 
-          currency: 'BRL' 
-        }).format(taxaHoraCalculada)
+        valor_formatado: new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        }).format(taxaHoraCalculada),
       });
       return taxaHoraCalculada;
     }
-    
+
     // Se não tem nenhuma taxa, retornar 0
     console.log('⚠️ [VisaoConsolidada] Nenhuma taxa encontrada - usando R$ 0,00', {
       motivo: 'taxaHoraCalculada é null, undefined ou 0',
       taxaHoraCalculada: taxaHoraCalculada,
-      taxasEspecificas: taxasEspecificas
+      taxasEspecificas: taxasEspecificas,
     });
     return 0;
-  }, [taxasEspecificas, taxaHoraCalculada, isLoadingTaxas, calculoPrincipal, tipoCobranca, isTicket, calculos, calculoFimPeriodo]);
-  
+  }, [
+    taxasEspecificas,
+    taxaHoraCalculada,
+    isLoadingTaxas,
+    calculoPrincipal,
+    tipoCobranca,
+    isTicket,
+    calculos,
+    calculoFimPeriodo,
+  ]);
+
   const taxaHoraExibir = getTaxaExcedente;
-  
-  const temExcedentes = calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0;
-  
+
+  const temExcedentes =
+    calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0;
+
   // Nomes dos meses traduzidos (baseado no idioma da interface do usuário)
   const MESES = useMemo(() => {
     return [
@@ -593,7 +610,7 @@ export function VisaoConsolidada({
 
   // Meses abreviados para cabeçalhos compactos da tabela (Jan, Fev, Mar...)
   const MESES_ABREV = useMemo(() => {
-    return MESES.map(mes => mes.substring(0, 3));
+    return MESES.map((mes) => mes.substring(0, 3));
   }, [MESES]);
 
   // Calcular nome do período atual
@@ -601,10 +618,10 @@ export function VisaoConsolidada({
     if (!mesesDoPeriodo || mesesDoPeriodo.length === 0) {
       return labels.periodos.vigenciaNaoIniciada;
     }
-    
+
     // Usar o primeiro mês do período como referência
     const mesReferencia = mesesDoPeriodo[0];
-    
+
     return calcularNomePeriodoComIdioma(
       inicioVigencia,
       periodoApuracao,
@@ -627,9 +644,9 @@ export function VisaoConsolidada({
   }) => {
     try {
       console.log('💾 Salvando reajuste...', {
-        empresaSegmentada: dados.empresaSegmentada
+        empresaSegmentada: dados.empresaSegmentada,
       });
-      
+
       // IMPORTANTE: criarReajuste JÁ recalcula todos os meses subsequentes no backend
       // Aguardar a conclusão completa do recálculo antes de invalidar cache
       const resultado = await criarReajuste({
@@ -641,72 +658,74 @@ export function VisaoConsolidada({
         tipo: dados.tipo,
         observacao: dados.observacao,
         empresa_segmentada: dados.empresaSegmentada,
-        created_by: user?.id
+        created_by: user?.id,
       });
-      
+
       console.log('✅ Reajuste salvo e meses recalculados:', {
         reajuste_id: resultado.reajuste_id,
         versao_id: resultado.versao_id,
-        meses_recalculados: resultado.meses_recalculados
+        meses_recalculados: resultado.meses_recalculados,
       });
-      
+
       console.log('⏳ Aguardando estabilização do banco de dados...');
-      
+
       // Aguardar um pouco para garantir que todas as transações foram commitadas
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       console.log('🔄 Invalidando cache e forçando refetch...');
-      
+
       // Invalidar TODOS os caches relacionados
       await Promise.all([
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['banco-horas-versoes'],
-          refetchType: 'all'
+          refetchType: 'all',
         }),
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['banco-horas-reajustes'],
-          refetchType: 'all'
+          refetchType: 'all',
         }),
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['banco-horas-calculo'],
-          refetchType: 'all'
+          refetchType: 'all',
         }),
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['banco-horas-calculos-segmentados'],
-          refetchType: 'all'
-        })
+          refetchType: 'all',
+        }),
       ]);
-      
+
       console.log('🔄 Forçando refetch imediato de TODOS os meses...');
-      
+
       // Forçar refetch imediato de TODAS as queries relacionadas em paralelo
       await Promise.all([
-        queryClient.refetchQueries({ 
+        queryClient.refetchQueries({
           queryKey: ['banco-horas-versoes'],
-          type: 'all'
+          type: 'all',
         }),
-        queryClient.refetchQueries({ 
+        queryClient.refetchQueries({
           queryKey: ['banco-horas-reajustes'],
-          type: 'all'
+          type: 'all',
         }),
-        queryClient.refetchQueries({ 
+        queryClient.refetchQueries({
           queryKey: ['banco-horas-calculo'],
-          type: 'all'
+          type: 'all',
         }),
-        queryClient.refetchQueries({ 
+        queryClient.refetchQueries({
           queryKey: ['banco-horas-calculos-segmentados'],
-          type: 'all'
-        })
+          type: 'all',
+        }),
       ]);
-      
+
       console.log('✅ Cache invalidado e dados recarregados!');
       console.log('⏳ Aguardando renderização final...');
-      
+
       // Aguardar mais um pouco para garantir que o React Query processou tudo
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('✅ Reajuste concluído com sucesso! Todos os meses foram recalculados e atualizados.');
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      console.log(
+        '✅ Reajuste concluído com sucesso! Todos os meses foram recalculados e atualizados.'
+      );
+
       // NÃO abrir histórico automaticamente - deixar usuário decidir
       // onHistoricoClick();
     } catch (error) {
@@ -726,7 +745,7 @@ export function VisaoConsolidada({
     const hoje = new Date();
     const mesAtual = hoje.getMonth() + 1;
     const anoAtual = hoje.getFullYear();
-    
+
     return mesAno.mes === mesAtual && mesAno.ano === anoAtual;
   }, [mesAno]);
 
@@ -734,18 +753,18 @@ export function VisaoConsolidada({
   // Ex: 8 meses → 4+4, 10 meses → 5+5, 12 meses → 6+6, 9 meses → 5+4
   const MAX_COLUNAS_VISIVEIS = 6;
   const [paginaMeses, setPaginaMeses] = useState(0);
-  
+
   // Resetar paginação quando empresa ou período muda
   useEffect(() => {
     setPaginaMeses(0);
   }, [calculos.length, periodoApuracao, mesAno.mes, mesAno.ano]);
-  
+
   const precisaPaginacao = calculos.length > MAX_COLUNAS_VISIVEIS;
   // Dividir em 2 páginas equilibradas: primeira página pega metade arredondada para cima
   const totalPaginas = precisaPaginacao ? 2 : 1;
   const colunasPrimeiraPagina = precisaPaginacao ? Math.ceil(calculos.length / 2) : calculos.length;
   const colunasSegundaPagina = precisaPaginacao ? calculos.length - colunasPrimeiraPagina : 0;
-  
+
   // Calculos visíveis na página atual
   const calculosVisiveis = useMemo(() => {
     if (!precisaPaginacao) return calculos;
@@ -754,7 +773,7 @@ export function VisaoConsolidada({
     }
     return calculos.slice(colunasPrimeiraPagina);
   }, [calculos, paginaMeses, precisaPaginacao, colunasPrimeiraPagina]);
-  
+
   // Meses do período visíveis na página atual
   const mesesDoPeriodoVisiveis = useMemo(() => {
     if (!mesesDoPeriodo || !precisaPaginacao) return mesesDoPeriodo;
@@ -769,7 +788,7 @@ export function VisaoConsolidada({
     const hoje = new Date();
     const mesAtual = hoje.getMonth() + 1;
     const anoAtual = hoje.getFullYear();
-    
+
     onPeriodoChange(mesAtual, anoAtual);
   };
 
@@ -777,11 +796,13 @@ export function VisaoConsolidada({
     <Card className="rounded-xl overflow-hidden">
       {/* Cabeçalho de Impressão (visível apenas ao imprimir) */}
       <div className="hidden print:block print-header">
-        <h1>{t('bankHours.title')} - {t('bankHours.consolidatedView')}</h1>
+        <h1>
+          {t('bankHours.title')} - {t('bankHours.consolidatedView')}
+        </h1>
         <p>
-          {t('bankHours.companyClient')}: {calculos[0]?.empresa_id} | 
-          {t('common.period')}: {mesesDoPeriodo?.map(m => `${m.mes}/${m.ano}`).join(' - ')} | 
-          {t('common.date')}: {new Date().toLocaleDateString()}
+          {t('bankHours.companyClient')}: {calculos[0]?.empresa_id} |{t('common.period')}:{' '}
+          {mesesDoPeriodo?.map((m) => `${m.mes}/${m.ano}`).join(' - ')} |{t('common.date')}:{' '}
+          {new Date().toLocaleDateString()}
         </p>
       </div>
 
@@ -789,30 +810,30 @@ export function VisaoConsolidada({
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
             <CardTitle className="text-base sm:text-lg">{labels.visaoConsolidada}</CardTitle>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              {labels.bancoDeHoras}
-            </p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">{labels.bancoDeHoras}</p>
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
             {/* Botão Forçar Recálculo - aparece quando consumo está zerado */}
-            {calculoPrincipal && (calculoPrincipal.consumo_horas === '00:00' || calculoPrincipal.consumo_horas === '0:00') && (
-              <BotaoForcarRecalculo
-                empresaId={calculoPrincipal.empresa_id}
-                mes={calculoPrincipal.mes}
-                ano={calculoPrincipal.ano}
-                empresaNome={empresaAtual?.nome_abreviado || empresaAtual?.nome_completo}
-                disabled={disabled}
-                onRecalculoSucesso={() => {
-                  // Refetch será feito automaticamente pelo componente
-                  toast({
-                    title: t('bankHours.recalculationComplete'),
-                    description: t('bankHours.recalculationSuccess'),
-                  });
-                }}
-              />
-            )}
-            
+            {calculoPrincipal &&
+              (calculoPrincipal.consumo_horas === '00:00' ||
+                calculoPrincipal.consumo_horas === '0:00') && (
+                <BotaoForcarRecalculo
+                  empresaId={calculoPrincipal.empresa_id}
+                  mes={calculoPrincipal.mes}
+                  ano={calculoPrincipal.ano}
+                  empresaNome={empresaAtual?.nome_abreviado || empresaAtual?.nome_completo}
+                  disabled={disabled}
+                  onRecalculoSucesso={() => {
+                    // Refetch será feito automaticamente pelo componente
+                    toast({
+                      title: t('bankHours.recalculationComplete'),
+                      description: t('bankHours.recalculationSuccess'),
+                    });
+                  }}
+                />
+              )}
+
             {/* Botão Enviar Email Banco de Horas */}
             <BotaoEnviarEmailBancoHoras
               calculos={calculos}
@@ -842,7 +863,7 @@ export function VisaoConsolidada({
               <span className="hidden sm:inline">{labels.verHistorico}</span>
               <span className="sm:hidden">{labels.historico}</span>
             </Button>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -853,7 +874,7 @@ export function VisaoConsolidada({
               <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">{t('bankHours.filters')}</span>
             </Button>
-            
+
             {/* Botão Limpar Filtro - só aparece se período selecionado for diferente do mês atual */}
             {!isMesAtual && (
               <Button
@@ -869,7 +890,7 @@ export function VisaoConsolidada({
             )}
           </div>
         </div>
-        
+
         {/* Área de Filtros Expansível */}
         {showFilters && empresaAtual && (
           <div className="pt-4 border-t">
@@ -894,75 +915,76 @@ export function VisaoConsolidada({
                       const hoje = new Date();
                       const mesAtual = hoje.getMonth() + 1;
                       const anoAtual = hoje.getFullYear();
-                      
+
                       // ✅ CORREÇÃO: Usar SEMPRE a vigência da empresa como início
                       // Se não tem vigência, usar 12 meses atrás como fallback
                       let mesInicio: number;
                       let anoInicio: number;
-                      
+
                       if (empresaAtual.inicio_vigencia) {
                         // Usar data de vigência da empresa
                         const vigencia = new Date(empresaAtual.inicio_vigencia);
                         mesInicio = vigencia.getUTCMonth() + 1;
                         anoInicio = vigencia.getUTCFullYear();
-                        
+
                         console.log('📅 [VisaoConsolidada] Usando vigência da empresa:', {
                           empresa: empresaAtual.nome_abreviado,
                           inicio_vigencia: empresaAtual.inicio_vigencia,
                           mesInicio,
-                          anoInicio
+                          anoInicio,
                         });
                       } else {
                         // Fallback: 12 meses atrás se não tem vigência
                         mesInicio = mesAtual - 12;
                         anoInicio = anoAtual;
-                        
+
                         if (mesInicio < 1) {
                           mesInicio += 12;
                           anoInicio -= 1;
                         }
-                        
+
                         console.log('📅 [VisaoConsolidada] Sem vigência, usando 12 meses atrás:', {
                           mesInicio,
-                          anoInicio
+                          anoInicio,
                         });
                       }
-                      
+
                       // Gerar períodos do início até 6 meses no futuro
                       const mesFim = mesAtual + 6;
                       let anoFim = anoAtual;
-                      
+
                       if (mesFim > 12) {
                         anoFim += Math.floor((mesFim - 1) / 12);
                       }
-                      
+
                       let mesCorrente = mesInicio;
                       let anoCorrente = anoInicio;
-                      
+
                       while (
-                        anoCorrente < anoFim || 
-                        (anoCorrente === anoFim && mesCorrente <= (mesFim > 12 ? mesFim % 12 : mesFim))
+                        anoCorrente < anoFim ||
+                        (anoCorrente === anoFim &&
+                          mesCorrente <= (mesFim > 12 ? mesFim % 12 : mesFim))
                       ) {
                         const anoAbreviado = String(anoCorrente).slice(-2);
                         periodos.push({
                           mes: mesCorrente,
                           ano: anoCorrente,
-                          label: `${MESES[mesCorrente - 1]}/${anoAbreviado}`
+                          label: `${MESES[mesCorrente - 1]}/${anoAbreviado}`,
                         });
-                        
+
                         mesCorrente++;
                         if (mesCorrente > 12) {
                           mesCorrente = 1;
                           anoCorrente++;
                         }
                       }
-                      
+
                       // Inverter para mostrar mais recentes primeiro
                       periodos.reverse();
-                      
-                      return periodos.map(periodo => (
-                        <SelectItem 
-                          key={`${periodo.mes}-${periodo.ano}`} 
+
+                      return periodos.map((periodo) => (
+                        <SelectItem
+                          key={`${periodo.mes}-${periodo.ano}`}
                           value={`${periodo.mes}-${periodo.ano}`}
                         >
                           {periodo.label}
@@ -976,18 +998,21 @@ export function VisaoConsolidada({
           </div>
         )}
       </CardHeader>
-      
+
       <CardContent>
         {/* Alert quando consumo está zerado */}
-        {calculoPrincipal && (calculoPrincipal.consumo_horas === '00:00' || calculoPrincipal.consumo_horas === '0:00') && (
-          <Alert className="mb-4 border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              <strong>{t('bankHours.zeroConsumptionDetected')}</strong> {t('bankHours.zeroConsumptionDescription')}
-            </AlertDescription>
-          </Alert>
-        )}
-        
+        {calculoPrincipal &&
+          (calculoPrincipal.consumo_horas === '00:00' ||
+            calculoPrincipal.consumo_horas === '0:00') && (
+            <Alert className="mb-4 border-orange-200 bg-orange-50">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-800">
+                <strong>{t('bankHours.zeroConsumptionDetected')}</strong>{' '}
+                {t('bankHours.zeroConsumptionDescription')}
+              </AlertDescription>
+            </Alert>
+          )}
+
         {/* Wrapper com scroll horizontal melhorado para mobile */}
         <div className="relative -mx-6 sm:mx-0">
           {/* Botões de paginação de meses (quando período > 6 meses) */}
@@ -1018,316 +1043,410 @@ export function VisaoConsolidada({
               </Button>
             </div>
           )}
-          
+
           <div className="overflow-x-auto px-6 sm:px-0">
             <Table className="min-w-full">
-            <TableHeader>
-              {/* Nova linha: Período */}
-              <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableHead className="font-semibold text-white text-center whitespace-nowrap">{labels.periodo}</TableHead>
-                <TableHead className="font-semibold text-white text-center whitespace-nowrap" colSpan={calculosVisiveis.length}>
-                  {nomePeriodoAtual}
-                </TableHead>
-              </TableRow>
-              
-              {/* Linha original: Mês */}
-              <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
-                <TableHead className="text-white font-semibold text-center whitespace-nowrap">{labels.mes}</TableHead>
-                {calculosVisiveis.map((calculo, index) => {
-                  const indexReal = paginaMeses * MAX_COLUNAS_VISIVEIS + index;
-                  // Usar meses do período se disponível, senão usar mês do cálculo
-                  const mesExibir = mesesDoPeriodoVisiveis && mesesDoPeriodoVisiveis[index] 
-                    ? mesesDoPeriodoVisiveis[index].mes 
-                    : calculo.mes;
-                  
-                  const anoExibir = mesesDoPeriodoVisiveis && mesesDoPeriodoVisiveis[index]
-                    ? mesesDoPeriodoVisiveis[index].ano
-                    : calculo.ano;
-                  
-                  // Pegar apenas os 2 últimos dígitos do ano (ex: 2025 -> 25)
-                  const anoAbreviado = String(anoExibir).slice(-2);
-                  
-                  // Verificar se empresa tem período de apuração customizado (ex: dia 16 a dia 15)
-                  const diaInicio = (empresaAtual as any)?.dia_inicio_apuracao ?? 1;
-                  const diaFim = (empresaAtual as any)?.dia_fim_apuracao ?? 0;
-                  const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
-                  
-                  // Formatar header do período
-                  let headerMes: string;
-                  if (temApuracaoCustomizada) {
-                    // Formato: "16-Mai/26 à 15-Jun/26"
-                    // O mês de início é o mês atual, o mês de fim é o próximo mês
-                    const mesInicio = mesExibir;
-                    const anoInicio = anoExibir;
-                    
-                    // Calcular próximo mês para a data fim
-                    let mesFim = mesInicio + 1;
-                    let anoFim = anoInicio;
-                    if (mesFim > 12) {
-                      mesFim = 1;
-                      anoFim += 1;
-                    }
-                    
-                    const anoFimAbreviado = String(anoFim).slice(-2);
-                    const mesInicioAbrev = MESES_ABREV[mesInicio - 1];
-                    const mesFimAbrev = MESES_ABREV[mesFim - 1];
-                    
-                    headerMes = `${diaInicio} ${mesInicioAbrev}/${anoAbreviado} à ${diaFim} ${mesFimAbrev}/${anoFimAbreviado}`;
-                  } else {
-                    // Formato padrão: "Mai/26"
-                    headerMes = `${MESES_ABREV[mesExibir - 1]}/${anoAbreviado}`;
-                  }
-                  
-                  return (
-                    <TableHead key={indexReal} className="text-white font-semibold text-center whitespace-nowrap">
-                      {headerMes}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {/* Banco Contratado (Baseline) */}
-              <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-semibold text-white text-center whitespace-nowrap">
-                  {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') ? labels.ticketsContratados : labels.bancoContratado}
-                </TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className="text-center font-semibold text-white">
-                    {formatarValor(calculo.baseline_horas, calculo.baseline_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
-
-              {/* Repasse mês anterior */}
-              <TableRow className="bg-gray-200 hover:bg-gray-200">
-                <TableCell className="font-medium text-gray-900 text-center whitespace-nowrap">{labels.repasseMesAnterior}</TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}`}>
-                    {formatarValor(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
-
-              {/* Saldo a utilizar */}
-              <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center whitespace-nowrap">{labels.saldoAUtilizar}</TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell 
-                    key={index} 
-                    className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}`}
+              <TableHeader>
+                {/* Nova linha: Período */}
+                <TableRow className="bg-gray-700 hover:bg-gray-700">
+                  <TableHead className="font-semibold text-white text-center whitespace-nowrap">
+                    {labels.periodo}
+                  </TableHead>
+                  <TableHead
+                    className="font-semibold text-white text-center whitespace-nowrap"
+                    colSpan={calculosVisiveis.length}
                   >
-                    {formatarValor(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                    {nomePeriodoAtual}
+                  </TableHead>
+                </TableRow>
 
-              {/* Consumo Chamados */}
-              <TableRow>
-                <TableCell className="font-medium text-center whitespace-nowrap">{labels.consumoChamados}</TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarValor(calculo.consumo_horas, calculo.consumo_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                {/* Linha original: Mês */}
+                <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
+                  <TableHead className="text-white font-semibold text-center whitespace-nowrap">
+                    {labels.mes}
+                  </TableHead>
+                  {calculosVisiveis.map((calculo, index) => {
+                    const indexReal = paginaMeses * MAX_COLUNAS_VISIVEIS + index;
+                    // Usar meses do período se disponível, senão usar mês do cálculo
+                    const mesExibir =
+                      mesesDoPeriodoVisiveis && mesesDoPeriodoVisiveis[index]
+                        ? mesesDoPeriodoVisiveis[index].mes
+                        : calculo.mes;
 
-              {/* Requerimentos */}
-              <TableRow>
-                <TableCell className="font-medium text-center whitespace-nowrap">
-                  <span className="inline-flex items-center gap-0.5">
-                    {labels.requerimentos}
-                    {requerimentos && requerimentos.length > 0 && (
-                      <span className="text-blue-600 text-xs">*</span>
-                    )}
-                  </span>
-                </TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarValor(calculo.requerimentos_horas, calculo.requerimentos_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                    const anoExibir =
+                      mesesDoPeriodoVisiveis && mesesDoPeriodoVisiveis[index]
+                        ? mesesDoPeriodoVisiveis[index].ano
+                        : calculo.ano;
 
-              {/* Reajuste (botão com modal) */}
-              <TableRow>
-                <TableCell className="font-medium text-center whitespace-nowrap">{labels.reajuste}</TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className="text-center">
-                    <BotaoReajusteHoras
-                      horasAtuais={calculo.reajustes_horas}
-                      ticketsAtuais={calculo.reajustes_tickets}
-                      mes={calculo.mes}
-                      ano={calculo.ano}
-                      empresaId={calculo.empresa_id}
-                      nomeMes={MESES[calculo.mes - 1]}
-                      tipoCobranca={tipoCobranca}
-                      baselineSegmentado={empresaAtual?.baseline_segmentado || false}
-                      empresasSegmentadas={empresaAtual?.segmentacao_config?.empresas || []}
-                      onSalvar={handleSalvarReajuste}
-                      disabled={disabled}
-                      isSaving={isCreating}
-                    />
-                  </TableCell>
-                ))}
-              </TableRow>
+                    // Pegar apenas os 2 últimos dígitos do ano (ex: 2025 -> 25)
+                    const anoAbreviado = String(anoExibir).slice(-2);
 
-              {/* Consumo Total */}
-              <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center whitespace-nowrap">{labels.consumoTotal}</TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarValor(calculo.consumo_total_horas, calculo.consumo_total_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                    // Verificar se empresa tem período de apuração customizado (ex: dia 16 a dia 15)
+                    const diaInicio = (empresaAtual as any)?.dia_inicio_apuracao ?? 1;
+                    const diaFim = (empresaAtual as any)?.dia_fim_apuracao ?? 0;
+                    const temApuracaoCustomizada = diaInicio !== 1 && diaFim !== 0;
 
-              {/* Saldo */}
-              <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center whitespace-nowrap">{labels.saldo}</TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}`}>
-                    {formatarValor(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                    // Formatar header do período
+                    let headerMes: string;
+                    if (temApuracaoCustomizada) {
+                      // Formato: "16-Mai/26 à 15-Jun/26"
+                      // O mês de início é o mês atual, o mês de fim é o próximo mês
+                      const mesInicio = mesExibir;
+                      const anoInicio = anoExibir;
 
-              {/* Repasse - Percentual Dinâmico */}
-              <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center whitespace-nowrap">
-                  <div className="flex items-center justify-center gap-1">
-                    <span>{labels.repasse} - {percentualRepasseMensal}%</span>
-                    {empresaAtual?.tipo_repasse_especial === 'por_periodo' && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">i</span>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
-                            <p className="text-sm" dangerouslySetInnerHTML={{ __html: t('bankHours.specialCarryoverTooltip', { percent: empresaAtual?.percentual_entre_periodos ?? 0 }) }} />
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                </TableCell>
-                {calculosVisiveis.map((calculo, index) => (
-                  <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}`}>
-                    {formatarValor(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                      // Calcular próximo mês para a data fim
+                      let mesFim = mesInicio + 1;
+                      let anoFim = anoInicio;
+                      if (mesFim > 12) {
+                        mesFim = 1;
+                        anoFim += 1;
+                      }
 
-              {/* Excedente Trimestre */}
-              {temExcedentes && (
+                      const anoFimAbreviado = String(anoFim).slice(-2);
+                      const mesInicioAbrev = MESES_ABREV[mesInicio - 1];
+                      const mesFimAbrev = MESES_ABREV[mesFim - 1];
+
+                      headerMes = `${diaInicio} ${mesInicioAbrev}/${anoAbreviado} à ${diaFim} ${mesFimAbrev}/${anoFimAbreviado}`;
+                    } else {
+                      // Formato padrão: "Mai/26"
+                      headerMes = `${MESES_ABREV[mesExibir - 1]}/${anoAbreviado}`;
+                    }
+
+                    return (
+                      <TableHead
+                        key={indexReal}
+                        className="text-white font-semibold text-center whitespace-nowrap"
+                      >
+                        {headerMes}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* Banco Contratado (Baseline) */}
+                <TableRow className="bg-gray-700 hover:bg-gray-700">
+                  <TableCell className="font-semibold text-white text-center whitespace-nowrap">
+                    {tipoCobranca?.toLowerCase() === 'ticket' ||
+                    tipoCobranca?.toLowerCase() === 'tickets'
+                      ? labels.ticketsContratados
+                      : labels.bancoContratado}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell key={index} className="text-center font-semibold text-white">
+                      {formatarValor(
+                        calculo.baseline_horas,
+                        calculo.baseline_tickets,
+                        tipoCobranca
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Repasse mês anterior */}
+                <TableRow className="bg-gray-200 hover:bg-gray-200">
+                  <TableCell className="font-medium text-gray-900 text-center whitespace-nowrap">
+                    {labels.repasseMesAnterior}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell
+                      key={index}
+                      className={`text-center font-semibold ${getColorClassDinamico(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}`}
+                    >
+                      {formatarValor(
+                        calculo.repasses_mes_anterior_horas,
+                        calculo.repasses_mes_anterior_tickets,
+                        tipoCobranca
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Saldo a utilizar */}
                 <TableRow className="bg-gray-50">
-                  <TableCell className="font-medium text-center whitespace-nowrap">{labels.excedenteTrimestreLabel}</TableCell>
-                  <TableCell className="text-center font-semibold text-green-600" colSpan={calculosVisiveis.length}>
-                    {formatarHoras(calculoPrincipal.excedentes_horas)}
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    {labels.saldoAUtilizar}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell
+                      key={index}
+                      className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}`}
+                    >
+                      {formatarValor(
+                        calculo.saldo_a_utilizar_horas,
+                        calculo.saldo_a_utilizar_tickets,
+                        tipoCobranca
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Consumo Chamados */}
+                <TableRow>
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    {labels.consumoChamados}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell key={index} className="text-center font-semibold text-gray-900">
+                      {formatarValor(calculo.consumo_horas, calculo.consumo_tickets, tipoCobranca)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Requerimentos */}
+                <TableRow>
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    <span className="inline-flex items-center gap-0.5">
+                      {labels.requerimentos}
+                      {requerimentos && requerimentos.length > 0 && (
+                        <span className="text-blue-600 text-xs">*</span>
+                      )}
+                    </span>
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell key={index} className="text-center font-semibold text-gray-900">
+                      {formatarValor(
+                        calculo.requerimentos_horas,
+                        calculo.requerimentos_tickets,
+                        tipoCobranca
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Reajuste (botão com modal) */}
+                <TableRow>
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    {labels.reajuste}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell key={index} className="text-center">
+                      <BotaoReajusteHoras
+                        horasAtuais={calculo.reajustes_horas}
+                        ticketsAtuais={calculo.reajustes_tickets}
+                        mes={calculo.mes}
+                        ano={calculo.ano}
+                        empresaId={calculo.empresa_id}
+                        nomeMes={MESES[calculo.mes - 1]}
+                        tipoCobranca={tipoCobranca}
+                        baselineSegmentado={empresaAtual?.baseline_segmentado || false}
+                        empresasSegmentadas={empresaAtual?.segmentacao_config?.empresas || []}
+                        onSalvar={handleSalvarReajuste}
+                        disabled={disabled || lancamentosBloqueados}
+                        isSaving={isCreating}
+                      />
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Consumo Total */}
+                <TableRow className="bg-gray-50">
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    {labels.consumoTotal}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell key={index} className="text-center font-semibold text-gray-900">
+                      {formatarValor(
+                        calculo.consumo_total_horas,
+                        calculo.consumo_total_tickets,
+                        tipoCobranca
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Saldo */}
+                <TableRow className="bg-gray-50">
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    {labels.saldo}
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell
+                      key={index}
+                      className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}`}
+                    >
+                      {formatarValor(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Repasse - Percentual Dinâmico */}
+                <TableRow className="bg-gray-50">
+                  <TableCell className="font-medium text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
+                      <span>
+                        {labels.repasse} - {percentualRepasseMensal}%
+                      </span>
+                      {empresaAtual?.tipo_repasse_especial === 'por_periodo' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">
+                                i
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
+                              <p
+                                className="text-sm"
+                                dangerouslySetInnerHTML={{
+                                  __html: t('bankHours.specialCarryoverTooltip', {
+                                    percent: empresaAtual?.percentual_entre_periodos ?? 0,
+                                  }),
+                                }}
+                              />
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                  </TableCell>
+                  {calculosVisiveis.map((calculo, index) => (
+                    <TableCell
+                      key={index}
+                      className={`text-center font-semibold ${getColorClassDinamico(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}`}
+                    >
+                      {formatarValor(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                {/* Excedente Trimestre */}
+                {temExcedentes && (
+                  <TableRow className="bg-gray-50">
+                    <TableCell className="font-medium text-center whitespace-nowrap">
+                      {labels.excedenteTrimestreLabel}
+                    </TableCell>
+                    <TableCell
+                      className="text-center font-semibold text-green-600"
+                      colSpan={calculosVisiveis.length}
+                    >
+                      {formatarHoras(calculoPrincipal.excedentes_horas)}
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {/* Taxa/hora Excedente e Valor Total na mesma linha */}
+                <TableRow className="bg-gray-700 hover:bg-gray-700">
+                  <TableCell className="font-medium text-white text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{labels.taxaHoraExcedente}</span>
+                      {/* Tooltip específico para Exxonmobil */}
+                      {taxasEspecificas?.ticket_excedente_simples &&
+                        taxasEspecificas.ticket_excedente_simples > 0 && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button className="inline-flex items-center justify-center">
+                                  <AlertCircle className="h-4 w-4 text-blue-300 hover:text-blue-100 transition-colors" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
+                                <div className="space-y-2 text-sm">
+                                  <p className="font-semibold">{t('bankHours.parityRuleTitle')}</p>
+                                  <p>{t('bankHours.parityRuleDesc1')}</p>
+                                  <p>{t('bankHours.parityRuleDesc2')}</p>
+                                  <p className="font-semibold mt-2">
+                                    {t('bankHours.ticketBalanceTitle')}
+                                  </p>
+                                  <p>{t('bankHours.ticketBalanceDesc')}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center font-semibold text-white">
+                    {taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : ''}
+                  </TableCell>
+                  <TableCell
+                    className="font-medium text-center text-white whitespace-nowrap"
+                    colSpan={calculosVisiveis.length > 1 ? calculosVisiveis.length - 2 : 1}
+                  >
+                    {labels.valorTotal}
+                  </TableCell>
+                  <TableCell className="text-center font-semibold text-white">
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}</span>
+                      {!!(
+                        calculoFimPeriodo?.valor_a_faturar && calculoFimPeriodo.valor_a_faturar > 0
+                      ) && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-white hover:bg-gray-600"
+                                onClick={() => {
+                                  // Usar excedentes_horas se disponível, senão usar saldo negativo
+                                  const horasExcedentes =
+                                    calculoPrincipal?.excedentes_horas &&
+                                    horasParaMinutos(calculoPrincipal.excedentes_horas) > 0
+                                      ? formatarHoras(calculoPrincipal.excedentes_horas)
+                                      : calculoFimPeriodo?.saldo_horas &&
+                                          horasParaMinutos(calculoFimPeriodo.saldo_horas) < 0
+                                        ? formatarHoras(calculoFimPeriodo.saldo_horas)
+                                        : '00:00';
+
+                                  const valorHoraExcedente =
+                                    taxaHoraExibir && taxaHoraExibir > 0
+                                      ? formatarMoeda(taxaHoraExibir)
+                                      : 'R$ 0,00';
+                                  const valorTotalExcedentes = formatarMoeda(
+                                    calculoFimPeriodo?.valor_a_faturar
+                                  );
+
+                                  const mensagem = `${t('bankHours.surplusHoursLabel')}: ${horasExcedentes}\n${t('bankHours.surplusHourRateLabel')}: ${valorHoraExcedente}\n${t('bankHours.surplusTotalLabel')}: ${valorTotalExcedentes}\n\n${t('bankHours.surplusAwaitingApproval')}`;
+
+                                  navigator.clipboard
+                                    .writeText(mensagem)
+                                    .then(() => {
+                                      toast({
+                                        title: t('bankHours.copiedTitle'),
+                                        description: t('bankHours.copiedSurplusMessage'),
+                                      });
+                                    })
+                                    .catch(() => {
+                                      toast({
+                                        title: t('bankHours.copyErrorTitle'),
+                                        description: t('bankHours.copyErrorMessage'),
+                                        variant: 'destructive',
+                                      });
+                                    });
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{t('bankHours.copySurplusToEmail')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
 
-              {/* Taxa/hora Excedente e Valor Total na mesma linha */}
-              <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-medium text-white text-center whitespace-nowrap">
-                  <div className="flex items-center justify-center gap-2">
-                    <span>{labels.taxaHoraExcedente}</span>
-                    {/* Tooltip específico para Exxonmobil */}
-                    {taxasEspecificas?.ticket_excedente_simples && taxasEspecificas.ticket_excedente_simples > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button className="inline-flex items-center justify-center">
-                              <AlertCircle className="h-4 w-4 text-blue-300 hover:text-blue-100 transition-colors" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
-                            <div className="space-y-2 text-sm">
-                              <p className="font-semibold">{t('bankHours.parityRuleTitle')}</p>
-                              <p>{t('bankHours.parityRuleDesc1')}</p>
-                              <p>{t('bankHours.parityRuleDesc2')}</p>
-                              <p className="font-semibold mt-2">{t('bankHours.ticketBalanceTitle')}</p>
-                              <p>{t('bankHours.ticketBalanceDesc')}</p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-center font-semibold text-white">
-                  {taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : ''}
-                </TableCell>
-                <TableCell className="font-medium text-center text-white whitespace-nowrap" colSpan={calculosVisiveis.length > 1 ? calculosVisiveis.length - 2 : 1}>
-                  {labels.valorTotal}
-                </TableCell>
-                <TableCell className="text-center font-semibold text-white">
-                  <div className="flex items-center justify-center gap-2">
-                    <span>{formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}</span>
-                    {!!(calculoFimPeriodo?.valor_a_faturar && calculoFimPeriodo.valor_a_faturar > 0) && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-white hover:bg-gray-600"
-                              onClick={() => {
-                                // Usar excedentes_horas se disponível, senão usar saldo negativo
-                                const horasExcedentes = calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0
-                                  ? formatarHoras(calculoPrincipal.excedentes_horas)
-                                  : calculoFimPeriodo?.saldo_horas && horasParaMinutos(calculoFimPeriodo.saldo_horas) < 0
-                                  ? formatarHoras(calculoFimPeriodo.saldo_horas)
-                                  : '00:00';
-                                
-                                const valorHoraExcedente = taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00';
-                                const valorTotalExcedentes = formatarMoeda(calculoFimPeriodo?.valor_a_faturar);
-                                
-                                const mensagem = `${t('bankHours.surplusHoursLabel')}: ${horasExcedentes}\n${t('bankHours.surplusHourRateLabel')}: ${valorHoraExcedente}\n${t('bankHours.surplusTotalLabel')}: ${valorTotalExcedentes}\n\n${t('bankHours.surplusAwaitingApproval')}`;
-                                
-                                navigator.clipboard.writeText(mensagem).then(() => {
-                                  toast({
-                                    title: t('bankHours.copiedTitle'),
-                                    description: t('bankHours.copiedSurplusMessage'),
-                                  });
-                                }).catch(() => {
-                                  toast({
-                                    title: t('bankHours.copyErrorTitle'),
-                                    description: t('bankHours.copyErrorMessage'),
-                                    variant: "destructive",
-                                  });
-                                });
-                              }}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{t('bankHours.copySurplusToEmail')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-
-              {/* Mensagem de fim de período */}
-              {calculoPrincipal?.is_fim_periodo && (
-                <TableRow className="bg-blue-50">
-                  <TableCell colSpan={calculosVisiveis.length + 1} className="text-center font-semibold text-blue-800">
-                    {labels.finalTrimestreMsg}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                {/* Mensagem de fim de período */}
+                {calculoPrincipal?.is_fim_periodo && (
+                  <TableRow className="bg-blue-50">
+                    <TableCell
+                      colSpan={calculosVisiveis.length + 1}
+                      className="text-center font-semibold text-blue-800"
+                    >
+                      {labels.finalTrimestreMsg}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
 
         {/* Alerta de Última Sincronização */}
-        <div className='flex gap-2 mt-2 items-center'>
+        <div className="flex gap-2 mt-2 items-center">
           <Clock className="h-3 w-3 text-gray-300" />
           <AlertDescription className="text-xs text-gray-400">
             {carregandoSincronizacao ? (
@@ -1337,14 +1456,14 @@ export function VisaoConsolidada({
               </div>
             ) : ultimaSincronizacao ? (
               <>
-                <strong>{t('bankHours.consumptionDataLabel')}</strong> {t('bankHours.consumptionDataSyncMsg')}{' '}
-                <strong>
-                  {format(ultimaSincronizacao, "dd/MM/yyyy HH:mm")}
-                </strong>
+                <strong>{t('bankHours.consumptionDataLabel')}</strong>{' '}
+                {t('bankHours.consumptionDataSyncMsg')}{' '}
+                <strong>{format(ultimaSincronizacao, 'dd/MM/yyyy HH:mm')}</strong>
               </>
             ) : (
               <>
-                <strong>{t('bankHours.consumptionDataLabel')}</strong> {t('bankHours.consumptionDataNoSync')}
+                <strong>{t('bankHours.consumptionDataLabel')}</strong>{' '}
+                {t('bankHours.consumptionDataNoSync')}
               </>
             )}
           </AlertDescription>
@@ -1353,7 +1472,9 @@ export function VisaoConsolidada({
         {/* Observação Pública */}
         {calculoPrincipal?.observacao_publica && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">{t('bankHours.publicObservation')}</h4>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              {t('bankHours.publicObservation')}
+            </h4>
             <p className="text-sm text-gray-600 whitespace-pre-wrap">
               {calculoPrincipal.observacao_publica}
             </p>
@@ -1373,16 +1494,21 @@ export function VisaoConsolidada({
                       <span className="text-blue-600 text-sm cursor-help">*</span>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm bg-blue-50 border-blue-200">
-                      <p className="text-sm text-blue-800" dangerouslySetInnerHTML={{ __html: t('bankHours.periodRequirementsTooltip') }} />
+                      <p
+                        className="text-sm text-blue-800"
+                        dangerouslySetInnerHTML={{
+                          __html: t('bankHours.periodRequirementsTooltip'),
+                        }}
+                      />
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </h4>
               <Badge className="bg-blue-100 text-blue-800 text-xs font-semibold">
-                {tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets'
+                {tipoCobranca?.toLowerCase() === 'ticket' ||
+                tipoCobranca?.toLowerCase() === 'tickets'
                   ? `${totalRequerimentosPeriodo.tickets} tickets`
-                  : totalRequerimentosPeriodo.horas
-                }
+                  : totalRequerimentosPeriodo.horas}
               </Badge>
             </div>
 
@@ -1390,31 +1516,59 @@ export function VisaoConsolidada({
               <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
-                    {showTicketExterno && <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">{t('requirements.externalTicket')}</TableHead>}
-                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.approvalDate')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
-                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.ticket')}
+                    </TableHead>
+                    {showTicketExterno && (
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">
+                        {t('requirements.externalTicket')}
+                      </TableHead>
+                    )}
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.client')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.module')}
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.functionalHours')}
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.technicalHours')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('common.total')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.sendDate')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.approvalDate')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.totalValue')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('common.period')}
+                    </TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">
+                      {t('common.actions')}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {requerimentos.map((req) => {
                     // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
-                    const horasFuncional = typeof req.horas_funcional === 'string' 
-                      ? converterParaHorasDecimal(req.horas_funcional)
-                      : (req.horas_funcional || 0);
-                    const horasTecnico = typeof req.horas_tecnico === 'string'
-                      ? converterParaHorasDecimal(req.horas_tecnico)
-                      : (req.horas_tecnico || 0);
+                    const horasFuncional =
+                      typeof req.horas_funcional === 'string'
+                        ? converterParaHorasDecimal(req.horas_funcional)
+                        : req.horas_funcional || 0;
+                    const horasTecnico =
+                      typeof req.horas_tecnico === 'string'
+                        ? converterParaHorasDecimal(req.horas_tecnico)
+                        : req.horas_tecnico || 0;
                     const totalHoras = horasFuncional + horasTecnico;
-                    
+
                     return (
                       <TableRow key={req.id}>
                         <TableCell className="font-medium py-2 text-center">
@@ -1427,87 +1581,111 @@ export function VisaoConsolidada({
                                 {req.chamado}
                               </span>
                             </div>
-                            <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
+                            <span
+                              className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}
+                            >
                               {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
                             </span>
                           </div>
                         </TableCell>
-                        
+
                         {showTicketExterno && (
-                        <TableCell className="py-2 text-center">
-                          <span className="text-xs sm:text-sm">
-                            {req.ticket_externo || '-'}
-                          </span>
-                        </TableCell>
+                          <TableCell className="py-2 text-center">
+                            <span className="text-xs sm:text-sm">{req.ticket_externo || '-'}</span>
+                          </TableCell>
                         )}
-                        
+
                         <TableCell className="py-2 text-center">
                           <span className="text-xs sm:text-sm font-medium">
                             {req.cliente_nome || '-'}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="py-2 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-blue-600 border-blue-600 px-1 sm:px-2 py-0.5 leading-tight w-fit">
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] sm:text-[10px] lg:text-xs text-blue-600 border-blue-600 px-1 sm:px-2 py-0.5 leading-tight w-fit"
+                            >
                               <span className="truncate">{req.modulo || 'Comex'}</span>
                             </Badge>
                           </div>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <span className="text-xs sm:text-sm lg:text-base font-medium">
-                            {Math.floor(horasFuncional)}:{String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
+                            {Math.floor(horasFuncional)}:
+                            {String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <span className="text-xs sm:text-sm lg:text-base font-medium">
-                            {Math.floor(horasTecnico)}:{String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
+                            {Math.floor(horasTecnico)}:
+                            {String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <div className="flex flex-col items-center gap-1">
                             <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
-                              {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
+                              {Math.floor(totalHoras)}:
+                              {String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
                             </span>
                             {/* Badge de tickets quando tipo de cobrança for tickets */}
-                            {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') && req.quantidade_tickets && req.quantidade_tickets > 0 && (
-                              <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
-                              </Badge>
-                            )}
+                            {(tipoCobranca?.toLowerCase() === 'ticket' ||
+                              tipoCobranca?.toLowerCase() === 'tickets') &&
+                              req.quantidade_tickets &&
+                              req.quantidade_tickets > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                >
+                                  🎫 {req.quantidade_tickets}{' '}
+                                  {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                                </Badge>
+                              )}
                           </div>
                         </TableCell>
-                        
+
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
+                          {req.data_envio
+                            ? new Date(req.data_envio).toLocaleDateString('pt-BR', {
+                                timeZone: 'UTC',
+                              })
+                            : '-'}
                         </TableCell>
-                        
+
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                          {req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
+                          {req.data_aprovacao
+                            ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR', {
+                                timeZone: 'UTC',
+                              })
+                            : '-'}
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           {req.valor_total_geral ? (
                             <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(req.valor_total_geral)}
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(req.valor_total_geral)}
                             </span>
                           ) : (
                             <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
                           )}
                         </TableCell>
-                        
+
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                           {req.mes_cobranca || '-'}
                         </TableCell>
-                        
+
                         <TableCell className="py-2">
                           <div className="flex items-center justify-center gap-1">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="h-8 w-8 p-0"
                               onClick={() => handleVisualizarRequerimento(req)}
                               title={t('bankHours.viewDetails')}
@@ -1535,19 +1713,26 @@ export function VisaoConsolidada({
                   <TooltipTrigger asChild>
                     <h4 className="text-lg font-semibold text-gray-900 dark:text-white cursor-help inline-flex items-center gap-1.5">
                       {t('bankHours.requirementsInDevelopment')}
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full border-2 border-orange-500 text-orange-500 text-[10px] font-bold leading-none">!</span>
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full border-2 border-orange-500 text-orange-500 text-[10px] font-bold leading-none">
+                        !
+                      </span>
                     </h4>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm bg-orange-50 border-orange-200">
-                    <p className="text-sm text-orange-800" dangerouslySetInnerHTML={{ __html: t('bankHours.requirementsInDevelopmentTooltip') }} />
+                    <p
+                      className="text-sm text-orange-800"
+                      dangerouslySetInnerHTML={{
+                        __html: t('bankHours.requirementsInDevelopmentTooltip'),
+                      }}
+                    />
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <Badge className="bg-orange-200 text-orange-900 text-xs font-semibold">
-                {tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets'
+                {tipoCobranca?.toLowerCase() === 'ticket' ||
+                tipoCobranca?.toLowerCase() === 'tickets'
                   ? `${totalRequerimentosEmDesenvolvimento.tickets} tickets`
-                  : totalRequerimentosEmDesenvolvimento.horas
-                }
+                  : totalRequerimentosEmDesenvolvimento.horas}
               </Badge>
             </div>
 
@@ -1555,148 +1740,192 @@ export function VisaoConsolidada({
               <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
                 <TableHeader>
                   <TableRow className="bg-orange-50">
-                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
-                    {showTicketExterno && <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">{t('requirements.externalTicket')}</TableHead>}
-                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('common.status')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
-                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.ticket')}
+                    </TableHead>
+                    {showTicketExterno && (
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">
+                        {t('requirements.externalTicket')}
+                      </TableHead>
+                    )}
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.client')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.module')}
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.functionalHours')}
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.technicalHours')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('common.total')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.sendDate')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('common.status')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.totalValue')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('common.period')}
+                    </TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">
+                      {t('common.actions')}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {requerimentosEmDesenvolvimento.map((req) => {
-                      // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
-                      const horasFuncional = typeof req.horas_funcional === 'string' 
+                    // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
+                    const horasFuncional =
+                      typeof req.horas_funcional === 'string'
                         ? converterParaHorasDecimal(req.horas_funcional)
-                        : (req.horas_funcional || 0);
-                      const horasTecnico = typeof req.horas_tecnico === 'string'
+                        : req.horas_funcional || 0;
+                    const horasTecnico =
+                      typeof req.horas_tecnico === 'string'
                         ? converterParaHorasDecimal(req.horas_tecnico)
-                        : (req.horas_tecnico || 0);
-                      const totalHoras = horasFuncional + horasTecnico;
-                      
-                      return (
-                        <TableRow key={req.id} className="bg-orange-50/30">
-                          <TableCell className="font-medium py-2 text-center">
-                            <div className="flex flex-col items-center gap-1 sm:gap-2">
-                              <div className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
-                                <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">
-                                  {getCobrancaIcon(req.tipo_cobranca || 'Banco de Horas')}
-                                </span>
-                                <span className="text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap">
-                                  {req.chamado}
-                                </span>
-                              </div>
-                              <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
-                                {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
+                        : req.horas_tecnico || 0;
+                    const totalHoras = horasFuncional + horasTecnico;
+
+                    return (
+                      <TableRow key={req.id} className="bg-orange-50/30">
+                        <TableCell className="font-medium py-2 text-center">
+                          <div className="flex flex-col items-center gap-1 sm:gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+                              <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">
+                                {getCobrancaIcon(req.tipo_cobranca || 'Banco de Horas')}
+                              </span>
+                              <span className="text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap">
+                                {req.chamado}
                               </span>
                             </div>
-                          </TableCell>
-                          
-                          {showTicketExterno && (
+                            <span
+                              className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}
+                            >
+                              {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {showTicketExterno && (
                           <TableCell className="py-2 text-center">
-                            <span className="text-xs sm:text-sm">
-                              {req.ticket_externo || '-'}
+                            <span className="text-xs sm:text-sm">{req.ticket_externo || '-'}</span>
+                          </TableCell>
+                        )}
+
+                        <TableCell className="py-2 text-center">
+                          <span className="text-xs sm:text-sm font-medium">
+                            {req.cliente_nome || '-'}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="py-2 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] sm:text-[10px] lg:text-xs text-orange-600 border-orange-600 px-1 sm:px-2 py-0.5 leading-tight w-fit"
+                            >
+                              <span className="truncate">{req.modulo || 'Comex'}</span>
+                            </Badge>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-center py-3">
+                          <span className="text-xs sm:text-sm lg:text-base font-medium">
+                            {Math.floor(horasFuncional)}:
+                            {String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="text-center py-3">
+                          <span className="text-xs sm:text-sm lg:text-base font-medium">
+                            {Math.floor(horasTecnico)}:
+                            {String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="text-center py-3">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs sm:text-sm lg:text-base font-bold text-orange-600">
+                              {Math.floor(totalHoras)}:
+                              {String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
                             </span>
-                          </TableCell>
-                          )}
-                          
-                          <TableCell className="py-2 text-center">
-                            <span className="text-xs sm:text-sm font-medium">
-                              {req.cliente_nome || '-'}
-                            </span>
-                          </TableCell>
-                          
-                          <TableCell className="py-2 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-orange-600 border-orange-600 px-1 sm:px-2 py-0.5 leading-tight w-fit">
-                                <span className="truncate">{req.modulo || 'Comex'}</span>
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell className="text-center py-3">
-                            <span className="text-xs sm:text-sm lg:text-base font-medium">
-                              {Math.floor(horasFuncional)}:{String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
-                            </span>
-                          </TableCell>
-                          
-                          <TableCell className="text-center py-3">
-                            <span className="text-xs sm:text-sm lg:text-base font-medium">
-                              {Math.floor(horasTecnico)}:{String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
-                            </span>
-                          </TableCell>
-                          
-                          <TableCell className="text-center py-3">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs sm:text-sm lg:text-base font-bold text-orange-600">
-                                {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
-                              </span>
-                              {/* Badge de tickets quando tipo de cobrança for tickets */}
-                              {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') && req.quantidade_tickets && req.quantidade_tickets > 0 && (
-                                <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                  🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                            {/* Badge de tickets quando tipo de cobrança for tickets */}
+                            {(tipoCobranca?.toLowerCase() === 'ticket' ||
+                              tipoCobranca?.toLowerCase() === 'tickets') &&
+                              req.quantidade_tickets &&
+                              req.quantidade_tickets > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                >
+                                  🎫 {req.quantidade_tickets}{' '}
+                                  {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
                                 </Badge>
                               )}
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
-                            {req.data_envio && req.data_envio.trim() !== '' ? (
-                              <span className="text-gray-500">
-                                {new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                              </span>
-                            ) : (
-                              <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                Não enviado
-                              </Badge>
-                            )}
-                          </TableCell>
-                          
-                          <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
-                            <Badge className="bg-orange-100 text-orange-800 text-xs">
-                              Em desenvolvimento
-                            </Badge>
-                          </TableCell>
-                          
-                          <TableCell className="text-center py-3">
-                            {req.valor_total_geral ? (
-                              <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(req.valor_total_geral)}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
-                            )}
-                          </TableCell>
-                          
-                          <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                            {req.mes_cobranca || '-'}
-                          </TableCell>
-                          
-                          <TableCell className="py-2">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => {
-                                  setRequerimentoSelecionado(req);
-                                  setModalVisualizacaoAberto(true);
-                                }}
-                                title={t('bankHours.viewDetails')}
-                              >
-                                <Eye className="h-4 w-4 text-blue-600" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                          {req.data_envio && req.data_envio.trim() !== '' ? (
+                            <span className="text-gray-500">
+                              {new Date(req.data_envio).toLocaleDateString('pt-BR', {
+                                timeZone: 'UTC',
+                              })}
+                            </span>
+                          ) : (
+                            <Badge className="bg-gray-100 text-gray-600 text-xs">Não enviado</Badge>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                          <Badge className="bg-orange-100 text-orange-800 text-xs">
+                            Em desenvolvimento
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-center py-3">
+                          {req.valor_total_geral ? (
+                            <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(req.valor_total_geral)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                          {req.mes_cobranca || '-'}
+                        </TableCell>
+
+                        <TableCell className="py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setRequerimentoSelecionado(req);
+                                setModalVisualizacaoAberto(true);
+                              }}
+                              title={t('bankHours.viewDetails')}
+                            >
+                              <Eye className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -1720,31 +1949,59 @@ export function VisaoConsolidada({
               <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
-                    {showTicketExterno && <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">{t('requirements.externalTicket')}</TableHead>}
-                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.approvalDate')}</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
-                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.ticket')}
+                    </TableHead>
+                    {showTicketExterno && (
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 whitespace-nowrap">
+                        {t('requirements.externalTicket')}
+                      </TableHead>
+                    )}
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.client')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.module')}
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.functionalHours')}
+                    </TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.technicalHours')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('common.total')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.sendDate')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.approvalDate')}
+                    </TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">
+                      {t('requirements.totalValue')}
+                    </TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">
+                      {t('common.period')}
+                    </TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">
+                      {t('common.actions')}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {requerimentosNaoConcluidos.map((req) => {
                     // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
-                    const horasFuncional = typeof req.horas_funcional === 'string' 
-                      ? converterParaHorasDecimal(req.horas_funcional)
-                      : (req.horas_funcional || 0);
-                    const horasTecnico = typeof req.horas_tecnico === 'string'
-                      ? converterParaHorasDecimal(req.horas_tecnico)
-                      : (req.horas_tecnico || 0);
+                    const horasFuncional =
+                      typeof req.horas_funcional === 'string'
+                        ? converterParaHorasDecimal(req.horas_funcional)
+                        : req.horas_funcional || 0;
+                    const horasTecnico =
+                      typeof req.horas_tecnico === 'string'
+                        ? converterParaHorasDecimal(req.horas_tecnico)
+                        : req.horas_tecnico || 0;
                     const totalHoras = horasFuncional + horasTecnico;
-                    
+
                     return (
                       <TableRow key={req.id} className="bg-orange-50/50">
                         <TableCell className="font-medium py-2 text-center">
@@ -1757,84 +2014,102 @@ export function VisaoConsolidada({
                                 {req.chamado}
                               </span>
                             </div>
-                            <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
+                            <span
+                              className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}
+                            >
                               {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
                             </span>
                           </div>
                         </TableCell>
-                        
+
                         {showTicketExterno && (
-                        <TableCell className="py-2 text-center">
-                          <span className="text-xs sm:text-sm">
-                            {req.ticket_externo || '-'}
-                          </span>
-                        </TableCell>
+                          <TableCell className="py-2 text-center">
+                            <span className="text-xs sm:text-sm">{req.ticket_externo || '-'}</span>
+                          </TableCell>
                         )}
-                        
+
                         <TableCell className="py-2 text-center">
                           <span className="text-xs sm:text-sm font-medium">
                             {req.cliente_nome || '-'}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="py-2 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-orange-600 border-orange-600 px-1 sm:px-2 py-0.5 leading-tight w-fit">
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] sm:text-[10px] lg:text-xs text-orange-600 border-orange-600 px-1 sm:px-2 py-0.5 leading-tight w-fit"
+                            >
                               <span className="truncate">{req.modulo || 'Comex'}</span>
                             </Badge>
                           </div>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <span className="text-xs sm:text-sm lg:text-base font-medium">
-                            {Math.floor(horasFuncional)}:{String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
+                            {Math.floor(horasFuncional)}:
+                            {String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <span className="text-xs sm:text-sm lg:text-base font-medium">
-                            {Math.floor(horasTecnico)}:{String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
+                            {Math.floor(horasTecnico)}:
+                            {String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <div className="flex flex-col items-center gap-1">
                             <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
-                              {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
+                              {Math.floor(totalHoras)}:
+                              {String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
                             </span>
                             {/* Badge de tickets quando tipo de cobrança for tickets */}
-                            {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') && req.quantidade_tickets && req.quantidade_tickets > 0 && (
-                              <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
-                              </Badge>
-                            )}
+                            {(tipoCobranca?.toLowerCase() === 'ticket' ||
+                              tipoCobranca?.toLowerCase() === 'tickets') &&
+                              req.quantidade_tickets &&
+                              req.quantidade_tickets > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                >
+                                  🎫 {req.quantidade_tickets}{' '}
+                                  {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                                </Badge>
+                              )}
                           </div>
                         </TableCell>
-                        
+
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
+                          {req.data_envio
+                            ? new Date(req.data_envio).toLocaleDateString('pt-BR', {
+                                timeZone: 'UTC',
+                              })
+                            : '-'}
                         </TableCell>
-                        
+
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
-                          <Badge className="bg-orange-100 text-orange-800 text-xs">
-                            Pendente
-                          </Badge>
+                          <Badge className="bg-orange-100 text-orange-800 text-xs">Pendente</Badge>
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           {req.valor_total_geral ? (
                             <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(req.valor_total_geral)}
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(req.valor_total_geral)}
                             </span>
                           ) : (
                             <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
                           )}
                         </TableCell>
-                        
+
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                           {req.mes_cobranca || '-'}
                         </TableCell>
-                        
+
                         <TableCell className="py-2">
                           <div className="flex items-center justify-center gap-1">
                             <Button
@@ -1867,7 +2142,7 @@ export function VisaoConsolidada({
           empresaId={calculoPrincipal?.empresa_id}
           mesAtual={calculoPrincipal?.mes || 1}
           anoAtual={calculoPrincipal?.ano || new Date().getFullYear()}
-          disabled={disabled}
+          disabled={disabled || lancamentosBloqueados}
           onHistoricoClick={onHistoricoClick}
           mesesDoPeriodo={mesesDoPeriodo}
         />
@@ -1885,8 +2160,8 @@ export function VisaoConsolidada({
       {/* Rodapé de Impressão (visível apenas ao imprimir) */}
       <div className="hidden print:block print-footer">
         <p>
-          {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | 
-          Sistema Books SND - {t('bankHours.title')}
+          {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | Sistema Books SND -{' '}
+          {t('bankHours.title')}
         </p>
       </div>
     </Card>

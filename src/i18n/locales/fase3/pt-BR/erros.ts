@@ -60,6 +60,8 @@ const erros = {
   saldoParcial: {
     naoEnviado: 'O e-mail não foi enviado.',
     semHistorico: 'O e-mail foi enviado, mas não ficou no histórico de envios: {{detalhe}}',
+    semEmailDoUsuario: 'Não foi possível ler o seu e-mail para enviar o teste.',
+    semBancos: 'A empresa não tem banco que o cliente vê.',
   },
   falhas: {
     atribuirODestino: 'Falha ao atribuir o destino: {{detalhe}}',
@@ -128,6 +130,19 @@ const erros = {
     // Comparação Legado x Novo (Fase 4)
     carregarAComparacao: 'Falha ao carregar a comparação: {{detalhe}}',
     validarAComparacao: 'Falha ao validar a comparação: {{detalhe}}',
+    // Liberação por empresa (Fase 5)
+    carregarATransicaoDaEmpresa: 'Falha ao carregar a transição da empresa: {{detalhe}}',
+    carregarAsEmpresasDoBook: 'Falha ao carregar as empresas do Book: {{detalhe}}',
+    carregarOBookDoMes: 'Falha ao carregar o Book do mês: {{detalhe}}',
+    carregarOConsumoDoBook: 'Falha ao carregar o consumo do Book: {{detalhe}}',
+    carregarOModeloDaEmpresa: 'Falha ao carregar o modelo da empresa: {{detalhe}}',
+    carregarOsBancosDaEmpresa: 'Falha ao carregar os bancos da empresa: {{detalhe}}',
+    carregarOsFechamentosDoMes: 'Falha ao carregar os fechamentos do mês: {{detalhe}}',
+    carregarOsLancamentosDoControleNovo:
+      'Falha ao carregar os lançamentos do Controle novo: {{detalhe}}',
+    gravarOConsumoDoBook: 'Falha ao gravar o consumo do Book: {{detalhe}}',
+    liberarAEmpresa: 'Falha ao liberar a empresa: {{detalhe}}',
+    voltarAEmpresaParaOLegado: 'Falha ao voltar a empresa para o legado: {{detalhe}}',
   },
 };
 

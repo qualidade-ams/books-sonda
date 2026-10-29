@@ -1,6 +1,6 @@
 /**
  * Página de Controle de Banco de Horas
- * 
+ *
  * Gerencia o banco de horas por contratos de empresas clientes com:
  * - Seletor de empresa
  * - Navegação temporal (mês/ano)
@@ -11,25 +11,28 @@
  * - Botão Recalcular
  * - Botão Exportar
  * - Indicadores visuais de excedentes
- * 
+ *
  * @module pages/admin/ControleBancoHoras
  * @requirements 15.1-15.10, 16.1-16.10, 17.1-17.10
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  Clock, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Clock,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Calendar,
   TrendingUp,
   FileText,
   AlertCircle,
   Building2,
-  Filter
+  Filter,
+  Info,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,20 +52,21 @@ import { VisaoSegmentada } from '@/components/admin/banco-horas/VisaoSegmentada'
 import { ModalHistorico } from '@/components/admin/banco-horas/ModalHistorico';
 
 import type { SegmentacaoConfig } from '@/types/clientBooksTypes';
-import { 
+import {
   useBancoHorasCalculos,
   useAlocacoes,
   useCalculosSegmentados,
-  useVersoesPeriodo
+  useVersoesPeriodo,
 } from '@/hooks/useBancoHoras';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useEmpresaLiberada } from '@/hooks/useControleBancoHoras';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { usePercentualRepasseVigentePorPeriodo } from '@/hooks/usePercentualRepasseHistorico';
 import { useToast } from '@/hooks/use-toast';
 import {
   calcularMesesDoPeriodo,
   filtrarRequerimentosDoPeriodo,
-  filtrarRequerimentosEmDesenvolvimento
+  filtrarRequerimentosEmDesenvolvimento,
 } from '@/services/saldoParcial/periodoSaldoParcial';
 import { converterHorasParaMinutos } from '@/utils/horasUtils';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
@@ -71,21 +75,41 @@ import type { BancoHorasCalculo } from '@/types/bancoHoras';
  * Nomes dos meses em português (fallback)
  */
 const MESES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
 ];
 
 /**
  * Chaves dos meses para i18n
  */
 const MONTH_KEYS = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december'
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
 ] as const;
 
 /**
  * Página ControleBancoHoras
- * 
+ *
  * Implementa a interface completa de controle de banco de horas com
  * navegação temporal, seleção de empresa, visões consolidada e segmentada,
  * e ações de reajuste, histórico e exportação.
@@ -93,70 +117,77 @@ const MONTH_KEYS = [
 export default function ControleBancoHoras() {
   const { toast } = useToast();
   const { t } = useTranslation();
-  
+
   // Estado de navegação
   const [empresaSelecionada, setEmpresaSelecionada] = useState<string | undefined>(undefined);
   const [mesAno, setMesAno] = useState<{ mes: number; ano: number }>(() => {
     const hoje = new Date();
     return {
       mes: hoje.getMonth() + 1, // JavaScript months are 0-indexed
-      ano: hoje.getFullYear()
+      ano: hoje.getFullYear(),
     };
   });
   const [activeTab, setActiveTab] = useState<'consolidada' | 'segmentada'>('consolidada');
-  
+
   // Estado de modais
   const [modalHistoricoAberto, setModalHistoricoAberto] = useState(false);
-  
+
   // Estado de filtros
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Estado de loading para cálculo inicial
   const [isCalculandoPeriodo, setIsCalculandoPeriodo] = useState(false);
-  
+
   // Buscar empresas - FILTRAR apenas ativas com AMS
   const { empresas: todasEmpresas, isLoading: isLoadingEmpresas } = useEmpresas();
-  
+
   // Filtrar apenas empresas ativas com AMS
   const empresas = useMemo(() => {
     if (!todasEmpresas) return [];
-    
-    return todasEmpresas.filter(empresa => 
-      empresa.status === 'ativo' && 
-      empresa.tem_ams === true
+
+    return todasEmpresas.filter(
+      (empresa) => empresa.status === 'ativo' && empresa.tem_ams === true
     );
   }, [todasEmpresas]);
-  
+
   // Buscar empresa selecionada para obter período de apuração
   const empresaAtual = useMemo(() => {
-    const empresa = empresas?.find(e => e.id === empresaSelecionada);
+    const empresa = empresas?.find((e) => e.id === empresaSelecionada);
     console.log('🏢 [DEBUG] Empresa atual:', {
       id: empresa?.id,
       nome: empresa?.nome_abreviado,
       tipo_contrato: empresa?.tipo_contrato,
-      periodo_apuracao: empresa?.periodo_apuracao
+      periodo_apuracao: empresa?.periodo_apuracao,
     });
     return empresa;
   }, [empresas, empresaSelecionada]);
-  
+  // Fase 5 (P3): empresa liberada usa o Controle novo; aqui fica só para consulta
+  const liberada = useEmpresaLiberada(empresaSelecionada);
+
   // ✅ Buscar percentual de repasse vigente para o período selecionado (usa histórico de vigências)
   const { data: percentualRepasseVigente } = usePercentualRepasseVigentePorPeriodo(
     empresaSelecionada || '',
     mesAno.mes,
     mesAno.ano
   );
-  
+
   // Percentual efetivo: prioriza histórico de vigências, fallback para tabela empresas_clientes
   const percentualRepasseEfetivo = useMemo(() => {
-    if (percentualRepasseVigente?.percentual !== undefined && percentualRepasseVigente?.percentual !== null) {
-      console.log('✅ [percentualRepasse] Usando percentual do histórico de vigências:', percentualRepasseVigente.percentual);
+    if (
+      percentualRepasseVigente?.percentual !== undefined &&
+      percentualRepasseVigente?.percentual !== null
+    ) {
+      console.log(
+        '✅ [percentualRepasse] Usando percentual do histórico de vigências:',
+        percentualRepasseVigente.percentual
+      );
       return percentualRepasseVigente.percentual;
     }
     const fallback = empresaAtual?.percentual_repasse_mensal ?? 100;
     console.log('⚠️ [percentualRepasse] Usando fallback da tabela empresas_clientes:', fallback);
     return fallback;
   }, [percentualRepasseVigente, empresaAtual]);
-  
+
   // Calcular os meses do período baseado na vigência
   const mesesDoPeriodo = useMemo(
     () => calcularMesesDoPeriodo(empresaAtual, mesAno),
@@ -169,157 +200,179 @@ export default function ControleBancoHoras() {
     isLoading: isLoading1,
     isFetching: isFetching1,
     recalcular: recalcular1,
-    isRecalculating: isRecalculating1
+    isRecalculating: isRecalculating1,
   } = useBancoHorasCalculos(empresaSelecionada, mesesDoPeriodo[0]?.mes, mesesDoPeriodo[0]?.ano);
-  
+
   // Buscar cálculo do segundo mês (condicional ao período)
   const {
     calculo: calculo2,
     isLoading: isLoading2,
     isFetching: isFetching2,
     recalcular: recalcular2,
-    isRecalculating: isRecalculating2
+    isRecalculating: isRecalculating2,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 2 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 2
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[1]?.mes,
     mesesDoPeriodo[1]?.ano
   );
-  
+
   // Buscar cálculo do terceiro mês (condicional ao período)
   const {
     calculo: calculo3,
     isLoading: isLoading3,
     isFetching: isFetching3,
     recalcular: recalcular3,
-    isRecalculating: isRecalculating3
+    isRecalculating: isRecalculating3,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 3 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 3
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[2]?.mes,
     mesesDoPeriodo[2]?.ano
   );
-  
+
   // Buscar cálculo do quarto mês (condicional ao período)
   const {
     calculo: calculo4,
     isLoading: isLoading4,
     isFetching: isFetching4,
     recalcular: recalcular4,
-    isRecalculating: isRecalculating4
+    isRecalculating: isRecalculating4,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 4 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 4
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[3]?.mes,
     mesesDoPeriodo[3]?.ano
   );
-  
+
   // Buscar cálculo do quinto mês (condicional ao período)
   const {
     calculo: calculo5,
     isLoading: isLoading5,
     isFetching: isFetching5,
     recalcular: recalcular5,
-    isRecalculating: isRecalculating5
+    isRecalculating: isRecalculating5,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 5 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 5
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[4]?.mes,
     mesesDoPeriodo[4]?.ano
   );
-  
+
   // Buscar cálculo do sexto mês (condicional ao período)
   const {
     calculo: calculo6,
     isLoading: isLoading6,
     isFetching: isFetching6,
     recalcular: recalcular6,
-    isRecalculating: isRecalculating6
+    isRecalculating: isRecalculating6,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 6 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 6
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[5]?.mes,
     mesesDoPeriodo[5]?.ano
   );
-  
+
   // Buscar cálculo do sétimo mês (condicional ao período)
   const {
     calculo: calculo7,
     isLoading: isLoading7,
     isFetching: isFetching7,
     recalcular: recalcular7,
-    isRecalculating: isRecalculating7
+    isRecalculating: isRecalculating7,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 7 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 7
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[6]?.mes,
     mesesDoPeriodo[6]?.ano
   );
-  
+
   // Buscar cálculo do oitavo mês (condicional ao período)
   const {
     calculo: calculo8,
     isLoading: isLoading8,
     isFetching: isFetching8,
     recalcular: recalcular8,
-    isRecalculating: isRecalculating8
+    isRecalculating: isRecalculating8,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 8 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 8
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[7]?.mes,
     mesesDoPeriodo[7]?.ano
   );
-  
+
   // Buscar cálculo do nono mês (condicional ao período)
   const {
     calculo: calculo9,
     isLoading: isLoading9,
     isFetching: isFetching9,
     recalcular: recalcular9,
-    isRecalculating: isRecalculating9
+    isRecalculating: isRecalculating9,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 9 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 9
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[8]?.mes,
     mesesDoPeriodo[8]?.ano
   );
-  
+
   // Buscar cálculo do décimo mês (condicional ao período)
   const {
     calculo: calculo10,
     isLoading: isLoading10,
     isFetching: isFetching10,
     recalcular: recalcular10,
-    isRecalculating: isRecalculating10
+    isRecalculating: isRecalculating10,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 10 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 10
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[9]?.mes,
     mesesDoPeriodo[9]?.ano
   );
-  
+
   // Buscar cálculo do décimo primeiro mês (condicional ao período)
   const {
     calculo: calculo11,
     isLoading: isLoading11,
     isFetching: isFetching11,
     recalcular: recalcular11,
-    isRecalculating: isRecalculating11
+    isRecalculating: isRecalculating11,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 11 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 11
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[10]?.mes,
     mesesDoPeriodo[10]?.ano
   );
-  
+
   // Buscar cálculo do décimo segundo mês (condicional ao período)
   const {
     calculo: calculo12,
     isLoading: isLoading12,
     isFetching: isFetching12,
     recalcular: recalcular12,
-    isRecalculating: isRecalculating12
+    isRecalculating: isRecalculating12,
   } = useBancoHorasCalculos(
-    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 12 ? empresaSelecionada : undefined,
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 12
+      ? empresaSelecionada
+      : undefined,
     mesesDoPeriodo[11]?.mes,
     mesesDoPeriodo[11]?.ano
   );
-  
+
   // Montar array de cálculos baseado no período
   const calculos = useMemo(() => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
     const resultado: BancoHorasCalculo[] = [];
-    
+
     if (calculo1) resultado.push(calculo1);
     if (periodoApuracao >= 2 && calculo2) resultado.push(calculo2);
     if (periodoApuracao >= 3 && calculo3) resultado.push(calculo3);
@@ -332,44 +385,95 @@ export default function ControleBancoHoras() {
     if (periodoApuracao >= 10 && calculo10) resultado.push(calculo10);
     if (periodoApuracao >= 11 && calculo11) resultado.push(calculo11);
     if (periodoApuracao >= 12 && calculo12) resultado.push(calculo12);
-    
+
     return resultado;
-  }, [calculo1, calculo2, calculo3, calculo4, calculo5, calculo6, calculo7, calculo8, calculo9, calculo10, calculo11, calculo12, empresaAtual]);
-  
-  const isLoadingCalculos = isLoading1 || isLoading2 || isLoading3 || isLoading4 || isLoading5 || isLoading6 || isLoading7 || isLoading8 || isLoading9 || isLoading10 || isLoading11 || isLoading12;
-  const isFetchingCalculos = isFetching1 || isFetching2 || isFetching3 || isFetching4 || isFetching5 || isFetching6 || isFetching7 || isFetching8 || isFetching9 || isFetching10 || isFetching11 || isFetching12;
-  const isRecalculatingAny = isRecalculating1 || isRecalculating2 || isRecalculating3 || isRecalculating4 || isRecalculating5 || isRecalculating6 || isRecalculating7 || isRecalculating8 || isRecalculating9 || isRecalculating10 || isRecalculating11 || isRecalculating12;
-  
+  }, [
+    calculo1,
+    calculo2,
+    calculo3,
+    calculo4,
+    calculo5,
+    calculo6,
+    calculo7,
+    calculo8,
+    calculo9,
+    calculo10,
+    calculo11,
+    calculo12,
+    empresaAtual,
+  ]);
+
+  const isLoadingCalculos =
+    isLoading1 ||
+    isLoading2 ||
+    isLoading3 ||
+    isLoading4 ||
+    isLoading5 ||
+    isLoading6 ||
+    isLoading7 ||
+    isLoading8 ||
+    isLoading9 ||
+    isLoading10 ||
+    isLoading11 ||
+    isLoading12;
+  const isFetchingCalculos =
+    isFetching1 ||
+    isFetching2 ||
+    isFetching3 ||
+    isFetching4 ||
+    isFetching5 ||
+    isFetching6 ||
+    isFetching7 ||
+    isFetching8 ||
+    isFetching9 ||
+    isFetching10 ||
+    isFetching11 ||
+    isFetching12;
+  const isRecalculatingAny =
+    isRecalculating1 ||
+    isRecalculating2 ||
+    isRecalculating3 ||
+    isRecalculating4 ||
+    isRecalculating5 ||
+    isRecalculating6 ||
+    isRecalculating7 ||
+    isRecalculating8 ||
+    isRecalculating9 ||
+    isRecalculating10 ||
+    isRecalculating11 ||
+    isRecalculating12;
+
   // Buscar alocações
-  const {
-    alocacoes,
-    isLoading: isLoadingAlocacoes
-  } = useAlocacoes(empresaSelecionada);
-  
+  const { alocacoes, isLoading: isLoadingAlocacoes } = useAlocacoes(empresaSelecionada);
+
   // Buscar cálculos segmentados
-  const {
-    calculosSegmentados,
-    isLoading: isLoadingSegmentados
-  } = useCalculosSegmentados(empresaSelecionada, mesAno.mes, mesAno.ano);
-  
+  const { calculosSegmentados, isLoading: isLoadingSegmentados } = useCalculosSegmentados(
+    empresaSelecionada,
+    mesAno.mes,
+    mesAno.ano
+  );
+
   // Buscar versões de todos os meses do período
   const {
     versoes,
     isLoading: isLoadingVersoes,
-    refetch: refetchVersoes
+    refetch: refetchVersoes,
   } = useVersoesPeriodo(empresaSelecionada, mesesDoPeriodo);
-  
+
   // Buscar requerimentos do período
   // ✅ Buscar TODOS os requerimentos do cliente primeiro
   const { data: requerimentosTodos, isLoading: isLoadingRequerimentos } = useRequerimentos(
-    empresaSelecionada ? {
-      cliente_id: empresaSelecionada
-    } : undefined
+    empresaSelecionada
+      ? {
+          cliente_id: empresaSelecionada,
+        }
+      : undefined
   );
-  
+
   // Requerimentos CONCLUÍDOS do período atual (tabela "Requerimentos do Período")
   const requerimentosConcluidos = useMemo(
-    () => (requerimentosTodos ? filtrarRequerimentosDoPeriodo(requerimentosTodos, mesesDoPeriodo) : []),
+    () =>
+      requerimentosTodos ? filtrarRequerimentosDoPeriodo(requerimentosTodos, mesesDoPeriodo) : [],
     [requerimentosTodos, mesesDoPeriodo]
   );
 
@@ -380,59 +484,62 @@ export default function ControleBancoHoras() {
   const requerimentosNaoConcluidos = useMemo(() => {
     return []; // ✅ Sempre vazio - tabela removida
   }, []);
-  
+
   // Requerimentos EM DESENVOLVIMENTO (lançados, ainda não enviados para faturamento)
   const requerimentosEmDesenvolvimento = useMemo(
-    () => (requerimentosTodos ? filtrarRequerimentosEmDesenvolvimento(requerimentosTodos, mesesDoPeriodo) : []),
+    () =>
+      requerimentosTodos
+        ? filtrarRequerimentosEmDesenvolvimento(requerimentosTodos, mesesDoPeriodo)
+        : [],
     [requerimentosTodos, mesesDoPeriodo]
   );
   // ✅ REMOVIDO: Não selecionar empresa automaticamente
   // Usuário deve escolher manualmente no dropdown
-  
+
   // ✅ NOVO: Resetar para mês corrente quando empresa muda
   useEffect(() => {
     if (empresaSelecionada) {
       const hoje = new Date();
       const mesAtual = hoje.getMonth() + 1;
       const anoAtual = hoje.getFullYear();
-      
+
       console.log('🔄 [ControleBancoHoras] Empresa alterada, resetando para mês corrente:', {
         empresa: empresaAtual?.nome_abreviado,
         mesAtual,
-        anoAtual
+        anoAtual,
       });
-      
+
       setMesAno({
         mes: mesAtual,
-        ano: anoAtual
+        ano: anoAtual,
       });
     }
   }, [empresaSelecionada]); // Executar sempre que empresa muda
-  
+
   // ✅ NOVO: Hook para calcular período sequencialmente
   // Garante que os meses sejam calculados na ordem correta para repasses
   useEffect(() => {
     if (!empresaSelecionada || !mesesDoPeriodo || mesesDoPeriodo.length === 0) return;
-    
+
     console.log('🎯 [useEffect] Detectada mudança - iniciando cálculo sequencial:', {
       empresaSelecionada,
       mesesDoPeriodo,
-      motivo: 'Empresa ou período mudou'
+      motivo: 'Empresa ou período mudou',
     });
-    
+
     const calcularPeriodoSequencial = async () => {
       try {
         setIsCalculandoPeriodo(true);
         console.log('🔄 [ControleBancoHoras] Calculando período sequencialmente...');
         console.log(`📊 Total de meses a calcular: ${mesesDoPeriodo.length}`);
-        console.log(`📅 Período: ${mesesDoPeriodo.map(m => `${m.mes}/${m.ano}`).join(', ')}`);
-        
+        console.log(`📅 Período: ${mesesDoPeriodo.map((m) => `${m.mes}/${m.ano}`).join(', ')}`);
+
         // ✅ CRÍTICO: Calcular SEQUENCIALMENTE para garantir repasses corretos
         // Cada mês precisa do repasse do mês anterior, então não podemos calcular em paralelo
         for (let i = 0; i < mesesDoPeriodo.length; i++) {
           const { mes, ano } = mesesDoPeriodo[i];
           console.log(`📅 Calculando mês ${mes}/${ano} (${i + 1}/${mesesDoPeriodo.length})...`);
-          
+
           // Calcular mês e aguardar conclusão antes de prosseguir
           if (i === 0 && recalcular1) {
             await recalcular1();
@@ -471,13 +578,13 @@ export default function ControleBancoHoras() {
             await recalcular12();
             console.log(`✅ Mês ${mes}/${ano} calculado`);
           }
-          
+
           // ✅ CRÍTICO: Pequeno delay para garantir que o banco salvou
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        
+
         console.log('✅ Período calculado sequencialmente com sucesso!');
-        
+
         toast({
           title: t('bankHours.calculationComplete'),
           description: t('bankHours.monthsCalculated', { count: mesesDoPeriodo.length }),
@@ -493,48 +600,50 @@ export default function ControleBancoHoras() {
         setIsCalculandoPeriodo(false);
       }
     };
-    
+
     // ✅ CRÍTICO: Executar quando empresa OU meses do período mudam
     // Isso garante que ao navegar entre períodos, os cálculos sejam refeitos
     calcularPeriodoSequencial();
   }, [empresaSelecionada, JSON.stringify(mesesDoPeriodo)]); // ✅ Empresa OU período
-  
+
   // Verificar se há alocações
   const temAlocacoes = alocacoes && alocacoes.length > 0;
   const handleMesAnterior = () => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
-    
+
     // Verificar se há vigência definida
     if (empresaAtual?.inicio_vigencia) {
       const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
       const mesInicioVigencia = inicioVigencia.getUTCMonth() + 1;
       const anoInicioVigencia = inicioVigencia.getUTCFullYear();
-      
+
       // Calcular o novo período
       const novoMes = mesAno.mes - periodoApuracao;
       let novoMesCalculado = novoMes;
       let novoAnoCalculado = mesAno.ano;
-      
+
       if (novoMes < 1) {
         novoMesCalculado = 12 + novoMes;
         novoAnoCalculado = mesAno.ano - 1;
       }
-      
+
       // Verificar se o novo período seria anterior à vigência
       const dataNovoPeríodo = new Date(novoAnoCalculado, novoMesCalculado - 1, 1);
       const dataVigencia = new Date(anoInicioVigencia, mesInicioVigencia - 1, 1);
-      
+
       if (dataNovoPeríodo < dataVigencia) {
         toast({
           title: t('bankHours.periodNotAvailable'),
-          description: t('bankHours.periodNotAvailableDesc', { date: `${String(mesInicioVigencia).padStart(2, '0')}/${anoInicioVigencia}` }),
+          description: t('bankHours.periodNotAvailableDesc', {
+            date: `${String(mesInicioVigencia).padStart(2, '0')}/${anoInicioVigencia}`,
+          }),
           variant: 'destructive',
         });
         return; // Bloquear navegação
       }
     }
-    
-    setMesAno(prev => {
+
+    setMesAno((prev) => {
       const novoMes = prev.mes - periodoApuracao;
       if (novoMes < 1) {
         return { mes: 12 + novoMes, ano: prev.ano - 1 };
@@ -542,38 +651,38 @@ export default function ControleBancoHoras() {
       return { mes: novoMes, ano: prev.ano };
     });
   };
-  
+
   // Verificar se pode navegar para período anterior
   const podeNavegarAnterior = useMemo(() => {
     if (!empresaAtual?.inicio_vigencia) return true; // Se não tem vigência, permite navegar
-    
+
     const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
     const mesInicioVigencia = inicioVigencia.getUTCMonth() + 1;
     const anoInicioVigencia = inicioVigencia.getUTCFullYear();
-    
+
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
-    
+
     // Calcular o período anterior
     const mesAnterior = mesAno.mes - periodoApuracao;
     let mesAnteriorCalculado = mesAnterior;
     let anoAnteriorCalculado = mesAno.ano;
-    
+
     if (mesAnterior < 1) {
       mesAnteriorCalculado = 12 + mesAnterior;
       anoAnteriorCalculado = mesAno.ano - 1;
     }
-    
+
     // Verificar se o período anterior seria anterior à vigência
     const dataPeríodoAnterior = new Date(anoAnteriorCalculado, mesAnteriorCalculado - 1, 1);
     const dataVigencia = new Date(anoInicioVigencia, mesInicioVigencia - 1, 1);
-    
+
     return dataPeríodoAnterior >= dataVigencia;
   }, [empresaAtual, mesAno]);
 
   const handleProximoMes = () => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
-    
-    setMesAno(prev => {
+
+    setMesAno((prev) => {
       const novoMes = prev.mes + periodoApuracao;
       if (novoMes > 12) {
         return { mes: novoMes - 12, ano: prev.ano + 1 };
@@ -581,10 +690,10 @@ export default function ControleBancoHoras() {
       return { mes: novoMes, ano: prev.ano };
     });
   };
-  
+
   // Formatar período baseado nos meses reais do período
   const formatarPeriodo = useMemo(() => {
-    const getMonthNamei18n = (monthIndex: number) => 
+    const getMonthNamei18n = (monthIndex: number) =>
       t(`bankHours.months.${MONTH_KEYS[monthIndex - 1]}`);
 
     if (mesesDoPeriodo.length === 1) {
@@ -595,11 +704,11 @@ export default function ControleBancoHoras() {
       // Múltiplos meses - mostrar intervalo
       const primeiro = mesesDoPeriodo[0];
       const ultimo = mesesDoPeriodo[mesesDoPeriodo.length - 1];
-      
+
       // Anos abreviados (ex: 2025 -> 25)
       const anoAbreviadoPrimeiro = String(primeiro.ano).slice(-2);
       const anoAbreviadoUltimo = String(ultimo.ano).slice(-2);
-      
+
       if (primeiro.ano === ultimo.ano) {
         // Mesmo ano (ex: Novembro - Dezembro/25)
         return `${getMonthNamei18n(primeiro.mes)} - ${getMonthNamei18n(ultimo.mes)}/${anoAbreviadoPrimeiro}`;
@@ -609,12 +718,12 @@ export default function ControleBancoHoras() {
       }
     }
   }, [mesesDoPeriodo, t]);
-  
+
   // Handler de recálculo
   const handleRecalcular = async () => {
     try {
       const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
-      
+
       // Recalcular baseado no período
       const recalculos = [];
       if (periodoApuracao >= 1) recalculos.push(recalcular1());
@@ -629,9 +738,9 @@ export default function ControleBancoHoras() {
       if (periodoApuracao >= 10) recalculos.push(recalcular10());
       if (periodoApuracao >= 11) recalculos.push(recalcular11());
       if (periodoApuracao >= 12) recalculos.push(recalcular12());
-      
+
       await Promise.all(recalculos);
-      
+
       toast({
         title: t('bankHours.recalculationComplete'),
         description: t('bankHours.recalculationSuccess'),
@@ -645,19 +754,19 @@ export default function ControleBancoHoras() {
       });
     }
   };
-  
+
   // Handler de histórico
   const handleHistorico = async () => {
     console.log('📖 Abrindo histórico...');
     console.log('🔄 Forçando refetch de versões...');
-    
+
     // Forçar refetch das versões antes de abrir o modal
     await refetchVersoes();
-    
+
     console.log('✅ Versões atualizadas, abrindo modal...');
     setModalHistoricoAberto(true);
   };
-  
+
   // Calcular estatísticas
   const estatisticas = useMemo(() => {
     if (!calculos[0]) {
@@ -665,79 +774,85 @@ export default function ControleBancoHoras() {
         baseline: '00:00',
         saldoMesVigente: '00:00',
         requerimentosTrimestre: '00:00',
-        excedentes: 'R$ 0,00'
+        excedentes: 'R$ 0,00',
       };
     }
-    
+
     // Verificar se é tipo ticket (singular ou plural)
-    const isTicket = empresaAtual?.tipo_contrato?.toLowerCase() === 'ticket' || 
-                     empresaAtual?.tipo_contrato?.toLowerCase() === 'tickets';
-    
+    const isTicket =
+      empresaAtual?.tipo_contrato?.toLowerCase() === 'ticket' ||
+      empresaAtual?.tipo_contrato?.toLowerCase() === 'tickets';
+
     // Saldo do mês vigente (último mês do período)
     const mesVigente = calculos[calculos.length - 1];
-    
+
     if (isTicket) {
       // Para TICKETS: exibir valores numéricos
       const baselineTickets = calculos[0].baseline_tickets || 0;
       const saldoTickets = mesVigente.saldo_tickets || 0;
-      
+
       // Totalizar requerimentos do trimestre em tickets
       let totalRequerimentosTickets = 0;
-      calculos.forEach(calculo => {
+      calculos.forEach((calculo) => {
         if (calculo.requerimentos_tickets) {
           totalRequerimentosTickets += calculo.requerimentos_tickets;
         }
       });
-      
+
       // Calcular valor total dos excedentes (último mês do período)
-      const valorExcedentes = mesVigente.valor_a_faturar 
-        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mesVigente.valor_a_faturar)
+      const valorExcedentes = mesVigente.valor_a_faturar
+        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+            mesVigente.valor_a_faturar
+          )
         : 'R$ 0,00';
-      
+
       return {
         baseline: String(Math.round(baselineTickets)),
         saldoMesVigente: String(Math.round(saldoTickets)),
         requerimentosTrimestre: String(Math.round(totalRequerimentosTickets)),
-        excedentes: valorExcedentes
+        excedentes: valorExcedentes,
       };
     } else {
       // Para HORAS: exibir formato HH:MM
       // Totalizar requerimentos do trimestre
       let totalRequerimentosMinutos = 0;
-      calculos.forEach(calculo => {
+      calculos.forEach((calculo) => {
         if (calculo.requerimentos_horas) {
           totalRequerimentosMinutos += converterHorasParaMinutos(calculo.requerimentos_horas);
         }
       });
-      
+
       const requerimentosHoras = Math.floor(totalRequerimentosMinutos / 60);
       const requerimentosMinutos = totalRequerimentosMinutos % 60;
       const requerimentosFormatado = `${String(requerimentosHoras).padStart(2, '0')}:${String(requerimentosMinutos).padStart(2, '0')}`;
-      
+
       // Calcular valor total dos excedentes (último mês do período)
-      const valorExcedentes = mesVigente.valor_a_faturar 
-        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mesVigente.valor_a_faturar)
+      const valorExcedentes = mesVigente.valor_a_faturar
+        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+            mesVigente.valor_a_faturar
+          )
         : 'R$ 0,00';
-      
+
       return {
         baseline: calculos[0].baseline_horas || '00:00',
         saldoMesVigente: mesVigente.saldo_horas || '00:00',
         requerimentosTrimestre: requerimentosFormatado,
-        excedentes: valorExcedentes
+        excedentes: valorExcedentes,
       };
     }
   }, [calculos, empresaAtual]);
-  
+
   // Determinar cor do saldo do mês vigente
   const saldoColor = useMemo(() => {
     if (calculos.length === 0) return 'text-gray-900';
     const mesVigente = calculos[calculos.length - 1];
     if (!mesVigente) return 'text-gray-900';
-    
+
     // Verificar se é tipo ticket (singular ou plural)
-    const isTicket = empresaAtual?.tipo_contrato?.toLowerCase() === 'ticket' || 
-                     empresaAtual?.tipo_contrato?.toLowerCase() === 'tickets';
-    
+    const isTicket =
+      empresaAtual?.tipo_contrato?.toLowerCase() === 'ticket' ||
+      empresaAtual?.tipo_contrato?.toLowerCase() === 'tickets';
+
     if (isTicket) {
       // Para tickets, usar saldo_tickets
       const saldoTickets = mesVigente.saldo_tickets;
@@ -754,10 +869,11 @@ export default function ControleBancoHoras() {
       return 'text-gray-900';
     }
   }, [calculos, empresaAtual]);
-  
+
   // Loading state
-  const isLoading = isLoadingEmpresas || isLoadingCalculos || isLoadingAlocacoes || isLoadingRequerimentos;
-  
+  const isLoading =
+    isLoadingEmpresas || isLoadingCalculos || isLoadingAlocacoes || isLoadingRequerimentos;
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -896,18 +1012,22 @@ export default function ControleBancoHoras() {
                   onClick={handleMesAnterior}
                   disabled={isLoading || isCalculandoPeriodo || !podeNavegarAnterior}
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
-                  title={!podeNavegarAnterior ? t('bankHours.periodNotAvailable') : t('bankHours.previous')}
+                  title={
+                    !podeNavegarAnterior
+                      ? t('bankHours.periodNotAvailable')
+                      : t('bankHours.previous')
+                  }
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <span className="hidden sm:inline">{t('bankHours.previous')}</span>
                 </Button>
-                
+
                 <div className="text-center flex-1">
                   <div className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-white">
                     {formatarPeriodo}
                   </div>
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -921,6 +1041,22 @@ export default function ControleBancoHoras() {
               </div>
             </CardContent>
           </Card>
+
+          {liberada && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-900">
+                <strong>{t('controleBancoHoras.legadoLiberada.titulo')}</strong>{' '}
+                {t('controleBancoHoras.legadoLiberada.texto')}{' '}
+                <Link
+                  to={`/admin/bancos-horas?empresa=${empresaSelecionada}`}
+                  className="font-medium underline"
+                >
+                  {t('controleBancoHoras.legadoLiberada.abrir')}
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Conteúdo Principal */}
           {isCalculandoPeriodo ? (
@@ -942,12 +1078,8 @@ export default function ControleBancoHoras() {
               <CardContent className="py-12">
                 <div className="text-center">
                   <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-2 font-medium">
-                    {t('bankHours.selectACompany')}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {t('bankHours.selectCompanyDescription')}
-                  </p>
+                  <p className="text-gray-500 mb-2 font-medium">{t('bankHours.selectACompany')}</p>
+                  <p className="text-sm text-gray-400">{t('bankHours.selectCompanyDescription')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -956,12 +1088,8 @@ export default function ControleBancoHoras() {
               <CardContent className="py-12">
                 <div className="text-center">
                   <RefreshCw className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
-                  <p className="text-gray-500 mb-2 font-medium">
-                    {t('bankHours.loadingData')}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {t('bankHours.loadingDataDescription')}
-                  </p>
+                  <p className="text-gray-500 mb-2 font-medium">{t('bankHours.loadingData')}</p>
+                  <p className="text-sm text-gray-400">{t('bankHours.loadingDataDescription')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -981,7 +1109,9 @@ export default function ControleBancoHoras() {
                     onClick={handleRecalcular}
                     disabled={isRecalculatingAny}
                   >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isRecalculatingAny ? 'animate-spin' : ''}`} />
+                    <RefreshCw
+                      className={`h-4 w-4 mr-2 ${isRecalculatingAny ? 'animate-spin' : ''}`}
+                    />
                     {isRecalculatingAny ? t('bankHours.calculating') : t('bankHours.calculateNow')}
                   </Button>
                 </div>
@@ -989,15 +1119,19 @@ export default function ControleBancoHoras() {
             </Card>
           ) : empresaAtual?.tipo_contrato?.toLowerCase() === 'ambos' ? (
             // Cliente com tipo "ambos" - mostrar abas Tickets e Horas
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'consolidada' | 'segmentada')} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as 'consolidada' | 'segmentada')}
+              className="w-full"
+            >
               <TabsList className="bg-gray-100 p-1 rounded-lg">
-                <TabsTrigger 
+                <TabsTrigger
                   value="consolidada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
                   {t('bankHours.consolidatedViewTickets')}
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="segmentada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
@@ -1025,6 +1159,7 @@ export default function ControleBancoHoras() {
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                   empresaAtual={empresaAtual}
+                  lancamentosBloqueados={liberada}
                 />
               </TabsContent>
 
@@ -1048,20 +1183,25 @@ export default function ControleBancoHoras() {
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                   empresaAtual={empresaAtual}
+                  lancamentosBloqueados={liberada}
                 />
               </TabsContent>
             </Tabs>
           ) : empresaAtual?.baseline_segmentado ? (
             // Cliente com baseline segmentado - mostrar abas Consolidada e Segmentada
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'consolidada' | 'segmentada')} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as 'consolidada' | 'segmentada')}
+              className="w-full"
+            >
               <TabsList className="bg-gray-100 p-1 rounded-lg">
-                <TabsTrigger 
+                <TabsTrigger
                   value="consolidada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
                   {t('bankHours.consolidatedView')}
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="segmentada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
@@ -1089,6 +1229,7 @@ export default function ControleBancoHoras() {
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                   empresaAtual={empresaAtual}
+                  lancamentosBloqueados={liberada}
                 />
               </TabsContent>
 
@@ -1096,7 +1237,9 @@ export default function ControleBancoHoras() {
               <TabsContent value="segmentada" className="mt-6">
                 <VisaoSegmentada
                   empresaId={empresaSelecionada!}
-                  segmentacaoConfig={empresaAtual?.segmentacao_config as unknown as SegmentacaoConfig | undefined}
+                  segmentacaoConfig={
+                    empresaAtual?.segmentacao_config as unknown as SegmentacaoConfig | undefined
+                  }
                   mesAno={mesAno}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
                   percentualRepasseMensal={percentualRepasseEfetivo}
@@ -1132,6 +1275,7 @@ export default function ControleBancoHoras() {
               inicioVigencia={empresaAtual?.inicio_vigencia}
               templatePadrao={empresaAtual?.template_padrao}
               empresaAtual={empresaAtual}
+              lancamentosBloqueados={liberada}
             />
           )}
         </div>

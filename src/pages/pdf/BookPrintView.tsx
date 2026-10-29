@@ -24,6 +24,8 @@ import BookVolumetria from '@/components/admin/books/BookVolumetria';
 import BookSLA from '@/components/admin/books/BookSLA';
 import BookBacklog from '@/components/admin/books/BookBacklog';
 import BookConsumo from '@/components/admin/books/BookConsumo';
+import BookConsumoBancos from '@/components/admin/books/BookConsumoBancos';
+import { useConsumoBancosDoBook } from '@/hooks/useConsumoBancosDoBook';
 import BookPesquisa from '@/components/admin/books/BookPesquisa';
 import BookPortfolio from '@/components/admin/books/BookPortfolio';
 import BookOrganograma from '@/components/admin/books/BookOrganograma';
@@ -74,6 +76,14 @@ export default function BookPrintView() {
     useEmpresaSegmentacao(bookData?.empresa_id || null);
   const [isReady, setIsReady] = useState(false);
   const [consumoDataLoaded, setConsumoDataLoaded] = useState(false);
+
+  // Empresa liberada (Fase 5): uma página de consumo por banco, lida do snapshot da geração.
+  // Se a leitura falhar, a página não fica pronta: melhor falhar o PDF do que sair com o
+  // consumo errado.
+  const consumoBancos = useConsumoBancosDoBook(id || null);
+  const porBanco = consumoBancos.bancos.length > 0;
+  const consumoPronto =
+    consumoBancos.carregado && !consumoBancos.erro && (porBanco || consumoDataLoaded);
 
   // Abas de requerimentos: mesma origem de dados do BookViewer (snapshot ou tempo real)
   const { requerimentosEmDesenvolvimento, isLoading: isLoadingReqAndamento } =
@@ -143,13 +153,7 @@ export default function BookPrintView() {
   }, [id, isLoading, isLoadingProdutos, bookData, produtos, error]);
 
   useEffect(() => {
-    if (
-      !isLoading &&
-      !isLoadingProdutos &&
-      bookData &&
-      consumoDataLoaded &&
-      requerimentosCarregados
-    ) {
+    if (!isLoading && !isLoadingProdutos && bookData && consumoPronto && requerimentosCarregados) {
       console.log('✅ Dados carregados (incluindo banco de horas), aguardando fontes...');
 
       // Aguardar carregamento de fontes
@@ -163,7 +167,7 @@ export default function BookPrintView() {
         }, 8000); // Aumentado de 5s para 8s para dar tempo dos organogramas renderizarem
       });
     }
-  }, [isLoading, isLoadingProdutos, bookData, consumoDataLoaded, requerimentosCarregados]);
+  }, [isLoading, isLoadingProdutos, bookData, consumoPronto, requerimentosCarregados]);
 
   // Loading state
   if (isLoading || isLoadingProdutos) {
@@ -306,37 +310,51 @@ export default function BookPrintView() {
         />
       </div>
 
-      {/* Consumo */}
-      <div className="page-section page-break" data-section="consumo">
-        <BookConsumo
-          data={bookData.consumo}
-          empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-          empresaId={bookData.empresa_id}
-          mes={bookData.mes}
-          ano={bookData.ano}
-          onDataLoaded={() => setConsumoDataLoaded(true)}
-        />
-      </div>
-
-      {/* Consumo Segmentado (condicional) */}
-      {baselineSegmentado &&
-        paginasSegmentos.length > 0 &&
-        paginasSegmentos.map((indices, pageIdx) => (
+      {/* Consumo: por banco (empresa liberada) ou a página atual com o segmentado */}
+      {porBanco ? (
+        consumoBancos.bancos.map((banco, i) => (
           <div
-            key={`consumo-seg-${pageIdx}`}
+            key={banco.banco_id}
             className="page-section page-break"
-            data-section={`consumo-segmentado-${pageIdx}`}
+            data-section={`consumo-banco-${i}`}
           >
-            <BookConsumoSegmentado
-              empresaId={bookData.empresa_id}
+            <BookConsumoBancos banco={banco} empresaDoBook={bookData.empresa_id} />
+          </div>
+        ))
+      ) : (
+        <>
+          <div className="page-section page-break" data-section="consumo">
+            <BookConsumo
+              data={bookData.consumo}
               empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+              empresaId={bookData.empresa_id}
               mes={bookData.mes}
               ano={bookData.ano}
-              segmentosIndices={indices}
-              snapshotData={bookData.consumo_segmentado}
+              onDataLoaded={() => setConsumoDataLoaded(true)}
             />
           </div>
-        ))}
+
+          {/* Consumo Segmentado (condicional) */}
+          {baselineSegmentado &&
+            paginasSegmentos.length > 0 &&
+            paginasSegmentos.map((indices, pageIdx) => (
+              <div
+                key={`consumo-seg-${pageIdx}`}
+                className="page-section page-break"
+                data-section={`consumo-segmentado-${pageIdx}`}
+              >
+                <BookConsumoSegmentado
+                  empresaId={bookData.empresa_id}
+                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  mes={bookData.mes}
+                  ano={bookData.ano}
+                  segmentosIndices={indices}
+                  snapshotData={bookData.consumo_segmentado}
+                />
+              </div>
+            ))}
+        </>
+      )}
 
       {/* Requerimentos em Andamento (condicional, paginado) */}
       {paginarRequerimentosBook(requerimentosEmDesenvolvimento).map((pagina, pageIdx, paginas) => (

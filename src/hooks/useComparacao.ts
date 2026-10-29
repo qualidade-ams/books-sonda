@@ -4,10 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { textoDoErro } from '@/errors/erroTraduzivel';
 import { comparacaoService } from '@/services/comparacaoService';
+import { bookConsumoBancosService } from '@/services/bookConsumoBancosService';
+import { enviarSaldoParcialDeTeste } from '@/services/saldoParcial/envioTeste';
 import { grupoDaComparacao } from '@/utils/comparacaoTela';
+import type { MesAno } from '@/services/bancosHoras/calculo';
 import type { GrupoComparacao } from '@/types/comparacao';
 
 const CHAVE = ['comparacao-bh'];
+/** Chave das consultas do Controle (useControleBancoHoras) */
+const CHAVE_CONTROLE = 'controle-bh';
 
 /** Recálculo pedido ao sync-api: a empresa e o que ela tinha antes */
 interface Recalculo {
@@ -38,6 +43,7 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
       explicada: 0,
       divergente: 0,
       validada: 0,
+      liberada: 0,
     };
     for (const e of empresas) {
       const grupo = grupoDaComparacao(e);
@@ -110,6 +116,55 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
       }),
   });
 
+  // Fase 5: a lista e os meses mudam (grupo, validação desfeita na volta), e o Controle
+  // passa a ver o modelo novo da empresa
+  const aposTrocarModelo = () => {
+    queryClient.invalidateQueries({ queryKey: CHAVE });
+    queryClient.invalidateQueries({ queryKey: [CHAVE_CONTROLE] });
+  };
+
+  const liberar = useMutation({
+    mutationFn: (empresaId: string) => comparacaoService.liberar(empresaId),
+    onSuccess: () => toast({ title: t('avisos.comparacao.liberada') }),
+    onError: (err: Error) =>
+      toast({
+        title: t('avisos.comparacao.erroLiberar'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
+    onSettled: aposTrocarModelo,
+  });
+
+  const voltar = useMutation({
+    mutationFn: ({ empresaId, motivo }: { empresaId: string; motivo: string }) =>
+      comparacaoService.voltar(empresaId, motivo),
+    onSuccess: () => toast({ title: t('avisos.comparacao.voltouParaLegado') }),
+    onError: (err: Error) =>
+      toast({
+        title: t('avisos.comparacao.erroVoltar'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
+    onSettled: aposTrocarModelo,
+  });
+
+  // Teste antes de liberar (P7): só para quem pediu, sem histórico
+  const enviarSaldoParcialTeste = useMutation({
+    mutationFn: ({ empresaId, empresaNome }: { empresaId: string; empresaNome: string }) =>
+      enviarSaldoParcialDeTeste(empresaId, empresaNome),
+    onSuccess: () =>
+      toast({
+        title: t('avisos.comparacao.saldoTesteEnviado'),
+        description: t('avisos.comparacao.saldoTesteEnviadoDescricao'),
+      }),
+    onError: (err: Error) =>
+      toast({
+        title: t('avisos.comparacao.erroSaldoTeste'),
+        description: textoDoErro(err, t),
+        variant: 'destructive',
+      }),
+  });
+
   return {
     empresas,
     contagem,
@@ -121,7 +176,42 @@ export function useComparacao({ intervaloRecalculoMs = 10_000 } = {}) {
     recalcular: recalcular.mutateAsync,
     /** Empresa com recálculo em andamento no sync-api */
     recalculando: recalculo?.empresaId ?? null,
-    isSalvando: validar.isPending || recalcular.isPending,
+    liberar: liberar.mutateAsync,
+    voltar: voltar.mutateAsync,
+    enviarSaldoParcialTeste: enviarSaldoParcialTeste.mutateAsync,
+    enviandoSaldoParcialTeste: enviarSaldoParcialTeste.isPending,
+    isSalvando: validar.isPending || recalcular.isPending || liberar.isPending || voltar.isPending,
+  };
+}
+
+/** Book de teste (P7): os blocos por banco do mês, calculados agora, sem gravar */
+export function useBookDeTeste(empresaId: string | null, mes: MesAno | null) {
+  const query = useQuery({
+    queryKey: [...CHAVE, 'book-teste', empresaId, mes?.ano, mes?.mes],
+    queryFn: () => bookConsumoBancosService.previa(empresaId!, mes!),
+    enabled: !!empresaId && !!mes,
+    staleTime: 0,
+  });
+  return {
+    bancos: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    recarregar: query.refetch,
+  };
+}
+
+/** Reajustes e observações do Controle novo que a volta para o legado copia (P4) */
+export function useLancamentosParaLegado(empresaId: string | null) {
+  const query = useQuery({
+    queryKey: [...CHAVE, 'lancamentos-legado', empresaId],
+    queryFn: () => comparacaoService.lancamentosParaLegado(empresaId!),
+    enabled: !!empresaId,
+    staleTime: 0,
+  });
+  return {
+    lancamentos: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
   };
 }
 

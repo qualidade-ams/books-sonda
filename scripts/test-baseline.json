@@ -155,7 +155,6 @@
     "src/utils/__tests__/templateSelection.integration.test.ts > Template Selection Integration Tests > Atualização de template de empresa > deve permitir alterar template de empresa existente",
     "src/utils/__tests__/templateSelection.integration.test.ts > Template Selection Integration Tests > Criação de empresa com template personalizado > deve permitir criar empresa com template padrão inglês",
     "src/utils/__tests__/templateSelection.integration.test.ts > Template Selection Integration Tests > Criação de empresa com template personalizado > deve permitir criar empresa com template padrão português",
-    "src/utils/__tests__/templateSelection.integration.test.ts > Template Selection Integration Tests > Criação de empresa com template personalizado > deve permitir criar empresa com template personalizado (UUID)",
-    "sync-api/src/__tests__/pacoteGeracaoBooks.test.ts > pacote vendor/geracaoBooks.cjs > está atualizado em relação ao código-fonte (rode: npm run build:geracao-books)"
+    "src/utils/__tests__/templateSelection.integration.test.ts > Template Selection Integration Tests > Criação de empresa com template personalizado > deve permitir criar empresa com template personalizado (UUID)"
   ]
 }

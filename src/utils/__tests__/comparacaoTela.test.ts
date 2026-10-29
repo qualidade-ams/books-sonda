@@ -44,6 +44,7 @@ const empresa = (v: Partial<ComparacaoEmpresa>): ComparacaoEmpresa => ({
   erro: null,
   erroEm: null,
   validacao: null,
+  liberacao: null,
   ...v,
 });
 
@@ -67,6 +68,20 @@ describe('grupoDaComparacao', () => {
 
   it('sem resultado (só erro da rotina): sem grupo', () => {
     expect(grupoDaComparacao(empresa({ situacao: null }))).toBeNull();
+  });
+
+  it('liberada vale mais que tudo, mesmo sem resultado', () => {
+    const liberacao = { por: null, em: 'x', desde: { mes: 10, ano: 2026 } };
+    expect(
+      grupoDaComparacao(
+        empresa({
+          situacao: 'explicada',
+          validacao: { por: null, em: 'x', situacao: 'explicada' },
+          liberacao,
+        })
+      )
+    ).toBe('liberada');
+    expect(grupoDaComparacao(empresa({ situacao: null, liberacao }))).toBe('liberada');
   });
 });
 

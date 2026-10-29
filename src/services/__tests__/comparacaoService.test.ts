@@ -33,7 +33,13 @@ function cenario(rpcs: Record<string, (args: any) => any> = {}) {
           validacao_situacao: null,
           empresas: {
             nome_abreviado: 'EMPRESA GAMA',
-            bancos_horas: [{ ativo: true }, { ativo: false }],
+            modelo_calculo: 'legado',
+            modelo_alterado_em: null,
+            modelo_alterado_por: null,
+            bancos_horas: [
+              { id: 'b2', ativo: true },
+              { id: 'b3', ativo: false },
+            ],
           },
         },
         {
@@ -50,7 +56,13 @@ function cenario(rpcs: Record<string, (args: any) => any> = {}) {
           validada_por: 'u1',
           validada_em: '2026-10-27T15:00:00Z',
           validacao_situacao: 'identico',
-          empresas: { nome_abreviado: 'EMPRESA ALFA', bancos_horas: [{ ativo: true }] },
+          empresas: {
+            nome_abreviado: 'EMPRESA ALFA',
+            modelo_calculo: 'multiplo',
+            modelo_alterado_em: '2026-10-29T12:00:00Z',
+            modelo_alterado_por: 'u1',
+            bancos_horas: [{ id: 'b1', ativo: true }],
+          },
         },
       ],
       bancos_horas_comparacao_meses: [
@@ -79,6 +91,13 @@ function cenario(rpcs: Record<string, (args: any) => any> = {}) {
           fechamento_legado_em: '2026-01-05T12:00:00Z',
         },
         { empresa_id: 'e1', ano: 2026, mes: 9, situacao: 'igual', legado: medidas, novo: medidas },
+      ],
+      // e1 foi liberada (transição em Mar), voltou e foi liberada de novo (transição em Set)
+      bancos_horas_fechamentos: [
+        { banco_id: 'b1', ano: 2026, mes: 3, motivo: 'transicao' },
+        { banco_id: 'b1', ano: 2026, mes: 9, motivo: 'transicao' },
+        { banco_id: 'b1', ano: 2026, mes: 10, motivo: 'geracao_book' },
+        { banco_id: 'b2', ano: 2026, mes: 12, motivo: 'transicao' },
       ],
     },
     {
@@ -109,12 +128,18 @@ describe('ComparacaoService', () => {
         erro: 'Falha ao ler o fechamento',
         erroEm: '2026-10-28T10:00:00Z',
         validacao: { por: 'Usuário Teste', em: '2026-10-27T15:00:00Z', situacao: 'identico' },
+        liberacao: {
+          por: 'Usuário Teste',
+          em: '2026-10-29T12:00:00Z',
+          desde: { mes: 10, ano: 2026 },
+        },
       },
       expect.objectContaining({
         empresaId: 'e2',
         empresa: 'EMPRESA GAMA',
         bancosAtivos: 1,
         validacao: null,
+        liberacao: null,
       }),
     ]);
   });
@@ -129,6 +154,14 @@ describe('ComparacaoService', () => {
     );
     const [alfa] = await service.listar();
     expect(alfa.validacao).toEqual({ por: null, em: '2026-10-27T15:00:00Z', situacao: 'identico' });
+    expect(alfa.liberacao?.por).toBeNull();
+  });
+
+  it('liberada sem transição (sem mês fechado no legado): desde fica nulo', async () => {
+    const supabase = cenario();
+    supabase.tabelas.bancos_horas_fechamentos = [];
+    const [alfa] = await new ComparacaoService(supabase as any).listar();
+    expect(alfa.liberacao).toMatchObject({ desde: null });
   });
 
   it('meses da empresa em ordem', async () => {
@@ -170,6 +203,66 @@ describe('ComparacaoService', () => {
     const service = new ComparacaoService(supabase as any);
     await expect(service.validar('e2', true)).rejects.toMatchObject({
       chave: 'erros.falhas.validarAComparacao',
+    });
+  });
+
+  it('liberar monta a transição e grava pela função do banco', async () => {
+    const supabase = cenario({ liberar_empresa: () => ({ transicao: { ok: true } }) });
+    const transicao = { ano: 2026, mes: 9, motivo: 'transicao', bancos: [] };
+    const montar = vi.fn(async () => transicao);
+    await new ComparacaoService(supabase as any, montar as any).liberar('e2');
+    expect(montar).toHaveBeenCalledWith('e2');
+    expect(supabase.chamadasRpc).toEqual([
+      { nome: 'liberar_empresa', args: { p_empresa_id: 'e2', p_fechamento: transicao } },
+    ]);
+  });
+
+  it('liberar sem mês fechado no legado: grava sem transição', async () => {
+    const supabase = cenario({ liberar_empresa: () => ({ transicao: null }) });
+    await new ComparacaoService(supabase as any, async () => null).liberar('e2');
+    expect(supabase.chamadasRpc).toEqual([
+      { nome: 'liberar_empresa', args: { p_empresa_id: 'e2', p_fechamento: null } },
+    ]);
+  });
+
+  it('erro do banco ao liberar vira erro traduzível', async () => {
+    const supabase = cenario();
+    supabase.rpc = async () => ({
+      data: null,
+      error: { message: 'Valide a comparação da empresa antes de liberar.' },
+    });
+    await expect(
+      new ComparacaoService(supabase as any, async () => null).liberar('e2')
+    ).rejects.toMatchObject({ chave: 'erros.falhas.liberarAEmpresa' });
+  });
+
+  it('lançamentos do Controle novo que a volta copia para o legado', async () => {
+    const supabase = cenario({ lancamentos_para_legado: () => ({ reajustes: 2, observacoes: 1 }) });
+    expect(await new ComparacaoService(supabase as any).lancamentosParaLegado('e1')).toEqual({
+      reajustes: 2,
+      observacoes: 1,
+    });
+    expect(supabase.chamadasRpc).toEqual([
+      { nome: 'lancamentos_para_legado', args: { p_empresa_id: 'e1' } },
+    ]);
+  });
+
+  it('voltar para legado com o motivo, pela função do banco', async () => {
+    const supabase = cenario({ voltar_para_legado: () => ({ reajustes: 2, observacoes: 1 }) });
+    await new ComparacaoService(supabase as any).voltar('e1', '  Book saiu com o banco errado ');
+    expect(supabase.chamadasRpc).toEqual([
+      {
+        nome: 'voltar_para_legado',
+        args: { p_empresa_id: 'e1', p_motivo: 'Book saiu com o banco errado' },
+      },
+    ]);
+  });
+
+  it('erro do banco ao voltar vira erro traduzível', async () => {
+    const supabase = cenario();
+    supabase.rpc = async () => ({ data: null, error: { message: 'Informe o motivo.' } });
+    await expect(new ComparacaoService(supabase as any).voltar('e1', '')).rejects.toMatchObject({
+      chave: 'erros.falhas.voltarAEmpresaParaOLegado',
     });
   });
 

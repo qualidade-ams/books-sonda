@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const estado = vi.hoisted(() => ({
   emDesenvolvimento: [] as any[],
   faturados: [] as any[],
+  consumoBancos: [] as any[],
 }));
 
 vi.mock('react-i18next', () => ({
@@ -52,6 +53,9 @@ vi.mock('@/hooks/useRequerimentosEmDesenvolvimentoBook', () => ({
     isLoading: false,
   }),
 }));
+vi.mock('@/hooks/useConsumoBancosDoBook', () => ({
+  useConsumoBancosDoBook: () => ({ bancos: estado.consumoBancos, carregado: true, erro: null }),
+}));
 vi.mock('@/hooks/useRequerimentosFaturadosBook', () => ({
   useRequerimentosFaturadosBook: () => ({
     requerimentosFaturados: estado.faturados,
@@ -75,6 +79,9 @@ vi.mock('@/components/admin/books/BookOrganogramaComercialCS', () =>
 );
 vi.mock('@/components/admin/books/BookContraCapa', () => stub('BookContraCapa'));
 vi.mock('@/components/admin/books/BookConsumoSegmentado', () => stub('BookConsumoSegmentado'));
+vi.mock('@/components/admin/books/BookConsumoBancos', () => ({
+  default: ({ banco }: any) => <div data-testid="consumo-banco">{banco.nome_banco}</div>,
+}));
 vi.mock('@/components/admin/books/BookRequerimentos', () => ({
   default: ({ data, allData, variante = 'desenvolvimento' }: any) => (
     <div data-testid={`requerimentos-${variante}`}>
@@ -109,6 +116,7 @@ describe('BookPrintView — abas de requerimentos no PDF', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     estado.emDesenvolvimento = [];
     estado.faturados = [];
+    estado.consumoBancos = [];
   });
 
   it('inclui as páginas de requerimentos em andamento e compensados entre Consumo e Pesquisa', () => {
@@ -135,5 +143,44 @@ describe('BookPrintView — abas de requerimentos no PDF', () => {
     const { container } = renderizar();
 
     expect(secoes(container).some((s) => s.startsWith('requerimentos'))).toBe(false);
+  });
+});
+
+describe('BookPrintView — consumo por banco (Fase 5)', () => {
+  beforeEach(() => {
+    // O jsdom não tem a API de fontes; a página espera por ela antes de ficar pronta
+    Object.defineProperty(document, 'fonts', {
+      value: { ready: Promise.resolve() },
+      configurable: true,
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    estado.emDesenvolvimento = [];
+    estado.faturados = [];
+    estado.consumoBancos = [];
+  });
+
+  it('Book de empresa liberada: uma página por banco no lugar do consumo atual', () => {
+    estado.consumoBancos = [
+      { ordem: 1, banco_id: 'b1', nome_banco: 'Banco COMEX' },
+      { ordem: 2, banco_id: 'b2', nome_banco: 'Banco FISCAL' },
+    ];
+    const { container } = renderizar();
+
+    const ordem = secoes(container);
+    expect(ordem).toContain('consumo-banco-0');
+    expect(ordem).toContain('consumo-banco-1');
+    expect(ordem).not.toContain('consumo');
+    expect(screen.getAllByTestId('consumo-banco').map((el) => el.textContent)).toEqual([
+      'Banco COMEX',
+      'Banco FISCAL',
+    ]);
+    expect(screen.queryByText('BookConsumo')).not.toBeInTheDocument();
+  });
+
+  it('Book sem consumo por banco (empresa em Legado): a página de consumo atual', () => {
+    const { container } = renderizar();
+    expect(secoes(container)).toContain('consumo');
+    expect(screen.queryByTestId('consumo-banco')).not.toBeInTheDocument();
   });
 });

@@ -21,7 +21,8 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // sync-api/scripts/comparacao/entrada.ts
 var entrada_exports = {};
 __export(entrada_exports, {
-  rodarModoSombra: () => rodarModoSombra
+  rodarModoSombra: () => rodarModoSombra,
+  rodarRetroativos: () => rodarRetroativos
 });
 module.exports = __toCommonJS(entrada_exports);
 
@@ -32,13 +33,13 @@ function comCache(repo) {
   for (const nome of Object.keys(repo)) {
     const original = repo[nome];
     embrulhado[nome] = (...args) => {
-      const chave2 = `${nome}:${JSON.stringify(args)}`;
-      if (!guardadas.has(chave2)) {
+      const chave3 = `${nome}:${JSON.stringify(args)}`;
+      if (!guardadas.has(chave3)) {
         const promessa = original.apply(repo, args);
-        promessa.catch(() => guardadas.delete(chave2));
-        guardadas.set(chave2, promessa);
+        promessa.catch(() => guardadas.delete(chave3));
+        guardadas.set(chave3, promessa);
       }
-      return guardadas.get(chave2);
+      return guardadas.get(chave3);
     };
   }
   return embrulhado;
@@ -58,18 +59,18 @@ function ehFimDePeriodo(p, m) {
   return (mesesDesdeVigencia(p, m) + 1) % p.periodoApuracao === 0;
 }
 function exigirVigente(p, m) {
-  const indice6 = mesesDesdeVigencia(p, m);
-  if (indice6 < 0) {
+  const indice9 = mesesDesdeVigencia(p, m);
+  if (indice9 < 0) {
     throw new Error(`M\xEAs ${m.mes}/${m.ano} \xE9 antes do in\xEDcio da vig\xEAncia do banco`);
   }
   if (depoisDoFim(p, m)) {
     throw new Error(`M\xEAs ${m.mes}/${m.ano} \xE9 depois do fim da vig\xEAncia do banco`);
   }
-  return indice6;
+  return indice9;
 }
 function inicioDoCiclo(p, m) {
-  const indice6 = exigirVigente(p, m);
-  const inicio = indice6 - indice6 % p.periodoApuracao;
+  const indice9 = exigirVigente(p, m);
+  const inicio = indice9 - indice9 % p.periodoApuracao;
   const total = p.inicioVigencia.ano * 12 + (p.inicioVigencia.mes - 1) + inicio;
   return { mes: total % 12 + 1, ano: Math.floor(total / 12) };
 }
@@ -113,7 +114,7 @@ function validarPorPeriodo(p) {
   return { duracao, ciclo: duracao * periodos };
 }
 function aplicarRegraDeSaida(p, m, saldo, percentuais, unidade) {
-  const indice6 = exigirVigente(p, m);
+  const indice9 = exigirVigente(p, m);
   const porPeriodo = p.repasseEspecial === "por_periodo" ? validarPorPeriodo(p) : null;
   if (ehFimDePeriodo(p, m)) {
     return {
@@ -124,7 +125,7 @@ function aplicarRegraDeSaida(p, m, saldo, percentuais, unidade) {
     };
   }
   if (porPeriodo) {
-    const posicao = indice6 % porPeriodo.ciclo;
+    const posicao = indice9 % porPeriodo.ciclo;
     const transicao = posicao % porPeriodo.duracao === porPeriodo.duracao - 1;
     const percentual = transicao ? percentuais.entrePeriodos : percentuais.dentroPeriodo;
     return {
@@ -294,8 +295,8 @@ function taxaHora(taxa, tipoHora) {
   if (preenchido(funcional.valorAdicional)) return funcional.valorAdicional;
   if (taxa.tipoCalculoAdicional === "normal") return arredondar(funcional.valorBase * 1.15);
   const principais = taxa.funcoesRemotas.filter((f) => FUNCOES_MEDIA.includes(f.funcao));
-  const soma = principais.reduce((s, f) => s + horaExcedenteDaFuncao(f), 0);
-  return arredondar(soma / principais.length);
+  const soma2 = principais.reduce((s, f) => s + horaExcedenteDaFuncao(f), 0);
+  return arredondar(soma2 / principais.length);
 }
 function taxaTicket(taxa) {
   const valor = [taxa.valorTicketExcedente, taxa.ticketExcedente2, taxa.ticketExcedente].find(
@@ -635,12 +636,12 @@ async function itensDeConsumoPorBanco(repo, empresaId, mes, cadastros, classific
   }
   return itens;
 }
-async function fecharMes(repo, empresaId, mes, motivo) {
+async function montarFechamento(repo, empresaId, mes, motivo) {
   const resultado = await calcularEmpresaMes(repo, empresaId, mes, {
-    recalcularMesFechado: motivo === "retificacao"
+    recalcularMesFechado: motivo !== "geracao_book"
   });
   if (resultado.bancos.length > 0 && resultado.bancos.every((b) => b.fechado)) {
-    return { acao: "existente", fechamentos: [] };
+    return null;
   }
   const cadastros = new Map((await repo.bancos(empresaId)).map((b) => [b.bancoId, b]));
   const bancosDoMes = resultado.bancos.map((b) => b.bancoId);
@@ -682,16 +683,16 @@ async function fecharMes(repo, empresaId, mes, motivo) {
   }
   for (const b of resultado.bancos) {
     const doBanco = itens.get(b.bancoId);
-    const soma = (tipo, campo) => doBanco.filter((i) => i.tipo === tipo).reduce((s, i) => s + i[campo], 0);
-    const horasNaoBatem = b.horas && cadastros.get(b.bancoId).tipoContrato !== "ambos" && soma("apontamento", "minutos") !== b.horas.consumo;
-    const ticketsNaoBatem = b.tickets && soma("ticket", "tickets") !== b.tickets.consumo;
+    const soma2 = (tipo, campo) => doBanco.filter((i) => i.tipo === tipo).reduce((s, i) => s + i[campo], 0);
+    const horasNaoBatem = b.horas && cadastros.get(b.bancoId).tipoContrato !== "ambos" && soma2("apontamento", "minutos") !== b.horas.consumo;
+    const ticketsNaoBatem = b.tickets && soma2("ticket", "tickets") !== b.tickets.consumo;
     if (horasNaoBatem || ticketsNaoBatem) {
       throw new Error(
         `Os itens do fechamento n\xE3o batem com o consumo calculado do banco "${b.nome}". Tente de novo.`
       );
     }
   }
-  const payload = {
+  return {
     empresa_id: empresaId,
     ano: mes.ano,
     mes: mes.mes,
@@ -721,6 +722,10 @@ async function fecharMes(repo, empresaId, mes, motivo) {
       quantidade: t.quantidade
     }))
   };
+}
+async function fecharMes(repo, empresaId, mes, motivo) {
+  const payload = await montarFechamento(repo, empresaId, mes, motivo);
+  if (!payload) return { acao: "existente", fechamentos: [] };
   return repo.gravarFechamento(payload);
 }
 
@@ -879,7 +884,7 @@ function motivoSoNoNovo(d, ctx) {
     return "organizacao_so_no_novo";
   return "sem_motivo";
 }
-function motivoSoNoLegado(chave2, d, ctx) {
+function motivoSoNoLegado(chave3, d, ctx) {
   if (!d) return "removido_do_aranda";
   if (d.data) {
     if (mesmoMes(mesDaData(d.data, "UTC"), ctx.mes) && !mesmoMes(mesDaData(d.data, FUSO), ctx.mes))
@@ -894,7 +899,7 @@ function motivoSoNoLegado(chave2, d, ctx) {
   if (!ctx.codigoConta(d.codigoResolucao, d.fonte)) {
     return regraDoLegadoMudou(d.codigoResolucao, "deixouDeContar", ctx) ? "regra_do_legado" : "codigo_sem_regra";
   }
-  if (ctx.semBanco.has(chave2)) return "fora_do_escopo";
+  if (ctx.semBanco.has(chave3)) return "fora_do_escopo";
   return "sem_motivo";
 }
 function diferencasDosItens(legado, novo, dados, ctx) {
@@ -902,23 +907,23 @@ function diferencasDosItens(legado, novo, dados, ctx) {
   const doNovo = new Map(novo.map((i) => [i.chave, i]));
   const chaves = [.../* @__PURE__ */ new Set([...doLegado.keys(), ...doNovo.keys()])];
   const diferencas = [];
-  for (const chave2 of chaves) {
-    const l = doLegado.get(chave2);
-    const n = doNovo.get(chave2);
+  for (const chave3 of chaves) {
+    const l = doLegado.get(chave3);
+    const n = doNovo.get(chave3);
     if (l && n && l.minutos === n.minutos && l.tickets === n.tickets) continue;
-    const d = dados.get(chave2);
+    const d = dados.get(chave3);
     let motivo;
     if (l && n) {
       motivo = n.minutos >= 1440 && l.minutos === n.minutos % 1440 ? "acima_24h" : "sem_motivo";
     } else if (n) {
       motivo = d ? motivoSoNoNovo(d, ctx) : "sem_motivo";
     } else {
-      motivo = motivoSoNoLegado(chave2, d, ctx);
+      motivo = motivoSoNoLegado(chave3, d, ctx);
     }
     const fonte = (l ?? n).fonte;
     const ticket = fonte === "ticket";
     diferencas.push({
-      chave: chave2,
+      chave: chave3,
       fonte,
       chamado: d?.chamado ?? null,
       data: d?.data ?? null,
@@ -945,11 +950,11 @@ var pior = (...s) => s.reduce((a, b) => PESO[b] > PESO[a] ? b : a, "igual");
 function consumoExplicado(unidade, diferenca, itens) {
   const fonte = unidade === "horas" ? "apontamento" : "ticket";
   const daUnidade = itens.filter((i) => i.fonte === fonte);
-  const soma = daUnidade.reduce(
+  const soma2 = daUnidade.reduce(
     (s, i) => unidade === "horas" ? s + (i.minutosNovo ?? 0) - (i.minutosLegado ?? 0) : s + (i.ticketsNovo ?? 0) - (i.ticketsLegado ?? 0),
     0
   );
-  return daUnidade.length > 0 && daUnidade.every((i) => i.explicado) && soma === diferenca;
+  return daUnidade.length > 0 && daUnidade.every((i) => i.explicado) && soma2 === diferenca;
 }
 function compararMes(e) {
   const diferencas = [];
@@ -990,16 +995,16 @@ function compararEmpresa(entradas) {
   }
   const geral = pior(...meses.map((m) => m.situacao));
   const umBanco = ordenadas.every((e) => e.bancos <= 1);
-  const soma = (f) => ordenadas.reduce((s, e) => s + f(e), 0);
+  const soma2 = (f) => ordenadas.reduce((s, e) => s + f(e), 0);
   return {
     situacao: geral === "igual" ? umBanco ? "identico" : "soma_confere" : geral,
     mesesComparados: ordenadas.length,
     meses,
     consumo: {
-      legadoMinutos: soma((e) => e.legado.horas.consumo),
-      novoMinutos: soma((e) => e.novo.horas.consumo),
-      legadoTickets: soma((e) => e.legado.tickets.consumo),
-      novoTickets: soma((e) => e.novo.tickets.consumo)
+      legadoMinutos: soma2((e) => e.legado.horas.consumo),
+      novoMinutos: soma2((e) => e.novo.horas.consumo),
+      legadoTickets: soma2((e) => e.legado.tickets.consumo),
+      novoTickets: soma2((e) => e.novo.tickets.consumo)
     }
   };
 }
@@ -1526,6 +1531,14 @@ async function emLotes(ids, consulta, origem) {
   }
   return linhas;
 }
+var COLUNAS_FECHAMENTO_LEGADO = "mes, ano, fechado_em, snapshot_calculo, apontamentos_ids, tickets_ids";
+var doFechamentoLegado = (f) => ({
+  mes: { mes: f.mes, ano: f.ano },
+  fechadoEm: f.fechado_em,
+  snapshot: f.snapshot_calculo ?? {},
+  apontamentosIds: f.apontamentos_ids ?? [],
+  ticketsIds: f.tickets_ids ?? []
+});
 var COLUNAS_APONTAMENTO = "id, id_externo, nro_chamado, data_atividade, data_sistema, caso_grupo, org_us_final, cod_resolucao, synced_at, created_at, data_ult_modificacao_geral, tempo_gasto_horas";
 var COLUNAS_TICKET = "id, nro_solicitacao, data_fechamento, nome_grupo, organizacao, cod_resolucao, synced_at, created_at";
 function maisRecente(...datas) {
@@ -1604,16 +1617,17 @@ function criarRepositorioSombra(cliente) {
     },
     async fechamentosLegado(empresaId, de, ate) {
       const linhas = await consultar2(
-        cliente.from("banco_horas_fechamentos").select("mes, ano, fechado_em, snapshot_calculo, apontamentos_ids, tickets_ids").eq("empresa_id", empresaId).gte("ano", de.ano).lte("ano", ate.ano),
+        cliente.from("banco_horas_fechamentos").select(COLUNAS_FECHAMENTO_LEGADO).eq("empresa_id", empresaId).gte("ano", de.ano).lte("ano", ate.ano),
         "fechamentos do legado"
       );
-      return linhas.filter((f) => indice5(f) >= indice5(de) && indice5(f) <= indice5(ate)).map((f) => ({
-        mes: { mes: f.mes, ano: f.ano },
-        fechadoEm: f.fechado_em,
-        snapshot: f.snapshot_calculo ?? {},
-        apontamentosIds: f.apontamentos_ids ?? [],
-        ticketsIds: f.tickets_ids ?? []
-      }));
+      return linhas.filter((f) => indice5(f) >= indice5(de) && indice5(f) <= indice5(ate)).map(doFechamentoLegado);
+    },
+    async ultimoFechamentoLegado(empresaId) {
+      const [ultimo] = await consultar2(
+        cliente.from("banco_horas_fechamentos").select(COLUNAS_FECHAMENTO_LEGADO).eq("empresa_id", empresaId).order("ano", { ascending: false }).order("mes", { ascending: false }).limit(1),
+        "\xFAltimo fechamento do legado"
+      );
+      return ultimo ? doFechamentoLegado(ultimo) : null;
     },
     async fechamentosNovos(empresaId, de, ate) {
       return (await fechamentosVigentes(empresaId, de, ate)).map((f) => ({
@@ -1743,6 +1757,194 @@ function criarRepositorioSombra(cliente) {
   };
 }
 
+// src/services/bancosHoras/periodos.ts
+var MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+var indice6 = (m) => m.ano * 12 + (m.mes - 1);
+var doIndice3 = (i) => ({ mes: i % 12 + 1, ano: Math.floor(i / 12) });
+var rotuloMes = (m) => `${MESES[m.mes - 1]}/${m.ano}`;
+function rotuloPeriodo(meses) {
+  const primeiro = meses[0];
+  const ultimo = meses[meses.length - 1];
+  if (meses.length === 1) return rotuloMes(primeiro);
+  if (primeiro.ano === ultimo.ano) return `${MESES[primeiro.mes - 1]} \u2013 ${rotuloMes(ultimo)}`;
+  return `${rotuloMes(primeiro)} \u2013 ${rotuloMes(ultimo)}`;
+}
+function periodosDoBanco(banco, ate) {
+  const inicio = indice6(banco.inicioVigencia);
+  const fim = banco.fimVigencia ? indice6(banco.fimVigencia) : Infinity;
+  const limite = Math.min(Math.max(indice6(ate), inicio), fim);
+  const periodos = [];
+  for (let p = 0; inicio + p * banco.periodoApuracao <= limite; p++) {
+    const primeiro = inicio + p * banco.periodoApuracao;
+    const ultimo = Math.min(primeiro + banco.periodoApuracao - 1, fim);
+    const meses = Array.from({ length: ultimo - primeiro + 1 }, (_, i) => doIndice3(primeiro + i));
+    periodos.push({ indice: p, meses, rotulo: rotuloPeriodo(meses) });
+  }
+  return periodos;
+}
+
+// src/services/bancosHoras/retroativos.ts
+var indice7 = (m) => m.ano * 12 + (m.mes - 1);
+var chave2 = (m) => `${m.ano}-${m.mes}`;
+function diferencaDosItens(antes, depois) {
+  const id = (i) => `${i.tipo}:${i.itemId}`;
+  const doFechamento = new Map(antes.map((i) => [id(i), i]));
+  const agora = new Set(depois.map(id));
+  const itens = [];
+  for (const d of depois) {
+    const a = doFechamento.get(id(d));
+    const minutos = d.minutos - (a?.minutos ?? 0);
+    const tickets = d.tickets - (a?.tickets ?? 0);
+    if (minutos !== 0 || tickets !== 0)
+      itens.push({ tipo: d.tipo, item_id: d.itemId, minutos, tickets });
+  }
+  for (const a of antes) {
+    if (!agora.has(id(a))) {
+      itens.push({
+        tipo: a.tipo,
+        item_id: a.itemId,
+        minutos: 0 - a.minutos,
+        tickets: 0 - a.tickets
+      });
+    }
+  }
+  return itens;
+}
+var soma = (itens, campo) => itens.reduce((s, i) => s + i[campo], 0);
+async function detectarRetroativosEmpresa(motor, repo, empresaId, hoje) {
+  const cadastros = (await motor.bancos(empresaId)).filter((b) => b.ativo);
+  if (cadastros.length === 0) return 0;
+  const meses = /* @__PURE__ */ new Map();
+  for (const b of cadastros) {
+    for (const m of periodosDoBanco(b, hoje).at(-1)?.meses ?? []) {
+      if (indice7(m) < indice7(hoje)) meses.set(chave2(m), m);
+    }
+  }
+  if (meses.size === 0) return 0;
+  const ordenados = [...meses.values()].sort((a, b) => indice7(a) - indice7(b));
+  const fechamentos = (await repo.fechamentosVigentes(
+    cadastros.map((b) => b.bancoId),
+    ordenados
+  )).filter((f) => f.motivo !== "transicao");
+  if (fechamentos.length === 0) return 0;
+  const itens = await repo.itensDoFechamento(fechamentos.map((f) => f.id));
+  const porId = new Map(cadastros.map((b) => [b.bancoId, b]));
+  const dePara = await motor.dePara();
+  let enviados = 0;
+  for (const mes of ordenados) {
+    const doMes = fechamentos.filter((f) => chave2(f.mes) === chave2(mes));
+    if (doMes.length === 0) continue;
+    const bancosDoMes = cadastros.filter((b) => estaVigente(b, mes)).map((b) => b.bancoId);
+    const classificador = criarClassificador(cadastros, dePara, mes);
+    const agora = await itensDeConsumoPorBanco(
+      motor,
+      empresaId,
+      mes,
+      porId,
+      classificador,
+      bancosDoMes
+    );
+    for (const f of doMes) {
+      const antes = itens.filter((i) => i.fechamentoId === f.id);
+      const depois = (agora.get(f.bancoId) ?? []).map((i) => ({
+        tipo: i.fonte,
+        itemId: i.itemId,
+        minutos: i.minutos,
+        tickets: i.tickets
+      }));
+      await repo.registrar({
+        banco_id: f.bancoId,
+        ano: mes.ano,
+        mes: mes.mes,
+        fechamento_id: f.id,
+        consumo_antes_minutos: soma(antes, "minutos"),
+        consumo_depois_minutos: soma(depois, "minutos"),
+        consumo_antes_tickets: soma(antes, "tickets"),
+        consumo_depois_tickets: soma(depois, "tickets"),
+        itens: diferencaDosItens(antes, depois)
+      });
+      enviados++;
+    }
+  }
+  return enviados;
+}
+async function executarDeteccaoRetroativos(deps, hoje) {
+  const empresas = await deps.retroativos.empresasLiberadas();
+  const resumo = { empresas: empresas.length, registrados: 0, erros: 0 };
+  for (const empresaId of empresas) {
+    try {
+      resumo.registrados += await detectarRetroativosEmpresa(
+        deps.motor(empresaId),
+        deps.retroativos,
+        empresaId,
+        hoje
+      );
+    } catch {
+      resumo.erros++;
+    }
+  }
+  return resumo;
+}
+
+// src/services/bancosHoras/repositorioRetroativos.ts
+var LOTE2 = 150;
+var indice8 = (m) => m.ano * 12 + (m.mes - 1);
+async function consultar3(promessa, origem) {
+  const { data, error } = await promessa;
+  if (error) throw new Error(`Falha ao ler ${origem}: ${error.message}`);
+  return data ?? [];
+}
+function criarRepositorioRetroativos(cliente) {
+  return {
+    async empresasLiberadas() {
+      const linhas = await consultar3(
+        cliente.from("empresas").select("id").eq("modelo_calculo", "multiplo").eq("status", "ativo"),
+        "empresas liberadas"
+      );
+      return linhas.map((e) => e.id);
+    },
+    async fechamentosVigentes(bancoIds, meses) {
+      if (bancoIds.length === 0 || meses.length === 0) return [];
+      const pedidos = new Set(meses.map(indice8));
+      const anos = meses.map((m) => m.ano);
+      const linhas = await consultar3(
+        cliente.from("bancos_horas_fechamentos").select("id, banco_id, mes, ano, motivo").in("banco_id", bancoIds).eq("vigente", true).gte("ano", Math.min(...anos)).lte("ano", Math.max(...anos)),
+        "fechamentos vigentes"
+      );
+      return linhas.filter((f) => pedidos.has(indice8(f))).map((f) => ({
+        id: f.id,
+        bancoId: f.banco_id,
+        mes: { mes: f.mes, ano: f.ano },
+        motivo: f.motivo
+      }));
+    },
+    async itensDoFechamento(fechamentoIds) {
+      const itens = [];
+      for (let i = 0; i < fechamentoIds.length; i += LOTE2) {
+        itens.push(
+          ...await consultar3(
+            cliente.from("bancos_horas_fechamento_itens").select("fechamento_id, tipo, item_id, minutos, tickets").in("fechamento_id", fechamentoIds.slice(i, i + LOTE2)).in("tipo", ["apontamento", "ticket"]),
+            "itens dos fechamentos"
+          )
+        );
+      }
+      return itens.map((i) => ({
+        fechamentoId: i.fechamento_id,
+        tipo: i.tipo,
+        itemId: i.item_id,
+        minutos: i.minutos,
+        tickets: i.tickets
+      }));
+    },
+    async registrar(payload) {
+      const { error } = await cliente.rpc("bancos_horas_registrar_retroativo", {
+        p_retroativo: payload
+      });
+      if (error) throw new Error(`Falha ao registrar o retroativo: ${error.message}`);
+    }
+  };
+}
+
 // sync-api/scripts/comparacao/entrada.ts
 function rodarModoSombra(cliente, opcoes) {
   const c = cliente;
@@ -1752,7 +1954,15 @@ function rodarModoSombra(cliente, opcoes) {
     opcoes
   );
 }
+function rodarRetroativos(cliente, hoje) {
+  const c = cliente;
+  return executarDeteccaoRetroativos(
+    { motor: () => criarRepositorioSupabase(c), retroativos: criarRepositorioRetroativos(c) },
+    hoje
+  );
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  rodarModoSombra
+  rodarModoSombra,
+  rodarRetroativos
 });

@@ -169,6 +169,7 @@ function sombra(c: CenarioSombra = {}) {
   const repo: RepositorioSombra = {
     empresasEmLegado: vi.fn(async () => c.empresas ?? [EMPRESA]),
     fechamentosLegado: vi.fn(async () => c.legado ?? []),
+    ultimoFechamentoLegado: vi.fn(async () => c.legado?.at(-1) ?? null),
     fechamentosNovos: vi.fn(async () => c.novos ?? []),
     itensFechados: vi.fn(async () => []),
     organizacoes: vi.fn(async () => ['EMPRESA ALFA']),

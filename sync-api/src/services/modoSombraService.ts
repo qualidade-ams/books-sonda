@@ -9,6 +9,9 @@
  *
  * MODO_SOMBRA_FECHAR_DESDE (data ISO) liga o fechamento em sombra: só os meses que
  * o legado fechar a partir dela (P5). Sem ela, a rotina só compara.
+ *
+ * Fase 5: o mesmo pacote detecta os retroativos do modelo novo das empresas liberadas
+ * (etapa ajustesRetroativos, junto com a detecção do legado).
  */
 
 import path from 'path';
@@ -24,8 +27,18 @@ export interface OpcoesPacote {
   empresaId?: string;
 }
 
+export interface ResumoRetroativosNovos {
+  empresas: number;
+  registrados: number;
+  erros: number;
+}
+
 export interface PacoteComparacao {
   rodarModoSombra(cliente: SupabaseClient, opcoes: OpcoesPacote): Promise<ResumoPacote>;
+  rodarRetroativos(
+    cliente: SupabaseClient,
+    hoje: { mes: number; ano: number }
+  ): Promise<ResumoRetroativosNovos>;
 }
 
 /** vendor/ fica na raiz do sync-api: ../../vendor a partir de src/services e de dist/services */
@@ -79,6 +92,11 @@ export function criarModoSombra({
       });
       if (completa) ultimaCompleta = dia;
       return { ...resumo, completa };
+    },
+
+    /** Retroativos do modelo novo das empresas liberadas, no mês de Brasília */
+    async retroativos(): Promise<ResumoRetroativosNovos> {
+      return pacote.rodarRetroativos(supabase, emBrasilia(agora()).mes);
     },
 
     /** "Recalcular" da tela: compara (e fecha em sombra) uma empresa */

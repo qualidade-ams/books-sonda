@@ -10,6 +10,7 @@ const comparacaoBancosHoras = {
     explicada: 'Explained',
     divergente: 'Divergent',
     validada: 'Validated',
+    liberada: 'Released',
   },
   situacoes: {
     identico: 'Identical',
@@ -26,6 +27,13 @@ const comparacaoBancosHoras = {
   validada: 'Validated',
   validadaPor: 'Validated by {{nome}} on {{data}}',
   validadaEm: 'Validated on {{data}}',
+  liberada: 'Released',
+  liberadaPor: 'Released by {{nome}} on {{data}}',
+  liberadaEm: 'Released on {{data}}',
+  liberadaTexto:
+    'Book, e-mail image and Partial Balance come from the new model, one block per bank, since {{mes}}.',
+  liberadaTextoSemCorte:
+    'Book, e-mail image and Partial Balance come from the new model, one block per bank.',
   erroRotina: 'Last run failed: {{erro}}',
   buscar: 'Search company',
   ver: 'See the comparison of {{empresa}}',
@@ -83,6 +91,10 @@ const comparacaoBancosHoras = {
     recalculando: 'Recalculating',
     validar: 'Mark as validated',
     desfazer: 'Undo validation',
+    liberar: 'Release',
+    voltar: 'Return to legacy',
+    verBookTeste: 'View test Book',
+    enviarSaldoTeste: 'Send me a test Partial Balance',
   },
   colunasMes: {
     mes: 'Month',
@@ -133,6 +145,41 @@ const comparacaoBancosHoras = {
     titulo: 'Undo the validation of {{empresa}}?',
     motivo: 'Reason',
     placeholder: 'E.g.: the September Book was rectified',
+  },
+  liberar: {
+    titulo: 'Release {{empresa}}?',
+    descricao:
+      'From {{mes}} on, the client receives the Book and the Partial Balance from the new model.',
+    descricaoSemCorte:
+      'The client starts receiving the Book and the Partial Balance from the new model.',
+    saldoUmBanco: 'The balance continues from the last legacy Book ({{mes}})',
+    saldoVarios:
+      'Each bank starts from the new model balance. The difference to the legacy balance ({{mes}}) goes to the default bank',
+    blocoPorBanco: 'Book, e-mail image and Partial Balance get one block per bank the client sees',
+    booksEnviados: 'Books already sent do not change',
+    controleConsulta: 'The current Control becomes read-only for this company',
+  },
+  voltar: {
+    titulo: 'Return {{empresa}} to the legacy?',
+    descricao:
+      'The client receives the legacy Book and Partial Balance again from the next delivery.',
+    lancamentos:
+      '{{reajustes}} and {{observacoes}} posted in the new Control go to the current Control',
+    reajustes: { um: '{{n}} adjustment', varios: '{{n}} adjustments' },
+    observacoes: { um: '{{n}} note', varios: '{{n}} notes' },
+    booksEnviados: 'Books already sent from the new model stay as they were sent',
+    validacaoDesfeita: 'The validation is undone and the company returns to the comparison',
+    motivo: 'Reason',
+    placeholder: 'E.g.: the October Book went out with the wrong bank',
+  },
+  bookTeste: {
+    voltar: 'Back to the company',
+    subtitulo: 'Test Book · usage per bank for {{mes}}',
+    aviso:
+      'Calculated now by the new model, as it would appear in the Book. Nothing is saved, no month is closed and the client receives nothing.',
+    carregando: 'Calculating the test Book',
+    erro: 'Could not calculate the test Book',
+    vazio: 'The company has no bank the client sees',
   },
   exportar: {
     arquivo: 'legacy-new-comparison',

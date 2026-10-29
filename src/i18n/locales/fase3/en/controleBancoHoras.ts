@@ -350,6 +350,13 @@ const controleBancoHoras = {
     linha: 'Line',
   },
   sincronizadoEm: 'Aranda usage synced up to {{data}}',
+  // Controle atual de empresa liberada (Fase 5, P3)
+  legadoLiberada: {
+    titulo: 'Company released to the new model.',
+    texto:
+      'This Control is read-only: adjustments and notes are posted in the new Hour Bank Control.',
+    abrir: 'Open the new Control',
+  },
 };
 
 export default controleBancoHoras;

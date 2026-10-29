@@ -30,6 +30,8 @@ import BookOrganogramaComercialCS from './BookOrganogramaComercialCS';
 import BookPortfolio from './BookPortfolio';
 import BookContraCapa from './BookContraCapa';
 import BookConsumoSegmentado from './BookConsumoSegmentado';
+import BookConsumoBancos from './BookConsumoBancos';
+import { useConsumoBancosDoBook } from '@/hooks/useConsumoBancosDoBook';
 import BookRequerimentos from './BookRequerimentos';
 import { useEmpresaSegmentacao } from '@/hooks/useEmpresaSegmentacao';
 import { useRequerimentosEmDesenvolvimentoBook } from '@/hooks/useRequerimentosEmDesenvolvimentoBook';
@@ -80,6 +82,10 @@ export default function BookViewer({
 
   // Usar override se fornecido, senão usar dados buscados
   const bookData = bookDataOverride || bookDataFetched;
+
+  // Empresa liberada (Fase 5): uma aba de consumo por banco, lida do snapshot da geração
+  const { bancos: consumoBancos } = useConsumoBancosDoBook(book?.id || null);
+  const porBanco = consumoBancos.length > 0;
 
   // Consumo Segmentado: priorizar snapshot do bookData, fallback para hook de empresa
   const hasSnapshotSegmentado = !!(
@@ -376,26 +382,40 @@ export default function BookViewer({
               >
                 {t('books.tabs.backlog')}
               </TabsTrigger>
-              <TabsTrigger
-                value="consumo"
-                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
-              >
-                {t('books.tabs.consumo')}
-              </TabsTrigger>
-              {/* Abas dinâmicas de Consumo Segmentado */}
-              {baselineSegmentado &&
-                paginasSegmentos.length > 0 &&
-                paginasSegmentos.map((_, pageIdx) => (
+              {porBanco ? (
+                consumoBancos.map((banco) => (
                   <TabsTrigger
-                    key={`consumo-seg-${pageIdx}`}
-                    value={`consumo-seg-${pageIdx}`}
+                    key={`consumo-banco-${banco.banco_id}`}
+                    value={`consumo-banco-${banco.banco_id}`}
                     className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                   >
-                    {paginasSegmentos.length === 1
-                      ? t('books.tabs.consumoSegmentado', 'Consumo Segmentado')
-                      : `${t('books.tabs.consumoSegmentado', 'Consumo Segmentado')} ${pageIdx + 1}`}
+                    {t('books.tabs.consumo')} {banco.nome_banco}
                   </TabsTrigger>
-                ))}
+                ))
+              ) : (
+                <>
+                  <TabsTrigger
+                    value="consumo"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                  >
+                    {t('books.tabs.consumo')}
+                  </TabsTrigger>
+                  {/* Abas dinâmicas de Consumo Segmentado */}
+                  {baselineSegmentado &&
+                    paginasSegmentos.length > 0 &&
+                    paginasSegmentos.map((_, pageIdx) => (
+                      <TabsTrigger
+                        key={`consumo-seg-${pageIdx}`}
+                        value={`consumo-seg-${pageIdx}`}
+                        className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                      >
+                        {paginasSegmentos.length === 1
+                          ? t('books.tabs.consumoSegmentado', 'Consumo Segmentado')
+                          : `${t('books.tabs.consumoSegmentado', 'Consumo Segmentado')} ${pageIdx + 1}`}
+                      </TabsTrigger>
+                    ))}
+                </>
+              )}
               {/* Aba Requerimentos em Andamento - visível apenas quando existirem */}
               {requerimentosEmDesenvolvimento &&
                 requerimentosEmDesenvolvimento.length > 0 &&
@@ -491,35 +511,51 @@ export default function BookViewer({
                   />
                 </TabsContent>
 
-                <TabsContent value="consumo" className="mt-0 h-full">
-                  <BookConsumo
-                    data={bookData.consumo}
-                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                    empresaId={bookData.empresa_id}
-                    mes={bookData.mes}
-                    ano={bookData.ano}
-                  />
-                </TabsContent>
-
-                {/* Abas dinâmicas de Consumo Segmentado - Conteúdo */}
-                {baselineSegmentado &&
-                  paginasSegmentos.length > 0 &&
-                  paginasSegmentos.map((indices, pageIdx) => (
+                {porBanco ? (
+                  consumoBancos.map((banco) => (
                     <TabsContent
-                      key={`consumo-seg-content-${pageIdx}`}
-                      value={`consumo-seg-${pageIdx}`}
+                      key={`consumo-banco-${banco.banco_id}`}
+                      value={`consumo-banco-${banco.banco_id}`}
                       className="mt-0 h-full"
                     >
-                      <BookConsumoSegmentado
-                        empresaId={bookData.empresa_id}
+                      <BookConsumoBancos banco={banco} empresaDoBook={bookData.empresa_id} />
+                    </TabsContent>
+                  ))
+                ) : (
+                  <>
+                    <TabsContent value="consumo" className="mt-0 h-full">
+                      <BookConsumo
+                        data={bookData.consumo}
                         empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                        empresaId={bookData.empresa_id}
                         mes={bookData.mes}
                         ano={bookData.ano}
-                        segmentosIndices={indices}
-                        snapshotData={bookData.consumo_segmentado}
                       />
                     </TabsContent>
-                  ))}
+
+                    {/* Abas dinâmicas de Consumo Segmentado - Conteúdo */}
+                    {baselineSegmentado &&
+                      paginasSegmentos.length > 0 &&
+                      paginasSegmentos.map((indices, pageIdx) => (
+                        <TabsContent
+                          key={`consumo-seg-content-${pageIdx}`}
+                          value={`consumo-seg-${pageIdx}`}
+                          className="mt-0 h-full"
+                        >
+                          <BookConsumoSegmentado
+                            empresaId={bookData.empresa_id}
+                            empresaNome={
+                              bookData.capa.empresa_nome_abreviado || bookData.empresa_nome
+                            }
+                            mes={bookData.mes}
+                            ano={bookData.ano}
+                            segmentosIndices={indices}
+                            snapshotData={bookData.consumo_segmentado}
+                          />
+                        </TabsContent>
+                      ))}
+                  </>
+                )}
 
                 {/* TabsContent: Requerimentos em Andamento (paginado - máx 11 por página) */}
                 {requerimentosEmDesenvolvimento &&

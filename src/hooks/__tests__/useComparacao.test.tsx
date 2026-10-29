@@ -2,8 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useComparacao, useMesesComparacao } from '../useComparacao';
+import {
+  useBookDeTeste,
+  useComparacao,
+  useLancamentosParaLegado,
+  useMesesComparacao,
+} from '../useComparacao';
 import { comparacaoService } from '@/services/comparacaoService';
+import { bookConsumoBancosService } from '@/services/bookConsumoBancosService';
+import { enviarSaldoParcialDeTeste } from '@/services/saldoParcial/envioTeste';
 import type { ComparacaoEmpresa } from '@/types/comparacao';
 
 const toast = vi.fn();
@@ -17,9 +24,21 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/services/comparacaoService', () => ({
-  comparacaoService: { listar: vi.fn(), meses: vi.fn(), validar: vi.fn(), recalcular: vi.fn() },
+  comparacaoService: {
+    listar: vi.fn(),
+    meses: vi.fn(),
+    validar: vi.fn(),
+    recalcular: vi.fn(),
+    liberar: vi.fn(),
+    voltar: vi.fn(),
+    lancamentosParaLegado: vi.fn(),
+  },
 }));
 const service = comparacaoService as unknown as Record<string, ReturnType<typeof vi.fn>>;
+vi.mock('@/services/bookConsumoBancosService', () => ({
+  bookConsumoBancosService: { previa: vi.fn() },
+}));
+vi.mock('@/services/saldoParcial/envioTeste', () => ({ enviarSaldoParcialDeTeste: vi.fn() }));
 
 const empresa = (v: Partial<ComparacaoEmpresa>): ComparacaoEmpresa => ({
   empresaId: 'e',
@@ -35,6 +54,7 @@ const empresa = (v: Partial<ComparacaoEmpresa>): ComparacaoEmpresa => ({
   erro: null,
   erroEm: null,
   validacao: null,
+  liberacao: null,
   ...v,
 });
 
@@ -49,6 +69,12 @@ const LISTA = [
     validacao: { por: 'Usuário Teste', em: '2026-10-27T15:00:00Z', situacao: 'identico' },
   }),
   empresa({ empresaId: 'e6', situacao: null, erro: 'Falha', calculadoEm: null }),
+  empresa({
+    empresaId: 'e7',
+    situacao: 'identico',
+    validacao: { por: 'Usuário Teste', em: '2026-10-27T15:00:00Z', situacao: 'identico' },
+    liberacao: { por: 'Usuário Teste', em: '2026-10-29T12:00:00Z', desde: { mes: 10, ano: 2026 } },
+  }),
 ];
 
 function criarWrapper() {
@@ -65,16 +91,60 @@ describe('useComparacao', () => {
     service.listar.mockResolvedValue(LISTA);
   });
 
-  it('carrega a lista com a contagem por grupo (validada vale mais que a situação; sem resultado não conta)', async () => {
+  it('carrega a lista com a contagem por grupo (liberada > validada > situação; sem resultado não conta)', async () => {
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useComparacao(), { wrapper });
 
-    await waitFor(() => expect(result.current.empresas).toHaveLength(6));
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
     expect(result.current.contagem).toEqual({
       conferem: 2,
       explicada: 1,
       divergente: 1,
       validada: 1,
+      liberada: 1,
+    });
+  });
+
+  it('liberar e voltar para legado avisam e recarregam a lista e o Controle', async () => {
+    service.liberar.mockResolvedValue(undefined);
+    service.voltar.mockResolvedValue(undefined);
+    const { client, wrapper } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useComparacao(), { wrapper });
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
+    service.listar.mockClear();
+
+    await act(() => result.current.liberar('e5'));
+    await act(() => result.current.voltar({ empresaId: 'e7', motivo: 'Banco errado' }));
+
+    expect(service.liberar).toHaveBeenCalledWith('e5');
+    expect(service.voltar).toHaveBeenCalledWith('e7', 'Banco errado');
+    expect(toast).toHaveBeenNthCalledWith(1, { title: 'avisos.comparacao.liberada' });
+    expect(toast).toHaveBeenNthCalledWith(2, { title: 'avisos.comparacao.voltouParaLegado' });
+    await waitFor(() => expect(service.listar).toHaveBeenCalled());
+    // O modelo da empresa mudou: o Controle (atual e novo) relê as empresas
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['controle-bh'] });
+  });
+
+  it('erro ao liberar ou voltar avisa com o texto do erro', async () => {
+    service.liberar.mockRejectedValue(new Error('Valide antes'));
+    service.voltar.mockRejectedValue(new Error('Informe o motivo'));
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useComparacao(), { wrapper });
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
+
+    await act(() => result.current.liberar('e1').catch(() => undefined));
+    await act(() => result.current.voltar({ empresaId: 'e7', motivo: '' }).catch(() => undefined));
+
+    expect(toast).toHaveBeenNthCalledWith(1, {
+      title: 'avisos.comparacao.erroLiberar',
+      description: 'Valide antes',
+      variant: 'destructive',
+    });
+    expect(toast).toHaveBeenNthCalledWith(2, {
+      title: 'avisos.comparacao.erroVoltar',
+      description: 'Informe o motivo',
+      variant: 'destructive',
     });
   });
 
@@ -89,7 +159,7 @@ describe('useComparacao', () => {
     service.validar.mockResolvedValue(undefined);
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useComparacao(), { wrapper });
-    await waitFor(() => expect(result.current.empresas).toHaveLength(6));
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
     service.listar.mockClear();
 
     await act(() => result.current.validar({ empresaId: 'e1', validar: true }));
@@ -108,7 +178,7 @@ describe('useComparacao', () => {
     service.validar.mockRejectedValue(new Error('Empresa com divergência'));
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useComparacao(), { wrapper });
-    await waitFor(() => expect(result.current.empresas).toHaveLength(6));
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
 
     await act(() =>
       result.current.validar({ empresaId: 'e4', validar: true }).catch(() => undefined)
@@ -125,7 +195,7 @@ describe('useComparacao', () => {
     service.recalcular.mockResolvedValue(undefined);
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useComparacao({ intervaloRecalculoMs: 20 }), { wrapper });
-    await waitFor(() => expect(result.current.empresas).toHaveLength(6));
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
 
     await act(() => result.current.recalcular('e4'));
     expect(service.recalcular).toHaveBeenCalledWith('e4');
@@ -146,7 +216,7 @@ describe('useComparacao', () => {
     service.recalcular.mockResolvedValue(undefined);
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useComparacao({ intervaloRecalculoMs: 20 }), { wrapper });
-    await waitFor(() => expect(result.current.empresas).toHaveLength(6));
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
 
     await act(() => result.current.recalcular('e4'));
     service.listar.mockResolvedValue(
@@ -166,7 +236,7 @@ describe('useComparacao', () => {
     service.recalcular.mockRejectedValue(new Error('Sync-api fora do ar'));
     const { wrapper } = criarWrapper();
     const { result } = renderHook(() => useComparacao(), { wrapper });
-    await waitFor(() => expect(result.current.empresas).toHaveLength(6));
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
 
     await act(() => result.current.recalcular('e4').catch(() => undefined));
 
@@ -194,5 +264,74 @@ describe('useMesesComparacao', () => {
     rerender({ id: 'e4' });
     await waitFor(() => expect(result.current.meses).toHaveLength(1));
     expect(service.meses).toHaveBeenCalledWith('e4');
+  });
+});
+
+describe('testes da liberação (P7)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service.listar.mockResolvedValue(LISTA);
+  });
+
+  it('Book de teste: calcula a prévia do mês pedido; sem empresa ou mês, não calcula', async () => {
+    vi.mocked(bookConsumoBancosService.previa).mockResolvedValue([{ banco_id: 'b1' } as any]);
+    const { wrapper } = criarWrapper();
+    const { result, rerender } = renderHook(({ id }) => useBookDeTeste(id, { mes: 9, ano: 2026 }), {
+      wrapper,
+      initialProps: { id: null as string | null },
+    });
+    expect(bookConsumoBancosService.previa).not.toHaveBeenCalled();
+
+    rerender({ id: 'e5' });
+    await waitFor(() => expect(result.current.bancos).toHaveLength(1));
+    expect(bookConsumoBancosService.previa).toHaveBeenCalledWith('e5', { mes: 9, ano: 2026 });
+  });
+
+  it('Saldo Parcial de teste: envia e avisa; erro avisa com o texto', async () => {
+    vi.mocked(enviarSaldoParcialDeTeste).mockResolvedValueOnce(undefined);
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useComparacao(), { wrapper });
+    await waitFor(() => expect(result.current.empresas).toHaveLength(LISTA.length));
+
+    await act(() =>
+      result.current.enviarSaldoParcialTeste({ empresaId: 'e5', empresaNome: 'EMPRESA' })
+    );
+    expect(enviarSaldoParcialDeTeste).toHaveBeenCalledWith('e5', 'EMPRESA');
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.comparacao.saldoTesteEnviado',
+      description: 'avisos.comparacao.saldoTesteEnviadoDescricao',
+    });
+
+    vi.mocked(enviarSaldoParcialDeTeste).mockRejectedValueOnce(new Error('Sem e-mail'));
+    await act(() =>
+      result.current
+        .enviarSaldoParcialTeste({ empresaId: 'e5', empresaNome: 'EMPRESA' })
+        .catch(() => undefined)
+    );
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.comparacao.erroSaldoTeste',
+      description: 'Sem e-mail',
+      variant: 'destructive',
+    });
+  });
+});
+
+describe('useLancamentosParaLegado', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('carrega o que a volta copia; sem empresa, não carrega', async () => {
+    service.lancamentosParaLegado.mockResolvedValue({ reajustes: 2, observacoes: 1 });
+    const { wrapper } = criarWrapper();
+    const { result, rerender } = renderHook(({ id }) => useLancamentosParaLegado(id), {
+      wrapper,
+      initialProps: { id: null as string | null },
+    });
+    expect(service.lancamentosParaLegado).not.toHaveBeenCalled();
+
+    rerender({ id: 'e7' });
+    await waitFor(() =>
+      expect(result.current.lancamentos).toEqual({ reajustes: 2, observacoes: 1 })
+    );
+    expect(service.lancamentosParaLegado).toHaveBeenCalledWith('e7');
   });
 });

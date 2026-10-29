@@ -433,6 +433,36 @@ export type Database = {
         }
         Relationships: []
       }
+      aranda_uso_diario: {
+        Row: {
+          atualizado_em: string
+          dia: string
+          fonte: string
+          grupo: string
+          organizacao: string | null
+          primeiro_em: string
+          quantidade: number
+        }
+        Insert: {
+          atualizado_em?: string
+          dia: string
+          fonte: string
+          grupo: string
+          organizacao?: string | null
+          primeiro_em: string
+          quantidade: number
+        }
+        Update: {
+          atualizado_em?: string
+          dia?: string
+          fonte?: string
+          grupo?: string
+          organizacao?: string | null
+          primeiro_em?: string
+          quantidade?: number
+        }
+        Relationships: []
+      }
       auditoria_alteracoes: {
         Row: {
           acao: string
@@ -2501,6 +2531,84 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books_consumo_bancos: {
+        Row: {
+          banco_id: string
+          book_id: string
+          created_at: string
+          created_by: string | null
+          dados: Json
+          empresa_id: string
+          fechamento_id: string | null
+          id: string
+          nome_banco: string
+          nome_empresa: string
+          ordem: number
+        }
+        Insert: {
+          banco_id: string
+          book_id: string
+          created_at?: string
+          created_by?: string | null
+          dados: Json
+          empresa_id: string
+          fechamento_id?: string | null
+          id?: string
+          nome_banco: string
+          nome_empresa: string
+          ordem: number
+        }
+        Update: {
+          banco_id?: string
+          book_id?: string
+          created_at?: string
+          created_by?: string | null
+          dados?: Json
+          empresa_id?: string
+          fechamento_id?: string | null
+          id?: string
+          nome_banco?: string
+          nome_empresa?: string
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_consumo_bancos_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books_com_empresa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_consumo_bancos_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_horas_fechamentos"
             referencedColumns: ["id"]
           },
         ]
@@ -6322,6 +6430,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      atualizar_uso_aranda: { Args: never; Returns: undefined }
       bancos_horas_consumo: {
         Args: {
           p_ano: number
@@ -6516,6 +6625,18 @@ export type Database = {
           tickets: number
         }[]
       }
+      consumo_bancos_do_book: {
+        Args: { p_book_id: string }
+        Returns: {
+          banco_id: string
+          dados: Json
+          empresa_id: string
+          fechamento_id: string
+          nome_banco: string
+          nome_empresa: string
+          ordem: number
+        }[]
+      }
       create_banco_horas_audit_log: {
         Args: {
           p_acao: string
@@ -6701,6 +6822,10 @@ export type Database = {
           screen_key: string
         }[]
       }
+      gravar_consumo_bancos_do_book: {
+        Args: { p_bancos: Json; p_book_id: string }
+        Returns: number
+      }
       grupos_aranda_nao_mapeados: {
         Args: { p_meses?: number }
         Returns: {
@@ -6738,6 +6863,11 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_user_admin: { Args: { user_id_param?: string }; Returns: boolean }
+      lancamentos_para_legado: { Args: { p_empresa_id: string }; Returns: Json }
+      liberar_empresa: {
+        Args: { p_empresa_id: string; p_fechamento: Json }
+        Returns: Json
+      }
       limpar_anexos_expirados: { Args: never; Returns: number }
       list_all_users: {
         Args: never
@@ -6824,6 +6954,32 @@ export type Database = {
         Returns: undefined
       }
       notificar_grupos_nao_mapeados: { Args: never; Returns: undefined }
+      observacoes_para_legado: {
+        Args: { p_empresa_id: string }
+        Returns: {
+          ano: number
+          ativo: boolean
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          fechamento_id: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          mes: number
+          origem: string
+          reajuste_id: string | null
+          texto: string
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bancos_horas_observacoes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       obter_ultima_sincronizacao_pesquisas: {
         Args: { p_tipo_sincronizacao: string }
         Returns: string
@@ -6839,6 +6995,36 @@ export type Database = {
       pode_consultar_bancos_horas: { Args: never; Returns: boolean }
       pode_editar_bancos_horas: { Args: never; Returns: boolean }
       pode_ver_regras_contagem: { Args: { p_nivel: string }; Returns: boolean }
+      reajustes_para_legado: {
+        Args: { p_empresa_id: string }
+        Returns: {
+          ano: number
+          anotacao_interna: string | null
+          ativo: boolean
+          banco_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          inativado_em: string | null
+          inativado_por: string | null
+          justificativa: string
+          mes: number
+          minutos: number
+          motivo_inativacao: string | null
+          origem: string
+          reajuste_legado_id: string | null
+          tickets: number
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bancos_horas_reajustes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       realtime_maintenance: { Args: never; Returns: string }
       registrar_aviso_retroativo: {
         Args: { p_item_ids: string[]; p_retroativo_id: string }
@@ -6991,6 +7177,10 @@ export type Database = {
       validate_especialista_sql_server: {
         Args: { especialista_name: string }
         Returns: boolean
+      }
+      voltar_para_legado: {
+        Args: { p_empresa_id: string; p_motivo: string }
+        Returns: Json
       }
     }
     Enums: {

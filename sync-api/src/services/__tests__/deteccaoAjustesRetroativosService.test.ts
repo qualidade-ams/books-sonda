@@ -23,6 +23,7 @@ describe('deteccaoAjustesRetroativosService', () => {
     ajusteResolvido?: boolean;
     ajustePendenteId?: string;
     tickets?: string[];
+    liberada?: boolean;
   } = {}) {
     const fechamento = {
       id: 'fech-1',
@@ -39,6 +40,10 @@ describe('deteccaoAjustesRetroativosService', () => {
       if (tabela === 'banco_horas_fechamentos') {
         if (tem(chamadas, 'maybeSingle')) return { data: fechamento, error: null };
         return { data: [{ empresa_id: EMPRESA, mes: 8, ano: 2026 }], error: null };
+      }
+      // Fase 5: empresas liberadas (modelo novo) ficam com a detecção do modelo novo
+      if (tabela === 'empresas') {
+        return { data: opcoes.liberada ? [{ id: EMPRESA }] : [], error: null };
       }
       if (tabela === 'empresas_clientes') {
         return {
@@ -156,6 +161,16 @@ describe('deteccaoAjustesRetroativosService', () => {
     const ajusteTickets = inserts.find((i) => i.tipo_dado === 'apontamento_tickets');
     // +T4, -T2, -T3 => -1
     expect(ajusteTickets).toMatchObject({ valor_anterior: '3', valor_novo: '2', diferenca: '-1', diferenca_minutos: -1 });
+  });
+
+  it('empresa liberada fica de fora: os retroativos dela são os do modelo novo (Fase 5)', async () => {
+    const { cliente, consultas } = cenario({ liberada: true });
+    const ajustes = await criarDeteccaoAjustesRetroativos(cliente).executarDeteccaoRecente(2);
+
+    expect(ajustes).toEqual([]);
+    expect(consultas.some((c) => c.tabela === 'apontamentos_aranda')).toBe(false);
+    const filtro = consultas.find((c) => c.tabela === 'empresas');
+    expect(tem(filtro!.chamadas, 'eq', 'modelo_calculo', 'multiplo')).toBe(true);
   });
 
   it('retorna lista vazia quando não há fechamentos', async () => {

@@ -4,7 +4,10 @@ import { criarModoSombra, type PacoteComparacao } from '../modoSombraService';
 const resumo = { empresas: 2, comparadas: 2, removidas: 0, fechamentos: 1, erros: 0 };
 
 function criar(agora: Date, fecharDesde: string | null = '2026-11-01') {
-  const pacote: PacoteComparacao = { rodarModoSombra: vi.fn(async () => resumo) };
+  const pacote: PacoteComparacao = {
+    rodarModoSombra: vi.fn(async () => resumo),
+    rodarRetroativos: vi.fn(async () => ({ empresas: 1, registrados: 2, erros: 0 })),
+  };
   let relogio = agora;
   const modo = criarModoSombra({
     supabase: { from: vi.fn() } as any,
@@ -88,5 +91,13 @@ describe('modoSombraService', () => {
     await modo.executarEtapa();
 
     expect(vi.mocked(pacote.rodarModoSombra).mock.calls[1][1]).toMatchObject({ somenteFechamento: false });
+  });
+
+  it('retroativos do modelo novo (Fase 5): as empresas liberadas, no mês de Brasília', async () => {
+    const { modo, pacote } = criar(new Date('2026-11-01T02:00:00Z'));
+    const r = await modo.retroativos();
+
+    expect(pacote.rodarRetroativos).toHaveBeenCalledWith(expect.anything(), { mes: 10, ano: 2026 });
+    expect(r).toEqual({ empresas: 1, registrados: 2, erros: 0 });
   });
 });

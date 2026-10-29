@@ -115,6 +115,14 @@ const avisos = {
     recalculandoDescricao: 'The result shows up here in a few minutes.',
     recalculada: 'Comparison updated',
     erroRecalcular: 'Could not recalculate the comparison',
+    liberada: 'Company released',
+    erroLiberar: 'Could not release the company',
+    voltouParaLegado: 'Company returned to the legacy',
+    erroVoltar: 'Could not return the company to the legacy',
+    saldoTesteEnviado: 'Test Partial Balance sent',
+    saldoTesteEnviadoDescricao:
+      'It went only to your e-mail, with one block per bank. The client receives nothing.',
+    erroSaldoTeste: 'Could not send the test Partial Balance',
   },
 };
 

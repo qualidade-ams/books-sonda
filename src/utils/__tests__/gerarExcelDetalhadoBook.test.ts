@@ -7,8 +7,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { gerarExcelDetalhadoBook } from '../gerarExcelDetalhadoBook';
 
-const { capturedSheets, mockTicket } = vi.hoisted(() => {
+const { capturedSheets, mockTicket, liberada } = vi.hoisted(() => {
   const capturedSheets: Record<string, any[][]> = {};
+  const liberada = { noModeloNovo: false };
 
   const mockTicket = {
     nro_solicitacao: '12345',
@@ -32,8 +33,21 @@ const { capturedSheets, mockTicket } = vi.hoisted(() => {
     resumo: 'Resumo teste',
   };
 
-  return { capturedSheets, mockTicket };
+  return { capturedSheets, mockTicket, liberada };
 });
+
+// Empresa liberada (Fase 5): as abas de consumo vêm por banco
+vi.mock('@/services/geracaoBookLiberada', () => ({
+  geracaoBookLiberada: { noModeloNovo: vi.fn(async () => liberada.noModeloNovo) },
+}));
+vi.mock('@/services/bookConsumoBancosService', () => ({
+  bookConsumoBancosService: {
+    abasDoExcel: vi.fn(async () => [
+      { nome: 'Resumo', sheet: { __aoa: [['resumo']] } },
+      { nome: 'Banco COMEX', sheet: { __aoa: [['comex']] } },
+    ]),
+  },
+}));
 
 vi.mock('xlsx-js-style', () => {
   return {
@@ -52,7 +66,19 @@ vi.mock('xlsx-js-style', () => {
 vi.mock('@/integrations/supabase/client', () => {
   function makeBuilder(result: any) {
     const builder: any = {};
-    const chainMethods = ['select', 'ilike', 'gte', 'lte', 'lt', 'neq', 'eq', 'or', 'not', 'in', 'order'];
+    const chainMethods = [
+      'select',
+      'ilike',
+      'gte',
+      'lte',
+      'lt',
+      'neq',
+      'eq',
+      'or',
+      'not',
+      'in',
+      'order',
+    ];
     chainMethods.forEach((method) => {
       builder[method] = vi.fn(() => builder);
     });
@@ -65,7 +91,10 @@ vi.mock('@/integrations/supabase/client', () => {
     supabase: {
       from: vi.fn((table: string) => {
         if (table === 'empresas_clientes') {
-          return makeBuilder({ data: { nome_completo: 'Empresa Teste', tipo_contrato: 'horas' }, error: null });
+          return makeBuilder({
+            data: { nome_completo: 'Empresa Teste', tipo_contrato: 'horas' },
+            error: null,
+          });
         }
         if (table === 'apontamentos_tickets_aranda') {
           return makeBuilder({ data: [mockTicket], error: null });
@@ -79,6 +108,7 @@ vi.mock('@/integrations/supabase/client', () => {
 describe('gerarExcelDetalhadoBook', () => {
   beforeEach(() => {
     for (const key of Object.keys(capturedSheets)) delete capturedSheets[key];
+    liberada.noModeloNovo = false;
   });
 
   it('inclui a coluna DATA ENCERRAMENTO logo após DATA SOLUÇÃO na aba Fechados, com o valor de data_fechamento', async () => {
@@ -101,5 +131,39 @@ describe('gerarExcelDetalhadoBook', () => {
 
     const row = fechadosSheet[1];
     expect(row[idxEncerramento]).toBe('12/01/2026');
+  });
+
+  it('empresa liberada: resumo e uma aba por banco no lugar das abas de consumo (spec 6.3)', async () => {
+    liberada.noModeloNovo = true;
+    const arquivo = await gerarExcelDetalhadoBook({
+      empresaId: 'e1',
+      empresaNome: 'Empresa Teste',
+      mes: 9,
+      ano: 2026,
+    } as any);
+
+    expect(arquivo).not.toBeNull();
+    expect(Object.keys(capturedSheets)).toEqual([
+      'Abertos',
+      'Fechados',
+      'SLA',
+      'Backlog',
+      'Resumo',
+      'Banco COMEX',
+      'Pesquisas_Enviadas',
+      'Pesquisas_Respondidas',
+      'Enviadas_E_Não_Respondidas',
+    ]);
+  });
+
+  it('empresa em Legado: a aba Horas, como hoje', async () => {
+    await gerarExcelDetalhadoBook({
+      empresaId: 'e1',
+      empresaNome: 'Empresa Teste',
+      mes: 9,
+      ano: 2026,
+    } as any);
+    expect(Object.keys(capturedSheets)).toContain('Horas');
+    expect(Object.keys(capturedSheets)).not.toContain('Resumo');
   });
 });

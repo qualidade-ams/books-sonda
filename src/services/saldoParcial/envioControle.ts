@@ -73,7 +73,7 @@ async function renderizarImagemTabelas(html: string): Promise<string | null> {
   }
 }
 
-const PADRAO: DependenciasEnvio = {
+export const PADRAO: DependenciasEnvio = {
   chamados: (empresaId, bancos) => controleSaldoParcialService.chamados(empresaId, bancos),
   renderizarImagem: renderizarImagemTabelas,
   subirImagem: uploadImagemTabelas,
@@ -81,6 +81,12 @@ const PADRAO: DependenciasEnvio = {
   enviarEmail: (dados) => emailService.sendEmail(dados),
   registrar: (empresaId, envio) => controleSaldoParcialService.registrarEnvio(empresaId, envio),
 };
+
+/** O envio de teste da liberação (P7) não entra no histórico de envios da empresa */
+export const semHistorico = (dependencias: DependenciasEnvio): DependenciasEnvio => ({
+  ...dependencias,
+  registrar: async () => undefined,
+});
 
 export async function enviarSaldoParcialControle(
   entrada: EnvioControleInput,
