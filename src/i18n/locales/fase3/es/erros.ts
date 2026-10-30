@@ -81,6 +81,7 @@ const erros = {
     carregarOsRamos: 'No fue posible cargar los ramos: {{detalhe}}',
     criarOBanco: 'No fue posible crear el banco: {{detalhe}}',
     excluirOMapeamento: 'No fue posible eliminar el mapeo: {{detalhe}}',
+    excluirDoCatalogo: 'No fue posible eliminar del catálogo: {{detalhe}}',
     excluirORamo: 'No fue posible eliminar el ramo: {{detalhe}}',
     importarOModulo: 'No fue posible importar el módulo: {{detalhe}}',
     importarOProduto: 'No fue posible importar el producto: {{detalhe}}',

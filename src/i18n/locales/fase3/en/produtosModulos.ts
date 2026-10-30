@@ -129,6 +129,10 @@ const produtosModulos = {
       nome: 'Solution name',
       ativa: 'Active solution',
       codigoNaoMuda: 'The code does not change after it is created.',
+      excluirTitulo: 'Delete the solution',
+      excluirAjuda:
+        'This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.',
+      excluir: 'Delete solution',
       codigoRepetido: 'A solution with this code already exists.',
       nomeRepetido: 'A solution with this name already exists.',
       ajudaServico: 'Hours from service groups always go to the default bank.',
@@ -226,6 +230,14 @@ const produtosModulos = {
       produtoVazio: 'Empty product.',
       repetido: 'Repeated in the spreadsheet (row {{linha}}).',
     },
+  },
+  excluir: {
+    titulo: 'Delete {{nome}}?',
+    descricao:
+      'The item was never used: it leaves the catalog for good instead of becoming inactive.',
+    semVolta: 'This cannot be undone; the audit trail keeps a copy',
+    emUso:
+      'If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead',
   },
 };
 

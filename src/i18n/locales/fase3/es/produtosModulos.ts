@@ -127,6 +127,10 @@ const produtosModulos = {
       nome: 'Nombre de la solución',
       ativa: 'Solución activa',
       codigoNaoMuda: 'El código no cambia después de creado.',
+      excluirTitulo: 'Eliminar la solución',
+      excluirAjuda:
+        'Esta solución nunca se usó (sin producto y sin grupo de servicio). Eliminada, sale del catálogo para siempre.',
+      excluir: 'Eliminar solución',
       codigoRepetido: 'Ya existe una solución con este código.',
       nomeRepetido: 'Ya existe una solución con este nombre.',
       ajudaServico: 'Las horas de los grupos de servicio van siempre al Banco predeterminado.',
@@ -223,6 +227,13 @@ const produtosModulos = {
       produtoVazio: 'Producto vacío.',
       repetido: 'Repetido en la planilla (fila {{linha}}).',
     },
+  },
+  excluir: {
+    titulo: '¿Eliminar {{nome}}?',
+    descricao: 'El ítem nunca se usó: sale del catálogo para siempre, en lugar de quedar inactivo.',
+    semVolta: 'No se puede deshacer; la auditoría guarda una copia',
+    emUso:
+      'Si algo ya usa el ítem (empresa, banco, requerimiento), la eliminación se rechaza: entonces, desactívelo',
   },
 };
 

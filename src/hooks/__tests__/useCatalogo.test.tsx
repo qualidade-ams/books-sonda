@@ -24,6 +24,7 @@ vi.mock('@/services/catalogoService', () => ({
     reordenarProdutos: vi.fn(),
     salvarModulo: vi.fn(),
     moverModulo: vi.fn(),
+    excluir: vi.fn(),
     importar: vi.fn(),
     modulosRequerimento: vi.fn(),
     salvarModuloRequerimento: vi.fn(),
@@ -123,6 +124,26 @@ describe('useCatalogo', () => {
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'avisos.catalogo.solucaoSalva' })
     );
+  });
+
+  it('excluir apaga o item sem uso, recarrega e avisa; em uso, avisa com o motivo', async () => {
+    service.excluir.mockResolvedValueOnce(undefined);
+    const { client, wrapper } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useCatalogo(), { wrapper });
+
+    await act(() => result.current.excluir({ tipo: 'produto', id: 'p9' }));
+    expect(service.excluir).toHaveBeenCalledWith('produto', 'p9');
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.catalogo.excluido' });
+    expect(invalidar).toHaveBeenCalled();
+
+    service.excluir.mockRejectedValueOnce(new Error('Este item já foi usado: inative-o.'));
+    await act(() => result.current.excluir({ tipo: 'modulo', id: 'm9' }).catch(() => undefined));
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.catalogo.erroExcluir',
+      description: 'Este item já foi usado: inative-o.',
+      variant: 'destructive',
+    });
   });
 
   it('reordenar não avisa no sucesso, só recarrega', async () => {

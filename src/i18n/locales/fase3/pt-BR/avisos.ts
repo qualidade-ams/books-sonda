@@ -25,6 +25,8 @@ const avisos = {
     moduloMovido: 'Módulo movido',
     aClassificarInativado: 'O produto "A classificar" ficou vazio e foi inativado.',
     erroMoverModulo: 'Erro ao mover o módulo',
+    excluido: 'Excluído do catálogo',
+    erroExcluir: 'Erro ao excluir do catálogo',
     correspondenciaSalva: 'Correspondência salva',
     erroCorrespondencia: 'Erro ao salvar a correspondência',
     importados: {

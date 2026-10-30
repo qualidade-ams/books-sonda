@@ -6690,6 +6690,10 @@ export type Database = {
           tickets: number
         }[]
       }
+      catalogo_excluir: {
+        Args: { p_id: string; p_tipo: string }
+        Returns: undefined
+      }
       consumo_bancos_do_book: {
         Args: { p_book_id: string }
         Returns: {

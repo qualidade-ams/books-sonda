@@ -85,6 +85,7 @@ const catalogo = {
   reordenarProdutos: vi.fn(async () => undefined),
   salvarModulo: vi.fn(async () => undefined),
   moverModulo: vi.fn(async () => ({ provisorioInativado: true })),
+  excluir: vi.fn(async () => undefined),
   importar: vi.fn(async () => undefined),
   isSalvando: false,
 };
@@ -202,6 +203,29 @@ describe('ProdutosModulos', () => {
       descricao: null,
       ativo: true,
     });
+  });
+
+  it('excluir o produto que nunca foi usado pede confirmação; o que tem módulo não oferece', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /^COMEX/ }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'fase3Comum.acoesDe {"nome":"CE PLUS"}' })
+    );
+    expect(screen.queryByRole('menuitem', { name: 'fase3Comum.excluir' })).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
+    // FCI: sem módulo, grupo, banco ou requerimento
+    await userEvent.click(
+      screen.getByRole('button', { name: 'fase3Comum.acoesDe {"nome":"FCI"}' })
+    );
+    await userEvent.click(screen.getByRole('menuitem', { name: 'fase3Comum.excluir' }));
+    const dialogo = screen.getByRole('alertdialog', {
+      name: 'produtosModulos.excluir.titulo {"nome":"FCI"}',
+    });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'fase3Comum.excluir' }));
+    await waitFor(() =>
+      expect(catalogo.excluir).toHaveBeenCalledWith({ tipo: 'produto', id: 'fci' })
+    );
   });
 
   it('inativar um produto pela solução pede confirmação', async () => {

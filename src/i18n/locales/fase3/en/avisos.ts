@@ -25,6 +25,8 @@ const avisos = {
     moduloMovido: 'Module moved',
     aClassificarInativado: 'The "To classify" product became empty and was deactivated.',
     erroMoverModulo: 'Could not move the module',
+    excluido: 'Deleted from the catalog',
+    erroExcluir: 'Could not delete from the catalog',
     correspondenciaSalva: 'Mapping saved',
     erroCorrespondencia: 'Could not save the mapping',
     importados: {

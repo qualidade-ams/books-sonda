@@ -32561,6 +32561,7 @@ var comum = {
   editar: "Editar",
   inativar: "Inativar",
   reativar: "Reativar",
+  excluir: "Excluir",
   ativo: "Ativo",
   inativo: "Inativo",
   ativa: "Ativa",
@@ -32711,6 +32712,9 @@ var produtosModulos = {
       nome: "Nome da solu\xE7\xE3o",
       ativa: "Solu\xE7\xE3o ativa",
       codigoNaoMuda: "O c\xF3digo n\xE3o muda depois de criado.",
+      excluirTitulo: "Excluir a solu\xE7\xE3o",
+      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem produto e sem grupo de servi\xE7o). Exclu\xEDda, ela some do cat\xE1logo de vez.",
+      excluir: "Excluir solu\xE7\xE3o",
       codigoRepetido: "J\xE1 existe uma solu\xE7\xE3o com este c\xF3digo.",
       nomeRepetido: "J\xE1 existe uma solu\xE7\xE3o com este nome.",
       ajudaServico: "As horas dos grupos de servi\xE7o v\xE3o sempre para o Banco padr\xE3o."
@@ -32791,6 +32795,12 @@ var produtosModulos = {
       produtoVazio: "Produto vazio.",
       repetido: "Repetido na planilha (linha {{linha}})."
     }
+  },
+  excluir: {
+    titulo: "Excluir {{nome}}?",
+    descricao: "O item nunca foi usado: some do cat\xE1logo de vez, em vez de ficar inativo.",
+    semVolta: "N\xE3o d\xE1 para desfazer; a auditoria guarda uma c\xF3pia",
+    emUso: "Se algo j\xE1 usa o item (empresa, banco, requerimento), a exclus\xE3o \xE9 recusada: a\xED, inative"
   }
 };
 var produtosModulos_default = produtosModulos;
@@ -34693,6 +34703,8 @@ var avisos = {
     moduloMovido: "M\xF3dulo movido",
     aClassificarInativado: 'O produto "A classificar" ficou vazio e foi inativado.',
     erroMoverModulo: "Erro ao mover o m\xF3dulo",
+    excluido: "Exclu\xEDdo do cat\xE1logo",
+    erroExcluir: "Erro ao excluir do cat\xE1logo",
     correspondenciaSalva: "Correspond\xEAncia salva",
     erroCorrespondencia: "Erro ao salvar a correspond\xEAncia",
     importados: {
@@ -34879,6 +34891,7 @@ var erros = {
     carregarOsRamos: "Falha ao carregar os ramos: {{detalhe}}",
     criarOBanco: "Falha ao criar o banco: {{detalhe}}",
     excluirOMapeamento: "Falha ao excluir o mapeamento: {{detalhe}}",
+    excluirDoCatalogo: "Falha ao excluir do cat\xE1logo: {{detalhe}}",
     excluirORamo: "Falha ao excluir o ramo: {{detalhe}}",
     importarOModulo: "Falha ao importar o m\xF3dulo: {{detalhe}}",
     importarOProduto: "Falha ao importar o produto: {{detalhe}}",
@@ -34969,6 +34982,7 @@ var comum2 = {
   editar: "Edit",
   inativar: "Deactivate",
   reativar: "Reactivate",
+  excluir: "Delete",
   ativo: "Active",
   inativo: "Inactive",
   ativa: "Active",
@@ -35122,6 +35136,9 @@ var produtosModulos2 = {
       nome: "Solution name",
       ativa: "Active solution",
       codigoNaoMuda: "The code does not change after it is created.",
+      excluirTitulo: "Delete the solution",
+      excluirAjuda: "This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.",
+      excluir: "Delete solution",
       codigoRepetido: "A solution with this code already exists.",
       nomeRepetido: "A solution with this name already exists.",
       ajudaServico: "Hours from service groups always go to the default bank."
@@ -35202,6 +35219,12 @@ var produtosModulos2 = {
       produtoVazio: "Empty product.",
       repetido: "Repeated in the spreadsheet (row {{linha}})."
     }
+  },
+  excluir: {
+    titulo: "Delete {{nome}}?",
+    descricao: "The item was never used: it leaves the catalog for good instead of becoming inactive.",
+    semVolta: "This cannot be undone; the audit trail keeps a copy",
+    emUso: "If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead"
   }
 };
 var produtosModulos_default2 = produtosModulos2;
@@ -37104,6 +37127,8 @@ var avisos2 = {
     moduloMovido: "Module moved",
     aClassificarInativado: 'The "To classify" product became empty and was deactivated.',
     erroMoverModulo: "Could not move the module",
+    excluido: "Deleted from the catalog",
+    erroExcluir: "Could not delete from the catalog",
     correspondenciaSalva: "Mapping saved",
     erroCorrespondencia: "Could not save the mapping",
     importados: {
@@ -37290,6 +37315,7 @@ var erros2 = {
     carregarOsRamos: "Could not load the business sectors: {{detalhe}}",
     criarOBanco: "Could not create the bank: {{detalhe}}",
     excluirOMapeamento: "Could not delete the mapping: {{detalhe}}",
+    excluirDoCatalogo: "Could not delete from the catalog: {{detalhe}}",
     excluirORamo: "Could not delete the sector: {{detalhe}}",
     importarOModulo: "Could not import the module: {{detalhe}}",
     importarOProduto: "Could not import the product: {{detalhe}}",
@@ -37380,6 +37406,7 @@ var comum3 = {
   editar: "Editar",
   inativar: "Desactivar",
   reativar: "Reactivar",
+  excluir: "Eliminar",
   ativo: "Activo",
   inativo: "Inactivo",
   ativa: "Activa",
@@ -37530,6 +37557,9 @@ var produtosModulos3 = {
       nome: "Nombre de la soluci\xF3n",
       ativa: "Soluci\xF3n activa",
       codigoNaoMuda: "El c\xF3digo no cambia despu\xE9s de creado.",
+      excluirTitulo: "Eliminar la soluci\xF3n",
+      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin producto y sin grupo de servicio). Eliminada, sale del cat\xE1logo para siempre.",
+      excluir: "Eliminar soluci\xF3n",
       codigoRepetido: "Ya existe una soluci\xF3n con este c\xF3digo.",
       nomeRepetido: "Ya existe una soluci\xF3n con este nombre.",
       ajudaServico: "Las horas de los grupos de servicio van siempre al Banco predeterminado."
@@ -37610,6 +37640,12 @@ var produtosModulos3 = {
       produtoVazio: "Producto vac\xEDo.",
       repetido: "Repetido en la planilla (fila {{linha}})."
     }
+  },
+  excluir: {
+    titulo: "\xBFEliminar {{nome}}?",
+    descricao: "El \xEDtem nunca se us\xF3: sale del cat\xE1logo para siempre, en lugar de quedar inactivo.",
+    semVolta: "No se puede deshacer; la auditor\xEDa guarda una copia",
+    emUso: "Si algo ya usa el \xEDtem (empresa, banco, requerimiento), la eliminaci\xF3n se rechaza: entonces, desact\xEDvelo"
   }
 };
 var produtosModulos_default3 = produtosModulos3;
@@ -39512,6 +39548,8 @@ var avisos3 = {
     moduloMovido: "M\xF3dulo movido",
     aClassificarInativado: 'El producto "A clasificar" qued\xF3 vac\xEDo y fue inactivado.',
     erroMoverModulo: "No fue posible mover el m\xF3dulo",
+    excluido: "Eliminado del cat\xE1logo",
+    erroExcluir: "No fue posible eliminar del cat\xE1logo",
     correspondenciaSalva: "Correspondencia guardada",
     erroCorrespondencia: "No fue posible guardar la correspondencia",
     importados: {
@@ -39698,6 +39736,7 @@ var erros3 = {
     carregarOsRamos: "No fue posible cargar los ramos: {{detalhe}}",
     criarOBanco: "No fue posible crear el banco: {{detalhe}}",
     excluirOMapeamento: "No fue posible eliminar el mapeo: {{detalhe}}",
+    excluirDoCatalogo: "No fue posible eliminar del cat\xE1logo: {{detalhe}}",
     excluirORamo: "No fue posible eliminar el ramo: {{detalhe}}",
     importarOModulo: "No fue posible importar el m\xF3dulo: {{detalhe}}",
     importarOProduto: "No fue posible importar el producto: {{detalhe}}",

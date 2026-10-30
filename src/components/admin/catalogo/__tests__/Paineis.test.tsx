@@ -137,6 +137,28 @@ describe('PainelSolucao', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fase3Comum.acoesDe/ })).not.toBeInTheDocument();
   });
+
+  it('excluir aparece só no produto sem uso', async () => {
+    const onExcluirProduto = vi.fn();
+    renderizar(
+      <PainelSolucao
+        {...props}
+        podeExcluirProduto={(p) => p.id === 'fci'}
+        onExcluirProduto={onExcluirProduto}
+      />
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'fase3Comum.acoesDe {"nome":"CE PLUS"}' })
+    );
+    expect(screen.queryByRole('menuitem', { name: 'fase3Comum.excluir' })).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'fase3Comum.acoesDe {"nome":"FCI"}' })
+    );
+    await userEvent.click(screen.getByRole('menuitem', { name: 'fase3Comum.excluir' }));
+    expect(onExcluirProduto).toHaveBeenCalledWith(CATALOGO.produtos[1]);
+  });
 });
 
 describe('PainelProduto', () => {
@@ -208,6 +230,24 @@ describe('PainelProduto', () => {
       screen.getByRole('menuitem', { name: 'produtosModulos.produto.moverPara' })
     );
     expect(onMover).toHaveBeenCalledWith(CATALOGO.modulos[3]);
+  });
+
+  it('excluir aparece só no módulo sem uso', async () => {
+    const onExcluir = vi.fn();
+    renderizar(
+      <PainelProduto {...props} podeExcluir={(m) => m.id === 'drawback'} onExcluir={onExcluir} />
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'fase3Comum.acoesDe {"nome":"Câmbio"}' })
+    );
+    expect(screen.queryByRole('menuitem', { name: 'fase3Comum.excluir' })).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'fase3Comum.acoesDe {"nome":"Drawback"}' })
+    );
+    await userEvent.click(screen.getByRole('menuitem', { name: 'fase3Comum.excluir' }));
+    expect(onExcluir).toHaveBeenCalledWith(CATALOGO.modulos[1]);
   });
 });
 

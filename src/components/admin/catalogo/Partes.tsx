@@ -2,7 +2,7 @@
 // bancos que usam e o menu "⋯" das linhas.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CheckCircle2, MoreHorizontal, Pencil, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, MoreHorizontal, Pencil, Trash2, XCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -121,12 +121,15 @@ export function MenuAcoes({
   ativo,
   onEditar,
   onAlterarStatus,
+  onExcluir,
   extras,
 }: {
   nome: string;
   ativo: boolean;
   onEditar: () => void;
   onAlterarStatus: () => void;
+  /** Só para o item que nunca foi usado */
+  onExcluir?: () => void;
   /** Ações a mais, antes de inativar (ex.: mover módulo "A classificar") */
   extras?: ReactNode;
 }) {
@@ -164,6 +167,14 @@ export function MenuAcoes({
             {ativo ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
             {ativo ? t('fase3Comum.inativar') : t('fase3Comum.reativar')}
           </DropdownMenuItem>
+          {onExcluir && (
+            <DropdownMenuItem
+              className={cn(itemMenu, 'text-ds-danger-fg focus:bg-ds-danger-bg')}
+              onSelect={onExcluir}
+            >
+              <Trash2 className="h-4 w-4" /> {t('fase3Comum.excluir')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

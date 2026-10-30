@@ -2,6 +2,8 @@
 // aqui ficam os campos, a validação e a confirmação de inativar o que um banco usa.
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Trash2 } from 'lucide-react';
+import { Button } from '@/components/ds/Button';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
 import { Select } from '@/components/ds/Select';
 import {
@@ -121,9 +123,12 @@ export function EdicaoSolucao({
   podeEditarGrupos,
   onFechar,
   onSalvar,
+  onExcluir,
 }: Comuns & {
   solucao: Solucao | null;
   onSalvar: (dados: SolucaoInput, grupos: MudancasGrupos) => Promise<void>;
+  /** Só para a solução que nunca foi usada */
+  onExcluir?: () => void;
 }) {
   const { t } = useTranslation();
   const novo = solucao === null;
@@ -221,6 +226,16 @@ export function EdicaoSolucao({
             somenteLeitura={!podeEditarGrupos}
           />
         </SecaoGrupos>
+      )}
+      {!novo && onExcluir && (
+        <Secao titulo={t('produtosModulos.edicao.solucao.excluirTitulo')}>
+          <Ajuda>{t('produtosModulos.edicao.solucao.excluirAjuda')}</Ajuda>
+          <div className="mt-3">
+            <Button variante="perigo" onClick={onExcluir}>
+              <Trash2 /> {t('produtosModulos.edicao.solucao.excluir')}
+            </Button>
+          </div>
+        </Secao>
       )}
     </TelaEdicao>
   );

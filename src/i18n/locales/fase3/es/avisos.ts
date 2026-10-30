@@ -25,6 +25,8 @@ const avisos = {
     moduloMovido: 'Módulo movido',
     aClassificarInativado: 'El producto "A clasificar" quedó vacío y fue inactivado.',
     erroMoverModulo: 'No fue posible mover el módulo',
+    excluido: 'Eliminado del catálogo',
+    erroExcluir: 'No fue posible eliminar del catálogo',
     correspondenciaSalva: 'Correspondencia guardada',
     erroCorrespondencia: 'No fue posible guardar la correspondencia',
     importados: {
