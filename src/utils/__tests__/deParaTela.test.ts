@@ -22,17 +22,40 @@ const mapeamento = (
   grupoBook: string,
   destino: Partial<MapeamentoGrupo>,
   classificacao: MapeamentoGrupo['classificacao']
-): MapeamentoGrupo => ({
-  id,
-  grupoAranda,
-  grupoBook,
-  solucaoId: null,
-  produtoId: null,
-  moduloId: null,
-  classificacao,
-  ...autoria,
-  ...destino,
-});
+): MapeamentoGrupo => {
+  const principal = {
+    solucaoId: destino.solucaoId ?? null,
+    produtoId: destino.produtoId ?? null,
+    moduloId: destino.moduloId ?? null,
+  };
+  return {
+    id,
+    grupoAranda,
+    grupoBook,
+    ...principal,
+    classificacao,
+    vinculos: principal.solucaoId ? [principal] : [],
+    ...autoria,
+    ...destino,
+  };
+};
+
+// Em dois lugares: Câmbio (principal) e o produto COMPLY inteiro, de outra solução
+const MULTI = mapeamento(
+  'g5',
+  'AMS APL - INTEGRACAO',
+  'Integração',
+  {
+    solucaoId: 's1',
+    produtoId: 'ce',
+    moduloId: 'cambio',
+    vinculos: [
+      { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+      { solucaoId: 's2', produtoId: 'comply', moduloId: null },
+    ],
+  },
+  'modulo'
+);
 
 const LISTA = [
   mapeamento(
@@ -79,6 +102,24 @@ describe('filtrarMapeamentos', () => {
       }).map((m) => m.id)
     ).toEqual(['g2', 'g3']);
   });
+
+  it('o grupo em vários lugares passa se algum lugar atende', () => {
+    const lista = [...LISTA, MULTI];
+    expect(filtrarMapeamentos(lista, { ...SEM_FILTRO, solucoes: ['s2'] }).map((m) => m.id)).toEqual(
+      ['g5']
+    );
+    expect(
+      filtrarMapeamentos(lista, { ...SEM_FILTRO, produtos: ['comply'] }).map((m) => m.id)
+    ).toEqual(['g5']);
+    // Situação pelo nível de cada lugar: o produto inteiro do COMPLY
+    expect(
+      filtrarMapeamentos(lista, { ...SEM_FILTRO, situacao: ['produto'] }).map((m) => m.id)
+    ).toEqual(['g2', 'g5']);
+    // Os filtros valem para o mesmo lugar: s2 não tem o módulo Câmbio
+    expect(
+      filtrarMapeamentos(lista, { ...SEM_FILTRO, solucoes: ['s2'], modulos: ['cambio'] })
+    ).toEqual([]);
+  });
 });
 
 describe('totaisDePara', () => {
@@ -89,6 +130,15 @@ describe('totaisDePara', () => {
       comModulo: 1,
       semModulo: 3,
       naoMapeados: 2,
+    });
+  });
+
+  it('o grupo em vários lugares conta uma vez; com módulo se algum lugar é módulo', () => {
+    expect(totaisDePara([MULTI], [])).toEqual({
+      mapeados: 1,
+      comModulo: 1,
+      semModulo: 0,
+      naoMapeados: 0,
     });
   });
 });
@@ -128,16 +178,22 @@ describe('destinoMudou', () => {
 describe('exportacaoMapeamentos', () => {
   const t = (chave: string) => chave;
   const CATALOGO = {
-    solucoes: [{ id: 's1', nome: 'COMEX' }],
-    produtos: [{ id: 'ce', nome: 'CE PLUS', solucaoId: 's1' }],
+    solucoes: [
+      { id: 's1', nome: 'COMEX' },
+      { id: 's2', nome: 'FISCAIS' },
+    ],
+    produtos: [
+      { id: 'ce', nome: 'CE PLUS', solucaoId: 's1' },
+      { id: 'comply', nome: 'COMPLY', solucaoId: 's2' },
+    ],
     modulos: [{ id: 'cambio', nome: 'Câmbio', produtoId: 'ce' }],
   } as unknown as Catalogo;
   const USO: Record<string, UsoGrupo> = {
     g1: { apontamentos: 120, tickets: 4, empresasMultiplos: [] },
   };
 
-  it('uma linha por mapeamento, com o destino pelo nome e o uso', () => {
-    const exportacao = exportacaoMapeamentos([LISTA[0], LISTA[3]], CATALOGO, USO, t);
+  it('uma linha por mapeamento, com o lugar principal pelo nome, os outros lugares e o uso', () => {
+    const exportacao = exportacaoMapeamentos([LISTA[0], LISTA[3], MULTI], CATALOGO, USO, t);
     expect(exportacao.arquivo).toBe('deParaGrupos.exportar.arquivo');
     expect(matrizDaAba(exportacao.abas[0])).toEqual([
       [
@@ -147,6 +203,7 @@ describe('exportacaoMapeamentos', () => {
         'deParaGrupos.destino.produto',
         'deParaGrupos.destino.modulo',
         'fase3Comum.situacao',
+        'deParaGrupos.exportar.outrosLugares',
         'deParaGrupos.lista.colunaApontamentos',
         'deParaGrupos.exportar.tickets',
       ],
@@ -157,10 +214,22 @@ describe('exportacaoMapeamentos', () => {
         'CE PLUS',
         'Câmbio',
         'deParaGrupos.classificacao.modulo',
+        '',
         120,
         4,
       ],
-      ['DEDICADOS', 'Dedicados', '', '', '', 'deParaGrupos.classificacao.nao_se_aplica', 0, 0],
+      ['DEDICADOS', 'Dedicados', '', '', '', 'deParaGrupos.classificacao.nao_se_aplica', '', 0, 0],
+      [
+        'AMS APL - INTEGRACAO',
+        'Integração',
+        'COMEX',
+        'CE PLUS',
+        'Câmbio',
+        'deParaGrupos.classificacao.modulo',
+        'FISCAIS › COMPLY',
+        0,
+        0,
+      ],
     ]);
   });
 });
@@ -237,6 +306,30 @@ describe('importação de mapeamentos', () => {
         grupoAranda: 'AMS DBA',
         grupoBook: 'DBA',
         destino: { solucaoId: null, produtoId: null, moduloId: null },
+      },
+    ]);
+  });
+
+  it('grupo em vários lugares: a linha com o lugar principal não apaga os outros', () => {
+    const linhas = [
+      linha(2, 'AMS APL - INTEGRACAO', 'Integração 2', 'COMEX', 'CE PLUS', 'Câmbio'),
+      linha(3, 'AMS APL - INTEGRACAO', 'Integração', 'COMEX', 'CE PLUS'),
+    ];
+    const [mudaBook] = conferirMapeamentos([linhas[0]], [MULTI], CATALOGO, t);
+    const [mudaLugar] = conferirMapeamentos([linhas[1]], [MULTI], CATALOGO, t);
+    expect([mudaBook.situacao, mudaLugar.situacao]).toEqual(['atualiza', 'atualiza']);
+
+    // Mesmo lugar principal: só o Grupo do Book muda, os vínculos ficam
+    expect(mapeamentosImportados([mudaBook], [MULTI], CATALOGO)).toEqual([
+      { id: 'g5', grupoAranda: 'AMS APL - INTEGRACAO', grupoBook: 'Integração 2' },
+    ]);
+    // Outro lugar: troca todos, como o atribuir em lote
+    expect(mapeamentosImportados([mudaLugar], [MULTI], CATALOGO)).toEqual([
+      {
+        id: 'g5',
+        grupoAranda: 'AMS APL - INTEGRACAO',
+        grupoBook: 'Integração',
+        destino: { solucaoId: 's1', produtoId: 'ce', moduloId: null },
       },
     ]);
   });

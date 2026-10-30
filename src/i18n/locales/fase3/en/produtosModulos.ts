@@ -90,7 +90,7 @@ const produtosModulos = {
     emProduto: 'In {{produto}}, no module',
     servicoDe: 'Service of {{solucao}}',
     semSolucao: 'No solution (not applicable)',
-    saiParaServicos: 'leaves there and comes to the services',
+    ficaTambem: 'stays there and is also placed here',
     saiParaCa: 'leaves there and comes here',
     podeMoverTitulo: 'May move hours between banks',
     podeMoverTexto:
@@ -160,7 +160,7 @@ const produtosModulos = {
       grupos: 'Aranda groups',
       semGrupo: 'Without an Aranda group, no logged hour reaches this module.',
       ajudaGrupos:
-        'A group stays in one place only. When unlinked, it stays in the product, without a module.',
+        'A group can be in several products, one place per product. When unlinked, it stays in the product, without a module.',
     },
   },
   mover: {
@@ -193,7 +193,7 @@ const produtosModulos = {
     moduloAtivo:
       'An inactive module does not appear for new scopes. Banks that already use it do not change.',
     gruposAranda:
-      'Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group stays in one place only.',
+      'Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several products, but in only one module of each product.',
     usadoNosBancos:
       'Active banks that have this in scope, directly or because they marked the whole product. The scope marks products and modules; the solution only groups them.',
     moduloRequerimento:

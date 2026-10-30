@@ -25,7 +25,19 @@ beforeAll(() => {
 const autoria = { atualizadoEm: '2026-10-22T12:00:00Z', atualizadoPor: null };
 const CATALOGO: Catalogo = {
   solucoes: [{ id: 's1', codigo: 'COMEX', nome: 'COMEX', ordem: 1, ativo: true, ...autoria }],
-  produtos: [],
+  produtos: [
+    {
+      id: 'ce',
+      solucaoId: 's1',
+      codigo: 'CE',
+      nome: 'CE PLUS',
+      descricao: null,
+      ordem: 1,
+      ativo: true,
+      aClassificar: false,
+      ...autoria,
+    },
+  ],
   modulos: [],
 };
 const EXISTENTE: MapeamentoGrupo = {
@@ -36,7 +48,19 @@ const EXISTENTE: MapeamentoGrupo = {
   produtoId: null,
   moduloId: null,
   classificacao: 'solucao',
+  vinculos: [{ solucaoId: 's1', produtoId: null, moduloId: null }],
   ...autoria,
+};
+// Em dois lugares: o serviço da COMEX e o produto CE PLUS
+const EM_DOIS: MapeamentoGrupo = {
+  ...EXISTENTE,
+  id: 'g2',
+  grupoAranda: 'AMS INTEGRACAO',
+  grupoBook: 'Integração',
+  vinculos: [
+    { solucaoId: 's1', produtoId: null, moduloId: null },
+    { solucaoId: 's1', produtoId: 'ce', moduloId: null },
+  ],
 };
 const USO: Record<string, UsoGrupo> = {
   g1: { apontamentos: 10, tickets: 2, empresasMultiplos: ['ALFA'] },
@@ -108,12 +132,48 @@ describe('EdicaoMapeamento', () => {
     });
     expect(within(dialogo).getByText('deParaGrupos.edicao.confirmarBook')).toBeInTheDocument();
     fireEvent.click(within(dialogo).getByRole('button', { name: 'ds.formulario.salvar' }));
+    // O destino não mudou: os lugares do grupo ficam como estão
     await waitFor(() =>
       expect(onSalvar).toHaveBeenCalledWith({
         id: 'g1',
         grupoAranda: 'AMS DBA',
         grupoBook: 'Banco de dados',
-        destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+      })
+    );
+  });
+
+  it('grupo em mais de um lugar: o destino é só leitura, com os lugares e onde mudar', async () => {
+    const onSalvar = vi.fn(async () => undefined);
+    renderizar(
+      <EdicaoMapeamento
+        {...comuns}
+        mapeamentos={[EXISTENTE, EM_DOIS]}
+        mapeamento={EM_DOIS}
+        onSalvar={onSalvar}
+        onFechar={vi.fn()}
+      />
+    );
+    expect(
+      screen.queryByRole('combobox', { name: 'deParaGrupos.destino.solucao' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('deParaGrupos.destino.textoSolucao {"solucao":"COMEX"}')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('deParaGrupos.destino.textoProduto {"produto":"CE PLUS"}')
+    ).toBeInTheDocument();
+    expect(screen.getByText('deParaGrupos.edicao.variosLugares')).toBeInTheDocument();
+
+    fireEvent.change(campo(/deParaGrupos.edicao.grupoBook/), { target: { value: 'Integração 2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'ds.formulario.salvar' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ds.formulario.salvar' })
+    );
+    await waitFor(() =>
+      expect(onSalvar).toHaveBeenCalledWith({
+        id: 'g2',
+        grupoAranda: 'AMS INTEGRACAO',
+        grupoBook: 'Integração 2',
       })
     );
   });

@@ -41,6 +41,15 @@ const mapeamento = (id: string, grupoAranda: string, extra: Partial<MapeamentoGr
     produtoId: null,
     moduloId: null,
     classificacao: 'nao_se_aplica',
+    vinculos: extra.solucaoId
+      ? [
+          {
+            solucaoId: extra.solucaoId,
+            produtoId: extra.produtoId ?? null,
+            moduloId: extra.moduloId ?? null,
+          },
+        ]
+      : [],
     ...autoria,
     ...extra,
   }) as MapeamentoGrupo;

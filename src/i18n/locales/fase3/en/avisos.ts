@@ -60,6 +60,11 @@ const avisos = {
       varios: 'Target assigned to {{n}} groups',
     },
     erroAtribuir: 'Could not assign the target',
+    vinculosAlterados: {
+      um: 'Links of {{n}} group updated',
+      varios: 'Links of {{n}} groups updated',
+    },
+    erroVinculos: 'Could not update the group links',
     excluido: 'Mapping deleted',
     excluidoDescricao: 'The group went back to Unmapped groups.',
     erroExcluir: 'Could not delete the mapping',

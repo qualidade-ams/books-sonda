@@ -37,7 +37,6 @@ import {
   bancosDoProduto,
   catalogoImportado,
   conferirCatalogo,
-  destinoAoDesvincular,
   destinoDoAlvo,
   exportacaoCatalogo,
   gruposDoModulo,
@@ -110,7 +109,7 @@ export default function ProdutosModulos() {
     isSalvando,
   } = useCatalogo();
   const requerimentos = useModulosRequerimento();
-  const { mapeamentos, atribuirDestino, isLoading: carregandoGrupos } = useDePara();
+  const { mapeamentos, alterarVinculos, isLoading: carregandoGrupos } = useDePara();
   const catalogo = useMemo<Catalogo>(
     () => ({ solucoes, produtos, modulos }),
     [solucoes, produtos, modulos]
@@ -148,7 +147,7 @@ export default function ProdutosModulos() {
   const totais = totaisCatalogo(catalogo, mapeamentos);
   const carregando = isLoading || carregandoGrupos;
 
-  /** Grava o item e depois leva os grupos que entraram e saíram para o destino certo */
+  /** Grava o item e depois acrescenta ou tira este lugar dos grupos que entraram e saíram */
   const comGrupos =
     <T extends { id?: string }>(
       tipo: AlvoGrupo['tipo'],
@@ -156,12 +155,9 @@ export default function ProdutosModulos() {
     ) =>
     async (dados: T, { vincular, desvincular }: MudancasGrupos) => {
       await salvarItem(dados);
-      if (!dados.id) return;
-      const alvo: AlvoGrupo = { tipo, id: dados.id };
-      if (vincular.length)
-        await atribuirDestino({ ids: vincular, destino: destinoDoAlvo(alvo, catalogo) });
-      if (desvincular.length)
-        await atribuirDestino({ ids: desvincular, destino: destinoAoDesvincular(alvo, catalogo) });
+      if (!dados.id || (!vincular.length && !desvincular.length)) return;
+      const destino = destinoDoAlvo({ tipo, id: dados.id }, catalogo);
+      await alterarVinculos({ destino, vincular, desvincular });
     };
 
   // A ordem vale dentro da solução: o produto arrastado vai para o lugar do outro

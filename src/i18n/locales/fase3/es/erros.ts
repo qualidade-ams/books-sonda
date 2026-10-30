@@ -64,6 +64,8 @@ const erros = {
   },
   falhas: {
     atribuirODestino: 'No fue posible asignar el destino: {{detalhe}}',
+    vincularOsGrupos: 'No fue posible vincular los grupos: {{detalhe}}',
+    desvincularOsGrupos: 'No fue posible desvincular los grupos: {{detalhe}}',
     carregarAEmpresa: 'No fue posible cargar la empresa: {{detalhe}}',
     carregarAsEmpresas: 'No fue posible cargar las empresas: {{detalhe}}',
     carregarAsRegrasDeContagem: 'No fue posible cargar las reglas de conteo: {{detalhe}}',

@@ -67,6 +67,7 @@ const MAPEAMENTOS = [
     produtoId: 'ce',
     moduloId: 'cambio',
     classificacao: 'modulo',
+    vinculos: [{ solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' }],
     ...autoria,
   },
 ] as MapeamentoGrupo[];
@@ -98,7 +99,7 @@ const dePara = {
   mapeamentos: MAPEAMENTOS,
   isLoading: false,
   error: null,
-  atribuirDestino: vi.fn(async () => undefined),
+  alterarVinculos: vi.fn(async () => undefined),
 };
 let permissoes: string[] = [];
 vi.mock('@/hooks/useCatalogo', () => ({
@@ -177,7 +178,7 @@ describe('ProdutosModulos', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('salvar o módulo grava o módulo e leva o grupo desvinculado para o produto', async () => {
+  it('salvar o módulo grava o módulo e tira o grupo desvinculado só deste lugar', async () => {
     renderizar();
     fireEvent.click(screen.getByText('Câmbio'));
     fireEvent.click(
@@ -186,10 +187,12 @@ describe('ProdutosModulos', () => {
       })
     );
     fireEvent.click(screen.getByRole('button', { name: 'ds.formulario.salvar' }));
+    // O lugar é o módulo; a função do banco deixa o grupo no produto inteiro
     await waitFor(() =>
-      expect(dePara.atribuirDestino).toHaveBeenCalledWith({
-        ids: ['g1'],
-        destino: { solucaoId: 's1', produtoId: 'ce', moduloId: null },
+      expect(dePara.alterarVinculos).toHaveBeenCalledWith({
+        destino: { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+        vincular: [],
+        desvincular: ['g1'],
       })
     );
     expect(catalogo.salvarModulo).toHaveBeenCalledWith({

@@ -66,6 +66,15 @@ const mapeamento = (
     produtoId: null,
     moduloId: null,
     classificacao,
+    vinculos: destino.solucaoId
+      ? [
+          {
+            solucaoId: destino.solucaoId,
+            produtoId: destino.produtoId ?? null,
+            moduloId: destino.moduloId ?? null,
+          },
+        ]
+      : [],
     ...autoria,
     ...destino,
   }) as MapeamentoGrupo;
@@ -122,6 +131,29 @@ describe('AbaMapeamentos', () => {
     expect(lista().getByText('deParaGrupos.classificacao.nao_se_aplica')).toBeInTheDocument();
     fireEvent.click(lista().getByText('DEDICADOS'));
     expect(onEditar).toHaveBeenCalledWith(MAPEAMENTOS[2]);
+  });
+
+  it('grupo em vários lugares: o Destino mostra todos', () => {
+    const emDois = mapeamento(
+      'g9',
+      'AMS APL - INTEGRACAO',
+      {
+        solucaoId: 's1',
+        produtoId: 'ce',
+        moduloId: 'cambio',
+        vinculos: [
+          { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+          { solucaoId: 's1', produtoId: null, moduloId: null },
+        ],
+      },
+      'modulo'
+    );
+    renderizar({ mapeamentos: [emDois] });
+    const destinos = lista().getAllByTestId('lugar-do-grupo');
+    expect(destinos.map((d) => d.textContent)).toEqual([
+      'COMEX › CE PLUS › Câmbio',
+      'COMEX · deParaGrupos.destino.servico',
+    ]);
   });
 
   it('busca e, sem resultado, oferece limpar', () => {

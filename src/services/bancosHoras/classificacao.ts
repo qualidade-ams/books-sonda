@@ -2,8 +2,9 @@
  * Classificador: cada apontamento, ticket ou requerimento vai para exatamente um
  * banco (RN-02 a RN-06, RN-09; Modelagem_Fase2.md seção 4). Funções puras.
  *
- * Grupo do Aranda → produto/módulo (de-para) → primeiro banco, na ordem do
- * cadastro, cujo escopo e filtro atendem → senão, Banco padrão.
+ * Grupo do Aranda → seus vínculos no catálogo (de-para) → primeiro banco, na ordem
+ * do cadastro, cujo escopo cobre algum vínculo e cujo filtro atende → senão, Banco
+ * padrão. O grupo pode estar em vários lugares (decisão de 28/10/2026).
  */
 
 import { estaVigente, type MesAno } from './calculo';
@@ -30,13 +31,21 @@ export interface BancoClassificavel {
   filtroIc: FiltroItemConfiguracao | null;
 }
 
+/** Um lugar do grupo no catálogo; produto nulo = serviço da solução */
+export interface VinculoGrupo {
+  produtoId: string | null;
+  /** Nulo = produto inteiro */
+  moduloId: string | null;
+}
+
 export interface GrupoDePara {
   grupoAranda: string;
-  /** Nulo = grupo sem produto (ex.: DEDICADOS, T&M) */
-  produtoId: string | null;
-  moduloId: string | null;
+  /** Vazio = grupo que não se aplica (ex.: DEDICADOS, T&M) */
+  vinculos: VinculoGrupo[];
   ativo: boolean;
 }
+
+const SEM_VINCULO: VinculoGrupo[] = [{ produtoId: null, moduloId: null }];
 
 export interface Classificador {
   porGrupo(grupo: string | null, itemConfiguracao: string | null): string | null;
@@ -107,7 +116,14 @@ export function criarClassificador(
     porProdutoModulo,
     porGrupo(grupo, itemConfiguracao) {
       const d = grupos.get(normalizar(grupo));
-      return porProdutoModulo(d?.produtoId ?? null, d?.moduloId ?? null, itemConfiguracao);
+      // Sem vínculo, como um grupo sem produto: só banco sem escopo (com filtro) ou o padrão
+      const vinculos = d?.vinculos.length ? d.vinculos : SEM_VINCULO;
+      const banco = candidatos.find(
+        (b) =>
+          vinculos.some((v) => atendeEscopo(b, v.produtoId, v.moduloId)) &&
+          atendeFiltro(b, itemConfiguracao)
+      );
+      return (banco ?? padrao)?.bancoId ?? null;
     },
   };
 }

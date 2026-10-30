@@ -88,7 +88,7 @@ const produtosModulos = {
     emProduto: 'En {{produto}}, sin módulo',
     servicoDe: 'Servicio de {{solucao}}',
     semSolucao: 'Sin solución (no se aplica)',
-    saiParaServicos: 'sale de allí y viene a los servicios',
+    ficaTambem: 'sigue allí y pasa a estar aquí también',
     saiParaCa: 'sale de allí y viene aquí',
     podeMoverTitulo: 'Puede mover horas entre bancos',
     podeMoverTexto:
@@ -157,7 +157,7 @@ const produtosModulos = {
       grupos: 'Grupos de Aranda',
       semGrupo: 'Sin grupo de Aranda, ninguna hora registrada llega a este módulo.',
       ajudaGrupos:
-        'Un grupo queda en un solo lugar. Desvinculado, queda en el producto, sin módulo.',
+        'Un grupo puede estar en varios productos, un lugar por producto. Desvinculado, queda en el producto, sin módulo.',
     },
   },
   mover: {
@@ -190,7 +190,7 @@ const produtosModulos = {
     moduloAtivo:
       'Un módulo inactivo no aparece para alcances nuevos. Los bancos que ya lo usan no cambian.',
     gruposAranda:
-      'Grupos de atención de Aranda que pertenecen a este módulo. Por ellos cada hora registrada llega al módulo y, de ahí, al banco. Un grupo queda en un solo lugar.',
+      'Grupos de atención de Aranda que pertenecen a este módulo. Por ellos cada hora registrada llega al módulo y, de ahí, al banco. Un grupo puede estar en varios productos, pero en un solo módulo de cada producto.',
     usadoNosBancos:
       'Bancos activos que tienen esto en el alcance, directamente o por haber marcado el producto entero. El alcance marca productos y módulos; la solución solo agrupa.',
     moduloRequerimento:

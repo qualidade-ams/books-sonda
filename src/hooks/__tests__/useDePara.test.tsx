@@ -22,6 +22,8 @@ vi.mock('@/services/deParaService', () => ({
     naoMapeados: vi.fn(),
     salvar: vi.fn(),
     atribuirDestino: vi.fn(),
+    vincular: vi.fn(),
+    desvincular: vi.fn(),
     excluir: vi.fn(),
     importar: vi.fn(),
   },
@@ -100,6 +102,53 @@ describe('useDePara', () => {
 
     expect(service.atribuirDestino).toHaveBeenCalledWith(['g1', 'g2'], destino);
     expect(toast).toHaveBeenCalledWith({ title: 'avisos.dePara.destinoAtribuido.varios {"n":2}' });
+  });
+
+  it('alterar vínculos (Produtos e Módulos): vincula e desvincula no lugar, com um aviso só', async () => {
+    service.vincular.mockResolvedValue(undefined);
+    service.desvincular.mockResolvedValue(undefined);
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() =>
+      result.current.alterarVinculos({ destino, vincular: ['g1', 'g2'], desvincular: ['g3'] })
+    );
+
+    expect(service.vincular).toHaveBeenCalledWith(['g1', 'g2'], destino);
+    expect(service.desvincular).toHaveBeenCalledWith(['g3'], destino);
+    expect(toast).toHaveBeenCalledTimes(1);
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.dePara.vinculosAlterados.varios {"n":3}' });
+  });
+
+  it('alterar vínculos sem nada para desvincular não chama o desvincular', async () => {
+    service.vincular.mockResolvedValue(undefined);
+    const { wrapper } = criarWrapper();
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() => result.current.alterarVinculos({ destino, vincular: ['g1'], desvincular: [] }));
+
+    expect(service.desvincular).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.dePara.vinculosAlterados.um {"n":1}' });
+  });
+
+  it('erro ao alterar vínculos avisa e recarrega (parte pode ter sido gravada)', async () => {
+    service.vincular.mockRejectedValue(new Error('Sem permissão'));
+    const { client, wrapper } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useDePara(), { wrapper });
+
+    await act(() =>
+      result.current
+        .alterarVinculos({ destino, vincular: ['g1'], desvincular: [] })
+        .catch(() => undefined)
+    );
+
+    expect(toast).toHaveBeenCalledWith({
+      title: 'avisos.dePara.erroVinculos',
+      description: 'Sem permissão',
+      variant: 'destructive',
+    });
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['grupos-aranda'] });
   });
 
   it('excluir avisa que o grupo voltou para os não mapeados', async () => {

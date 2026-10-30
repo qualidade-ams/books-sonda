@@ -18,6 +18,14 @@ function cenario() {
           classificacao: 'solucao',
           ativo: true,
           ...autoria,
+          grupos_aranda_vinculos: [
+            {
+              solucao_id: 's1',
+              produto_id: null,
+              modulo_id: null,
+              created_at: '2026-10-01T00:00:00Z',
+            },
+          ],
         },
         {
           id: 'g1',
@@ -29,6 +37,21 @@ function cenario() {
           classificacao: 'modulo',
           ativo: true,
           ...autoria,
+          // O primeiro vínculo (o mais antigo) é o principal, espelhado nas colunas
+          grupos_aranda_vinculos: [
+            {
+              solucao_id: 's2',
+              produto_id: 'p9',
+              modulo_id: null,
+              created_at: '2026-10-29T00:00:00Z',
+            },
+            {
+              solucao_id: 's1',
+              produto_id: 'p1',
+              modulo_id: 'm1',
+              created_at: '2026-10-01T00:00:00Z',
+            },
+          ],
         },
         {
           id: 'g3',
@@ -40,10 +63,13 @@ function cenario() {
           classificacao: 'nao_se_aplica',
           ativo: false,
           ...autoria,
+          grupos_aranda_vinculos: [],
         },
       ],
     },
     {
+      grupos_aranda_vincular: () => null,
+      grupos_aranda_desvincular: () => null,
       grupos_aranda_uso: () => [
         {
           grupo_aranda_id: 'g1',
@@ -83,6 +109,20 @@ function comErro(
   return { ...base, from: (t: string) => (t === tabela ? falha : base.from(t)) };
 }
 
+const destinoRpc = (solucao: string | null, produto: string | null, modulo: string | null) => ({
+  p_solucao: solucao,
+  p_produto: produto,
+  p_modulo: modulo,
+});
+const vincular = (
+  grupos: string[],
+  destino: ReturnType<typeof destinoRpc>,
+  substituir: boolean
+) => ({
+  nome: 'grupos_aranda_vincular',
+  args: { p_grupos: grupos, ...destino, p_substituir: substituir },
+});
+
 describe('classificar', () => {
   it('a classificação vem do nível mais fundo do destino', () => {
     expect(classificar({ solucaoId: 's', produtoId: 'p', moduloId: 'm' })).toBe('modulo');
@@ -93,7 +133,7 @@ describe('classificar', () => {
 });
 
 describe('DeParaService.listar', () => {
-  it('devolve só os mapeamentos ativos, em ordem alfabética do grupo', async () => {
+  it('devolve só os mapeamentos ativos, em ordem alfabética do grupo, com os vínculos', async () => {
     const lista = await new DeParaService(cenario() as any).listar();
     expect(lista.map((m) => m.id)).toEqual(['g1', 'g2']);
     expect(lista[0]).toEqual({
@@ -104,8 +144,25 @@ describe('DeParaService.listar', () => {
       produtoId: 'p1',
       moduloId: 'm1',
       classificacao: 'modulo',
+      vinculos: [
+        { solucaoId: 's1', produtoId: 'p1', moduloId: 'm1' },
+        { solucaoId: 's2', produtoId: 'p9', moduloId: null },
+      ],
       atualizadoEm: '2026-10-22T12:00:00Z',
       atualizadoPor: 'u1',
+    });
+  });
+
+  it('grupo sem vínculo: não se aplica', async () => {
+    const fake = cenario();
+    fake.tabelas.grupos_aranda[0].grupos_aranda_vinculos = [];
+    const [, g2] = await new DeParaService(fake as any).listar();
+    expect(g2).toMatchObject({
+      solucaoId: null,
+      produtoId: null,
+      moduloId: null,
+      classificacao: 'nao_se_aplica',
+      vinculos: [],
     });
   });
 
@@ -147,21 +204,20 @@ describe('DeParaService.uso e naoMapeados', () => {
 });
 
 describe('DeParaService.salvar', () => {
-  it('mapeamento novo grava o destino com a classificação', async () => {
+  it('mapeamento novo grava o grupo e troca os vínculos pelo destino', async () => {
     const fake = cenario();
     await new DeParaService(fake as any).salvar({
       grupoAranda: ' AMS APL - NOVO - N2 ',
       grupoBook: ' COMEX - Novo ',
       destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
     });
-    expect(fake.tabelas.grupos_aranda.at(-1)).toMatchObject({
+    const novo = fake.tabelas.grupos_aranda.at(-1)!;
+    expect(novo).toMatchObject({
       grupo_aranda: 'AMS APL - NOVO - N2',
       grupo_book: 'COMEX - Novo',
-      solucao_id: 's1',
-      produto_id: 'p1',
-      modulo_id: null,
-      classificacao: 'produto',
+      classificacao: 'nao_se_aplica',
     });
+    expect(fake.chamadasRpc).toEqual([vincular([novo.id], destinoRpc('s1', 'p1', null), true)]);
   });
 
   it('grupo excluído antes é reativado, e não duplicado', async () => {
@@ -175,13 +231,12 @@ describe('DeParaService.salvar', () => {
     expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g3')).toMatchObject({
       grupo_aranda: 'AMS APL - ANTIGO - N2',
       grupo_book: 'COMEX - Antigo 2',
-      solucao_id: 's1',
-      classificacao: 'solucao',
       ativo: true,
     });
+    expect(fake.chamadasRpc).toEqual([vincular(['g3'], destinoRpc('s1', null, null), true)]);
   });
 
-  it('edição muda Grupo do Book e destino, nunca o grupo do Aranda', async () => {
+  it('edição muda Grupo do Book e troca os vínculos; nunca o grupo do Aranda', async () => {
     const fake = cenario();
     await new DeParaService(fake as any).salvar({
       id: 'g1',
@@ -189,14 +244,27 @@ describe('DeParaService.salvar', () => {
       grupoBook: 'COMEX - Câmbio 2',
       destino: { solucaoId: null, produtoId: null, moduloId: null },
     });
-    expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g1')).toMatchObject({
+    const g1 = fake.tabelas.grupos_aranda.find((g) => g.id === 'g1')!;
+    expect(g1).toMatchObject({
       grupo_aranda: 'AMS APL - CAMBIO - N2',
       grupo_book: 'COMEX - Câmbio 2',
-      solucao_id: null,
-      produto_id: null,
-      modulo_id: null,
-      classificacao: 'nao_se_aplica',
     });
+    // As colunas de destino são o espelho mantido pelo banco: o service não grava nelas
+    expect(g1.produto_id).toBe('p1');
+    expect(fake.chamadasRpc).toEqual([vincular(['g1'], destinoRpc(null, null, null), true)]);
+  });
+
+  it('edição sem destino (grupo em mais de um lugar): os vínculos não mudam', async () => {
+    const fake = cenario();
+    await new DeParaService(fake as any).salvar({
+      id: 'g1',
+      grupoAranda: 'AMS APL - CAMBIO - N2',
+      grupoBook: 'COMEX - Câmbio 3',
+    });
+    expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g1')!.grupo_book).toBe(
+      'COMEX - Câmbio 3'
+    );
+    expect(fake.chamadasRpc).toEqual([]);
   });
 
   it('traduz grupo já mapeado', async () => {
@@ -218,27 +286,74 @@ describe('DeParaService.salvar', () => {
       chave: 'erros.dePara.grupoJaMapeado',
     });
   });
+
+  it('erro ao trocar os vínculos é do salvar', async () => {
+    const fake = cenario();
+    fake.rpc = async () => ({ data: null, error: { message: 'Produto não encontrado.' } });
+    await expect(
+      new DeParaService(fake as any).salvar({
+        id: 'g1',
+        grupoAranda: 'AMS APL - CAMBIO - N2',
+        grupoBook: 'B',
+        destino: { solucaoId: 's1', produtoId: 'px', moduloId: null },
+      })
+    ).rejects.toMatchObject({ chave: 'erros.falhas.salvarOMapeamento' });
+  });
 });
 
-describe('DeParaService — lote e exclusão', () => {
-  it('atribui o mesmo destino a vários grupos, sem mudar o Grupo do Book', async () => {
+describe('DeParaService — vínculos em lote e exclusão', () => {
+  it('atribuir (De-para) troca os vínculos de vários grupos pelo destino', async () => {
     const fake = cenario();
     await new DeParaService(fake as any).atribuirDestino(['g1', 'g2'], {
       solucaoId: 's1',
       produtoId: 'p2',
       moduloId: null,
     });
-    for (const id of ['g1', 'g2']) {
-      expect(fake.tabelas.grupos_aranda.find((g) => g.id === id)).toMatchObject({
-        solucao_id: 's1',
-        produto_id: 'p2',
-        modulo_id: null,
-        classificacao: 'produto',
-      });
-    }
+    expect(fake.chamadasRpc).toEqual([vincular(['g1', 'g2'], destinoRpc('s1', 'p2', null), true)]);
     expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g1')!.grupo_book).toBe(
       'COMEX - Câmbio'
     );
+  });
+
+  it('vincular (Produtos e Módulos) acrescenta o lugar', async () => {
+    const fake = cenario();
+    await new DeParaService(fake as any).vincular(['g1'], {
+      solucaoId: 's1',
+      produtoId: 'p2',
+      moduloId: 'm7',
+    });
+    expect(fake.chamadasRpc).toEqual([vincular(['g1'], destinoRpc('s1', 'p2', 'm7'), false)]);
+  });
+
+  it('desvincular tira só aquele lugar', async () => {
+    const fake = cenario();
+    await new DeParaService(fake as any).desvincular(['g1', 'g2'], {
+      solucaoId: 's1',
+      produtoId: 'p1',
+      moduloId: 'm1',
+    });
+    expect(fake.chamadasRpc).toEqual([
+      {
+        nome: 'grupos_aranda_desvincular',
+        args: { p_grupos: ['g1', 'g2'], ...destinoRpc('s1', 'p1', 'm1') },
+      },
+    ]);
+  });
+
+  it('erro do banco ao vincular, desvincular ou atribuir vira erro traduzível', async () => {
+    const fake = cenario();
+    fake.rpc = async () => ({ data: null, error: { message: 'Sem permissão' } });
+    const s = new DeParaService(fake as any);
+    const destino = { solucaoId: 's1', produtoId: 'p1', moduloId: null };
+    await expect(s.vincular(['g1'], destino)).rejects.toMatchObject({
+      chave: 'erros.falhas.vincularOsGrupos',
+    });
+    await expect(s.desvincular(['g1'], destino)).rejects.toMatchObject({
+      chave: 'erros.falhas.desvincularOsGrupos',
+    });
+    await expect(s.atribuirDestino(['g1'], destino)).rejects.toMatchObject({
+      chave: 'erros.falhas.atribuirODestino',
+    });
   });
 
   it('excluir inativa: o grupo volta para os não mapeados', async () => {
@@ -270,12 +385,10 @@ describe('DeParaService.importar', () => {
       },
     ]);
     const grupos = fake.tabelas.grupos_aranda;
-    expect(grupos.find((g) => g.id === 'g1')).toMatchObject({
-      grupo_book: 'COMEX - Câmbio 2',
-      classificacao: 'produto',
-    });
+    expect(grupos.find((g) => g.id === 'g1')!.grupo_book).toBe('COMEX - Câmbio 2');
     expect(grupos.find((g) => g.id === 'g3')!.ativo).toBe(true);
     expect(grupos).toHaveLength(4);
+    expect(fake.chamadasRpc.map((c) => c.args.p_grupos)).toEqual([['g1'], ['g3'], [grupos[3].id]]);
   });
 
   it('erro numa linha diz qual grupo', async () => {

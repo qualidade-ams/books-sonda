@@ -87,7 +87,7 @@ const produtosModulos = {
     emProduto: 'Em {{produto}}, sem módulo',
     servicoDe: 'Serviço de {{solucao}}',
     semSolucao: 'Sem solução (não se aplica)',
-    saiParaServicos: 'sai de lá e vem para os serviços',
+    ficaTambem: 'continua lá e passa a ficar aqui também',
     saiParaCa: 'sai de lá e vem para cá',
     podeMoverTitulo: 'Pode mover horas entre bancos',
     podeMoverTexto:
@@ -155,7 +155,8 @@ const produtosModulos = {
       nomeRepetido: 'Já existe um módulo {{nome}} em {{produto}}.',
       grupos: 'Grupos do Aranda',
       semGrupo: 'Sem grupo do Aranda, nenhuma hora apontada chega a este módulo.',
-      ajudaGrupos: 'Um grupo fica em um só lugar. Desvinculado, ele fica no produto, sem módulo.',
+      ajudaGrupos:
+        'Um grupo pode estar em vários produtos, um lugar por produto. Desvinculado, ele fica no produto, sem módulo.',
     },
   },
   mover: {
@@ -187,7 +188,7 @@ const produtosModulos = {
     moduloAtivo:
       'Módulo inativo não aparece para escopos novos. Os bancos que já o usam não mudam.',
     gruposAranda:
-      'Grupos de atendimento do Aranda que pertencem a este módulo. É por eles que cada hora apontada chega ao módulo e, daí, ao banco. Um grupo fica em um só lugar.',
+      'Grupos de atendimento do Aranda que pertencem a este módulo. É por eles que cada hora apontada chega ao módulo e, daí, ao banco. Um grupo pode estar em vários produtos, mas em um só módulo de cada produto.',
     usadoNosBancos:
       'Bancos ativos que têm isto no escopo, diretamente ou por terem marcado o produto inteiro. O escopo marca produtos e módulos; a solução só agrupa.',
     moduloRequerimento:

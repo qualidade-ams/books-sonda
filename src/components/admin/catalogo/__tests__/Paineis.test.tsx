@@ -56,6 +56,14 @@ const grupo = (
     produtoId: null,
     moduloId: null,
     classificacao,
+    vinculos: [
+      {
+        solucaoId: 's1',
+        produtoId: destino.produtoId ?? null,
+        moduloId: destino.moduloId ?? null,
+        ...destino,
+      },
+    ],
     ...autoria,
     ...destino,
   }) as MapeamentoGrupo;

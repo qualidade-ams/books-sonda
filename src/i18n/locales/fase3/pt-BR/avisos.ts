@@ -60,6 +60,11 @@ const avisos = {
       varios: 'Destino atribuído a {{n}} grupos',
     },
     erroAtribuir: 'Erro ao atribuir o destino',
+    vinculosAlterados: {
+      um: 'Vínculos de {{n}} grupo atualizados',
+      varios: 'Vínculos de {{n}} grupos atualizados',
+    },
+    erroVinculos: 'Erro ao atualizar os vínculos dos grupos',
     excluido: 'Mapeamento excluído',
     excluidoDescricao: 'O grupo voltou para Grupos não mapeados.',
     erroExcluir: 'Erro ao excluir o mapeamento',

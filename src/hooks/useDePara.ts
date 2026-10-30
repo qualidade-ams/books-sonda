@@ -10,6 +10,15 @@ const CHAVE = ['grupos-aranda'];
 /** Mapear resolve o aviso "Grupo do Aranda sem mapeamento" no sino (gatilho no banco) */
 const CHAVE_SINO = ['notificacoes'];
 
+interface AlteracaoVinculos {
+  /** O lugar do catálogo */
+  destino: DestinoGrupo;
+  /** Grupos marcados: ganham o lugar */
+  vincular: string[];
+  /** Grupos desmarcados: perdem o lugar (do módulo, ficam no produto) */
+  desvincular: string[];
+}
+
 /** Tela De-para de Grupos: mapeamentos, uso nos últimos meses e grupos não mapeados */
 export function useDePara() {
   const queryClient = useQueryClient();
@@ -60,6 +69,21 @@ export function useDePara() {
     onError: avisarErro(t('avisos.dePara.erroAtribuir')),
   });
 
+  // Produtos e Módulos: os grupos marcados e desmarcados num lugar do catálogo
+  const alterarVinculos = useMutation({
+    mutationFn: async ({ destino, vincular, desvincular }: AlteracaoVinculos) => {
+      if (vincular.length) await deParaService.vincular(vincular, destino);
+      if (desvincular.length) await deParaService.desvincular(desvincular, destino);
+    },
+    onSuccess: (_r, { vincular, desvincular }) =>
+      toast({
+        title: plural(t, 'avisos.dePara.vinculosAlterados', vincular.length + desvincular.length),
+      }),
+    onError: avisarErro(t('avisos.dePara.erroVinculos')),
+    // No erro, o vincular pode ter sido gravado
+    onSettled: recarregar,
+  });
+
   const importar = useMutation({
     mutationFn: (inputs: MapeamentoInput[]) => deParaService.importar(inputs),
     onSuccess: (_r, inputs) =>
@@ -91,7 +115,12 @@ export function useDePara() {
     salvar: salvar.mutateAsync,
     recarregar,
     atribuirDestino: atribuirDestino.mutateAsync,
+    alterarVinculos: alterarVinculos.mutateAsync,
     excluir: excluir.mutateAsync,
-    isSalvando: salvar.isPending || atribuirDestino.isPending || excluir.isPending,
+    isSalvando:
+      salvar.isPending ||
+      atribuirDestino.isPending ||
+      alterarVinculos.isPending ||
+      excluir.isPending,
   };
 }

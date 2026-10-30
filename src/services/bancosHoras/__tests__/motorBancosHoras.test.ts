@@ -241,9 +241,9 @@ describe('calcularEmpresaMes — vários bancos', () => {
     banco({ bancoId: 'fiscal', ordem: 3, padrao: true }),
   ];
   const dePara: GrupoDePara[] = [
-    { grupoAranda: 'CAMBIO', produtoId: 'COMEX', moduloId: 'CAMBIO', ativo: true },
-    { grupoAranda: 'EDOCS', produtoId: 'FISCAL', moduloId: 'EDOCS', ativo: true },
-    { grupoAranda: 'SPED', produtoId: 'FISCAL', moduloId: 'EFD', ativo: true },
+    { grupoAranda: 'CAMBIO', vinculos: [{ produtoId: 'COMEX', moduloId: 'CAMBIO' }], ativo: true },
+    { grupoAranda: 'EDOCS', vinculos: [{ produtoId: 'FISCAL', moduloId: 'EDOCS' }], ativo: true },
+    { grupoAranda: 'SPED', vinculos: [{ produtoId: 'FISCAL', moduloId: 'EFD' }], ativo: true },
   ];
 
   it('cada banco recebe o seu consumo; o resto vai para o padrão (CA-05)', async () => {
