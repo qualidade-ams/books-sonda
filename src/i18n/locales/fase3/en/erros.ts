@@ -81,6 +81,7 @@ const erros = {
     carregarOsRamos: 'Could not load the business sectors: {{detalhe}}',
     criarOBanco: 'Could not create the bank: {{detalhe}}',
     excluirOMapeamento: 'Could not delete the mapping: {{detalhe}}',
+    excluirDoCatalogo: 'Could not delete from the catalog: {{detalhe}}',
     excluirORamo: 'Could not delete the sector: {{detalhe}}',
     importarOModulo: 'Could not import the module: {{detalhe}}',
     importarOProduto: 'Could not import the product: {{detalhe}}',

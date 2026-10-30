@@ -221,4 +221,24 @@ describe('EdicaoSolucao', () => {
     expect(screen.getByLabelText(/produtosModulos.edicao.solucao.codigo/)).toBeDisabled();
     expect(screen.getByText('produtosModulos.edicao.solucao.codigoNaoMuda')).toBeInTheDocument();
   });
+
+  it('solução sem uso: oferece excluir; com uso, não', () => {
+    const onExcluir = vi.fn();
+    const { unmount } = renderizar(
+      <EdicaoSolucao
+        {...comuns}
+        solucao={CATALOGO.solucoes[0]}
+        onSalvar={vi.fn()}
+        onExcluir={onExcluir}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /produtosModulos.edicao.solucao.excluir/ }));
+    expect(onExcluir).toHaveBeenCalled();
+    unmount();
+
+    renderizar(<EdicaoSolucao {...comuns} solucao={CATALOGO.solucoes[0]} onSalvar={vi.fn()} />);
+    expect(
+      screen.queryByRole('button', { name: /produtosModulos.edicao.solucao.excluir/ })
+    ).not.toBeInTheDocument();
+  });
 });

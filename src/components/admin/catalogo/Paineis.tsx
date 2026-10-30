@@ -80,6 +80,8 @@ export function PainelSolucao({
   onEditarSolucao,
   onEditarProduto,
   onAlterarStatusProduto,
+  podeExcluirProduto,
+  onExcluirProduto,
 }: DadosCatalogo & {
   solucao: Solucao;
   podeEditar: boolean;
@@ -88,6 +90,9 @@ export function PainelSolucao({
   /** null = produto novo nesta solução */
   onEditarProduto: (p: Produto | null) => void;
   onAlterarStatusProduto: (p: Produto) => void;
+  /** Produto que nunca foi usado: pode ser excluído de vez */
+  podeExcluirProduto?: (p: Produto) => boolean;
+  onExcluirProduto?: (p: Produto) => void;
 }) {
   const { t } = useTranslation();
   const daSolucao = catalogo.produtos
@@ -140,6 +145,9 @@ export function PainelSolucao({
             ativo={p.ativo}
             onEditar={() => onEditarProduto(p)}
             onAlterarStatus={() => onAlterarStatusProduto(p)}
+            onExcluir={
+              onExcluirProduto && podeExcluirProduto?.(p) ? () => onExcluirProduto(p) : undefined
+            }
           />
         ) : (
           <ChevronRight className="ml-auto h-4 w-4 text-ds-fg-muted" aria-hidden />
@@ -228,6 +236,8 @@ export function PainelProduto({
   onEditarModulo,
   onAlterarStatus,
   onMover,
+  podeExcluir,
+  onExcluir,
 }: DadosCatalogo & {
   produto: Produto;
   podeEditar: boolean;
@@ -239,6 +249,9 @@ export function PainelProduto({
   onAlterarStatus: (m: Modulo) => void;
   /** Só no produto "A classificar" */
   onMover: (m: Modulo) => void;
+  /** Módulo que nunca foi usado: pode ser excluído de vez */
+  podeExcluir?: (m: Modulo) => boolean;
+  onExcluir?: (m: Modulo) => void;
 }) {
   const { t } = useTranslation();
   const [busca, setBusca] = useState('');
@@ -305,6 +318,7 @@ export function PainelProduto({
             ativo={m.ativo}
             onEditar={() => onEditarModulo(m)}
             onAlterarStatus={() => onAlterarStatus(m)}
+            onExcluir={onExcluir && podeExcluir?.(m) ? () => onExcluir(m) : undefined}
             extras={
               produto.aClassificar && m.ativo ? (
                 <DropdownMenuItem className={itemMenu} onSelect={() => onMover(m)}>

@@ -349,6 +349,38 @@ describe('CatalogoService.moverModulo (P8)', () => {
   });
 });
 
+describe('CatalogoService.excluir', () => {
+  it('apaga pela função do banco, que só aceita item sem uso', async () => {
+    const fake = cenario();
+    const chamadas: unknown[] = [];
+    fake.rpc = async (nome: string, args: Record<string, unknown>) => {
+      chamadas.push({ nome, args });
+      return { data: null, error: null };
+    };
+    const s = new CatalogoService(fake as any);
+    await s.excluir('modulo', 'm1');
+    await s.excluir('produto', 'p2');
+    await s.excluir('solucao', 's2');
+    expect(chamadas).toEqual([
+      { nome: 'catalogo_excluir', args: { p_tipo: 'modulo', p_id: 'm1' } },
+      { nome: 'catalogo_excluir', args: { p_tipo: 'produto', p_id: 'p2' } },
+      { nome: 'catalogo_excluir', args: { p_tipo: 'solucao', p_id: 's2' } },
+    ]);
+  });
+
+  it('item em uso: o banco recusa e o erro é traduzível, com o motivo', async () => {
+    const fake = cenario();
+    fake.rpc = async () => ({
+      data: null,
+      error: { message: 'Este item já foi usado e não pode ser excluído: inative-o.' },
+    });
+    await expect(new CatalogoService(fake as any).excluir('produto', 'p1')).rejects.toMatchObject({
+      chave: 'erros.falhas.excluirDoCatalogo',
+      message: expect.stringContaining('inative-o'),
+    });
+  });
+});
+
 describe('CatalogoService.usosEmBancos', () => {
   it('lista só os bancos ativos, com o nome da empresa', async () => {
     const usos = await new CatalogoService(cenario() as any).usosEmBancos();

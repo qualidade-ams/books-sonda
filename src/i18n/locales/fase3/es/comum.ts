@@ -3,6 +3,7 @@ const comum = {
   editar: 'Editar',
   inativar: 'Desactivar',
   reativar: 'Reactivar',
+  excluir: 'Eliminar',
   ativo: 'Activo',
   inativo: 'Inactivo',
   ativa: 'Activa',

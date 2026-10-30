@@ -229,6 +229,15 @@ export class CatalogoService {
     }
   }
 
+  /**
+   * Exclui de vez o item que nunca foi usado (migration 20261030000002). Em uso, a função do
+   * banco recusa e pede para inativar; o produto "A classificar" nunca sai
+   */
+  async excluir(tipo: 'solucao' | 'produto' | 'modulo', id: string): Promise<void> {
+    const { error } = await this.cliente.rpc('catalogo_excluir', { p_tipo: tipo, p_id: id });
+    if (error) throw falha('excluir do catálogo', error);
+  }
+
   /** Grava a ordem dos produtos de uma solução, na sequência recebida */
   async reordenarProdutos(produtoIds: string[]): Promise<void> {
     for (const [i, id] of produtoIds.entries()) {

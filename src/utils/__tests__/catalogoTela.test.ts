@@ -9,14 +9,17 @@ import {
   gruposDaSolucao,
   gruposDoModulo,
   gruposSoDoProduto,
+  moduloSemUso,
   modulosAClassificar,
   mudancasDeGrupos,
+  produtoSemUso,
+  solucaoSemUso,
   totaisCatalogo,
   usosDoModulo,
   usosDoProdutoInteiro,
   usosQueAlcancamProduto,
 } from '../catalogoTela';
-import type { Catalogo, Modulo, Produto, UsoEmBanco } from '@/types/catalogo';
+import type { Catalogo, Modulo, ModuloRequerimento, Produto, UsoEmBanco } from '@/types/catalogo';
 import type { MapeamentoGrupo } from '@/types/dePara';
 
 const autoria = { atualizadoEm: '2026-10-22T12:00:00Z', atualizadoPor: null };
@@ -195,6 +198,54 @@ describe('totaisCatalogo e modulosAClassificar', () => {
   it('módulos ativos que ainda estão em "A classificar" na solução', () => {
     expect(modulosAClassificar(CATALOGO, 's1')).toBe(2);
     expect(modulosAClassificar(CATALOGO, 's2')).toBe(0);
+  });
+});
+
+describe('item sem uso (pode ser excluído)', () => {
+  const REQUERIMENTOS: ModuloRequerimento[] = [
+    { id: 'r1', moduloRequerimento: 'FCI', produtoId: 'fci', moduloId: null },
+  ];
+  const usoDe = { mapeamentos: MAPEAMENTOS, usos: USOS, requerimentos: REQUERIMENTOS };
+
+  it('módulo: sem grupo, sem banco que o marcou e sem requerimento', () => {
+    expect(moduloSemUso(CATALOGO.modulos[2], usoDe)).toBe(true); // antigo, inativo
+    expect(moduloSemUso(CATALOGO.modulos[0], usoDe)).toBe(false); // câmbio: tem grupos
+    expect(moduloSemUso(CATALOGO.modulos[1], usoDe)).toBe(false); // drawback: banco
+    expect(
+      moduloSemUso(CATALOGO.modulos[2], {
+        ...usoDe,
+        requerimentos: [{ id: 'r2', moduloRequerimento: 'X', produtoId: 'ce', moduloId: 'antigo' }],
+      })
+    ).toBe(false);
+  });
+
+  it('produto: sem módulo (nem inativo), grupo, banco ou requerimento; nunca o "A classificar"', () => {
+    const vazio = produto('vazio', 's1');
+    const catalogo = { ...CATALOGO, produtos: [...CATALOGO.produtos, vazio] };
+    expect(produtoSemUso(vazio, catalogo, usoDe)).toBe(true);
+    expect(produtoSemUso(CATALOGO.produtos[0], catalogo, usoDe)).toBe(false); // ce: módulos
+    expect(produtoSemUso(CATALOGO.produtos[1], catalogo, usoDe)).toBe(false); // fci: requerimento
+    expect(produtoSemUso(CATALOGO.produtos[3], catalogo, usoDe)).toBe(false); // comply: grupo g6
+    expect(produtoSemUso(CATALOGO.produtos[2], { ...catalogo, modulos: [] }, usoDe)).toBe(false); // "A classificar"
+  });
+
+  it('solução: sem produto e sem grupo de serviço', () => {
+    const nova = { ...CATALOGO.solucoes[0], id: 's9', codigo: 'NOVA', nome: 'NOVA' };
+    const catalogo = { ...CATALOGO, solucoes: [...CATALOGO.solucoes, nova] };
+    expect(solucaoSemUso(nova, catalogo, usoDe)).toBe(true);
+    expect(solucaoSemUso(CATALOGO.solucoes[0], catalogo, usoDe)).toBe(false);
+    const comServico = {
+      ...usoDe,
+      mapeamentos: [
+        ...MAPEAMENTOS,
+        {
+          ...MAPEAMENTOS[4],
+          id: 'g9',
+          vinculos: [{ solucaoId: 's9', produtoId: null, moduloId: null }],
+        },
+      ],
+    };
+    expect(solucaoSemUso(nova, catalogo, comServico)).toBe(false);
   });
 });
 

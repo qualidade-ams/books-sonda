@@ -40,6 +40,9 @@ import {
   destinoDoAlvo,
   exportacaoCatalogo,
   gruposDoModulo,
+  moduloSemUso,
+  produtoSemUso,
+  solucaoSemUso,
   totaisCatalogo,
   usosDoModulo,
   type AlvoGrupo,
@@ -54,6 +57,9 @@ type Edicao =
 
 type AlterarStatus =
   { tipo: 'produto'; item: Produto; usos: number } | { tipo: 'modulo'; item: Modulo; usos: number };
+
+/** Item que nunca foi usado, a excluir de vez */
+type Excluindo = { tipo: 'solucao' | 'produto' | 'modulo'; id: string; nome: string };
 
 /** Rótulo do campo (traduzido) → chave do texto do "i" */
 const DICAS: [string, string][] = [
@@ -105,6 +111,7 @@ export default function ProdutosModulos() {
     reordenarProdutos,
     salvarModulo,
     moverModulo,
+    excluir,
     importar,
     isSalvando,
   } = useCatalogo();
@@ -122,6 +129,23 @@ export default function ProdutosModulos() {
   const [importando, setImportando] = useState(false);
   const [alterarStatus, setAlterarStatus] = useState<AlterarStatus | null>(null);
   const [movendo, setMovendo] = useState<Modulo | null>(null);
+  const [excluindo, setExcluindo] = useState<Excluindo | null>(null);
+  // O que a tela sabe do uso; o banco confere o resto (empresas, fechamentos) ao excluir
+  const usoDoCatalogo = {
+    mapeamentos,
+    usos,
+    requerimentos: requerimentos.modulosRequerimento,
+  };
+  const confirmarExcluir = async () => {
+    if (!excluindo) return;
+    try {
+      await excluir({ tipo: excluindo.tipo, id: excluindo.id });
+      if (excluindo.tipo === 'solucao') setEditando(null);
+      setExcluindo(null);
+    } catch {
+      // O aviso do erro vem do hook; o diálogo fica aberto
+    }
+  };
 
   const dicas = useMemo(
     () =>
@@ -253,6 +277,16 @@ export default function ProdutosModulos() {
           {...comuns}
           solucao={editando.solucao}
           onSalvar={comGrupos('solucao', salvarSolucao)}
+          onExcluir={
+            editando.solucao && solucaoSemUso(editando.solucao, catalogo, usoDoCatalogo)
+              ? () =>
+                  setExcluindo({
+                    tipo: 'solucao',
+                    id: editando.solucao.id,
+                    nome: editando.solucao.nome,
+                  })
+              : undefined
+          }
         />
       );
     if (editando?.tipo === 'produto')
@@ -344,6 +378,8 @@ export default function ProdutosModulos() {
                 usos: bancosDoProduto(usos, p.id).length,
               })
             }
+            podeExcluirProduto={(p) => produtoSemUso(p, catalogo, usoDoCatalogo)}
+            onExcluirProduto={(p) => setExcluindo({ tipo: 'produto', id: p.id, nome: p.nome })}
           />
         ) : produtoAtual ? (
           <PainelProduto
@@ -369,6 +405,8 @@ export default function ProdutosModulos() {
               setAlterarStatus({ tipo: 'modulo', item: m, usos: usosDoModulo(usos, m).length })
             }
             onMover={setMovendo}
+            podeExcluir={(m) => moduloSemUso(m, usoDoCatalogo)}
+            onExcluir={(m) => setExcluindo({ tipo: 'modulo', id: m.id, nome: m.nome })}
           />
         ) : null}
       </div>
@@ -525,6 +563,17 @@ export default function ProdutosModulos() {
         processando={isSalvando}
         onFechar={() => setMovendo(null)}
         onConfirmar={confirmarMover}
+      />
+      <ConfirmDialog
+        aberto={!!excluindo}
+        onOpenChange={(v) => !v && setExcluindo(null)}
+        titulo={t('produtosModulos.excluir.titulo', { nome: excluindo?.nome ?? '' })}
+        descricao={t('produtosModulos.excluir.descricao')}
+        consequencias={[t('produtosModulos.excluir.semVolta'), t('produtosModulos.excluir.emUso')]}
+        rotuloConfirmar={t('fase3Comum.excluir')}
+        tom="perigo"
+        processando={isSalvando}
+        onConfirmar={confirmarExcluir}
       />
     </>
   );

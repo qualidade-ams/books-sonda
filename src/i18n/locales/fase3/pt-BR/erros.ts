@@ -81,6 +81,7 @@ const erros = {
     carregarOsRamos: 'Falha ao carregar os ramos: {{detalhe}}',
     criarOBanco: 'Falha ao criar o banco: {{detalhe}}',
     excluirOMapeamento: 'Falha ao excluir o mapeamento: {{detalhe}}',
+    excluirDoCatalogo: 'Falha ao excluir do catálogo: {{detalhe}}',
     excluirORamo: 'Falha ao excluir o ramo: {{detalhe}}',
     importarOModulo: 'Falha ao importar o módulo: {{detalhe}}',
     importarOProduto: 'Falha ao importar o produto: {{detalhe}}',

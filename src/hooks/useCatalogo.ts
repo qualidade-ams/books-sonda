@@ -88,6 +88,17 @@ export function useCatalogo() {
     onError: avisarErro(t('avisos.catalogo.erroMoverModulo')),
   });
 
+  // Só o que nunca foi usado; em uso, o banco recusa e o aviso diz para inativar
+  const excluir = useMutation({
+    mutationFn: ({ tipo, id }: { tipo: 'solucao' | 'produto' | 'modulo'; id: string }) =>
+      catalogoService.excluir(tipo, id),
+    onSuccess: () => {
+      recarregar();
+      toast({ title: t('avisos.catalogo.excluido') });
+    },
+    onError: avisarErro(t('avisos.catalogo.erroExcluir')),
+  });
+
   const importar = useMutation({
     mutationFn: (linhas: LinhaImportacaoCatalogo[]) => catalogoService.importar(linhas),
     onSuccess: (_r, linhas) =>
@@ -111,11 +122,13 @@ export function useCatalogo() {
     reordenarProdutos: reordenarProdutos.mutateAsync,
     salvarModulo: salvarModulo.mutateAsync,
     moverModulo: moverModulo.mutateAsync,
+    excluir: excluir.mutateAsync,
     isSalvando:
       salvarSolucao.isPending ||
       salvarProduto.isPending ||
       salvarModulo.isPending ||
-      moverModulo.isPending,
+      moverModulo.isPending ||
+      excluir.isPending,
   };
 }
 

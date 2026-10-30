@@ -8,7 +8,9 @@ import type {
   Catalogo,
   LinhaImportacaoCatalogo,
   Modulo,
+  ModuloRequerimento,
   Produto,
+  Solucao,
   UsoEmBanco,
 } from '@/types/catalogo';
 import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
@@ -72,6 +74,32 @@ export function totaisCatalogo(catalogo: Catalogo, mapeamentos: MapeamentoGrupo[
     semGrupo: modulosAtivos.filter((m) => !comGrupo.has(m.id)).length,
   };
 }
+
+/** O que a tela sabe do uso dos itens; o banco confere o resto ao excluir */
+export interface UsoDoCatalogo {
+  mapeamentos: MapeamentoGrupo[];
+  usos: UsoEmBanco[];
+  requerimentos: ModuloRequerimento[];
+}
+
+/** Módulo sem grupo, sem banco que o marcou e sem módulo de requerimento: pode ser excluído */
+export const moduloSemUso = (m: Modulo, uso: UsoDoCatalogo) =>
+  !uso.mapeamentos.some((g) => g.vinculos.some((v) => v.moduloId === m.id)) &&
+  !uso.usos.some((u) => u.moduloId === m.id) &&
+  !uso.requerimentos.some((r) => r.moduloId === m.id);
+
+/** Produto sem módulo (nem inativo), grupo, banco ou requerimento; o "A classificar" nunca */
+export const produtoSemUso = (p: Produto, catalogo: Catalogo, uso: UsoDoCatalogo) =>
+  !p.aClassificar &&
+  !catalogo.modulos.some((m) => m.produtoId === p.id) &&
+  !uso.mapeamentos.some((g) => g.vinculos.some((v) => v.produtoId === p.id)) &&
+  !uso.usos.some((u) => u.produtoId === p.id) &&
+  !uso.requerimentos.some((r) => r.produtoId === p.id);
+
+/** Solução sem produto (nem inativo) e sem grupo de serviço */
+export const solucaoSemUso = (s: Solucao, catalogo: Catalogo, uso: UsoDoCatalogo) =>
+  !catalogo.produtos.some((p) => p.solucaoId === s.id) &&
+  !uso.mapeamentos.some((g) => g.vinculos.some((v) => v.solucaoId === s.id));
 
 /** Módulos ativos que ainda estão no produto provisório "A classificar" da solução (P8) */
 export function modulosAClassificar(catalogo: Catalogo, solucaoId: string): number {
