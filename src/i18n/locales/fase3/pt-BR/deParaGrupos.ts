@@ -92,6 +92,8 @@ const deParaGrupos = {
     exatamente: 'Exatamente como vem do Aranda',
     repetido: 'Este grupo já está mapeado.',
     outroGrupo: 'Para outro grupo, crie um mapeamento novo.',
+    variosLugares:
+      'Este grupo está em mais de um lugar. Os lugares mudam em Produtos e Módulos; aqui muda o Grupo do Book.',
     tabelaAtual: 'Também é gravado na tabela atual, lida por Elogios, Pesquisas e Dashboard.',
     paraOnde: 'Para onde vão as horas',
     uso: 'Uso',
@@ -132,6 +134,7 @@ const deParaGrupos = {
       varios: 'Exporta {{n}} mapeamentos, com os filtros aplicados',
     },
     tickets: 'Tickets (6 meses)',
+    outrosLugares: 'Outros lugares',
   },
   importar: {
     titulo: 'Importar mapeamentos',

@@ -56,7 +56,7 @@ const bancos = [
   }),
 ];
 const dePara: GrupoDePara[] = [
-  { grupoAranda: 'EDOCS', produtoId: 'FISCAL', moduloId: 'EDOCS', ativo: true },
+  { grupoAranda: 'EDOCS', vinculos: [{ produtoId: 'FISCAL', moduloId: 'EDOCS' }], ativo: true },
 ];
 const itensDez: ItemConsumo[] = [
   {

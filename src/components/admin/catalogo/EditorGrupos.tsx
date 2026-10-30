@@ -11,27 +11,35 @@ import { campo } from '@/components/ds/estilos';
 import { cn } from '@/lib/utils';
 import type { AlvoGrupo } from '@/utils/catalogoTela';
 import type { Catalogo } from '@/types/catalogo';
-import type { MapeamentoGrupo } from '@/types/dePara';
+import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
 
 /** Quantos grupos o seletor mostra de uma vez */
 const LIMITE_CANDIDATOS = 40;
 
-/** Onde o grupo está hoje, em texto */
+/** Onde o grupo está hoje, em texto: todos os lugares dele */
 function useOndeEsta(catalogo: Catalogo) {
   const { t } = useTranslation();
   const nome = <T extends { id: string; nome: string }>(lista: T[], id: string | null) =>
     lista.find((x) => x.id === id)?.nome ?? '';
-  return (g: MapeamentoGrupo) =>
-    g.moduloId
+  const lugar = (v: DestinoGrupo) =>
+    v.moduloId
       ? t('produtosModulos.grupos.emModulo', {
-          produto: nome(catalogo.produtos, g.produtoId),
-          modulo: nome(catalogo.modulos, g.moduloId),
+          produto: nome(catalogo.produtos, v.produtoId),
+          modulo: nome(catalogo.modulos, v.moduloId),
         })
-      : g.produtoId
-        ? t('produtosModulos.grupos.emProduto', { produto: nome(catalogo.produtos, g.produtoId) })
-        : g.solucaoId
-          ? t('produtosModulos.grupos.servicoDe', { solucao: nome(catalogo.solucoes, g.solucaoId) })
-          : t('produtosModulos.grupos.semSolucao');
+      : v.produtoId
+        ? t('produtosModulos.grupos.emProduto', { produto: nome(catalogo.produtos, v.produtoId) })
+        : t('produtosModulos.grupos.servicoDe', { solucao: nome(catalogo.solucoes, v.solucaoId) });
+  return (g: MapeamentoGrupo) =>
+    g.vinculos.length ? g.vinculos.map(lugar).join(' · ') : t('produtosModulos.grupos.semSolucao');
+}
+
+/** Produto do item: vincular move o grupo que já está nesse produto (um lugar por produto) */
+function produtoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): string | null {
+  if (alvo.tipo === 'produto') return alvo.id;
+  if (alvo.tipo === 'modulo')
+    return catalogo.modulos.find((m) => m.id === alvo.id)?.produtoId ?? null;
+  return null;
 }
 
 function VincularGrupo({
@@ -49,6 +57,7 @@ function VincularGrupo({
 }) {
   const { t } = useTranslation();
   const ondeEsta = useOndeEsta(catalogo);
+  const produto = produtoDoAlvo(alvo, catalogo);
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
   const candidatos = mapeamentos.filter(
@@ -83,7 +92,8 @@ function VincularGrupo({
           aria-label={t('produtosModulos.grupos.lista')}
         >
           {candidatos.slice(0, LIMITE_CANDIDATOS).map((g) => {
-            const ocupado = g.classificacao !== 'nao_se_aplica';
+            // Sai do outro lugar só se for no mesmo produto; senão, fica nos dois
+            const sai = !!produto && g.vinculos.some((v) => v.produtoId === produto);
             return (
               <li key={g.id}>
                 <button
@@ -96,16 +106,11 @@ function VincularGrupo({
                   className="flex w-full flex-col rounded-md px-2.5 py-2 text-left hover:bg-ds-bg-subtle focus-visible:bg-ds-bg-subtle focus-visible:outline-none"
                 >
                   <span className="font-mono text-xs">{g.grupoAranda}</span>
-                  <span
-                    className={cn('text-xs', ocupado ? 'text-ds-warning-fg' : 'text-ds-fg-muted')}
-                  >
+                  <span className={cn('text-xs', sai ? 'text-ds-warning-fg' : 'text-ds-fg-muted')}>
                     {ondeEsta(g)}
-                    {ocupado &&
-                      ` · ${t(
-                        alvo.tipo === 'solucao'
-                          ? 'produtosModulos.grupos.saiParaServicos'
-                          : 'produtosModulos.grupos.saiParaCa'
-                      )}`}
+                    {sai
+                      ? ` · ${t('produtosModulos.grupos.saiParaCa')}`
+                      : g.vinculos.length > 0 && ` · ${t('produtosModulos.grupos.ficaTambem')}`}
                   </span>
                 </button>
               </li>

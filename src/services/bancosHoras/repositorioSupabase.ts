@@ -140,14 +140,20 @@ export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioF
     },
 
     async dePara() {
+      // Os lugares do grupo vêm dos vínculos; as colunas de destino de grupos_aranda são
+      // só o espelho do primeiro, até a migration de limpeza
       const grupos = await consultar(
-        cliente.from('grupos_aranda').select('*'),
+        cliente
+          .from('grupos_aranda')
+          .select('grupo_aranda, ativo, grupos_aranda_vinculos(produto_id, modulo_id)'),
         'de-para dos grupos'
       );
       return grupos.map((g): GrupoDePara => ({
         grupoAranda: g.grupo_aranda,
-        produtoId: g.produto_id,
-        moduloId: g.modulo_id,
+        vinculos: (g.grupos_aranda_vinculos ?? []).map((v: Linha) => ({
+          produtoId: v.produto_id,
+          moduloId: v.modulo_id,
+        })),
         ativo: g.ativo,
       }));
     },

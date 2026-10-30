@@ -92,6 +92,8 @@ const deParaGrupos = {
     exatamente: 'Exactly as it comes from Aranda',
     repetido: 'This group is already mapped.',
     outroGrupo: 'For another group, create a new mapping.',
+    variosLugares:
+      'This group is in more than one place. Places are changed in Products and Modules; here you change the Book Group.',
     tabelaAtual: 'Also saved in the current table, read by Compliments, Surveys and Dashboard.',
     paraOnde: 'Where the hours go',
     uso: 'Usage',
@@ -132,6 +134,7 @@ const deParaGrupos = {
       varios: 'Exports {{n}} mappings, with the filters applied',
     },
     tickets: 'Tickets (6 months)',
+    outrosLugares: 'Other places',
   },
   importar: {
     titulo: 'Import mappings',

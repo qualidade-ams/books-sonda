@@ -26,6 +26,17 @@ const CATALOGO: Catalogo = {
       aClassificar: false,
       ...autoria,
     },
+    {
+      id: 'fci',
+      solucaoId: 's1',
+      codigo: 'FCI',
+      nome: 'FCI',
+      descricao: null,
+      ordem: 2,
+      ativo: true,
+      aClassificar: false,
+      ...autoria,
+    },
   ],
   modulos: [
     {
@@ -52,17 +63,23 @@ const mapa = (
   id: string,
   grupoAranda: string,
   extra: Partial<MapeamentoGrupo>
-): MapeamentoGrupo => ({
-  id,
-  grupoAranda,
-  grupoBook: 'B',
-  solucaoId: null,
-  produtoId: null,
-  moduloId: null,
-  classificacao: 'nao_se_aplica',
-  ...autoria,
-  ...extra,
-});
+): MapeamentoGrupo => {
+  const destino = {
+    solucaoId: extra.solucaoId ?? null,
+    produtoId: extra.produtoId ?? null,
+    moduloId: extra.moduloId ?? null,
+  };
+  return {
+    id,
+    grupoAranda,
+    grupoBook: 'B',
+    ...destino,
+    classificacao: 'nao_se_aplica',
+    vinculos: destino.solucaoId ? [destino] : [],
+    ...autoria,
+    ...extra,
+  };
+};
 const MAPEAMENTOS = [
   mapa('g1', 'AMS APL - CAMBIO - N2', {
     solucaoId: 's1',
@@ -77,6 +94,17 @@ const MAPEAMENTOS = [
     classificacao: 'modulo',
   }),
   mapa('g3', 'AMS T&M', {}),
+  // Em outro produto e no serviço da solução
+  mapa('g4', 'AMS APL - FCI - N2', {
+    solucaoId: 's1',
+    produtoId: 'fci',
+    moduloId: null,
+    classificacao: 'produto',
+    vinculos: [
+      { solucaoId: 's1', produtoId: 'fci', moduloId: null },
+      { solucaoId: 's1', produtoId: null, moduloId: null },
+    ],
+  }),
 ];
 
 function renderizar(grupos: string[], onChange = vi.fn()) {
@@ -109,18 +137,27 @@ describe('EditorGrupos', () => {
     expect(screen.queryByText('produtosModulos.grupos.podeMoverTitulo')).not.toBeInTheDocument();
   });
 
-  it('vincular mostra de onde o grupo sai e só oferece os que não estão na lista', () => {
+  it('vincular mostra onde o grupo está e só oferece os que não estão na lista', () => {
     const onChange = renderizar(['AMS APL - CAMBIO - N2']);
     fireEvent.click(screen.getByRole('button', { name: /produtosModulos.grupos.vincular/ }));
     const lista = screen.getByRole('list', { name: 'produtosModulos.grupos.lista' });
     expect(within(lista).queryByText('AMS APL - CAMBIO - N2')).not.toBeInTheDocument();
-    expect(
-      within(lista).getByText(
-        /produtosModulos.grupos.emModulo \{"produto":"CE PLUS","modulo":"Drawback"\}/
-      )
-    ).toBeInTheDocument();
-    expect(within(lista).getByText(/produtosModulos.grupos.saiParaCa/)).toBeInTheDocument();
-    // Grupo em "não se aplica" não sai de lugar nenhum
+
+    // Outro módulo do mesmo produto: um lugar por produto, o grupo sai de lá
+    const drawback = within(lista).getByText('AMS APL - DRAWBACK - N2').closest('button')!;
+    expect(drawback).toHaveTextContent(
+      'produtosModulos.grupos.emModulo {"produto":"CE PLUS","modulo":"Drawback"}'
+    );
+    expect(drawback).toHaveTextContent('produtosModulos.grupos.saiParaCa');
+
+    // Outro produto e serviço: continua lá e passa a ficar aqui também
+    const fci = within(lista).getByText('AMS APL - FCI - N2').closest('button')!;
+    expect(fci).toHaveTextContent('produtosModulos.grupos.emProduto {"produto":"FCI"}');
+    expect(fci).toHaveTextContent('produtosModulos.grupos.servicoDe {"solucao":"COMEX"}');
+    expect(fci).toHaveTextContent('produtosModulos.grupos.ficaTambem');
+    expect(fci).not.toHaveTextContent('produtosModulos.grupos.saiParaCa');
+
+    // Grupo em "não se aplica" não está em lugar nenhum
     expect(within(lista).getByText('produtosModulos.grupos.semSolucao')).toBeInTheDocument();
 
     fireEvent.click(within(lista).getByText('AMS T&M'));

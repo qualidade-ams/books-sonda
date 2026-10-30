@@ -130,27 +130,40 @@ export function EscolhaDestino({
   );
 }
 
-/** Destino na linha da lista: solução › produto › módulo, "serviço" ou "não se aplica" */
+/**
+ * Destino na linha da lista: cada lugar do grupo numa linha (solução › produto › módulo ou
+ * "serviço"); sem lugar, "não se aplica"
+ */
 export function DestinoNaLista({ m, catalogo }: { m: MapeamentoGrupo; catalogo: Catalogo }) {
   const { t } = useTranslation();
-  if (m.classificacao === 'nao_se_aplica')
+  if (!m.vinculos.length)
     return <StatusBadge>{t('deParaGrupos.classificacao.nao_se_aplica')}</StatusBadge>;
   const nome = <T extends { id: string; nome: string }>(lista: T[], id: string | null) =>
     lista.find((x) => x.id === id)?.nome;
   return (
-    <span className="min-w-0">
-      <span className="text-ds-fg-muted">{nome(catalogo.solucoes, m.solucaoId)}</span>
-      {m.produtoId ? (
-        <>
-          <span className="text-ds-fg-muted"> › </span>
-          <span className="font-medium">{nome(catalogo.produtos, m.produtoId)}</span>
-          {m.moduloId && (
-            <span className="text-ds-fg-secondary"> › {nome(catalogo.modulos, m.moduloId)}</span>
+    <span className="flex min-w-0 flex-col gap-0.5">
+      {m.vinculos.map((v) => (
+        <span
+          key={`${v.solucaoId}|${v.produtoId ?? ''}|${v.moduloId ?? ''}`}
+          data-testid="lugar-do-grupo"
+        >
+          <span className="text-ds-fg-muted">{nome(catalogo.solucoes, v.solucaoId)}</span>
+          {v.produtoId ? (
+            <>
+              <span className="text-ds-fg-muted"> › </span>
+              <span className="font-medium">{nome(catalogo.produtos, v.produtoId)}</span>
+              {v.moduloId && (
+                <span className="text-ds-fg-secondary">
+                  {' '}
+                  › {nome(catalogo.modulos, v.moduloId)}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-ds-fg-secondary"> · {t('deParaGrupos.destino.servico')}</span>
           )}
-        </>
-      ) : (
-        <span className="text-ds-fg-secondary"> · {t('deParaGrupos.destino.servico')}</span>
-      )}
+        </span>
+      ))}
     </span>
   );
 }

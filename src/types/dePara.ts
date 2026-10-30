@@ -19,11 +19,18 @@ export interface DestinoGrupo {
   moduloId: string | null;
 }
 
+/**
+ * O grupo pode estar em vários lugares (decisão de 28/10/2026): um por produto e um
+ * serviço por solução. O destino e a classificação de nível são os do vínculo principal
+ * (o primeiro), usado na edição do De-para.
+ */
 export interface MapeamentoGrupo extends Autoria, DestinoGrupo {
   id: string;
   grupoAranda: string;
   grupoBook: string;
   classificacao: ClassificacaoGrupo;
+  /** Todos os lugares do grupo, o principal primeiro; vazio = não se aplica */
+  vinculos: DestinoGrupo[];
 }
 
 /** Consumo do grupo nos últimos 6 meses (coluna Uso) */
@@ -50,5 +57,6 @@ export interface MapeamentoInput {
   /** Só na criação: o grupo do Aranda não muda depois */
   grupoAranda: string;
   grupoBook: string;
-  destino: DestinoGrupo;
+  /** Troca todos os vínculos por este destino; ausente = os vínculos não mudam */
+  destino?: DestinoGrupo;
 }

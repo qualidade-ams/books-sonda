@@ -75,6 +75,8 @@ export function EdicaoMapeamento({
   const consumo = (usoAtual?.apontamentos ?? 0) + (usoAtual?.tickets ?? 0);
   const afetadas = mapeamento ? (uso[mapeamento.id]?.empresasMultiplos ?? []) : [];
   const classificacao = classificar(destino);
+  // Em mais de um lugar, os lugares mudam em Produtos e Módulos; aqui só o Grupo do Book
+  const variosLugares = (mapeamento?.vinculos.length ?? 0) > 1;
 
   const salvar = async () => {
     setSalvando(true);
@@ -83,7 +85,7 @@ export function EdicaoMapeamento({
         ...(mapeamento ? { id: mapeamento.id } : {}),
         grupoAranda: grupo.trim(),
         grupoBook: grupoBook.trim(),
-        destino,
+        ...(novo || mudouDestino ? { destino } : {}),
       });
       setConfirmar(false);
       onFechar();
@@ -147,18 +149,39 @@ export function EdicaoMapeamento({
       </Secao>
 
       <Secao titulo={t('deParaGrupos.edicao.paraOnde')}>
-        <EscolhaDestino
-          idBase="mapeamento"
-          catalogo={catalogo}
-          destino={destino}
-          onChange={setDestino}
-        />
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-          <StatusBadge tom={classificacao === 'modulo' ? 'info' : 'neutral'}>
-            {t(`deParaGrupos.classificacao.${classificacao}`)}
-          </StatusBadge>
-          <span className="text-ds-fg-secondary">{textoDestino(destino)}</span>
-        </div>
+        {variosLugares ? (
+          <>
+            <ul className="space-y-2 text-sm">
+              {mapeamento.vinculos.map((v) => (
+                <li
+                  key={`${v.solucaoId}|${v.produtoId ?? ''}|${v.moduloId ?? ''}`}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  <StatusBadge tom={classificar(v) === 'modulo' ? 'info' : 'neutral'}>
+                    {t(`deParaGrupos.classificacao.${classificar(v)}`)}
+                  </StatusBadge>
+                  <span className="text-ds-fg-secondary">{textoDestino(v)}</span>
+                </li>
+              ))}
+            </ul>
+            <Ajuda>{t('deParaGrupos.edicao.variosLugares')}</Ajuda>
+          </>
+        ) : (
+          <>
+            <EscolhaDestino
+              idBase="mapeamento"
+              catalogo={catalogo}
+              destino={destino}
+              onChange={setDestino}
+            />
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <StatusBadge tom={classificacao === 'modulo' ? 'info' : 'neutral'}>
+                {t(`deParaGrupos.classificacao.${classificacao}`)}
+              </StatusBadge>
+              <span className="text-ds-fg-secondary">{textoDestino(destino)}</span>
+            </div>
+          </>
+        )}
       </Secao>
 
       <Secao titulo={t('deParaGrupos.edicao.uso')}>

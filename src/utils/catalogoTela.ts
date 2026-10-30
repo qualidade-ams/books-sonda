@@ -24,16 +24,20 @@ export interface AlvoGrupo {
 const nomes = (lista: MapeamentoGrupo[]) =>
   lista.map((g) => g.grupoAranda).sort((a, b) => a.localeCompare(b));
 
+/** Grupos com algum vínculo que atende; o grupo pode estar em vários lugares */
+const comVinculo = (mapeamentos: MapeamentoGrupo[], atende: (v: DestinoGrupo) => boolean) =>
+  nomes(mapeamentos.filter((g) => g.vinculos.some(atende)));
+
 export const gruposDoModulo = (mapeamentos: MapeamentoGrupo[], moduloId: string) =>
-  nomes(mapeamentos.filter((g) => g.classificacao === 'modulo' && g.moduloId === moduloId));
+  comVinculo(mapeamentos, (v) => v.moduloId === moduloId);
 
 /** Grupos ligados ao produto inteiro, sem módulo */
 export const gruposSoDoProduto = (mapeamentos: MapeamentoGrupo[], produtoId: string) =>
-  nomes(mapeamentos.filter((g) => g.classificacao === 'produto' && g.produtoId === produtoId));
+  comVinculo(mapeamentos, (v) => v.produtoId === produtoId && v.moduloId === null);
 
 /** Grupos de serviço da solução (DBA, Técnico…) */
 export const gruposDaSolucao = (mapeamentos: MapeamentoGrupo[], solucaoId: string) =>
-  nomes(mapeamentos.filter((g) => g.classificacao === 'solucao' && g.solucaoId === solucaoId));
+  comVinculo(mapeamentos, (v) => v.solucaoId === solucaoId && v.produtoId === null);
 
 export const usosDoProdutoInteiro = (usos: UsoEmBanco[], produtoId: string) =>
   usos.filter((u) => u.produtoId === produtoId && u.moduloId === null);
@@ -60,13 +64,11 @@ export const usosDoModulo = (usos: UsoEmBanco[], modulo: Modulo) =>
 
 export function totaisCatalogo(catalogo: Catalogo, mapeamentos: MapeamentoGrupo[]) {
   const modulosAtivos = catalogo.modulos.filter((m) => m.ativo);
-  const comGrupo = new Set(
-    mapeamentos.filter((g) => g.classificacao === 'modulo').map((g) => g.moduloId)
-  );
+  const comGrupo = new Set(mapeamentos.flatMap((g) => g.vinculos.map((v) => v.moduloId)));
   return {
     produtos: catalogo.produtos.filter((p) => p.ativo).length,
     modulos: modulosAtivos.length,
-    grupos: mapeamentos.filter((g) => g.classificacao !== 'nao_se_aplica').length,
+    grupos: mapeamentos.filter((g) => g.vinculos.length > 0).length,
     semGrupo: modulosAtivos.filter((m) => !comGrupo.has(m.id)).length,
   };
 }
@@ -95,7 +97,10 @@ export function mudancasDeGrupos(
 
 const NENHUM: DestinoGrupo = { solucaoId: null, produtoId: null, moduloId: null };
 
-/** Para onde vai o grupo vinculado ao item */
+/**
+ * O lugar do item no catálogo. Vincular acrescenta esse lugar ao grupo; desvincular o tira
+ * (do módulo, a função do banco deixa o grupo no produto inteiro)
+ */
 export function destinoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo {
   if (alvo.tipo === 'solucao') return { solucaoId: alvo.id, produtoId: null, moduloId: null };
   const produtoId =
@@ -107,12 +112,6 @@ export function destinoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo
     produtoId: produto.id,
     moduloId: alvo.tipo === 'modulo' ? alvo.id : null,
   };
-}
-
-/** Desvincular do módulo deixa o grupo no produto; do produto ou da solução, não se aplica */
-export function destinoAoDesvincular(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo {
-  if (alvo.tipo !== 'modulo') return NENHUM;
-  return { ...destinoDoAlvo(alvo, catalogo), moduloId: null };
 }
 
 type LinhaCatalogo = {

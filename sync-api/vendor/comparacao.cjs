@@ -149,6 +149,7 @@ function valorExcedente(quantidade, unidade, taxa) {
 }
 
 // src/services/bancosHoras/classificacao.ts
+var SEM_VINCULO = [{ produtoId: null, moduloId: null }];
 var normalizar = (texto) => (texto ?? "").trim().toLowerCase();
 function atendeEscopo(banco, produtoId, moduloId) {
   if (banco.escopo.length === 0) return true;
@@ -185,7 +186,11 @@ function criarClassificador(bancos, dePara, mes) {
     porProdutoModulo,
     porGrupo(grupo, itemConfiguracao) {
       const d = grupos.get(normalizar(grupo));
-      return porProdutoModulo(d?.produtoId ?? null, d?.moduloId ?? null, itemConfiguracao);
+      const vinculos = d?.vinculos.length ? d.vinculos : SEM_VINCULO;
+      const banco = candidatos.find(
+        (b) => vinculos.some((v) => atendeEscopo(b, v.produtoId, v.moduloId)) && atendeFiltro(b, itemConfiguracao)
+      );
+      return (banco ?? padrao)?.bancoId ?? null;
     }
   };
 }
@@ -1332,13 +1337,15 @@ function criarRepositorioSupabase(cliente) {
     },
     async dePara() {
       const grupos = await consultar(
-        cliente.from("grupos_aranda").select("*"),
+        cliente.from("grupos_aranda").select("grupo_aranda, ativo, grupos_aranda_vinculos(produto_id, modulo_id)"),
         "de-para dos grupos"
       );
       return grupos.map((g) => ({
         grupoAranda: g.grupo_aranda,
-        produtoId: g.produto_id,
-        moduloId: g.modulo_id,
+        vinculos: (g.grupos_aranda_vinculos ?? []).map((v) => ({
+          produtoId: v.produto_id,
+          moduloId: v.modulo_id
+        })),
         ativo: g.ativo
       }));
     },

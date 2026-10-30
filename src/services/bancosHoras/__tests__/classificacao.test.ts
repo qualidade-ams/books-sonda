@@ -18,14 +18,14 @@ const banco = (v: Partial<BancoClassificavel> & { bancoId: string }): BancoClass
   ...v,
 });
 
+/** Um vínculo só; sem produto = grupo que não se aplica */
 const dePara = (
   grupoAranda: string,
   produtoId: string | null,
   moduloId: string | null
 ): GrupoDePara => ({
   grupoAranda,
-  produtoId,
-  moduloId,
+  vinculos: produtoId ? [{ produtoId, moduloId }] : [],
   ativo: true,
 });
 
@@ -114,6 +114,72 @@ describe('classificação — de-para (RN-03, RN-04)', () => {
     expect(classificador.porProdutoModulo('FISCAL', 'EDOCS', null)).toBe('edocs');
     expect(classificador.porProdutoModulo('FISCAL', null, null)).toBe('fiscal');
     expect(classificador.porProdutoModulo(null, null, null)).toBe('fiscal');
+  });
+});
+
+describe('classificação — grupo em vários lugares (decisão de 28/10/2026)', () => {
+  // Grupo nos dois produtos e no serviço da solução FISCAIS
+  const compartilhado: GrupoDePara = {
+    grupoAranda: 'AMS APL - INTEGRACAO',
+    vinculos: [
+      { produtoId: 'FISCAL', moduloId: 'EDOCS' },
+      { produtoId: 'COMEX', moduloId: 'IMPORTACAO' },
+      { produtoId: null, moduloId: null },
+    ],
+    ativo: true,
+  };
+
+  it('vai para o primeiro banco, na ordem do cadastro, que cobre algum vínculo', () => {
+    // comex (ordem 1) cobre COMEX inteiro; edocs (ordem 2) cobre FISCAL › EDOCS
+    const c = criarClassificador(bancosExemplo, [compartilhado], MES);
+    expect(c.porGrupo('AMS APL - INTEGRACAO', null)).toBe('comex');
+  });
+
+  it('a ordem é a dos bancos, não a dos vínculos', () => {
+    const invertidos = bancosExemplo.map((b) =>
+      b.bancoId === 'comex' ? { ...b, ordem: 5 } : b.bancoId === 'edocs' ? { ...b, ordem: 1 } : b
+    );
+    const c = criarClassificador(invertidos, [compartilhado], MES);
+    expect(c.porGrupo('AMS APL - INTEGRACAO', null)).toBe('edocs');
+  });
+
+  it('empresa só com o banco de um dos produtos: vai para ele', () => {
+    const soEdocs = bancosExemplo.filter((b) => b.bancoId !== 'comex');
+    const c = criarClassificador(soEdocs, [compartilhado], MES);
+    expect(c.porGrupo('AMS APL - INTEGRACAO', null)).toBe('edocs');
+  });
+
+  it('nenhum banco cobre os vínculos: Banco padrão', () => {
+    const c = criarClassificador(
+      [
+        banco({ bancoId: 'outro', escopo: [{ produtoId: 'GALLERY', moduloId: null }] }),
+        bancosExemplo[2],
+      ],
+      [compartilhado],
+      MES
+    );
+    expect(c.porGrupo('AMS APL - INTEGRACAO', null)).toBe('fiscal');
+  });
+
+  it('o filtro por item de configuração vale junto com os vínculos', () => {
+    const comFiltro = bancosExemplo.map((b) =>
+      b.bancoId === 'comex'
+        ? { ...b, filtroIc: { operador: 'contem' as const, valor: 'ANGLO' } }
+        : b
+    );
+    const c = criarClassificador(comFiltro, [compartilhado], MES);
+    expect(c.porGrupo('AMS APL - INTEGRACAO', 'SERVIDOR ANGLO')).toBe('comex');
+    expect(c.porGrupo('AMS APL - INTEGRACAO', 'OUTRO')).toBe('edocs');
+  });
+
+  it('só o serviço da solução: como hoje, só banco sem escopo (com filtro) ou o padrão', () => {
+    const servico: GrupoDePara = {
+      grupoAranda: 'AMS FISCAIS - DBA',
+      vinculos: [{ produtoId: null, moduloId: null }],
+      ativo: true,
+    };
+    const c = criarClassificador(bancosExemplo, [servico], MES);
+    expect(c.porGrupo('AMS FISCAIS - DBA', null)).toBe('fiscal');
   });
 });
 

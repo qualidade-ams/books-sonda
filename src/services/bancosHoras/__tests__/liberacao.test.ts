@@ -70,7 +70,9 @@ const projetos = banco({
     },
   ],
 });
-const dePara: GrupoDePara[] = [{ grupoAranda: 'G-P', produtoId: 'P', moduloId: null, ativo: true }];
+const dePara: GrupoDePara[] = [
+  { grupoAranda: 'G-P', vinculos: [{ produtoId: 'P', moduloId: null }], ativo: true },
+];
 
 const item = (itemId: string, grupo: string, minutos: number): ItemConsumo => ({
   itemId,

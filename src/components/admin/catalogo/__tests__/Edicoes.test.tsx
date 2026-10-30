@@ -62,6 +62,7 @@ const MAPEAMENTOS: MapeamentoGrupo[] = [
     produtoId: 'ce',
     moduloId: 'cambio',
     classificacao: 'modulo',
+    vinculos: [{ solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' }],
     ...autoria,
   },
 ];

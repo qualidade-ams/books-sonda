@@ -66,6 +66,8 @@ const erros = {
   },
   falhas: {
     atribuirODestino: 'Could not assign the target: {{detalhe}}',
+    vincularOsGrupos: 'Could not link the groups: {{detalhe}}',
+    desvincularOsGrupos: 'Could not unlink the groups: {{detalhe}}',
     carregarAEmpresa: 'Could not load the company: {{detalhe}}',
     carregarAsEmpresas: 'Could not load the companies: {{detalhe}}',
     carregarAsRegrasDeContagem: 'Could not load the counting rules: {{detalhe}}',

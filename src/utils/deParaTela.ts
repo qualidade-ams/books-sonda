@@ -12,6 +12,7 @@ import type {
   UsoGrupo,
 } from '@/types/dePara';
 import type { Catalogo } from '@/types/catalogo';
+import { classificar } from '@/services/deParaService';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
@@ -35,23 +36,28 @@ export const SEM_FILTRO: FiltroMapeamentos = {
 const passa = (lista: string[], valor: string | null) =>
   !lista.length || lista.includes(valor ?? '');
 
+const SEM_LUGAR: DestinoGrupo[] = [{ solucaoId: null, produtoId: null, moduloId: null }];
+
+/** O grupo passa se algum lugar dele atende a todos os filtros de destino ao mesmo tempo */
 export function filtrarMapeamentos(
   lista: MapeamentoGrupo[],
   filtro: FiltroMapeamentos
 ): MapeamentoGrupo[] {
   const termo = filtro.busca.trim().toLowerCase();
+  const atende = (l: DestinoGrupo) =>
+    passa(filtro.solucoes, l.solucaoId) &&
+    passa(filtro.produtos, l.produtoId) &&
+    passa(filtro.modulos, l.moduloId) &&
+    passa(filtro.situacao, classificar(l));
   return lista.filter(
     (m) =>
       (!termo || `${m.grupoAranda} ${m.grupoBook}`.toLowerCase().includes(termo)) &&
-      passa(filtro.solucoes, m.solucaoId) &&
-      passa(filtro.produtos, m.produtoId) &&
-      passa(filtro.modulos, m.moduloId) &&
-      passa(filtro.situacao, m.classificacao)
+      (m.vinculos.length ? m.vinculos : SEM_LUGAR).some(atende)
   );
 }
 
 export function totaisDePara(mapeamentos: MapeamentoGrupo[], naoMapeados: GrupoNaoMapeado[]) {
-  const comModulo = mapeamentos.filter((m) => m.classificacao === 'modulo').length;
+  const comModulo = mapeamentos.filter((m) => m.vinculos.some((v) => v.moduloId)).length;
   return {
     mapeados: mapeamentos.length,
     comModulo,
@@ -80,7 +86,10 @@ export const destinoMudou = (atual: DestinoGrupo, novo: DestinoGrupo) =>
   atual.produtoId !== novo.produtoId ||
   atual.moduloId !== novo.moduloId;
 
-/** Exportação dos mapeamentos, com o destino pelo nome e o uso dos últimos 6 meses */
+/**
+ * Exportação dos mapeamentos: o lugar principal pelo nome, nas colunas que a importação lê,
+ * os outros lugares em texto e o uso dos últimos 6 meses
+ */
 export function exportacaoMapeamentos(
   mapeamentos: MapeamentoGrupo[],
   catalogo: Catalogo,
@@ -89,6 +98,14 @@ export function exportacaoMapeamentos(
 ): Exportacao {
   const nome = (lista: { id: string; nome: string }[], id: string | null) =>
     lista.find((x) => x.id === id)?.nome;
+  const lugar = (v: DestinoGrupo) =>
+    [
+      nome(catalogo.solucoes, v.solucaoId),
+      nome(catalogo.produtos, v.produtoId),
+      nome(catalogo.modulos, v.moduloId),
+    ]
+      .filter(Boolean)
+      .join(' › ');
   const coluna = (rotulo: string, valor: (m: MapeamentoGrupo) => string | number | undefined) => ({
     rotulo: t(rotulo),
     valor,
@@ -107,6 +124,9 @@ export function exportacaoMapeamentos(
           coluna('deParaGrupos.destino.produto', (m) => nome(catalogo.produtos, m.produtoId)),
           coluna('deParaGrupos.destino.modulo', (m) => nome(catalogo.modulos, m.moduloId)),
           coluna('fase3Comum.situacao', (m) => t(`deParaGrupos.classificacao.${m.classificacao}`)),
+          coluna('deParaGrupos.exportar.outrosLugares', (m) =>
+            m.vinculos.slice(1).map(lugar).join('; ')
+          ),
           coluna('deParaGrupos.lista.colunaApontamentos', (m) => uso[m.id]?.apontamentos ?? 0),
           coluna('deParaGrupos.exportar.tickets', (m) => uso[m.id]?.tickets ?? 0),
         ],
@@ -201,7 +221,11 @@ export function conferirMapeamentos(
   });
 }
 
-/** O que gravar: o grupo novo sem id; o já mapeado com o id dele */
+/**
+ * O que gravar: o grupo novo sem id; o já mapeado com o id dele. O destino da linha troca
+ * todos os lugares do grupo, menos quando o grupo está em vários e a linha traz o principal
+ * (a planilha exportada só tem esse): aí os lugares ficam como estão
+ */
 export const mapeamentosImportados = (
   linhas: LinhaImportacao[],
   mapeamentos: MapeamentoGrupo[],
@@ -209,10 +233,12 @@ export const mapeamentosImportados = (
 ): MapeamentoInput[] =>
   linhas.map((l) => {
     const atual = mapeamentoDoGrupo(l.valores.grupo, mapeamentos);
+    const destino = destinoDaLinha(l.valores, catalogo).destino;
+    const mantemLugares = !!atual && atual.vinculos.length > 1 && !destinoMudou(atual, destino);
     return {
       ...(atual ? { id: atual.id } : {}),
       grupoAranda: atual?.grupoAranda ?? l.valores.grupo,
       grupoBook: l.valores.book,
-      destino: destinoDaLinha(l.valores, catalogo).destino,
+      ...(mantemLugares ? {} : { destino }),
     };
   });

@@ -3957,6 +3957,71 @@ export type Database = {
           },
         ]
       }
+      grupos_aranda_vinculos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          grupo_id: string
+          id: string
+          modulo_id: string | null
+          produto_id: string | null
+          solucao_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          grupo_id: string
+          id?: string
+          modulo_id?: string | null
+          produto_id?: string | null
+          solucao_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          grupo_id?: string
+          id?: string
+          modulo_id?: string | null
+          produto_id?: string | null
+          solucao_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_aranda_vinculos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_aranda"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_aranda_vinculos_modulo_fk"
+            columns: ["modulo_id", "produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto_modulos"
+            referencedColumns: ["id", "produto_id"]
+          },
+          {
+            foreignKeyName: "grupos_aranda_vinculos_produto_fk"
+            columns: ["produto_id", "solucao_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id", "solucao_id"]
+          },
+          {
+            foreignKeyName: "grupos_aranda_vinculos_solucao_id_fkey"
+            columns: ["solucao_id"]
+            isOneToOne: false
+            referencedRelation: "solucoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grupos_responsaveis: {
         Row: {
           created_at: string | null
@@ -6826,6 +6891,15 @@ export type Database = {
         Args: { p_bancos: Json; p_book_id: string }
         Returns: number
       }
+      grupos_aranda_desvincular: {
+        Args: {
+          p_grupos: string[]
+          p_modulo: string
+          p_produto: string
+          p_solucao: string
+        }
+        Returns: undefined
+      }
       grupos_aranda_nao_mapeados: {
         Args: { p_meses?: number }
         Returns: {
@@ -6844,6 +6918,16 @@ export type Database = {
           grupo_aranda_id: string
           tickets: number
         }[]
+      }
+      grupos_aranda_vincular: {
+        Args: {
+          p_grupos: string[]
+          p_modulo: string
+          p_produto: string
+          p_solucao: string
+          p_substituir?: boolean
+        }
+        Returns: undefined
       }
       has_especialistas_permission: { Args: never; Returns: boolean }
       has_screen_permission:

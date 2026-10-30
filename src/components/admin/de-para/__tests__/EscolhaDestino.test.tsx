@@ -139,7 +139,12 @@ describe('useTextoDestino', () => {
 
 describe('DestinoNaLista', () => {
   const m = (destino: Partial<MapeamentoGrupo>, classificacao: MapeamentoGrupo['classificacao']) =>
-    ({ ...VAZIO, ...destino, classificacao }) as MapeamentoGrupo;
+    ({
+      ...VAZIO,
+      ...destino,
+      classificacao,
+      vinculos: destino.solucaoId ? [{ ...VAZIO, ...destino }] : [],
+    }) as MapeamentoGrupo;
 
   it('solução › produto › módulo, serviço ou não se aplica', () => {
     const { rerender, container } = render(

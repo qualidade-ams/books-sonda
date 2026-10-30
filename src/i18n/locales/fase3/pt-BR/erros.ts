@@ -65,6 +65,8 @@ const erros = {
   },
   falhas: {
     atribuirODestino: 'Falha ao atribuir o destino: {{detalhe}}',
+    vincularOsGrupos: 'Falha ao vincular os grupos: {{detalhe}}',
+    desvincularOsGrupos: 'Falha ao desvincular os grupos: {{detalhe}}',
     carregarAEmpresa: 'Falha ao carregar a empresa: {{detalhe}}',
     carregarAsEmpresas: 'Falha ao carregar as empresas: {{detalhe}}',
     carregarAsRegrasDeContagem: 'Falha ao carregar as regras de contagem: {{detalhe}}',

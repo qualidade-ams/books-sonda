@@ -4,7 +4,6 @@ import {
   bancosDoProduto,
   catalogoImportado,
   conferirCatalogo,
-  destinoAoDesvincular,
   destinoDoAlvo,
   exportacaoCatalogo,
   gruposDaSolucao,
@@ -68,7 +67,23 @@ const mapa = (
   id: string,
   grupoAranda: string,
   destino: Pick<MapeamentoGrupo, 'solucaoId' | 'produtoId' | 'moduloId' | 'classificacao'>
-): MapeamentoGrupo => ({ id, grupoAranda, grupoBook: 'B', ...destino, ...autoria });
+): MapeamentoGrupo => ({
+  id,
+  grupoAranda,
+  grupoBook: 'B',
+  ...destino,
+  vinculos:
+    destino.classificacao === 'nao_se_aplica'
+      ? []
+      : [
+          {
+            solucaoId: destino.solucaoId,
+            produtoId: destino.produtoId,
+            moduloId: destino.moduloId,
+          },
+        ],
+  ...autoria,
+});
 
 const MAPEAMENTOS: MapeamentoGrupo[] = [
   mapa('g1', 'AMS APL - CAMBIO - N2', {
@@ -101,6 +116,20 @@ const MAPEAMENTOS: MapeamentoGrupo[] = [
     moduloId: null,
     classificacao: 'nao_se_aplica',
   }),
+  // Em três lugares: Câmbio (principal), COMPLY inteiro e o serviço da solução s2
+  {
+    ...mapa('g6', 'AMS APL - INTEGRACAO', {
+      solucaoId: 's1',
+      produtoId: 'ce',
+      moduloId: 'cambio',
+      classificacao: 'modulo',
+    }),
+    vinculos: [
+      { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+      { solucaoId: 's2', produtoId: 'comply', moduloId: null },
+      { solucaoId: 's2', produtoId: null, moduloId: null },
+    ],
+  },
 ];
 
 const uso = (produtoId: string, moduloId: string | null, banco: string): UsoEmBanco => ({
@@ -121,10 +150,16 @@ describe('grupos de cada nível', () => {
     expect(gruposDoModulo(MAPEAMENTOS, 'cambio')).toEqual([
       'AMS APL - CAMBIO - N2',
       'AMS APL - CAMBIO - N3',
+      'AMS APL - INTEGRACAO',
     ]);
     expect(gruposSoDoProduto(MAPEAMENTOS, 'ce')).toEqual(['AMS APL - CE PLUS - N2']);
     expect(gruposDaSolucao(MAPEAMENTOS, 's1')).toEqual(['AMS APL - DBA COMEX']);
     expect(gruposDoModulo(MAPEAMENTOS, 'drawback')).toEqual([]);
+  });
+
+  it('o grupo em vários lugares aparece em cada um deles', () => {
+    expect(gruposSoDoProduto(MAPEAMENTOS, 'comply')).toEqual(['AMS APL - INTEGRACAO']);
+    expect(gruposDaSolucao(MAPEAMENTOS, 's2')).toEqual(['AMS APL - INTEGRACAO']);
   });
 });
 
@@ -148,10 +183,11 @@ describe('bancos que usam', () => {
 
 describe('totaisCatalogo e modulosAClassificar', () => {
   it('conta os ativos, os grupos ligados e os módulos ativos sem grupo', () => {
+    // O grupo em vários lugares conta uma vez
     expect(totaisCatalogo(CATALOGO, MAPEAMENTOS)).toEqual({
       produtos: 3,
       modulos: 4,
-      grupos: 4,
+      grupos: 5,
       semGrupo: 3,
     });
   });
@@ -195,17 +231,6 @@ describe('destino dos grupos', () => {
       produtoId: null,
       moduloId: null,
     });
-  });
-
-  it('desvincular do módulo deixa no produto; do produto ou da solução, não se aplica', () => {
-    expect(destinoAoDesvincular({ tipo: 'modulo', id: 'cambio' }, CATALOGO)).toEqual({
-      solucaoId: 's1',
-      produtoId: 'ce',
-      moduloId: null,
-    });
-    const nenhum = { solucaoId: null, produtoId: null, moduloId: null };
-    expect(destinoAoDesvincular({ tipo: 'produto', id: 'ce' }, CATALOGO)).toEqual(nenhum);
-    expect(destinoAoDesvincular({ tipo: 'solucao', id: 's1' }, CATALOGO)).toEqual(nenhum);
   });
 });
 
