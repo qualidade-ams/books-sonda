@@ -204,7 +204,10 @@ export class DeParaService {
     if (error) throw falha('atribuir o destino', error);
   }
 
-  /** Produtos e Módulos: acrescenta o lugar; o grupo continua onde já estava */
+  /**
+   * Produtos e Módulos: acrescenta o lugar; o grupo continua onde já estava, salvo o
+   * "A classificar" da mesma solução, de onde sai (migration 20261103000004)
+   */
   async vincular(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente.rpc('grupos_aranda_vincular', {
       p_grupos: ids,
@@ -214,7 +217,10 @@ export class DeParaService {
     if (error) throw falha('vincular os grupos', error);
   }
 
-  /** Tira só este lugar; do último módulo do produto, o grupo fica no produto inteiro */
+  /**
+   * Tira só este lugar; do último módulo do produto, o grupo fica no produto inteiro. Sem
+   * lugar na solução, o grupo volta ao "A classificar" dela (migration 20261103000003)
+   */
   async desvincular(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente.rpc('grupos_aranda_desvincular', {
       p_grupos: ids,
