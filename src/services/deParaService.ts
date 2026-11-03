@@ -5,8 +5,8 @@
  *
  * Os lugares do grupo no catálogo ficam em `grupos_aranda_vinculos` (migration
  * 20261030000001): o grupo pode estar em vários, um por produto e um serviço por
- * solução. A gravação é pelas funções do banco, que guardam essa regra; as colunas de
- * destino de `grupos_aranda` são só o espelho do primeiro vínculo.
+ * solução. A gravação é pelas funções do banco, que guardam essa regra. As colunas de
+ * destino que `grupos_aranda` tinha saíram na migration 20261030000003.
  *
  * "Excluir" grava ativo = false: o grupo volta para os não mapeados. Mapear de
  * novo reativa a mesma linha, porque o grupo do Aranda é único e não muda.
@@ -168,7 +168,7 @@ export class DeParaService {
     // O grupo nasce sem lugar; os vínculos vêm logo depois, pela função do banco
     const { data, error } = await this.cliente
       .from('grupos_aranda')
-      .insert({ grupo_aranda: grupo, grupo_book: grupoBook, classificacao: 'nao_se_aplica' })
+      .insert({ grupo_aranda: grupo, grupo_book: grupoBook })
       .select('id')
       .single();
     if (error) throw falha('salvar o mapeamento', error);

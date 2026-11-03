@@ -90,14 +90,10 @@ function cenario() {
           percentual_entre_periodos: '70.00',
         },
       ],
-      // As colunas de destino de grupos_aranda são só o espelho do primeiro vínculo
       grupos_aranda: [
         {
           grupo_aranda: 'AMS APL - CAMBIO',
-          produto_id: 'COMEX',
-          modulo_id: 'M1',
           ativo: true,
-          classificacao: 'modulo',
           grupos_aranda_vinculos: [
             { solucao_id: 'S1', produto_id: 'COMEX', modulo_id: 'M1' },
             { solucao_id: 'S2', produto_id: 'FISCAL', modulo_id: null },
@@ -106,10 +102,7 @@ function cenario() {
         },
         {
           grupo_aranda: 'AMS DEDICADOS',
-          produto_id: null,
-          modulo_id: null,
           ativo: true,
-          classificacao: 'nao_se_aplica',
           grupos_aranda_vinculos: [],
         },
       ],

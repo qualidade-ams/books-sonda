@@ -3880,7 +3880,6 @@ export type Database = {
       grupos_aranda: {
         Row: {
           ativo: boolean
-          classificacao: string
           created_at: string
           created_by: string | null
           grupo_aranda: string
@@ -3888,15 +3887,11 @@ export type Database = {
           id: string
           inativado_em: string | null
           inativado_por: string | null
-          modulo_id: string | null
-          produto_id: string | null
-          solucao_id: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           ativo?: boolean
-          classificacao: string
           created_at?: string
           created_by?: string | null
           grupo_aranda: string
@@ -3904,15 +3899,11 @@ export type Database = {
           id?: string
           inativado_em?: string | null
           inativado_por?: string | null
-          modulo_id?: string | null
-          produto_id?: string | null
-          solucao_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           ativo?: boolean
-          classificacao?: string
           created_at?: string
           created_by?: string | null
           grupo_aranda?: string
@@ -3920,42 +3911,10 @@ export type Database = {
           id?: string
           inativado_em?: string | null
           inativado_por?: string | null
-          modulo_id?: string | null
-          produto_id?: string | null
-          solucao_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "grupos_aranda_modulo_fk"
-            columns: ["modulo_id", "produto_id"]
-            isOneToOne: false
-            referencedRelation: "produto_modulos"
-            referencedColumns: ["id", "produto_id"]
-          },
-          {
-            foreignKeyName: "grupos_aranda_produto_id_fkey"
-            columns: ["produto_id"]
-            isOneToOne: false
-            referencedRelation: "produtos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grupos_aranda_solucao_id_fkey"
-            columns: ["solucao_id"]
-            isOneToOne: false
-            referencedRelation: "solucoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grupos_aranda_solucao_produto_fk"
-            columns: ["produto_id", "solucao_id"]
-            isOneToOne: false
-            referencedRelation: "produtos"
-            referencedColumns: ["id", "solucao_id"]
-          },
-        ]
+        Relationships: []
       }
       grupos_aranda_vinculos: {
         Row: {
