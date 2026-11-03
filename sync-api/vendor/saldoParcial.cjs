@@ -32713,7 +32713,7 @@ var produtosModulos = {
       ativa: "Solu\xE7\xE3o ativa",
       codigoNaoMuda: "O c\xF3digo n\xE3o muda depois de criado.",
       excluirTitulo: "Excluir a solu\xE7\xE3o",
-      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem produto e sem grupo de servi\xE7o). Exclu\xEDda, ela some do cat\xE1logo de vez.",
+      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem grupo de servi\xE7o, e os produtos dela, se houver, tamb\xE9m sem uso). Exclu\xEDda, ela e os produtos somem do cat\xE1logo de vez.",
       excluir: "Excluir solu\xE7\xE3o",
       codigoRepetido: "J\xE1 existe uma solu\xE7\xE3o com este c\xF3digo.",
       nomeRepetido: "J\xE1 existe uma solu\xE7\xE3o com este nome.",
@@ -32726,7 +32726,8 @@ var produtosModulos = {
       nome: "Nome do produto",
       descricao: "Descri\xE7\xE3o do produto",
       ativo: "Produto ativo",
-      solucaoNaoMuda: "A solu\xE7\xE3o do produto n\xE3o muda depois de criado.",
+      solucaoNaoMuda: 'Produto usado em banco ativo (ou "A classificar") n\xE3o muda de solu\xE7\xE3o.',
+      solucaoMuda: "Ao trocar a solu\xE7\xE3o, os m\xF3dulos e os grupos do Aranda v\xE3o junto com o produto.",
       nomeRepetido: "J\xE1 existe o produto {{nome}} em {{solucao}}.",
       grupos: "Grupos do produto",
       semGrupo: "Nenhum grupo ligado ao produto inteiro. Se o produto n\xE3o tem m\xF3dulos, sem grupo nenhuma hora chega a ele.",
@@ -32799,6 +32800,7 @@ var produtosModulos = {
   excluir: {
     titulo: "Excluir {{nome}}?",
     descricao: "O item nunca foi usado: some do cat\xE1logo de vez, em vez de ficar inativo.",
+    produtosJuntos: "Os produtos da solu\xE7\xE3o, sem uso, saem junto: {{produtos}}",
     semVolta: "N\xE3o d\xE1 para desfazer; a auditoria guarda uma c\xF3pia",
     emUso: "Se algo j\xE1 usa o item (empresa, banco, requerimento), a exclus\xE3o \xE9 recusada: a\xED, inative"
   }
@@ -35139,7 +35141,7 @@ var produtosModulos2 = {
       ativa: "Active solution",
       codigoNaoMuda: "The code does not change after it is created.",
       excluirTitulo: "Delete the solution",
-      excluirAjuda: "This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.",
+      excluirAjuda: "This solution was never used (no service group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.",
       excluir: "Delete solution",
       codigoRepetido: "A solution with this code already exists.",
       nomeRepetido: "A solution with this name already exists.",
@@ -35152,7 +35154,8 @@ var produtosModulos2 = {
       nome: "Product name",
       descricao: "Product description",
       ativo: "Active product",
-      solucaoNaoMuda: "The product's solution does not change after it is created.",
+      solucaoNaoMuda: 'A product used by an active bank (or "To classify") does not change solution.',
+      solucaoMuda: "When the solution changes, the modules and Aranda groups move with the product.",
       nomeRepetido: "Product {{nome}} already exists in {{solucao}}.",
       grupos: "Product groups",
       semGrupo: "No group linked to the whole product. If the product has no modules, without a group no hour reaches it.",
@@ -35225,6 +35228,7 @@ var produtosModulos2 = {
   excluir: {
     titulo: "Delete {{nome}}?",
     descricao: "The item was never used: it leaves the catalog for good instead of becoming inactive.",
+    produtosJuntos: "The solution's unused products are deleted too: {{produtos}}",
     semVolta: "This cannot be undone; the audit trail keeps a copy",
     emUso: "If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead"
   }
@@ -37562,7 +37566,7 @@ var produtosModulos3 = {
       ativa: "Soluci\xF3n activa",
       codigoNaoMuda: "El c\xF3digo no cambia despu\xE9s de creado.",
       excluirTitulo: "Eliminar la soluci\xF3n",
-      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin producto y sin grupo de servicio). Eliminada, sale del cat\xE1logo para siempre.",
+      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin grupo de servicio, y sus productos, si los hay, tampoco se usaron). Eliminada, ella y sus productos salen del cat\xE1logo para siempre.",
       excluir: "Eliminar soluci\xF3n",
       codigoRepetido: "Ya existe una soluci\xF3n con este c\xF3digo.",
       nomeRepetido: "Ya existe una soluci\xF3n con este nombre.",
@@ -37575,7 +37579,8 @@ var produtosModulos3 = {
       nome: "Nombre del producto",
       descricao: "Descripci\xF3n del producto",
       ativo: "Producto activo",
-      solucaoNaoMuda: "La soluci\xF3n del producto no cambia despu\xE9s de creado.",
+      solucaoNaoMuda: 'Un producto usado en un banco activo (o "Por clasificar") no cambia de soluci\xF3n.',
+      solucaoMuda: "Al cambiar la soluci\xF3n, los m\xF3dulos y los grupos de Aranda van con el producto.",
       nomeRepetido: "Ya existe el producto {{nome}} en {{solucao}}.",
       grupos: "Grupos del producto",
       semGrupo: "Ning\xFAn grupo vinculado al producto entero. Si el producto no tiene m\xF3dulos, sin grupo ninguna hora llega a \xE9l.",
@@ -37648,6 +37653,7 @@ var produtosModulos3 = {
   excluir: {
     titulo: "\xBFEliminar {{nome}}?",
     descricao: "El \xEDtem nunca se us\xF3: sale del cat\xE1logo para siempre, en lugar de quedar inactivo.",
+    produtosJuntos: "Los productos sin uso de la soluci\xF3n tambi\xE9n se eliminan: {{produtos}}",
     semVolta: "No se puede deshacer; la auditor\xEDa guarda una copia",
     emUso: "Si algo ya usa el \xEDtem (empresa, banco, requerimiento), la eliminaci\xF3n se rechaza: entonces, desact\xEDvelo"
   }

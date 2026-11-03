@@ -128,7 +128,7 @@ const produtosModulos = {
       codigoNaoMuda: 'O código não muda depois de criado.',
       excluirTitulo: 'Excluir a solução',
       excluirAjuda:
-        'Esta solução nunca foi usada (sem produto e sem grupo de serviço). Excluída, ela some do catálogo de vez.',
+        'Esta solução nunca foi usada (sem grupo de serviço, e os produtos dela, se houver, também sem uso). Excluída, ela e os produtos somem do catálogo de vez.',
       excluir: 'Excluir solução',
       codigoRepetido: 'Já existe uma solução com este código.',
       nomeRepetido: 'Já existe uma solução com este nome.',
@@ -141,7 +141,8 @@ const produtosModulos = {
       nome: 'Nome do produto',
       descricao: 'Descrição do produto',
       ativo: 'Produto ativo',
-      solucaoNaoMuda: 'A solução do produto não muda depois de criado.',
+      solucaoNaoMuda: 'Produto usado em banco ativo (ou "A classificar") não muda de solução.',
+      solucaoMuda: 'Ao trocar a solução, os módulos e os grupos do Aranda vão junto com o produto.',
       nomeRepetido: 'Já existe o produto {{nome}} em {{solucao}}.',
       grupos: 'Grupos do produto',
       semGrupo:
@@ -229,6 +230,7 @@ const produtosModulos = {
   excluir: {
     titulo: 'Excluir {{nome}}?',
     descricao: 'O item nunca foi usado: some do catálogo de vez, em vez de ficar inativo.',
+    produtosJuntos: 'Os produtos da solução, sem uso, saem junto: {{produtos}}',
     semVolta: 'Não dá para desfazer; a auditoria guarda uma cópia',
     emUso:
       'Se algo já usa o item (empresa, banco, requerimento), a exclusão é recusada: aí, inative',

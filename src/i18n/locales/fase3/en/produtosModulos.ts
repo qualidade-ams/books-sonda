@@ -131,7 +131,7 @@ const produtosModulos = {
       codigoNaoMuda: 'The code does not change after it is created.',
       excluirTitulo: 'Delete the solution',
       excluirAjuda:
-        'This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.',
+        'This solution was never used (no service group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.',
       excluir: 'Delete solution',
       codigoRepetido: 'A solution with this code already exists.',
       nomeRepetido: 'A solution with this name already exists.',
@@ -144,7 +144,10 @@ const produtosModulos = {
       nome: 'Product name',
       descricao: 'Product description',
       ativo: 'Active product',
-      solucaoNaoMuda: "The product's solution does not change after it is created.",
+      solucaoNaoMuda:
+        'A product used by an active bank (or "To classify") does not change solution.',
+      solucaoMuda:
+        'When the solution changes, the modules and Aranda groups move with the product.',
       nomeRepetido: 'Product {{nome}} already exists in {{solucao}}.',
       grupos: 'Product groups',
       semGrupo:
@@ -235,6 +238,7 @@ const produtosModulos = {
     titulo: 'Delete {{nome}}?',
     descricao:
       'The item was never used: it leaves the catalog for good instead of becoming inactive.',
+    produtosJuntos: "The solution's unused products are deleted too: {{produtos}}",
     semVolta: 'This cannot be undone; the audit trail keeps a copy',
     emUso:
       'If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead',

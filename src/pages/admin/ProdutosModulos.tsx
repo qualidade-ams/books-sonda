@@ -136,6 +136,11 @@ export default function ProdutosModulos() {
     usos,
     requerimentos: requerimentos.modulosRequerimento,
   };
+  // A solução leva junto os produtos dela, todos sem uso (solucaoSemUso)
+  const produtosQueSaemJunto =
+    excluindo?.tipo === 'solucao'
+      ? produtos.filter((p) => p.solucaoId === excluindo.id).sort((a, b) => a.ordem - b.ordem)
+      : [];
   const confirmarExcluir = async () => {
     if (!excluindo) return;
     try {
@@ -564,25 +569,42 @@ export default function ProdutosModulos() {
         onFechar={() => setMovendo(null)}
         onConfirmar={confirmarMover}
       />
-      <ConfirmDialog
-        aberto={!!excluindo}
-        onOpenChange={(v) => !v && setExcluindo(null)}
-        titulo={t('produtosModulos.excluir.titulo', { nome: excluindo?.nome ?? '' })}
-        descricao={t('produtosModulos.excluir.descricao')}
-        consequencias={[t('produtosModulos.excluir.semVolta'), t('produtosModulos.excluir.emUso')]}
-        rotuloConfirmar={t('fase3Comum.excluir')}
-        tom="perigo"
-        processando={isSalvando}
-        onConfirmar={confirmarExcluir}
-      />
     </>
+  );
+
+  // Fora da lista: a solução é excluída de dentro da edição, quando a lista não aparece
+  const confirmacaoExcluir = (
+    <ConfirmDialog
+      aberto={!!excluindo}
+      onOpenChange={(v) => !v && setExcluindo(null)}
+      titulo={t('produtosModulos.excluir.titulo', { nome: excluindo?.nome ?? '' })}
+      descricao={t('produtosModulos.excluir.descricao')}
+      consequencias={[
+        ...(produtosQueSaemJunto.length
+          ? [
+              t('produtosModulos.excluir.produtosJuntos', {
+                produtos: produtosQueSaemJunto.map((p) => p.nome).join(', '),
+              }),
+            ]
+          : []),
+        t('produtosModulos.excluir.semVolta'),
+        t('produtosModulos.excluir.emUso'),
+      ]}
+      rotuloConfirmar={t('fase3Comum.excluir')}
+      tom="perigo"
+      processando={isSalvando}
+      onConfirmar={confirmarExcluir}
+    />
   );
 
   return (
     <AdminLayout>
       <DicasContext.Provider value={dicas}>
         <div className="min-h-screen bg-ds-bg-page">
-          <DsPage className="px-4 py-4 md:px-6">{edicao() ?? lista}</DsPage>
+          <DsPage className="px-4 py-4 md:px-6">
+            {edicao() ?? lista}
+            {confirmacaoExcluir}
+          </DsPage>
         </div>
       </DicasContext.Provider>
     </AdminLayout>

@@ -192,6 +192,86 @@ describe('EdicaoProduto', () => {
   });
 });
 
+describe('EdicaoProduto — trocar de solução', () => {
+  const fci = { ...CATALOGO.produtos[0], id: 'fci', codigo: 'FCI', nome: 'FCI', ordem: 2 };
+  const catalogo = { ...CATALOGO, produtos: [...CATALOGO.produtos, fci] };
+
+  it('produto sem banco ativo muda de solução', async () => {
+    const onSalvar = vi.fn(async () => undefined);
+    renderizar(
+      <EdicaoProduto
+        {...comuns}
+        catalogo={catalogo}
+        produto={fci}
+        solucaoId="s1"
+        onSalvar={onSalvar}
+      />
+    );
+    expect(screen.getByLabelText(/produtosModulos.edicao.produto.solucao/)).toBeEnabled();
+    expect(screen.getByText('produtosModulos.edicao.produto.solucaoMuda')).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText(/produtosModulos.edicao.produto.solucao/));
+    await userEvent.click(screen.getByRole('option', { name: 'FISCAIS' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ds.formulario.salvar' }));
+    await waitFor(() =>
+      expect(onSalvar).toHaveBeenCalledWith(
+        { id: 'fci', solucaoId: 's2', nome: 'FCI', descricao: null, ativo: true },
+        { vincular: [], desvincular: [] }
+      )
+    );
+  });
+
+  it('produto que um banco ativo usa não muda de solução', () => {
+    renderizar(
+      <EdicaoProduto
+        {...comuns}
+        catalogo={catalogo}
+        produto={CATALOGO.produtos[0]}
+        solucaoId="s1"
+        onSalvar={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText(/produtosModulos.edicao.produto.solucao/)).toBeDisabled();
+    expect(screen.getByText('produtosModulos.edicao.produto.solucaoNaoMuda')).toBeInTheDocument();
+  });
+});
+
+describe('salvar fecha a edição', () => {
+  it('gravou: volta para a tela anterior; deu erro: continua aberta', async () => {
+    const onFechar = vi.fn();
+    const { unmount } = renderizar(
+      <EdicaoProduto
+        {...comuns}
+        onFechar={onFechar}
+        produto={null}
+        solucaoId="s1"
+        onSalvar={vi.fn(async () => undefined)}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(/produtosModulos.edicao.produto.nome/), {
+      target: { value: 'CE PLUS RECOF' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'produtosModulos.edicao.produto.criar' }));
+    await waitFor(() => expect(onFechar).toHaveBeenCalledTimes(1));
+    unmount();
+
+    const onFecharComErro = vi.fn();
+    const falhou = vi.fn(async () => {
+      throw new Error('falhou');
+    });
+    renderizar(
+      <EdicaoSolucao
+        {...comuns}
+        onFechar={onFecharComErro}
+        solucao={CATALOGO.solucoes[0]}
+        onSalvar={falhou}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'ds.formulario.salvar' }));
+    await waitFor(() => expect(falhou).toHaveBeenCalled());
+    expect(onFecharComErro).not.toHaveBeenCalled();
+  });
+});
+
 describe('EdicaoSolucao', () => {
   it('nova: código em maiúsculas, sem espaço e único; nome único', async () => {
     const onSalvar = vi.fn(async () => undefined);
