@@ -2405,6 +2405,15 @@ const es = {
       booksResumo:
         'Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados · {{erros}} con error · {{pulados}} omitidos',
       booksSelecionadas: 'Solo {{count}} empresa(s) seleccionada(s)',
+      comparacao: {
+        titulo: 'Comparación SQL Server x Supabase',
+        sqlServer: 'SQL Server',
+        supabase: 'Supabase',
+        diferenca: 'Diferencia',
+        ok: 'Igual',
+        faltam: 'Faltan {{count}} en Supabase',
+        sobram: 'Supabase tiene {{count}} de más',
+      },
     },
     status: {
       executando: 'Ejecutando',

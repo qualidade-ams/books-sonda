@@ -181,23 +181,7 @@ function calcularDataInicioComFolga(ultimaData: Date): Date {
   return dataComFolga;
 }
 
-/**
- * Busca registros do SQL Server modificados após a data especificada
- * IMPORTANTE: Busca TODOS os registros modificados (sem limite)
- */
-async function buscarRegistrosModificados(
-  pool: sql.ConnectionPool,
-  dataInicio: Date,
-  limite: number = 0 // 0 = sem limite, busca todos
-): Promise<DadosApontamentoSqlServer[]> {
-  console.log(`📊 [SYNC] Buscando TODOS os registros modificados após ${dataInicio.toISOString()}...`);
-  
-  // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os registros (sem TOP/limite)
-  // Se limite = 0, busca todos; caso contrário, usa o limite especificado
-  const topClause = limite > 0 ? `TOP ${limite}` : '';
-  
-  const query = `
-    SELECT ${topClause}
+const COLUNAS_APONTAMENTO = `
       Nro_Chamado,
       Tipo_Chamado,
       Org_Us_Final,
@@ -228,7 +212,92 @@ async function buscarRegistrosModificados(
       Grupo_Tarefa,
       Problema,
       Cod_Resolucao,
-      LOG
+      LOG`;
+
+// Reconciliação por chave: janela de atividade conferida e tamanho do lote de busca
+const DIAS_RECONCILIACAO = 60;
+const LOTE_CHAVES_RECONCILIACAO = 100;
+
+/**
+ * Tarefas com atividade nos últimos DIAS_RECONCILIACAO dias que estão no SQL Server
+ * e não no Supabase.
+ *
+ * Cobre a tarefa que entra no AMSapontamento depois que a janela incremental já
+ * passou pela sua Data_Ult_Modificacao_Geral (ex.: criada em 27/10 com atividade
+ * em 29/10, aparece na origem com a data de modificação de 27/10).
+ */
+async function buscarTarefasFaltantes(pool: sql.ConnectionPool): Promise<DadosApontamentoSqlServer[]> {
+  const corte = new Date(Date.now() - DIAS_RECONCILIACAO * 24 * 60 * 60 * 1000);
+
+  const chavesSql = await pool.request()
+    .input('dataReconciliacao', sql.DateTime, corte)
+    .query(`
+      SELECT Nro_Chamado, Nro_Tarefa
+      FROM AMSapontamento
+      WHERE [Data_Atividade (Date-Hour-Minute-Second)] >= @dataReconciliacao
+        AND Nro_Chamado IS NOT NULL
+        AND Nro_Tarefa IS NOT NULL
+        AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
+    `);
+
+  // Folga de 2 dias no Supabase: data_atividade é gravada sem fuso
+  const corteSupabase = new Date(corte.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const idsSupabase = new Set<string>();
+  for (let inicio = 0; ; inicio += 1000) {
+    const { data, error } = await supabase
+      .from('apontamentos_aranda')
+      .select('id_externo')
+      .gte('data_atividade', corteSupabase)
+      .order('id')
+      .range(inicio, inicio + 999);
+    if (error) throw error;
+    (data || []).forEach((r: { id_externo: string }) => idsSupabase.add(r.id_externo));
+    if (!data || data.length < 1000) break;
+  }
+
+  const faltantes = (chavesSql.recordset as { Nro_Chamado: string; Nro_Tarefa: string }[])
+    .map((r) => ({ chamado: r.Nro_Chamado.trim(), tarefa: r.Nro_Tarefa.trim() }))
+    .filter((c) => !idsSupabase.has(`AMSapontamento|${c.chamado}|${c.tarefa}`));
+
+  const registros: DadosApontamentoSqlServer[] = [];
+  for (let i = 0; i < faltantes.length; i += LOTE_CHAVES_RECONCILIACAO) {
+    const lote = faltantes.slice(i, i + LOTE_CHAVES_RECONCILIACAO);
+    const req = pool.request();
+    const condicoes = lote.map((c, j) => {
+      req.input(`chamado${j}`, sql.VarChar, c.chamado);
+      req.input(`tarefa${j}`, sql.VarChar, c.tarefa);
+      return `(Nro_Chamado = @chamado${j} AND Nro_Tarefa = @tarefa${j})`;
+    });
+    const result = await req.query(`
+      SELECT
+        ${COLUNAS_APONTAMENTO}
+      FROM AMSapontamento
+      WHERE ${condicoes.join(' OR ')}
+    `);
+    registros.push(...(result.recordset as DadosApontamentoSqlServer[]));
+  }
+
+  return registros;
+}
+
+/**
+ * Busca registros do SQL Server modificados após a data especificada
+ * IMPORTANTE: Busca TODOS os registros modificados (sem limite)
+ */
+async function buscarRegistrosModificados(
+  pool: sql.ConnectionPool,
+  dataInicio: Date,
+  limite: number = 0 // 0 = sem limite, busca todos
+): Promise<DadosApontamentoSqlServer[]> {
+  console.log(`📊 [SYNC] Buscando TODOS os registros modificados após ${dataInicio.toISOString()}...`);
+  
+  // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os registros (sem TOP/limite)
+  // Se limite = 0, busca todos; caso contrário, usa o limite especificado
+  const topClause = limite > 0 ? `TOP ${limite}` : '';
+  
+  const query = `
+    SELECT ${topClause}
+      ${COLUNAS_APONTAMENTO}
     FROM AMSapontamento
     WHERE CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= @dataInicio
       AND Data_Ult_Modificacao_Geral IS NOT NULL
@@ -1173,8 +1242,27 @@ export async function sincronizarApontamentosIncremental(
 
     // 3. Buscar TODOS os registros modificados do SQL Server (sem limite)
     const registros = await buscarRegistrosModificados(pool, dataInicio, 0); // 0 = sem limite
-    resultado.total_processados = registros.length;
     resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
+
+    // 3.1. Reconciliação por chave: tarefas da origem que a janela incremental não alcança
+    try {
+      const chaves = new Set(registros.map((r) => `${r.Nro_Chamado?.trim()}|${r.Nro_Tarefa?.trim()}`));
+      const faltantes = (await buscarTarefasFaltantes(pool)).filter(
+        (r) => !chaves.has(`${r.Nro_Chamado?.trim()}|${r.Nro_Tarefa?.trim()}`)
+      );
+      if (faltantes.length > 0) {
+        registros.push(...faltantes);
+        resultado.mensagens.push(
+          `🔎 Reconciliação: ${faltantes.length} tarefa(s) faltando no Supabase (atividade nos últimos ${DIAS_RECONCILIACAO} dias)`
+        );
+      }
+    } catch (erro) {
+      console.error('❌ [SYNC] Erro na reconciliação por chave:', erro instanceof Error ? erro.message : erro);
+      resultado.mensagens.push(
+        `⚠️ Reconciliação por chave falhou: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`
+      );
+    }
+    resultado.total_processados = registros.length;
 
     if (registros.length === 0) {
       console.log('✅ [SYNC] Nenhum registro novo ou modificado encontrado');

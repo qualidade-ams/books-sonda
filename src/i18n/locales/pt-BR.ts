@@ -2406,6 +2406,15 @@ const ptBR = {
       booksResumo:
         'Referência {{mes}}/{{ano}}: {{gerados}} gerados e enviados · {{erros}} com erro · {{pulados}} pulados',
       booksSelecionadas: 'Somente {{count}} empresa(s) selecionada(s)',
+      comparacao: {
+        titulo: 'Comparação SQL Server x Supabase',
+        sqlServer: 'SQL Server',
+        supabase: 'Supabase',
+        diferenca: 'Diferença',
+        ok: 'Igual',
+        faltam: 'Faltam {{count}} no Supabase',
+        sobram: 'Supabase tem {{count}} a mais',
+      },
     },
     status: {
       executando: 'Executando',

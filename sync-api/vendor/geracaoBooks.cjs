@@ -28134,7 +28134,16 @@ var ptBR = {
       falhou: "Falhou: {{erro}}",
       resumoSombra: "{{comparadas}} empresa(s) comparada(s), {{fechamentos}} fechamento(s) em sombra, {{erros}} erro(s)",
       booksResumo: "Refer\xEAncia {{mes}}/{{ano}}: {{gerados}} gerados e enviados \xB7 {{erros}} com erro \xB7 {{pulados}} pulados",
-      booksSelecionadas: "Somente {{count}} empresa(s) selecionada(s)"
+      booksSelecionadas: "Somente {{count}} empresa(s) selecionada(s)",
+      comparacao: {
+        titulo: "Compara\xE7\xE3o SQL Server x Supabase",
+        sqlServer: "SQL Server",
+        supabase: "Supabase",
+        diferenca: "Diferen\xE7a",
+        ok: "Igual",
+        faltam: "Faltam {{count}} no Supabase",
+        sobram: "Supabase tem {{count}} a mais"
+      }
     },
     status: {
       executando: "Executando",
@@ -30590,7 +30599,16 @@ var en = {
       falhou: "Failed: {{erro}}",
       resumoSombra: "{{comparadas}} company(ies) compared, {{fechamentos}} shadow closing(s), {{erros}} error(s)",
       booksResumo: "Reference {{mes}}/{{ano}}: {{gerados}} generated and sent \xB7 {{erros}} with errors \xB7 {{pulados}} skipped",
-      booksSelecionadas: "Only {{count}} selected company(ies)"
+      booksSelecionadas: "Only {{count}} selected company(ies)",
+      comparacao: {
+        titulo: "SQL Server x Supabase comparison",
+        sqlServer: "SQL Server",
+        supabase: "Supabase",
+        diferenca: "Difference",
+        ok: "Equal",
+        faltam: "{{count}} missing in Supabase",
+        sobram: "Supabase has {{count}} more"
+      }
     },
     status: {
       executando: "Running",
@@ -33046,7 +33064,16 @@ var es = {
       falhou: "Fall\xF3: {{erro}}",
       resumoSombra: "{{comparadas}} empresa(s) comparada(s), {{fechamentos}} cierre(s) en sombra, {{erros}} error(es)",
       booksResumo: "Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados \xB7 {{erros}} con error \xB7 {{pulados}} omitidos",
-      booksSelecionadas: "Solo {{count}} empresa(s) seleccionada(s)"
+      booksSelecionadas: "Solo {{count}} empresa(s) seleccionada(s)",
+      comparacao: {
+        titulo: "Comparaci\xF3n SQL Server x Supabase",
+        sqlServer: "SQL Server",
+        supabase: "Supabase",
+        diferenca: "Diferencia",
+        ok: "Igual",
+        faltam: "Faltan {{count}} en Supabase",
+        sobram: "Supabase tiene {{count}} de m\xE1s"
+      }
     },
     status: {
       executando: "Ejecutando",
