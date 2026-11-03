@@ -8,7 +8,6 @@ import { Button } from '@/components/ds/Button';
 import { Callout } from '@/components/ds/Callout';
 import { Ajuda } from '@/components/ds/Formulario';
 import { campo } from '@/components/ds/estilos';
-import { cn } from '@/lib/utils';
 import type { AlvoGrupo } from '@/utils/catalogoTela';
 import type { Catalogo } from '@/types/catalogo';
 import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
@@ -34,22 +33,13 @@ function useOndeEsta(catalogo: Catalogo) {
     g.vinculos.length ? g.vinculos.map(lugar).join(' · ') : t('produtosModulos.grupos.semSolucao');
 }
 
-/** Produto do item: vincular move o grupo que já está nesse produto (um lugar por produto) */
-function produtoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): string | null {
-  if (alvo.tipo === 'produto') return alvo.id;
-  if (alvo.tipo === 'modulo')
-    return catalogo.modulos.find((m) => m.id === alvo.id)?.produtoId ?? null;
-  return null;
-}
-
+/** Vincular acrescenta o lugar: o grupo continua onde já está (decisão de 03/11/2026) */
 function VincularGrupo({
-  alvo,
   catalogo,
   mapeamentos,
   vinculados,
   onVincular,
 }: {
-  alvo: AlvoGrupo;
   catalogo: Catalogo;
   mapeamentos: MapeamentoGrupo[];
   vinculados: string[];
@@ -57,7 +47,6 @@ function VincularGrupo({
 }) {
   const { t } = useTranslation();
   const ondeEsta = useOndeEsta(catalogo);
-  const produto = produtoDoAlvo(alvo, catalogo);
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
   const candidatos = mapeamentos.filter(
@@ -92,8 +81,6 @@ function VincularGrupo({
           aria-label={t('produtosModulos.grupos.lista')}
         >
           {candidatos.slice(0, LIMITE_CANDIDATOS).map((g) => {
-            // Sai do outro lugar só se for no mesmo produto; senão, fica nos dois
-            const sai = !!produto && g.vinculos.some((v) => v.produtoId === produto);
             return (
               <li key={g.id}>
                 <button
@@ -106,11 +93,9 @@ function VincularGrupo({
                   className="flex w-full flex-col rounded-md px-2.5 py-2 text-left hover:bg-ds-bg-subtle focus-visible:bg-ds-bg-subtle focus-visible:outline-none"
                 >
                   <span className="font-mono text-xs">{g.grupoAranda}</span>
-                  <span className={cn('text-xs', sai ? 'text-ds-warning-fg' : 'text-ds-fg-muted')}>
+                  <span className="text-xs text-ds-fg-muted">
                     {ondeEsta(g)}
-                    {sai
-                      ? ` · ${t('produtosModulos.grupos.saiParaCa')}`
-                      : g.vinculos.length > 0 && ` · ${t('produtosModulos.grupos.ficaTambem')}`}
+                    {g.vinculos.length > 0 && ` · ${t('produtosModulos.grupos.ficaTambem')}`}
                   </span>
                 </button>
               </li>
@@ -129,7 +114,6 @@ function VincularGrupo({
 
 /** Lista de grupos vinculados, com desvincular e o aviso de impacto */
 export function EditorGrupos({
-  alvo,
   catalogo,
   mapeamentos,
   inicial,
@@ -139,6 +123,7 @@ export function EditorGrupos({
   ajuda,
   somenteLeitura,
 }: {
+  /** O item em edição; o lugar é gravado pela tela de cima */
   alvo: AlvoGrupo;
   catalogo: Catalogo;
   mapeamentos: MapeamentoGrupo[];
@@ -181,7 +166,6 @@ export function EditorGrupos({
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           <VincularGrupo
-            alvo={alvo}
             catalogo={catalogo}
             mapeamentos={mapeamentos}
             vinculados={grupos}

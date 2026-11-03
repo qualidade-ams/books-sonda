@@ -32676,7 +32676,6 @@ var produtosModulos = {
     servicoDe: "Servi\xE7o de {{solucao}}",
     semSolucao: "Sem solu\xE7\xE3o (n\xE3o se aplica)",
     ficaTambem: "continua l\xE1 e passa a ficar aqui tamb\xE9m",
-    saiParaCa: "sai de l\xE1 e vem para c\xE1",
     podeMoverTitulo: "Pode mover horas entre bancos",
     podeMoverTexto: "Nas empresas com bancos m\xFAltiplos, as horas desses grupos passam para outro banco a partir do pr\xF3ximo rec\xE1lculo. Meses fechados n\xE3o mudam.",
     soLeitura: "Para vincular grupos do Aranda, \xE9 preciso Edi\xE7\xE3o no De-para de Grupos."
@@ -32744,7 +32743,7 @@ var produtosModulos = {
       nomeRepetido: "J\xE1 existe um m\xF3dulo {{nome}} em {{produto}}.",
       grupos: "Grupos do Aranda",
       semGrupo: "Sem grupo do Aranda, nenhuma hora apontada chega a este m\xF3dulo.",
-      ajudaGrupos: "Um grupo pode estar em v\xE1rios produtos, um lugar por produto. Desvinculado, ele fica no produto, sem m\xF3dulo."
+      ajudaGrupos: "Um grupo pode estar em v\xE1rios produtos e m\xF3dulos. Desvinculado do \xFAltimo m\xF3dulo do produto, ele fica no produto inteiro."
     }
   },
   mover: {
@@ -32767,7 +32766,7 @@ var produtosModulos = {
     produto: "Produto ao qual o m\xF3dulo pertence. N\xE3o muda depois de criado.",
     nomeModulo: "Nome do m\xF3dulo, como aparece no escopo dos bancos e no Book. \xDAnico no produto.",
     moduloAtivo: "M\xF3dulo inativo n\xE3o aparece para escopos novos. Os bancos que j\xE1 o usam n\xE3o mudam.",
-    gruposAranda: "Grupos de atendimento do Aranda que pertencem a este m\xF3dulo. \xC9 por eles que cada hora apontada chega ao m\xF3dulo e, da\xED, ao banco. Um grupo pode estar em v\xE1rios produtos, mas em um s\xF3 m\xF3dulo de cada produto.",
+    gruposAranda: "Grupos de atendimento do Aranda que pertencem a este m\xF3dulo. \xC9 por eles que cada hora apontada chega ao m\xF3dulo e, da\xED, ao banco. Um grupo pode estar em v\xE1rios m\xF3dulos, inclusive do mesmo produto.",
     usadoNosBancos: "Bancos ativos que t\xEAm isto no escopo, diretamente ou por terem marcado o produto inteiro. O escopo marca produtos e m\xF3dulos; a solu\xE7\xE3o s\xF3 agrupa.",
     moduloRequerimento: "Valor do campo M\xF3dulo na tela de Requerimentos. A lista \xE9 fixa e n\xE3o \xE9 editada aqui.",
     produtoEModulo: 'Para onde v\xE3o os requerimentos de Banco de Horas com este m\xF3dulo. "Todos os m\xF3dulos" leva ao banco que cobre o produto inteiro; sem banco que cubra, v\xE3o para o Banco padr\xE3o.'
@@ -35104,7 +35103,6 @@ var produtosModulos2 = {
     servicoDe: "Service of {{solucao}}",
     semSolucao: "No solution (not applicable)",
     ficaTambem: "stays there and is also placed here",
-    saiParaCa: "leaves there and comes here",
     podeMoverTitulo: "May move hours between banks",
     podeMoverTexto: "In companies with multiple banks, hours from these groups move to another bank from the next recalculation. Closed months do not change.",
     soLeitura: "To link Aranda groups, you need Edit permission on Group Mapping."
@@ -35172,7 +35170,7 @@ var produtosModulos2 = {
       nomeRepetido: "Module {{nome}} already exists in {{produto}}.",
       grupos: "Aranda groups",
       semGrupo: "Without an Aranda group, no logged hour reaches this module.",
-      ajudaGrupos: "A group can be in several products, one place per product. When unlinked, it stays in the product, without a module."
+      ajudaGrupos: "A group can be in several products and modules. When unlinked from the last module of the product, it stays in the whole product."
     }
   },
   mover: {
@@ -35195,7 +35193,7 @@ var produtosModulos2 = {
     produto: "Product the module belongs to. It does not change after it is created.",
     nomeModulo: "Module name, as it appears in the bank scope and in the Book. Unique within the product.",
     moduloAtivo: "An inactive module does not appear for new scopes. Banks that already use it do not change.",
-    gruposAranda: "Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several products, but in only one module of each product.",
+    gruposAranda: "Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several modules, even of the same product.",
     usadoNosBancos: "Active banks that have this in scope, directly or because they marked the whole product. The scope marks products and modules; the solution only groups them.",
     moduloRequerimento: "Value of the Module field on the Requirements screen. The list is fixed and is not edited here.",
     produtoEModulo: 'Where Hour Bank requirements with this module go. "All modules" leads to the bank that covers the whole product; without a covering bank, they go to the default bank.'
@@ -37529,7 +37527,6 @@ var produtosModulos3 = {
     servicoDe: "Servicio de {{solucao}}",
     semSolucao: "Sin soluci\xF3n (no se aplica)",
     ficaTambem: "sigue all\xED y pasa a estar aqu\xED tambi\xE9n",
-    saiParaCa: "sale de all\xED y viene aqu\xED",
     podeMoverTitulo: "Puede mover horas entre bancos",
     podeMoverTexto: "En las empresas con varios bancos, las horas de estos grupos pasan a otro banco a partir del pr\xF3ximo rec\xE1lculo. Los meses cerrados no cambian.",
     soLeitura: "Para vincular grupos de Aranda, se necesita Edici\xF3n en De-para de Grupos."
@@ -37597,7 +37594,7 @@ var produtosModulos3 = {
       nomeRepetido: "Ya existe un m\xF3dulo {{nome}} en {{produto}}.",
       grupos: "Grupos de Aranda",
       semGrupo: "Sin grupo de Aranda, ninguna hora registrada llega a este m\xF3dulo.",
-      ajudaGrupos: "Un grupo puede estar en varios productos, un lugar por producto. Desvinculado, queda en el producto, sin m\xF3dulo."
+      ajudaGrupos: "Un grupo puede estar en varios productos y m\xF3dulos. Desvinculado del \xFAltimo m\xF3dulo del producto, queda en el producto entero."
     }
   },
   mover: {
@@ -37620,7 +37617,7 @@ var produtosModulos3 = {
     produto: "Producto al que pertenece el m\xF3dulo. No cambia despu\xE9s de creado.",
     nomeModulo: "Nombre del m\xF3dulo, como aparece en el alcance de los bancos y en el Book. \xDAnico en el producto.",
     moduloAtivo: "Un m\xF3dulo inactivo no aparece para alcances nuevos. Los bancos que ya lo usan no cambian.",
-    gruposAranda: "Grupos de atenci\xF3n de Aranda que pertenecen a este m\xF3dulo. Por ellos cada hora registrada llega al m\xF3dulo y, de ah\xED, al banco. Un grupo puede estar en varios productos, pero en un solo m\xF3dulo de cada producto.",
+    gruposAranda: "Grupos de atenci\xF3n de Aranda que pertenecen a este m\xF3dulo. Por ellos cada hora registrada llega al m\xF3dulo y, de ah\xED, al banco. Un grupo puede estar en varios m\xF3dulos, incluso del mismo producto.",
     usadoNosBancos: "Bancos activos que tienen esto en el alcance, directamente o por haber marcado el producto entero. El alcance marca productos y m\xF3dulos; la soluci\xF3n solo agrupa.",
     moduloRequerimento: "Valor del campo M\xF3dulo en la pantalla de Requerimientos. La lista es fija y no se edita aqu\xED.",
     produtoEModulo: 'A d\xF3nde van los requerimientos de Banco de Horas con este m\xF3dulo. "Todos los m\xF3dulos" lleva al banco que cubre el producto entero; sin banco que lo cubra, van al Banco predeterminado.'

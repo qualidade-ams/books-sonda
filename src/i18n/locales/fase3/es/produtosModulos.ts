@@ -91,7 +91,6 @@ const produtosModulos = {
     servicoDe: 'Servicio de {{solucao}}',
     semSolucao: 'Sin solución (no se aplica)',
     ficaTambem: 'sigue allí y pasa a estar aquí también',
-    saiParaCa: 'sale de allí y viene aquí',
     podeMoverTitulo: 'Puede mover horas entre bancos',
     podeMoverTexto:
       'En las empresas con varios bancos, las horas de estos grupos pasan a otro banco a partir del próximo recálculo. Los meses cerrados no cambian.',
@@ -166,7 +165,7 @@ const produtosModulos = {
       grupos: 'Grupos de Aranda',
       semGrupo: 'Sin grupo de Aranda, ninguna hora registrada llega a este módulo.',
       ajudaGrupos:
-        'Un grupo puede estar en varios productos, un lugar por producto. Desvinculado, queda en el producto, sin módulo.',
+        'Un grupo puede estar en varios productos y módulos. Desvinculado del último módulo del producto, queda en el producto entero.',
     },
   },
   mover: {
@@ -199,7 +198,7 @@ const produtosModulos = {
     moduloAtivo:
       'Un módulo inactivo no aparece para alcances nuevos. Los bancos que ya lo usan no cambian.',
     gruposAranda:
-      'Grupos de atención de Aranda que pertenecen a este módulo. Por ellos cada hora registrada llega al módulo y, de ahí, al banco. Un grupo puede estar en varios productos, pero en un solo módulo de cada producto.',
+      'Grupos de atención de Aranda que pertenecen a este módulo. Por ellos cada hora registrada llega al módulo y, de ahí, al banco. Un grupo puede estar en varios módulos, incluso del mismo producto.',
     usadoNosBancos:
       'Bancos activos que tienen esto en el alcance, directamente o por haber marcado el producto entero. El alcance marca productos y módulos; la solución solo agrupa.',
     moduloRequerimento:
