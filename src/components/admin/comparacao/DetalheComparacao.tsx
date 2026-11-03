@@ -47,15 +47,38 @@ function Diferenca({ minutos }: { minutos: number }) {
   );
 }
 
-function LegadoNovo({ legado, novo, horas }: { legado: number; novo: number; horas: boolean }) {
+function LegadoNovo({
+  legado,
+  novo,
+  horas,
+  naoConta,
+}: {
+  legado: number;
+  novo: number;
+  horas: boolean;
+  /** O modelo novo não conta esta unidade no mês: "—" no lugar do número, com a dica */
+  naoConta?: string;
+}) {
   return (
     <span className="inline-flex gap-1.5 tabular-nums">
-      {horas ? <HoursValue minutos={legado} cor="saldo" /> : legado}
+      {horas ? <HoursValue minutos={legado} cor="saldo" /> : <span>{legado}</span>}
       <span className="text-ds-fg-muted">/</span>
-      {horas ? <HoursValue minutos={novo} cor="saldo" /> : novo}
+      {naoConta ? (
+        <span className="text-ds-fg-muted" title={naoConta}>
+          —
+        </span>
+      ) : horas ? (
+        <HoursValue minutos={novo} cor="saldo" />
+      ) : (
+        <span>{novo}</span>
+      )}
     </span>
   );
 }
+
+/** Mês em que os bancos são só de horas: o modelo novo não conta ticket (gravado desde 03/11/2026) */
+const ticketNaoConta = (m: MesComparacao) =>
+  !!m.novo.unidades && !m.novo.unidades.includes('tickets');
 
 export function DetalheComparacao({
   empresa,
@@ -170,6 +193,7 @@ export function DetalheComparacao({
                 legado={m.legado.tickets.consumo}
                 novo={m.novo.tickets.consumo}
                 horas={false}
+                naoConta={ticketNaoConta(m) ? a('detalhe.ticketsNaoContam') : undefined}
               />
             ),
           },
@@ -440,6 +464,9 @@ export function DetalheComparacao({
               linhaSelecionada={mesAberto ?? undefined}
               onLinhaClick={(m) => m.situacao !== 'igual' && setMesAberto(chave(m))}
             />
+          )}
+          {comTickets && meses.some(ticketNaoConta) && (
+            <p className="text-xs text-ds-fg-muted">{a('detalhe.ticketsNaoContamNota')}</p>
           )}
         </div>
 

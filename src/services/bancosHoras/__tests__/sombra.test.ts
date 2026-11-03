@@ -250,6 +250,8 @@ describe('processarEmpresa', () => {
     expect(p.meses[0].novo.porBanco).toEqual([
       { bancoId: 'b1', nome: 'Banco padrão', minutos: 600, tickets: 0 },
     ]);
+    // O banco é só de horas: a tela mostra que ticket não conta neste mês
+    expect(p.meses[0].novo.unidades).toEqual(['horas']);
   });
 
   it('consumo diferente: busca os itens dos dois lados e grava o motivo', async () => {

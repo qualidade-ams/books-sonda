@@ -303,6 +303,37 @@ describe('ComparacaoBancosHoras: detalhe', () => {
     expect(screen.getByRole('list', { name: 'comparacaoBancosHoras.lista' })).toBeInTheDocument();
   });
 
+  it('mês com bancos só de horas: tickets do legado com "—" no novo e a nota', () => {
+    const comTickets = (m: number, unidades?: ('horas' | 'tickets')[]) =>
+      mes(m, {
+        legado: {
+          ...medidas({ consumo: 600, saldo: 120 }),
+          tickets: { ...zero, consumo: 2 },
+        },
+        novo: {
+          ...medidas({ consumo: 600, saldo: 120 }),
+          porBanco: [{ bancoId: 'b1', nome: 'Banco padrão', minutos: 600, tickets: 0 }],
+          ...(unidades ? { unidades } : {}),
+        },
+      });
+    // Setembro: banco só de horas; agosto: gravado antes, sem as unidades (fica como era)
+    meses.meses = [comTickets(8), comTickets(9, ['horas'])];
+    renderizar();
+    abrir('EMPRESA ALFA');
+    const linhas = within(
+      screen.getByRole('list', { name: 'comparacaoBancosHoras.detalhe.mesAMes' })
+    );
+    expect(linhas.getByText('—')).toHaveAttribute(
+      'title',
+      'comparacaoBancosHoras.detalhe.ticketsNaoContam'
+    );
+    expect(linhas.getAllByText('2')).toHaveLength(2);
+    expect(linhas.getAllByText('0')).toHaveLength(1);
+    expect(
+      screen.getByText('comparacaoBancosHoras.detalhe.ticketsNaoContamNota')
+    ).toBeInTheDocument();
+  });
+
   it('divergente não pode ser validada', () => {
     comDiferenca();
     renderizar();

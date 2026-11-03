@@ -73,6 +73,9 @@ const comparacaoBancosHoras = {
     semItens:
       'The difference of this month does not come from time entries or tickets: it is in requests, adjustments or the balance.',
     origemSaldo: 'balance carried from {{mes}}',
+    ticketsNaoContam: 'Not counted: the banks of this month are hours only',
+    ticketsNaoContamNota:
+      '— in tickets: the banks of the month are hours only, and the new model does not count tickets in them. The legacy adds up closed tickets even without a tickets contract; the difference does not affect the status.',
     carregando: 'Loading the months',
     erro: 'Could not load the months',
   },
