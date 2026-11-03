@@ -1,5 +1,5 @@
 -- =====================================================================
--- Teste da migration 20261103000002_grupo_volta_ao_a_classificar
+-- Teste da migration 20261103000003_grupo_volta_ao_a_classificar
 -- (tirar o último lugar do grupo numa solução devolve o grupo ao
 -- "A classificar" dela).
 --

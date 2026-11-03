@@ -13,7 +13,7 @@
 -- Para deixar o grupo como "não se aplica" de propósito: De-para, solução Nenhuma.
 --
 -- Só muda grupos_aranda_desvincular. A base é a versão em produção em
--- 03/11/2026, que difere da migration 20261030000001: do módulo, apaga o vínculo
+-- 03/11/2026, a da migration 20261103000001_grupo_varios_modulos: do módulo, apaga o vínculo
 -- e recria o produto inteiro se o grupo não tiver outro lugar no produto; do
 -- produto, apaga só o vínculo do produto inteiro.
 -- =====================================================================

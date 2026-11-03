@@ -228,6 +228,32 @@ describe('ProdutosModulos', () => {
     );
   });
 
+  it('excluir a solução só com produtos sem uso avisa que eles saem junto', async () => {
+    catalogo.solucoes = [
+      ...CATALOGO.solucoes,
+      { id: 's2', codigo: 'FIN', nome: 'FINANCEIRAS', ordem: 2, ativo: true, ...autoria },
+    ];
+    catalogo.produtos = [
+      ...CATALOGO.produtos,
+      produto('fc', 'FC', 1, { solucaoId: 's2', ativo: false }),
+      produto('sapc', 'SAPC', 2, { solucaoId: 's2', ativo: false }),
+    ];
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /^FINANCEIRAS/ }));
+    fireEvent.click(screen.getByRole('button', { name: /produtosModulos.solucao.editar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /produtosModulos.edicao.solucao.excluir/ }));
+    const dialogo = screen.getByRole('alertdialog', {
+      name: 'produtosModulos.excluir.titulo {"nome":"FINANCEIRAS"}',
+    });
+    expect(
+      within(dialogo).getByText('produtosModulos.excluir.produtosJuntos {"produtos":"FC, SAPC"}')
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'fase3Comum.excluir' }));
+    await waitFor(() =>
+      expect(catalogo.excluir).toHaveBeenCalledWith({ tipo: 'solucao', id: 's2' })
+    );
+  });
+
   it('inativar um produto pela solução pede confirmação', async () => {
     renderizar();
     fireEvent.click(screen.getByRole('button', { name: /^COMEX/ }));

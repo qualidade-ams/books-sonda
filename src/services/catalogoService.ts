@@ -136,7 +136,24 @@ export class CatalogoService {
       ativo: input.ativo,
     };
     if (input.id) {
-      const { error } = await this.cliente.from('produtos').update(campos).eq('id', input.id);
+      // Mudou de solução: vai para o fim da nova (módulos e grupos acompanham o produto)
+      const { data: lista, error: erroLista } = await this.cliente
+        .from('produtos')
+        .select('id, solucao_id, ordem');
+      if (erroLista) throw falha('salvar o produto', erroLista);
+      const atual = lista.find((p) => p.id === input.id);
+      const mudouDeSolucao = !!atual && atual.solucao_id !== input.solucaoId;
+      const { error } = await this.cliente
+        .from('produtos')
+        .update(
+          mudouDeSolucao
+            ? {
+                ...campos,
+                ordem: proximaOrdem(lista.filter((p) => p.solucao_id === input.solucaoId)),
+              }
+            : campos
+        )
+        .eq('id', input.id);
       if (error) throw falha('salvar o produto', error);
       return;
     }
@@ -231,9 +248,19 @@ export class CatalogoService {
 
   /**
    * Exclui de vez o item que nunca foi usado (migration 20261030000002). Em uso, a função do
-   * banco recusa e pede para inativar; o produto "A classificar" nunca sai
+   * banco recusa e pede para inativar; o produto "A classificar" nunca sai. A solução leva
+   * junto os produtos dela, um a um: o primeiro em uso para tudo antes de chegar à solução
    */
   async excluir(tipo: 'solucao' | 'produto' | 'modulo', id: string): Promise<void> {
+    if (tipo === 'solucao') {
+      const { data: produtos, error: erroProdutos } = await this.cliente
+        .from('produtos')
+        .select('id')
+        .eq('solucao_id', id)
+        .order('ordem');
+      if (erroProdutos) throw falha('excluir do catálogo', erroProdutos);
+      for (const p of produtos) await this.excluir('produto', p.id);
+    }
     const { error } = await this.cliente.rpc('catalogo_excluir', { p_tipo: tipo, p_id: id });
     if (error) throw falha('excluir do catálogo', error);
   }

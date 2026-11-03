@@ -30,6 +30,7 @@ import {
   bancosDoProduto,
   gruposDaSolucao,
   gruposDoModulo,
+  gruposNosModulos,
   gruposSoDoProduto,
   usosDoModulo,
 } from '@/utils/catalogoTela';
@@ -122,12 +123,28 @@ export function PainelSolucao({
     {
       id: 'grupos',
       cabecalho: t('produtosModulos.solucao.colunaGrupos'),
-      celula: (p) => (
-        <ListaGrupos
-          titulo={t('produtosModulos.solucao.gruposLigadosA', { produto: p.nome })}
-          grupos={gruposSoDoProduto(mapeamentos, p.id)}
-        />
-      ),
+      celula: (p) => {
+        const doProduto = gruposSoDoProduto(mapeamentos, p.id);
+        const nosModulos = gruposNosModulos(mapeamentos, p.id);
+        // Sem grupo no produto inteiro, mas com grupos nos módulos, as horas chegam: não é aviso
+        if (!doProduto.length && nosModulos.length)
+          return (
+            <span className="text-ds-fg-muted">
+              <ComLista
+                rotulo={t('produtosModulos.solucao.gruposNosModulosDe', { produto: p.nome })}
+                itens={nosModulos}
+              >
+                {plural(t, 'produtosModulos.solucao.gruposNosModulos', nosModulos.length)}
+              </ComLista>
+            </span>
+          );
+        return (
+          <ListaGrupos
+            titulo={t('produtosModulos.solucao.gruposLigadosA', { produto: p.nome })}
+            grupos={doProduto}
+          />
+        );
+      },
     },
     {
       id: 'uso',

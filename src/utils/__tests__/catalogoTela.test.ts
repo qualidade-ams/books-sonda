@@ -8,10 +8,12 @@ import {
   exportacaoCatalogo,
   gruposDaSolucao,
   gruposDoModulo,
+  gruposNosModulos,
   gruposSoDoProduto,
   moduloSemUso,
   modulosAClassificar,
   mudancasDeGrupos,
+  produtoMudaDeSolucao,
   produtoSemUso,
   solucaoSemUso,
   totaisCatalogo,
@@ -160,6 +162,23 @@ describe('grupos de cada nível', () => {
     expect(gruposDoModulo(MAPEAMENTOS, 'drawback')).toEqual([]);
   });
 
+  it('grupos nos módulos do produto, sem repetir o que está em mais de um módulo', () => {
+    expect(gruposNosModulos(MAPEAMENTOS, 'ce')).toEqual([
+      'AMS APL - CAMBIO - N2',
+      'AMS APL - CAMBIO - N3',
+      'AMS APL - INTEGRACAO',
+    ]);
+    expect(gruposNosModulos(MAPEAMENTOS, 'comply')).toEqual([]);
+    const emDois: MapeamentoGrupo = {
+      ...MAPEAMENTOS[0],
+      vinculos: [
+        { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+        { solucaoId: 's1', produtoId: 'ce', moduloId: 'drawback' },
+      ],
+    };
+    expect(gruposNosModulos([emDois], 'ce')).toEqual(['AMS APL - CAMBIO - N2']);
+  });
+
   it('o grupo em vários lugares aparece em cada um deles', () => {
     expect(gruposSoDoProduto(MAPEAMENTOS, 'comply')).toEqual(['AMS APL - INTEGRACAO']);
     expect(gruposDaSolucao(MAPEAMENTOS, 's2')).toEqual(['AMS APL - INTEGRACAO']);
@@ -246,6 +265,28 @@ describe('item sem uso (pode ser excluído)', () => {
       ],
     };
     expect(solucaoSemUso(nova, catalogo, comServico)).toBe(false);
+  });
+
+  it('solução só com produtos sem uso também pode ser excluída (os produtos saem junto)', () => {
+    const nova = { ...CATALOGO.solucoes[0], id: 's9', codigo: 'FIN', nome: 'FINANCEIRAS' };
+    const fc = produto('fc', 's9', { ativo: false });
+    const sapc = produto('sapc', 's9', { ativo: false });
+    const catalogo = {
+      ...CATALOGO,
+      solucoes: [...CATALOGO.solucoes, nova],
+      produtos: [...CATALOGO.produtos, fc, sapc],
+    };
+    expect(solucaoSemUso(nova, catalogo, usoDe)).toBe(true);
+    const sapcEmBanco = { ...usoDe, usos: [...USOS, uso('sapc', null, 'Banco FIN')] };
+    expect(solucaoSemUso(nova, catalogo, sapcEmBanco)).toBe(false);
+  });
+});
+
+describe('produtoMudaDeSolucao', () => {
+  it('muda o produto que nenhum banco ativo usa; nunca o "A classificar"', () => {
+    expect(produtoMudaDeSolucao(produto('novo', 's1'), USOS)).toBe(true);
+    expect(produtoMudaDeSolucao(CATALOGO.produtos[0], USOS)).toBe(false); // ce: bancos
+    expect(produtoMudaDeSolucao(produto('pa', 's1', { aClassificar: true }), [])).toBe(false);
   });
 });
 

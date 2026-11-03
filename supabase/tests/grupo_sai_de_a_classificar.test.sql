@@ -1,5 +1,5 @@
 -- =====================================================================
--- Teste da migration 20261103000001_grupo_sai_de_a_classificar
+-- Teste da migration 20261103000002_grupo_sai_de_a_classificar
 -- (vincular o grupo a um lugar de verdade tira o grupo do "A classificar"
 -- da mesma solução).
 --

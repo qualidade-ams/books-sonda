@@ -49,6 +49,8 @@ const produtosModulos = {
     nenhumGrupoServico: 'No service groups in this solution.',
     horasServico: "Hours from service groups always go to the company's default bank.",
     gruposLigadosA: 'Groups linked to the whole {{produto}}',
+    gruposNosModulos: { um: '{{n}} group in the modules', varios: '{{n}} groups in the modules' },
+    gruposNosModulosDe: 'Groups in the modules of {{produto}}',
   },
   produto: {
     editar: 'Edit product',
@@ -91,7 +93,6 @@ const produtosModulos = {
     servicoDe: 'Service of {{solucao}}',
     semSolucao: 'No solution (not applicable)',
     ficaTambem: 'stays there and is also placed here',
-    saiParaCa: 'leaves there and comes here',
     podeMoverTitulo: 'May move hours between banks',
     podeMoverTexto:
       'In companies with multiple banks, hours from these groups move to another bank from the next recalculation. Closed months do not change.',
@@ -131,7 +132,7 @@ const produtosModulos = {
       codigoNaoMuda: 'The code does not change after it is created.',
       excluirTitulo: 'Delete the solution',
       excluirAjuda:
-        'This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.',
+        'This solution was never used (no service group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.',
       excluir: 'Delete solution',
       codigoRepetido: 'A solution with this code already exists.',
       nomeRepetido: 'A solution with this name already exists.',
@@ -144,7 +145,10 @@ const produtosModulos = {
       nome: 'Product name',
       descricao: 'Product description',
       ativo: 'Active product',
-      solucaoNaoMuda: "The product's solution does not change after it is created.",
+      solucaoNaoMuda:
+        'A product used by an active bank (or "To classify") does not change solution.',
+      solucaoMuda:
+        'When the solution changes, the modules and Aranda groups move with the product.',
       nomeRepetido: 'Product {{nome}} already exists in {{solucao}}.',
       grupos: 'Product groups',
       semGrupo:
@@ -164,7 +168,7 @@ const produtosModulos = {
       grupos: 'Aranda groups',
       semGrupo: 'Without an Aranda group, no logged hour reaches this module.',
       ajudaGrupos:
-        'A group can be in several products, one place per product. When unlinked, it stays in the product, without a module.',
+        'A group can be in several products and modules. When unlinked from the last module of the product, it stays in the whole product.',
     },
   },
   mover: {
@@ -197,7 +201,7 @@ const produtosModulos = {
     moduloAtivo:
       'An inactive module does not appear for new scopes. Banks that already use it do not change.',
     gruposAranda:
-      'Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several products, but in only one module of each product.',
+      'Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several modules, even of the same product.',
     usadoNosBancos:
       'Active banks that have this in scope, directly or because they marked the whole product. The scope marks products and modules; the solution only groups them.',
     moduloRequerimento:
@@ -235,6 +239,7 @@ const produtosModulos = {
     titulo: 'Delete {{nome}}?',
     descricao:
       'The item was never used: it leaves the catalog for good instead of becoming inactive.',
+    produtosJuntos: "The solution's unused products are deleted too: {{produtos}}",
     semVolta: 'This cannot be undone; the audit trail keeps a copy',
     emUso:
       'If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead',

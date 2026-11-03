@@ -33256,7 +33256,9 @@ var produtosModulos = {
     gruposServico: "Grupos de servi\xE7o",
     nenhumGrupoServico: "Nenhum grupo de servi\xE7o nesta solu\xE7\xE3o.",
     horasServico: "As horas dos grupos de servi\xE7o v\xE3o sempre para o Banco padr\xE3o da empresa.",
-    gruposLigadosA: "Grupos ligados a {{produto}} inteiro"
+    gruposLigadosA: "Grupos ligados a {{produto}} inteiro",
+    gruposNosModulos: { um: "{{n}} grupo nos m\xF3dulos", varios: "{{n}} grupos nos m\xF3dulos" },
+    gruposNosModulosDe: "Grupos nos m\xF3dulos de {{produto}}"
   },
   produto: {
     editar: "Editar produto",
@@ -33297,7 +33299,6 @@ var produtosModulos = {
     servicoDe: "Servi\xE7o de {{solucao}}",
     semSolucao: "Sem solu\xE7\xE3o (n\xE3o se aplica)",
     ficaTambem: "continua l\xE1 e passa a ficar aqui tamb\xE9m",
-    saiParaCa: "sai de l\xE1 e vem para c\xE1",
     podeMoverTitulo: "Pode mover horas entre bancos",
     podeMoverTexto: "Nas empresas com bancos m\xFAltiplos, as horas desses grupos passam para outro banco a partir do pr\xF3ximo rec\xE1lculo. Meses fechados n\xE3o mudam.",
     soLeitura: "Para vincular grupos do Aranda, \xE9 preciso Edi\xE7\xE3o no De-para de Grupos."
@@ -33334,7 +33335,7 @@ var produtosModulos = {
       ativa: "Solu\xE7\xE3o ativa",
       codigoNaoMuda: "O c\xF3digo n\xE3o muda depois de criado.",
       excluirTitulo: "Excluir a solu\xE7\xE3o",
-      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem produto e sem grupo de servi\xE7o). Exclu\xEDda, ela some do cat\xE1logo de vez.",
+      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem grupo de servi\xE7o, e os produtos dela, se houver, tamb\xE9m sem uso). Exclu\xEDda, ela e os produtos somem do cat\xE1logo de vez.",
       excluir: "Excluir solu\xE7\xE3o",
       codigoRepetido: "J\xE1 existe uma solu\xE7\xE3o com este c\xF3digo.",
       nomeRepetido: "J\xE1 existe uma solu\xE7\xE3o com este nome.",
@@ -33347,7 +33348,8 @@ var produtosModulos = {
       nome: "Nome do produto",
       descricao: "Descri\xE7\xE3o do produto",
       ativo: "Produto ativo",
-      solucaoNaoMuda: "A solu\xE7\xE3o do produto n\xE3o muda depois de criado.",
+      solucaoNaoMuda: 'Produto usado em banco ativo (ou "A classificar") n\xE3o muda de solu\xE7\xE3o.',
+      solucaoMuda: "Ao trocar a solu\xE7\xE3o, os m\xF3dulos e os grupos do Aranda v\xE3o junto com o produto.",
       nomeRepetido: "J\xE1 existe o produto {{nome}} em {{solucao}}.",
       grupos: "Grupos do produto",
       semGrupo: "Nenhum grupo ligado ao produto inteiro. Se o produto n\xE3o tem m\xF3dulos, sem grupo nenhuma hora chega a ele.",
@@ -33364,7 +33366,7 @@ var produtosModulos = {
       nomeRepetido: "J\xE1 existe um m\xF3dulo {{nome}} em {{produto}}.",
       grupos: "Grupos do Aranda",
       semGrupo: "Sem grupo do Aranda, nenhuma hora apontada chega a este m\xF3dulo.",
-      ajudaGrupos: "Um grupo pode estar em v\xE1rios produtos, um lugar por produto. Desvinculado, ele fica no produto, sem m\xF3dulo."
+      ajudaGrupos: "Um grupo pode estar em v\xE1rios produtos e m\xF3dulos. Desvinculado do \xFAltimo m\xF3dulo do produto, ele fica no produto inteiro."
     }
   },
   mover: {
@@ -33387,7 +33389,7 @@ var produtosModulos = {
     produto: "Produto ao qual o m\xF3dulo pertence. N\xE3o muda depois de criado.",
     nomeModulo: "Nome do m\xF3dulo, como aparece no escopo dos bancos e no Book. \xDAnico no produto.",
     moduloAtivo: "M\xF3dulo inativo n\xE3o aparece para escopos novos. Os bancos que j\xE1 o usam n\xE3o mudam.",
-    gruposAranda: "Grupos de atendimento do Aranda que pertencem a este m\xF3dulo. \xC9 por eles que cada hora apontada chega ao m\xF3dulo e, da\xED, ao banco. Um grupo pode estar em v\xE1rios produtos, mas em um s\xF3 m\xF3dulo de cada produto.",
+    gruposAranda: "Grupos de atendimento do Aranda que pertencem a este m\xF3dulo. \xC9 por eles que cada hora apontada chega ao m\xF3dulo e, da\xED, ao banco. Um grupo pode estar em v\xE1rios m\xF3dulos, inclusive do mesmo produto.",
     usadoNosBancos: "Bancos ativos que t\xEAm isto no escopo, diretamente ou por terem marcado o produto inteiro. O escopo marca produtos e m\xF3dulos; a solu\xE7\xE3o s\xF3 agrupa.",
     moduloRequerimento: "Valor do campo M\xF3dulo na tela de Requerimentos. A lista \xE9 fixa e n\xE3o \xE9 editada aqui.",
     produtoEModulo: 'Para onde v\xE3o os requerimentos de Banco de Horas com este m\xF3dulo. "Todos os m\xF3dulos" leva ao banco que cobre o produto inteiro; sem banco que cubra, v\xE3o para o Banco padr\xE3o.'
@@ -33420,6 +33422,7 @@ var produtosModulos = {
   excluir: {
     titulo: "Excluir {{nome}}?",
     descricao: "O item nunca foi usado: some do cat\xE1logo de vez, em vez de ficar inativo.",
+    produtosJuntos: "Os produtos da solu\xE7\xE3o, sem uso, saem junto: {{produtos}}",
     semVolta: "N\xE3o d\xE1 para desfazer; a auditoria guarda uma c\xF3pia",
     emUso: "Se algo j\xE1 usa o item (empresa, banco, requerimento), a exclus\xE3o \xE9 recusada: a\xED, inative"
   }
@@ -35682,7 +35685,9 @@ var produtosModulos2 = {
     gruposServico: "Service groups",
     nenhumGrupoServico: "No service groups in this solution.",
     horasServico: "Hours from service groups always go to the company's default bank.",
-    gruposLigadosA: "Groups linked to the whole {{produto}}"
+    gruposLigadosA: "Groups linked to the whole {{produto}}",
+    gruposNosModulos: { um: "{{n}} group in the modules", varios: "{{n}} groups in the modules" },
+    gruposNosModulosDe: "Groups in the modules of {{produto}}"
   },
   produto: {
     editar: "Edit product",
@@ -35723,7 +35728,6 @@ var produtosModulos2 = {
     servicoDe: "Service of {{solucao}}",
     semSolucao: "No solution (not applicable)",
     ficaTambem: "stays there and is also placed here",
-    saiParaCa: "leaves there and comes here",
     podeMoverTitulo: "May move hours between banks",
     podeMoverTexto: "In companies with multiple banks, hours from these groups move to another bank from the next recalculation. Closed months do not change.",
     soLeitura: "To link Aranda groups, you need Edit permission on Group Mapping."
@@ -35760,7 +35764,7 @@ var produtosModulos2 = {
       ativa: "Active solution",
       codigoNaoMuda: "The code does not change after it is created.",
       excluirTitulo: "Delete the solution",
-      excluirAjuda: "This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.",
+      excluirAjuda: "This solution was never used (no service group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.",
       excluir: "Delete solution",
       codigoRepetido: "A solution with this code already exists.",
       nomeRepetido: "A solution with this name already exists.",
@@ -35773,7 +35777,8 @@ var produtosModulos2 = {
       nome: "Product name",
       descricao: "Product description",
       ativo: "Active product",
-      solucaoNaoMuda: "The product's solution does not change after it is created.",
+      solucaoNaoMuda: 'A product used by an active bank (or "To classify") does not change solution.',
+      solucaoMuda: "When the solution changes, the modules and Aranda groups move with the product.",
       nomeRepetido: "Product {{nome}} already exists in {{solucao}}.",
       grupos: "Product groups",
       semGrupo: "No group linked to the whole product. If the product has no modules, without a group no hour reaches it.",
@@ -35790,7 +35795,7 @@ var produtosModulos2 = {
       nomeRepetido: "Module {{nome}} already exists in {{produto}}.",
       grupos: "Aranda groups",
       semGrupo: "Without an Aranda group, no logged hour reaches this module.",
-      ajudaGrupos: "A group can be in several products, one place per product. When unlinked, it stays in the product, without a module."
+      ajudaGrupos: "A group can be in several products and modules. When unlinked from the last module of the product, it stays in the whole product."
     }
   },
   mover: {
@@ -35813,7 +35818,7 @@ var produtosModulos2 = {
     produto: "Product the module belongs to. It does not change after it is created.",
     nomeModulo: "Module name, as it appears in the bank scope and in the Book. Unique within the product.",
     moduloAtivo: "An inactive module does not appear for new scopes. Banks that already use it do not change.",
-    gruposAranda: "Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several products, but in only one module of each product.",
+    gruposAranda: "Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several modules, even of the same product.",
     usadoNosBancos: "Active banks that have this in scope, directly or because they marked the whole product. The scope marks products and modules; the solution only groups them.",
     moduloRequerimento: "Value of the Module field on the Requirements screen. The list is fixed and is not edited here.",
     produtoEModulo: 'Where Hour Bank requirements with this module go. "All modules" leads to the bank that covers the whole product; without a covering bank, they go to the default bank.'
@@ -35846,6 +35851,7 @@ var produtosModulos2 = {
   excluir: {
     titulo: "Delete {{nome}}?",
     descricao: "The item was never used: it leaves the catalog for good instead of becoming inactive.",
+    produtosJuntos: "The solution's unused products are deleted too: {{produtos}}",
     semVolta: "This cannot be undone; the audit trail keeps a copy",
     emUso: "If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead"
   }
@@ -38105,7 +38111,9 @@ var produtosModulos3 = {
     gruposServico: "Grupos de servicio",
     nenhumGrupoServico: "Ning\xFAn grupo de servicio en esta soluci\xF3n.",
     horasServico: "Las horas de los grupos de servicio van siempre al Banco predeterminado de la empresa.",
-    gruposLigadosA: "Grupos vinculados a {{produto}} entero"
+    gruposLigadosA: "Grupos vinculados a {{produto}} entero",
+    gruposNosModulos: { um: "{{n}} grupo en los m\xF3dulos", varios: "{{n}} grupos en los m\xF3dulos" },
+    gruposNosModulosDe: "Grupos en los m\xF3dulos de {{produto}}"
   },
   produto: {
     editar: "Editar producto",
@@ -38146,7 +38154,6 @@ var produtosModulos3 = {
     servicoDe: "Servicio de {{solucao}}",
     semSolucao: "Sin soluci\xF3n (no se aplica)",
     ficaTambem: "sigue all\xED y pasa a estar aqu\xED tambi\xE9n",
-    saiParaCa: "sale de all\xED y viene aqu\xED",
     podeMoverTitulo: "Puede mover horas entre bancos",
     podeMoverTexto: "En las empresas con varios bancos, las horas de estos grupos pasan a otro banco a partir del pr\xF3ximo rec\xE1lculo. Los meses cerrados no cambian.",
     soLeitura: "Para vincular grupos de Aranda, se necesita Edici\xF3n en De-para de Grupos."
@@ -38183,7 +38190,7 @@ var produtosModulos3 = {
       ativa: "Soluci\xF3n activa",
       codigoNaoMuda: "El c\xF3digo no cambia despu\xE9s de creado.",
       excluirTitulo: "Eliminar la soluci\xF3n",
-      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin producto y sin grupo de servicio). Eliminada, sale del cat\xE1logo para siempre.",
+      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin grupo de servicio, y sus productos, si los hay, tampoco se usaron). Eliminada, ella y sus productos salen del cat\xE1logo para siempre.",
       excluir: "Eliminar soluci\xF3n",
       codigoRepetido: "Ya existe una soluci\xF3n con este c\xF3digo.",
       nomeRepetido: "Ya existe una soluci\xF3n con este nombre.",
@@ -38196,7 +38203,8 @@ var produtosModulos3 = {
       nome: "Nombre del producto",
       descricao: "Descripci\xF3n del producto",
       ativo: "Producto activo",
-      solucaoNaoMuda: "La soluci\xF3n del producto no cambia despu\xE9s de creado.",
+      solucaoNaoMuda: 'Un producto usado en un banco activo (o "Por clasificar") no cambia de soluci\xF3n.',
+      solucaoMuda: "Al cambiar la soluci\xF3n, los m\xF3dulos y los grupos de Aranda van con el producto.",
       nomeRepetido: "Ya existe el producto {{nome}} en {{solucao}}.",
       grupos: "Grupos del producto",
       semGrupo: "Ning\xFAn grupo vinculado al producto entero. Si el producto no tiene m\xF3dulos, sin grupo ninguna hora llega a \xE9l.",
@@ -38213,7 +38221,7 @@ var produtosModulos3 = {
       nomeRepetido: "Ya existe un m\xF3dulo {{nome}} en {{produto}}.",
       grupos: "Grupos de Aranda",
       semGrupo: "Sin grupo de Aranda, ninguna hora registrada llega a este m\xF3dulo.",
-      ajudaGrupos: "Un grupo puede estar en varios productos, un lugar por producto. Desvinculado, queda en el producto, sin m\xF3dulo."
+      ajudaGrupos: "Un grupo puede estar en varios productos y m\xF3dulos. Desvinculado del \xFAltimo m\xF3dulo del producto, queda en el producto entero."
     }
   },
   mover: {
@@ -38236,7 +38244,7 @@ var produtosModulos3 = {
     produto: "Producto al que pertenece el m\xF3dulo. No cambia despu\xE9s de creado.",
     nomeModulo: "Nombre del m\xF3dulo, como aparece en el alcance de los bancos y en el Book. \xDAnico en el producto.",
     moduloAtivo: "Un m\xF3dulo inactivo no aparece para alcances nuevos. Los bancos que ya lo usan no cambian.",
-    gruposAranda: "Grupos de atenci\xF3n de Aranda que pertenecen a este m\xF3dulo. Por ellos cada hora registrada llega al m\xF3dulo y, de ah\xED, al banco. Un grupo puede estar en varios productos, pero en un solo m\xF3dulo de cada producto.",
+    gruposAranda: "Grupos de atenci\xF3n de Aranda que pertenecen a este m\xF3dulo. Por ellos cada hora registrada llega al m\xF3dulo y, de ah\xED, al banco. Un grupo puede estar en varios m\xF3dulos, incluso del mismo producto.",
     usadoNosBancos: "Bancos activos que tienen esto en el alcance, directamente o por haber marcado el producto entero. El alcance marca productos y m\xF3dulos; la soluci\xF3n solo agrupa.",
     moduloRequerimento: "Valor del campo M\xF3dulo en la pantalla de Requerimientos. La lista es fija y no se edita aqu\xED.",
     produtoEModulo: 'A d\xF3nde van los requerimientos de Banco de Horas con este m\xF3dulo. "Todos los m\xF3dulos" lleva al banco que cubre el producto entero; sin banco que lo cubra, van al Banco predeterminado.'
@@ -38269,6 +38277,7 @@ var produtosModulos3 = {
   excluir: {
     titulo: "\xBFEliminar {{nome}}?",
     descricao: "El \xEDtem nunca se us\xF3: sale del cat\xE1logo para siempre, en lugar de quedar inactivo.",
+    produtosJuntos: "Los productos sin uso de la soluci\xF3n tambi\xE9n se eliminan: {{produtos}}",
     semVolta: "No se puede deshacer; la auditor\xEDa guarda una copia",
     emUso: "Si algo ya usa el \xEDtem (empresa, banco, requerimiento), la eliminaci\xF3n se rechaza: entonces, desact\xEDvelo"
   }
