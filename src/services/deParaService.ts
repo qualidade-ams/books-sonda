@@ -4,8 +4,9 @@
  * (de_para_categoria), lida por Book, Elogios, Pesquisas e Dashboard.
  *
  * Os lugares do grupo no catálogo ficam em `grupos_aranda_vinculos` (migration
- * 20261030000001): o grupo pode estar em vários, um por produto e um serviço por
- * solução. A gravação é pelas funções do banco, que guardam essa regra. As colunas de
+ * 20261030000001): o grupo pode estar em vários produtos e módulos, inclusive do mesmo
+ * produto (migration 20261103000001), sem repetir o lugar. A gravação é pelas funções
+ * do banco, que guardam essa regra. As colunas de
  * destino que `grupos_aranda` tinha saíram na migration 20261030000003.
  *
  * "Excluir" grava ativo = false: o grupo volta para os não mapeados. Mapear de
@@ -203,7 +204,7 @@ export class DeParaService {
     if (error) throw falha('atribuir o destino', error);
   }
 
-  /** Produtos e Módulos: acrescenta o lugar; outro módulo do mesmo produto move o grupo */
+  /** Produtos e Módulos: acrescenta o lugar; o grupo continua onde já estava */
   async vincular(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente.rpc('grupos_aranda_vincular', {
       p_grupos: ids,
@@ -213,7 +214,7 @@ export class DeParaService {
     if (error) throw falha('vincular os grupos', error);
   }
 
-  /** Tira só este lugar; do módulo, o grupo fica no produto inteiro */
+  /** Tira só este lugar; do último módulo do produto, o grupo fica no produto inteiro */
   async desvincular(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente.rpc('grupos_aranda_desvincular', {
       p_grupos: ids,
