@@ -1,5 +1,5 @@
 // Comparação Legado x Novo (Fase 4, Modelagem_Fase4.md, seções 3 a 5)
-import type { MesAno } from '@/services/bancosHoras/calculo';
+import type { MesAno, Unidade } from '@/services/bancosHoras/calculo';
 import type {
   ConsumoDoBanco,
   DiferencaItem,
@@ -62,7 +62,11 @@ export interface MesComparacao {
   mes: MesAno;
   situacao: SituacaoMes;
   legado: MedidasMes;
-  novo: MedidasMes & { porBanco: ConsumoDoBanco[] };
+  /**
+   * unidades: o que os bancos do mês contam (ticket não conta em banco só de horas);
+   * ausente nos meses gravados antes de 03/11/2026
+   */
+  novo: MedidasMes & { porBanco: ConsumoDoBanco[]; unidades?: Unidade[] };
   /** Mês onde começou a diferença de saldo que este mês carrega */
   origemSaldo: MesAno | null;
   /** Até 500 itens com diferença */

@@ -1155,11 +1155,13 @@ async function processarEmpresa(deps, empresa, opcoes) {
   };
   const entradas = [];
   const porBancoDoMes = /* @__PURE__ */ new Map();
+  const unidadesDoMes = /* @__PURE__ */ new Map();
   for (const f of legado) {
     const resultado = await calcularEmpresaMes(motor, empresa.id, f.mes);
     const novo = medidasDoNovo(resultado.bancos);
     const medidasLegado = medidasDoLegado(f.snapshot);
     porBancoDoMes.set(chaveMes(f.mes), novo.porBanco);
+    unidadesDoMes.set(chaveMes(f.mes), novo.unidades);
     const consumoDifere = novo.unidades.some(
       (u) => medidasLegado[u].consumo !== novo.total[u].consumo
     );
@@ -1202,7 +1204,11 @@ async function processarEmpresa(deps, empresa, opcoes) {
       mes: m.mes.mes,
       situacao: m.situacao,
       legado: m.legado,
-      novo: { ...m.novo, porBanco: porBancoDoMes.get(chaveMes(m.mes)) ?? [] },
+      novo: {
+        ...m.novo,
+        porBanco: porBancoDoMes.get(chaveMes(m.mes)) ?? [],
+        unidades: unidadesDoMes.get(chaveMes(m.mes)) ?? []
+      },
       origem_saldo: m.origemSaldo,
       itens: m.itens.slice(0, MAX_ITENS_POR_MES),
       itens_total: m.itens.length,

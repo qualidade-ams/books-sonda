@@ -73,6 +73,9 @@ const comparacaoBancosHoras = {
     semItens:
       'A diferença deste mês não vem de apontamentos nem de tickets: está em requerimentos, reajustes ou no saldo.',
     origemSaldo: 'saldo herdado de {{mes}}',
+    ticketsNaoContam: 'Não conta: os bancos deste mês são só de horas',
+    ticketsNaoContamNota:
+      '— nos tickets: os bancos do mês são só de horas, e o modelo novo não conta ticket neles. O legado soma os tickets fechados mesmo sem contrato de tickets; a diferença não entra na situação.',
     carregando: 'Carregando os meses',
     erro: 'Não foi possível carregar os meses',
   },

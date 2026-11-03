@@ -63,7 +63,8 @@ export interface MesPayload {
   mes: number;
   situacao: SituacaoMes;
   legado: MedidasMes;
-  novo: MedidasMes & { porBanco: ConsumoDoBanco[] };
+  /** unidades: o que os bancos do mês contam (ticket não conta em banco só de horas) */
+  novo: MedidasMes & { porBanco: ConsumoDoBanco[]; unidades: Unidade[] };
   origem_saldo: MesAno | null;
   itens: DiferencaItem[];
   itens_total: number;
@@ -332,11 +333,13 @@ export async function processarEmpresa(
 
   const entradas: EntradaMesComparacao[] = [];
   const porBancoDoMes = new Map<string, ConsumoDoBanco[]>();
+  const unidadesDoMes = new Map<string, Unidade[]>();
   for (const f of legado) {
     const resultado = await calcularEmpresaMes(motor, empresa.id, f.mes);
     const novo = medidasDoNovo(resultado.bancos);
     const medidasLegado = medidasDoLegado(f.snapshot);
     porBancoDoMes.set(chaveMes(f.mes), novo.porBanco);
+    unidadesDoMes.set(chaveMes(f.mes), novo.unidades);
 
     const consumoDifere = novo.unidades.some(
       (u) => medidasLegado[u].consumo !== novo.total[u].consumo
@@ -388,7 +391,11 @@ export async function processarEmpresa(
       mes: m.mes.mes,
       situacao: m.situacao,
       legado: m.legado,
-      novo: { ...m.novo, porBanco: porBancoDoMes.get(chaveMes(m.mes)) ?? [] },
+      novo: {
+        ...m.novo,
+        porBanco: porBancoDoMes.get(chaveMes(m.mes)) ?? [],
+        unidades: unidadesDoMes.get(chaveMes(m.mes)) ?? [],
+      },
       origem_saldo: m.origemSaldo,
       itens: m.itens.slice(0, MAX_ITENS_POR_MES),
       itens_total: m.itens.length,

@@ -34887,6 +34887,8 @@ var comparacaoBancosHoras = {
     mostrando: "Mostrando {{n}} de {{total}} itens com diferen\xE7a",
     semItens: "A diferen\xE7a deste m\xEAs n\xE3o vem de apontamentos nem de tickets: est\xE1 em requerimentos, reajustes ou no saldo.",
     origemSaldo: "saldo herdado de {{mes}}",
+    ticketsNaoContam: "N\xE3o conta: os bancos deste m\xEAs s\xE3o s\xF3 de horas",
+    ticketsNaoContamNota: "\u2014 nos tickets: os bancos do m\xEAs s\xE3o s\xF3 de horas, e o modelo novo n\xE3o conta ticket neles. O legado soma os tickets fechados mesmo sem contrato de tickets; a diferen\xE7a n\xE3o entra na situa\xE7\xE3o.",
     carregando: "Carregando os meses",
     erro: "N\xE3o foi poss\xEDvel carregar os meses"
   },
@@ -37311,6 +37313,8 @@ var comparacaoBancosHoras2 = {
     mostrando: "Showing {{n}} of {{total}} items with differences",
     semItens: "The difference of this month does not come from time entries or tickets: it is in requests, adjustments or the balance.",
     origemSaldo: "balance carried from {{mes}}",
+    ticketsNaoContam: "Not counted: the banks of this month are hours only",
+    ticketsNaoContamNota: "\u2014 in tickets: the banks of the month are hours only, and the new model does not count tickets in them. The legacy adds up closed tickets even without a tickets contract; the difference does not affect the status.",
     carregando: "Loading the months",
     erro: "Could not load the months"
   },
@@ -39732,6 +39736,8 @@ var comparacaoBancosHoras3 = {
     mostrando: "Mostrando {{n}} de {{total}} \xEDtems con diferencia",
     semItens: "La diferencia de este mes no viene de registros de horas ni de tickets: est\xE1 en requerimientos, reajustes o en el saldo.",
     origemSaldo: "saldo heredado de {{mes}}",
+    ticketsNaoContam: "No cuenta: los bancos de este mes son solo de horas",
+    ticketsNaoContamNota: "\u2014 en tickets: los bancos del mes son solo de horas y el modelo nuevo no cuenta tickets en ellos. El legado suma los tickets cerrados aunque no haya contrato de tickets; la diferencia no entra en la situaci\xF3n.",
     carregando: "Cargando los meses",
     erro: "No fue posible cargar los meses"
   },
