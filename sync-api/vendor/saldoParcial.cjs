@@ -32635,7 +32635,9 @@ var produtosModulos = {
     gruposServico: "Grupos de servi\xE7o",
     nenhumGrupoServico: "Nenhum grupo de servi\xE7o nesta solu\xE7\xE3o.",
     horasServico: "As horas dos grupos de servi\xE7o v\xE3o sempre para o Banco padr\xE3o da empresa.",
-    gruposLigadosA: "Grupos ligados a {{produto}} inteiro"
+    gruposLigadosA: "Grupos ligados a {{produto}} inteiro",
+    gruposNosModulos: { um: "{{n}} grupo nos m\xF3dulos", varios: "{{n}} grupos nos m\xF3dulos" },
+    gruposNosModulosDe: "Grupos nos m\xF3dulos de {{produto}}"
   },
   produto: {
     editar: "Editar produto",
@@ -35062,7 +35064,9 @@ var produtosModulos2 = {
     gruposServico: "Service groups",
     nenhumGrupoServico: "No service groups in this solution.",
     horasServico: "Hours from service groups always go to the company's default bank.",
-    gruposLigadosA: "Groups linked to the whole {{produto}}"
+    gruposLigadosA: "Groups linked to the whole {{produto}}",
+    gruposNosModulos: { um: "{{n}} group in the modules", varios: "{{n}} groups in the modules" },
+    gruposNosModulosDe: "Groups in the modules of {{produto}}"
   },
   produto: {
     editar: "Edit product",
@@ -37486,7 +37490,9 @@ var produtosModulos3 = {
     gruposServico: "Grupos de servicio",
     nenhumGrupoServico: "Ning\xFAn grupo de servicio en esta soluci\xF3n.",
     horasServico: "Las horas de los grupos de servicio van siempre al Banco predeterminado de la empresa.",
-    gruposLigadosA: "Grupos vinculados a {{produto}} entero"
+    gruposLigadosA: "Grupos vinculados a {{produto}} entero",
+    gruposNosModulos: { um: "{{n}} grupo en los m\xF3dulos", varios: "{{n}} grupos en los m\xF3dulos" },
+    gruposNosModulosDe: "Grupos en los m\xF3dulos de {{produto}}"
   },
   produto: {
     editar: "Editar producto",

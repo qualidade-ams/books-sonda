@@ -119,6 +119,21 @@ describe('PainelSolucao', () => {
     expect(onAbrirProduto).toHaveBeenCalledWith('fci');
   });
 
+  it('produto sem grupo próprio mas com grupos nos módulos não aparece como "Nenhum"', () => {
+    renderizar(<PainelSolucao {...props} mapeamentos={MAPEAMENTOS.filter((g) => g.id !== 'g2')} />);
+    const lista = screen.getByRole('list', {
+      name: 'produtosModulos.arvore.produtosDe {"solucao":"COMEX"}',
+    });
+    const linhaCe = within(lista).getByText('CE PLUS').closest('li') as HTMLElement;
+    expect(
+      within(linhaCe).getByText('produtosModulos.solucao.gruposNosModulos.um {"n":1}')
+    ).toBeInTheDocument();
+    expect(within(linhaCe).queryByText('fase3Comum.nenhum')).not.toBeInTheDocument();
+    // FCI não tem grupo em lugar nenhum: o aviso continua
+    const linhaFci = within(lista).getByText('FCI').closest('li') as HTMLElement;
+    expect(within(linhaFci).getByText('fase3Comum.nenhum')).toBeInTheDocument();
+  });
+
   it('mostra os grupos de serviço e, para quem edita, editar e novo produto', () => {
     const onEditarProduto = vi.fn();
     renderizar(<PainelSolucao {...props} onEditarProduto={onEditarProduto} />);

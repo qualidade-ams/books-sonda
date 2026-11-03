@@ -46,6 +46,8 @@ const produtosModulos = {
     nenhumGrupoServico: 'Nenhum grupo de serviço nesta solução.',
     horasServico: 'As horas dos grupos de serviço vão sempre para o Banco padrão da empresa.',
     gruposLigadosA: 'Grupos ligados a {{produto}} inteiro',
+    gruposNosModulos: { um: '{{n}} grupo nos módulos', varios: '{{n}} grupos nos módulos' },
+    gruposNosModulosDe: 'Grupos nos módulos de {{produto}}',
   },
   produto: {
     editar: 'Editar produto',

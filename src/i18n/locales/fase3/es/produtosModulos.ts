@@ -47,6 +47,8 @@ const produtosModulos = {
     horasServico:
       'Las horas de los grupos de servicio van siempre al Banco predeterminado de la empresa.',
     gruposLigadosA: 'Grupos vinculados a {{produto}} entero',
+    gruposNosModulos: { um: '{{n}} grupo en los módulos', varios: '{{n}} grupos en los módulos' },
+    gruposNosModulosDe: 'Grupos en los módulos de {{produto}}',
   },
   produto: {
     editar: 'Editar producto',

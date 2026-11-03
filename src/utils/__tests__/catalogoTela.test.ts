@@ -8,6 +8,7 @@ import {
   exportacaoCatalogo,
   gruposDaSolucao,
   gruposDoModulo,
+  gruposNosModulos,
   gruposSoDoProduto,
   moduloSemUso,
   modulosAClassificar,
@@ -159,6 +160,23 @@ describe('grupos de cada nível', () => {
     expect(gruposSoDoProduto(MAPEAMENTOS, 'ce')).toEqual(['AMS APL - CE PLUS - N2']);
     expect(gruposDaSolucao(MAPEAMENTOS, 's1')).toEqual(['AMS APL - DBA COMEX']);
     expect(gruposDoModulo(MAPEAMENTOS, 'drawback')).toEqual([]);
+  });
+
+  it('grupos nos módulos do produto, sem repetir o que está em mais de um módulo', () => {
+    expect(gruposNosModulos(MAPEAMENTOS, 'ce')).toEqual([
+      'AMS APL - CAMBIO - N2',
+      'AMS APL - CAMBIO - N3',
+      'AMS APL - INTEGRACAO',
+    ]);
+    expect(gruposNosModulos(MAPEAMENTOS, 'comply')).toEqual([]);
+    const emDois: MapeamentoGrupo = {
+      ...MAPEAMENTOS[0],
+      vinculos: [
+        { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+        { solucaoId: 's1', produtoId: 'ce', moduloId: 'drawback' },
+      ],
+    };
+    expect(gruposNosModulos([emDois], 'ce')).toEqual(['AMS APL - CAMBIO - N2']);
   });
 
   it('o grupo em vários lugares aparece em cada um deles', () => {
