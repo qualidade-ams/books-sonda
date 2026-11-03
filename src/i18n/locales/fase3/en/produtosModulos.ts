@@ -49,6 +49,8 @@ const produtosModulos = {
     nenhumGrupoServico: 'No service groups in this solution.',
     horasServico: "Hours from service groups always go to the company's default bank.",
     gruposLigadosA: 'Groups linked to the whole {{produto}}',
+    gruposNosModulos: { um: '{{n}} group in the modules', varios: '{{n}} groups in the modules' },
+    gruposNosModulosDe: 'Groups in the modules of {{produto}}',
   },
   produto: {
     editar: 'Edit product',

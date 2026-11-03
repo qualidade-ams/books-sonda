@@ -37,6 +37,10 @@ export const gruposDoModulo = (mapeamentos: MapeamentoGrupo[], moduloId: string)
 export const gruposSoDoProduto = (mapeamentos: MapeamentoGrupo[], produtoId: string) =>
   comVinculo(mapeamentos, (v) => v.produtoId === produtoId && v.moduloId === null);
 
+/** Grupos ligados a algum módulo do produto; o que está em vários módulos conta uma vez */
+export const gruposNosModulos = (mapeamentos: MapeamentoGrupo[], produtoId: string) =>
+  comVinculo(mapeamentos, (v) => v.produtoId === produtoId && v.moduloId !== null);
+
 /** Grupos de serviço da solução (DBA, Técnico…) */
 export const gruposDaSolucao = (mapeamentos: MapeamentoGrupo[], solucaoId: string) =>
   comVinculo(mapeamentos, (v) => v.solucaoId === solucaoId && v.produtoId === null);
