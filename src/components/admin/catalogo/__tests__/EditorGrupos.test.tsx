@@ -94,7 +94,7 @@ const MAPEAMENTOS = [
     classificacao: 'modulo',
   }),
   mapa('g3', 'AMS T&M', {}),
-  // Em outro produto e no serviço da solução
+  // Em outro produto inteiro e num módulo dele
   mapa('g4', 'AMS APL - FCI - N2', {
     solucaoId: 's1',
     produtoId: 'fci',
@@ -102,7 +102,7 @@ const MAPEAMENTOS = [
     classificacao: 'produto',
     vinculos: [
       { solucaoId: 's1', produtoId: 'fci', moduloId: null },
-      { solucaoId: 's1', produtoId: null, moduloId: null },
+      { solucaoId: 's1', produtoId: 'ce', moduloId: 'drawback' },
     ],
   }),
 ];
@@ -151,10 +151,11 @@ describe('EditorGrupos', () => {
     expect(drawback).toHaveTextContent('produtosModulos.grupos.ficaTambem');
     expect(drawback).not.toHaveTextContent('saiParaCa');
 
-    // Outro produto e serviço: continua lá e passa a ficar aqui também
+    // Vários lugares: continua lá e passa a ficar aqui também
     const fci = within(lista).getByText('AMS APL - FCI - N2').closest('button')!;
-    expect(fci).toHaveTextContent('produtosModulos.grupos.emProduto {"produto":"FCI"}');
-    expect(fci).toHaveTextContent('produtosModulos.grupos.servicoDe {"solucao":"COMEX"}');
+    expect(fci).toHaveTextContent(
+      'produtosModulos.grupos.emProduto {"produto":"FCI"} · produtosModulos.grupos.emModulo {"produto":"CE PLUS","modulo":"Drawback"}'
+    );
     expect(fci).toHaveTextContent('produtosModulos.grupos.ficaTambem');
 
     // Grupo em "não se aplica" não está em lugar nenhum

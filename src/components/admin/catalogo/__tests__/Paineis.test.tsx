@@ -86,7 +86,6 @@ const CATALOGO: Catalogo = {
 const MAPEAMENTOS = [
   grupo('g1', 'AMS APL - CAMBIO - N2', { produtoId: 'ce', moduloId: 'cambio' }, 'modulo'),
   grupo('g2', 'AMS APL - CE - N2', { produtoId: 'ce' }, 'produto'),
-  grupo('g3', 'AMS DBA', {}, 'solucao'),
 ];
 const USOS: UsoEmBanco[] = [
   { produtoId: 'ce', moduloId: null, bancoId: 'b1', banco: 'Banco COMEX', empresa: 'ALFA' },
@@ -134,10 +133,10 @@ describe('PainelSolucao', () => {
     expect(within(linhaFci).getByText('fase3Comum.nenhum')).toBeInTheDocument();
   });
 
-  it('mostra os grupos de serviço e, para quem edita, editar e novo produto', () => {
+  it('sem seção de grupos de serviço; para quem edita, editar e novo produto', () => {
     const onEditarProduto = vi.fn();
     renderizar(<PainelSolucao {...props} onEditarProduto={onEditarProduto} />);
-    expect(screen.getByText('AMS DBA')).toBeInTheDocument();
+    expect(screen.queryByText('produtosModulos.solucao.gruposServico')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'produtosModulos.novoProduto' }));
     expect(onEditarProduto).toHaveBeenCalledWith(null);
     expect(

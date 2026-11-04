@@ -23,6 +23,7 @@ import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { useNomesUsuarios } from '@/hooks/useNomesUsuarios';
 import {
   empresasAfetadas,
+  faltaProduto,
   filtrarMapeamentos,
   SEM_FILTRO,
   type FiltroMapeamentos,
@@ -33,7 +34,7 @@ import { DestinoNaLista, EscolhaDestino } from './EscolhaDestino';
 import { useTextoDestino } from './textoDestino';
 
 const VAZIO: DestinoGrupo = { solucaoId: null, produtoId: null, moduloId: null };
-const CLASSIFICACOES: ClassificacaoGrupo[] = ['modulo', 'produto', 'solucao', 'nao_se_aplica'];
+const CLASSIFICACOES: ClassificacaoGrupo[] = ['modulo', 'produto', 'nao_se_aplica'];
 const ID_FILTROS = 'filtros-depara';
 
 /** Caixa de seleção dentro da linha clicável: marcar não abre a edição */
@@ -383,7 +384,12 @@ export function AbaMapeamentos({
                 onChange={setLote}
               />
               <div className="flex gap-2">
-                <Button variante="primario" tamanho="sm" onClick={() => setConfirmarLote(true)}>
+                <Button
+                  variante="primario"
+                  tamanho="sm"
+                  disabled={faltaProduto(lote)}
+                  onClick={() => setConfirmarLote(true)}
+                >
                   <ListChecks /> {t('deParaGrupos.lista.atribuir')}
                 </Button>
                 <Button tamanho="sm" variante="fantasma" onClick={() => setSelecao([])}>

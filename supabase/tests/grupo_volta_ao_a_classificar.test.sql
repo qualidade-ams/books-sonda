@@ -1,7 +1,8 @@
 -- =====================================================================
 -- Teste da migration 20261103000003_grupo_volta_ao_a_classificar
 -- (tirar o último lugar do grupo numa solução devolve o grupo ao
--- "A classificar" dela).
+-- "A classificar" dela). Ajustado para a migration 20261103000005: sem o
+-- grupo de serviço da solução, desvincular só pela solução é recusado.
 --
 -- Um único bloco DO. Se todas as verificações passarem, termina com o ERRO
 -- proposital "TESTE OK — tudo revertido", que desfaz tudo o que o teste gravou.
@@ -16,6 +17,7 @@ DECLARE
   v_p1 uuid; v_p2 uuid; v_p3 uuid; v_p4 uuid;
   v_m1 uuid;                -- módulo de P1
   v_g uuid;
+  v_falhou boolean;
 BEGIN
   IF v_admin IS NULL THEN
     RAISE EXCEPTION 'Preparação: nenhum usuário no grupo Administradores';
@@ -48,12 +50,18 @@ BEGIN
     RAISE EXCEPTION '1. Sem lugar em S1, o grupo deveria voltar só ao "A classificar" de S1';
   END IF;
 
-  -- 2. Desvinculado do serviço da solução, também volta
-  PERFORM grupos_aranda_vincular(ARRAY[v_g], NULL, NULL, NULL, true);
-  PERFORM grupos_aranda_vincular(ARRAY[v_g], v_s1, NULL, NULL);
-  PERFORM grupos_aranda_desvincular(ARRAY[v_g], v_s1, NULL, NULL);
+  -- 2. Sem grupo de serviço (20261103000005): desvincular só pela solução é recusado
+  --    e o grupo continua no "A classificar"
+  v_falhou := false;
+  BEGIN
+    PERFORM grupos_aranda_desvincular(ARRAY[v_g], v_s1, NULL, NULL);
+  EXCEPTION WHEN check_violation THEN v_falhou := true;
+  END;
+  IF NOT v_falhou THEN
+    RAISE EXCEPTION '2. Desvincular só pela solução deveria ser recusado';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM grupos_aranda_vinculos WHERE grupo_id = v_g AND produto_id = v_ac1) THEN
-    RAISE EXCEPTION '2. Sem o serviço de S1, o grupo deveria voltar ao "A classificar" de S1';
+    RAISE EXCEPTION '2. O grupo deveria continuar no "A classificar" de S1';
   END IF;
 
   -- 3. Com outro lugar na mesma solução, não volta

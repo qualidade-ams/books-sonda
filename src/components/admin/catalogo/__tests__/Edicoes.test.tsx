@@ -289,17 +289,19 @@ describe('EdicaoSolucao', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'produtosModulos.edicao.solucao.criar' }));
     await waitFor(() =>
-      expect(onSalvar).toHaveBeenCalledWith(
-        { codigo: 'FINANCEIRAS', nome: 'FINANCEIRAS', ativo: true },
-        { vincular: [], desvincular: [] }
-      )
+      expect(onSalvar).toHaveBeenCalledWith({
+        codigo: 'FINANCEIRAS',
+        nome: 'FINANCEIRAS',
+        ativo: true,
+      })
     );
   });
 
-  it('editar: o código não muda', () => {
+  it('editar: o código não muda e não há grupos de serviço', () => {
     renderizar(<EdicaoSolucao {...comuns} solucao={CATALOGO.solucoes[0]} onSalvar={vi.fn()} />);
     expect(screen.getByLabelText(/produtosModulos.edicao.solucao.codigo/)).toBeDisabled();
     expect(screen.getByText('produtosModulos.edicao.solucao.codigoNaoMuda')).toBeInTheDocument();
+    expect(screen.queryByText('produtosModulos.solucao.gruposServico')).not.toBeInTheDocument();
   });
 
   it('solução sem uso: oferece excluir; com uso, não', () => {

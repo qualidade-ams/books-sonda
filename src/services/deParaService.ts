@@ -45,11 +45,10 @@ function falha(contexto: string, error: ErroBanco): Error {
   return falhaDoBanco(contexto, error);
 }
 
-/** A classificação vem do nível mais fundo do destino */
+/** A classificação vem do nível mais fundo do destino; sem produto, não há lugar */
 export function classificar(destino: DestinoGrupo): ClassificacaoGrupo {
   if (destino.moduloId) return 'modulo';
   if (destino.produtoId) return 'produto';
-  if (destino.solucaoId) return 'solucao';
   return 'nao_se_aplica';
 }
 

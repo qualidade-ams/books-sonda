@@ -38,7 +38,7 @@ import type { ClassificacaoGrupo, GrupoNaoMapeado, MapeamentoGrupo } from '@/typ
 type Edicao = { mapeamento: MapeamentoGrupo | null; grupoNovo?: GrupoNaoMapeado } | null;
 
 /** O indicador "Sem módulo" filtra por todas as situações menos "com módulo" */
-const SEM_MODULO: ClassificacaoGrupo[] = ['produto', 'solucao', 'nao_se_aplica'];
+const SEM_MODULO: ClassificacaoGrupo[] = ['produto', 'nao_se_aplica'];
 
 /** Rótulo do campo (traduzido) → chave do texto do "i" */
 const DICAS: [string, string][] = [

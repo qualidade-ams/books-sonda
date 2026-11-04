@@ -17,9 +17,9 @@ import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
-/** Onde se vincula um grupo na tela */
+/** Onde se vincula um grupo na tela; a solução não tem grupos (03/11/2026) */
 export interface AlvoGrupo {
-  tipo: 'solucao' | 'produto' | 'modulo';
+  tipo: 'produto' | 'modulo';
   id: string;
 }
 
@@ -40,10 +40,6 @@ export const gruposSoDoProduto = (mapeamentos: MapeamentoGrupo[], produtoId: str
 /** Grupos ligados a algum módulo do produto; o que está em vários módulos conta uma vez */
 export const gruposNosModulos = (mapeamentos: MapeamentoGrupo[], produtoId: string) =>
   comVinculo(mapeamentos, (v) => v.produtoId === produtoId && v.moduloId !== null);
-
-/** Grupos de serviço da solução (DBA, Técnico…) */
-export const gruposDaSolucao = (mapeamentos: MapeamentoGrupo[], solucaoId: string) =>
-  comVinculo(mapeamentos, (v) => v.solucaoId === solucaoId && v.produtoId === null);
 
 export const usosDoProdutoInteiro = (usos: UsoEmBanco[], produtoId: string) =>
   usos.filter((u) => u.produtoId === produtoId && u.moduloId === null);
@@ -143,7 +139,6 @@ const NENHUM: DestinoGrupo = { solucaoId: null, produtoId: null, moduloId: null 
  * (do módulo, a função do banco deixa o grupo no produto inteiro)
  */
 export function destinoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo {
-  if (alvo.tipo === 'solucao') return { solucaoId: alvo.id, produtoId: null, moduloId: null };
   const produtoId =
     alvo.tipo === 'produto' ? alvo.id : catalogo.modulos.find((m) => m.id === alvo.id)?.produtoId;
   const produto = catalogo.produtos.find((p) => p.id === produtoId);

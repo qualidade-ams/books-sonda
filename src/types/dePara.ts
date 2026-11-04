@@ -7,12 +7,13 @@ import type { Autoria } from '@/types/catalogo';
 
 /**
  * modulo → banco do módulo ou do produto inteiro · produto → banco do produto
- * inteiro · solucao (grupos de serviço) e nao_se_aplica → sempre o Banco padrão.
- * Sem banco que cubra, o Banco padrão.
+ * inteiro · nao_se_aplica → sempre o Banco padrão. Sem banco que cubra, o Banco padrão.
+ * O grupo de serviço da solução deixou de existir em 03/11/2026: o grupo que atende a
+ * solução toda é vinculado aos produtos dela, como qualquer outro.
  */
-export type ClassificacaoGrupo = 'modulo' | 'produto' | 'solucao' | 'nao_se_aplica';
+export type ClassificacaoGrupo = 'modulo' | 'produto' | 'nao_se_aplica';
 
-/** Onde o grupo está ligado; tudo nulo = não se aplica */
+/** Onde o grupo está ligado; tudo nulo = não se aplica. Com solução, o produto é obrigatório */
 export interface DestinoGrupo {
   solucaoId: string | null;
   produtoId: string | null;
@@ -20,8 +21,8 @@ export interface DestinoGrupo {
 }
 
 /**
- * O grupo pode estar em vários lugares (decisão de 28/10/2026): um por produto e um
- * serviço por solução. O destino e a classificação de nível são os do vínculo principal
+ * O grupo pode estar em vários lugares (decisões de 28/10 e 03/11/2026): produtos
+ * inteiros e módulos, sem repetir o mesmo lugar. O destino e a classificação de nível são os do vínculo principal
  * (o primeiro), usado na edição do De-para.
  */
 export interface MapeamentoGrupo extends Autoria, DestinoGrupo {

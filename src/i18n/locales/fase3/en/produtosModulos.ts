@@ -45,9 +45,6 @@ const produtosModulos = {
     colunaUso: 'Used in banks',
     semModulos: 'No modules',
     nenhumProduto: 'No products in this solution',
-    gruposServico: 'Service groups',
-    nenhumGrupoServico: 'No service groups in this solution.',
-    horasServico: "Hours from service groups always go to the company's default bank.",
     gruposLigadosA: 'Groups linked to the whole {{produto}}',
     gruposNosModulos: { um: '{{n}} group in the modules', varios: '{{n}} groups in the modules' },
     gruposNosModulosDe: 'Groups in the modules of {{produto}}',
@@ -90,7 +87,6 @@ const produtosModulos = {
     desvincularGrupo: 'Unlink {{grupo}}',
     emModulo: 'In {{produto}} › {{modulo}}',
     emProduto: 'In {{produto}}, no module',
-    servicoDe: 'Service of {{solucao}}',
     semSolucao: 'No solution (not applicable)',
     ficaTambem: 'stays there and is also placed here',
     podeMoverTitulo: 'May move hours between banks',
@@ -132,11 +128,10 @@ const produtosModulos = {
       codigoNaoMuda: 'The code does not change after it is created.',
       excluirTitulo: 'Delete the solution',
       excluirAjuda:
-        'This solution was never used (no service group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.',
+        'This solution was never used (no Aranda group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.',
       excluir: 'Delete solution',
       codigoRepetido: 'A solution with this code already exists.',
       nomeRepetido: 'A solution with this name already exists.',
-      ajudaServico: 'Hours from service groups always go to the default bank.',
     },
     produto: {
       novo: 'New product',
@@ -185,8 +180,6 @@ const produtosModulos = {
     nomeSolucao: "Name shown on screens and in the company's contract. Unique.",
     solucaoAtiva:
       'An inactive solution does not appear for new companies. Companies that already contract it do not change.',
-    gruposServico:
-      'Aranda groups that serve the whole solution (DBA, Technical…), not a product. Their hours always go to the default bank.',
     solucao:
       'The company contracts solutions. The product belongs to a solution and does not change solution after it is created.',
     nomeProduto: 'Name shown in the bank scope and in the Book. Unique within the solution.',
