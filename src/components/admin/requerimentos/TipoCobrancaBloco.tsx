@@ -1,19 +1,30 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { InputHoras } from '@/components/ui/input-horas';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { cn } from '@/lib/utils';
 import { TIPO_COBRANCA_OPTIONS, TIPO_HORA_EXTRA_OPTIONS } from '@/types/requerimentos';
-import { formatarHorasParaExibicao, converterParaHorasDecimal, somarHoras } from '@/utils/horasUtils';
+import {
+  formatarHorasParaExibicao,
+  converterParaHorasDecimal,
+  somarHoras,
+} from '@/utils/horasUtils';
 import { buscarTaxaVigente } from '@/services/taxasClientesService';
 import type { TaxaClienteCompleta, TipoFuncao } from '@/types/taxasClientes';
 import { calcularValores } from '@/types/taxasClientes';
+import { CampoBancoRequerimento } from './CampoBancoRequerimento';
 
 export interface TipoCobrancaBlocoData {
   id: string;
@@ -30,6 +41,8 @@ export interface TipoCobrancaBlocoData {
   mes_cobranca?: string;
   atendimento_presencial?: boolean;
   linguagem?: string;
+  /** Banco escolhido (empresa liberada) */
+  banco_horas_id?: string;
 }
 
 interface TipoCobrancaBlocoProps {
@@ -53,16 +66,20 @@ export function TipoCobrancaBloco({
   canRemove,
   empresaTipoCobranca,
   clienteId,
-  tentouSubmeter = false
+  tentouSubmeter = false,
 }: TipoCobrancaBlocoProps) {
   const { t } = useTranslation();
-  console.log('🎨🎨🎨 TipoCobrancaBloco RENDERIZADO 🎨🎨🎨', { 
-    index, 
-    clienteId, 
-    linguagem: bloco.linguagem, 
+  const atualizarBanco = useCallback(
+    (bancoId: string | undefined) => onUpdate(bloco.id, 'banco_horas_id', bancoId),
+    [onUpdate, bloco.id]
+  );
+  console.log('🎨🎨🎨 TipoCobrancaBloco RENDERIZADO 🎨🎨🎨', {
+    index,
+    clienteId,
+    linguagem: bloco.linguagem,
     tipoCobranca: bloco.tipo_cobranca,
     valorHoraFuncional: bloco.valor_hora_funcional,
-    valorHoraTecnico: bloco.valor_hora_tecnico
+    valorHoraTecnico: bloco.valor_hora_tecnico,
   });
 
   // Função helper para obter classes de erro para campos obrigatórios
@@ -75,21 +92,21 @@ export function TipoCobrancaBloco({
   // Estado para taxa vigente do cliente
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
   const [carregandoTaxa, setCarregandoTaxa] = useState(false);
-  
+
   // Ref para controlar se valores foram editados manualmente (não causa re-render)
   const valoresEditadosManualmenteRef = useRef({
     funcional: false,
     tecnico: false,
-    gestor: false
+    gestor: false,
   });
-  
+
   // Estado para controlar indicadores visuais de edição manual
   const [valoresEditadosManualmente, setValoresEditadosManualmente] = useState({
     funcional: false,
     tecnico: false,
-    gestor: false
+    gestor: false,
   });
-  
+
   // Ref para rastrear valores anteriores e evitar loop infinito
   const valoresAnterioresRef = useRef<{
     funcional: number | undefined;
@@ -98,22 +115,22 @@ export function TipoCobrancaBloco({
   }>({
     funcional: undefined,
     tecnico: undefined,
-    gestor: undefined
+    gestor: undefined,
   });
 
   // useEffect para buscar taxa vigente quando cliente ou tipo de cobrança mudar
   useEffect(() => {
     console.log('🚀🚀🚀 useEffect de busca de taxa EXECUTADO (TipoCobrancaBloco) 🚀🚀🚀');
-    
+
     const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
     const precisaTaxa = bloco.tipo_cobranca && tiposComValorHora.includes(bloco.tipo_cobranca);
-    
+
     console.log('🔍 Verificando necessidade de buscar taxa:', {
       clienteId,
       tipoCobranca: bloco.tipo_cobranca,
-      precisaTaxa
+      precisaTaxa,
     });
-    
+
     if (!clienteId || !precisaTaxa) {
       console.log('❌ Não precisa buscar taxa - limpando estado');
       setTaxaVigente(null);
@@ -158,195 +175,227 @@ export function TipoCobrancaBloco({
         refFuncional: valoresAnterioresRef.current.funcional,
         refTecnico: valoresAnterioresRef.current.tecnico,
         editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
-        editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
+        editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico,
       });
-      
+
       // CORREÇÃO: Permitir preenchimento mesmo sem linguagem quando não há horas técnicas
       if (!taxaVigente || !bloco.tipo_cobranca) {
-        console.log('❌ Faltam dados para preencher valores automaticamente (taxa ou tipo de cobrança)');
+        console.log(
+          '❌ Faltam dados para preencher valores automaticamente (taxa ou tipo de cobrança)'
+        );
         // Resetar ref quando não há dados
         valoresAnterioresRef.current = { funcional: undefined, tecnico: undefined };
         return;
       }
-      
+
       // Se há horas técnicas, linguagem é obrigatória para preencher valor técnico
       // Mas NÃO deve bloquear o preenchimento do valor funcional
       const linguagemPendenteParaTecnico = horasTecnicoDecimal > 0 && !bloco.linguagem;
       if (linguagemPendenteParaTecnico) {
-        console.log('⚠️ Há horas técnicas mas linguagem não foi selecionada - valor técnico não será preenchido');
+        console.log(
+          '⚠️ Há horas técnicas mas linguagem não foi selecionada - valor técnico não será preenchido'
+        );
       }
-      
+
       if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(bloco.tipo_cobranca)) {
-        console.log('❌ Tipo de cobrança não requer preenchimento automático:', bloco.tipo_cobranca);
+        console.log(
+          '❌ Tipo de cobrança não requer preenchimento automático:',
+          bloco.tipo_cobranca
+        );
         return;
       }
 
       // Verificar se algum valor foi editado manualmente
-      if (valoresEditadosManualmenteRef.current.funcional && valoresEditadosManualmenteRef.current.tecnico) {
-        console.log('⏭️ Ambos os valores foram editados manualmente, pulando preenchimento automático');
+      if (
+        valoresEditadosManualmenteRef.current.funcional &&
+        valoresEditadosManualmenteRef.current.tecnico
+      ) {
+        console.log(
+          '⏭️ Ambos os valores foram editados manualmente, pulando preenchimento automático'
+        );
         return;
       }
 
       console.log('✅ Iniciando preenchimento automático de valores');
-    
+
       const tipoProduto = taxaVigente.tipo_produto;
-    console.log('📦 Tipo de produto:', tipoProduto);
-    
-    // REGRA CORRETA:
-    // Valor/Hora Funcional: SEMPRE usar linha "Funcional"
-    // Valor/Hora Técnico: 
-    //   - Se NÃO há horas técnicas: usar linha "Funcional" também
-    //   - Se HÁ horas técnicas: usar linha correspondente à LINGUAGEM selecionada
-    
-    const funcaoFuncional: TipoFuncao = 'Funcional';
-    
-    const mapearLinguagemParaFuncao = (ling: string | undefined): TipoFuncao => {
-      // Se não há linguagem (não há horas técnicas), usar Funcional
-      if (!ling) {
-        console.log('⚠️ Sem linguagem técnica - usando Funcional para ambos os valores');
-        return 'Funcional';
-      }
-      
-      // Mapear linguagem para a linha correspondente na tabela de taxas
-      if (ling === 'Técnico') {
-        // Se linguagem é Técnico, usar linha Técnico (Instalação / Atualização) ou Técnico / ABAP
-        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
-      }
-      if (ling === 'ABAP' || ling === 'PL/SQL') {
-        // Se linguagem é ABAP ou PL/SQL, usar linha ABAP - PL/SQL ou Técnico / ABAP
-        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'ABAP - PL/SQL';
-      }
-      if (ling === 'DBA') {
-        // Se linguagem é DBA, usar linha DBA ou DBA / Basis
-        return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
-      }
-      if (ling === 'Gestor') {
-        // Se linguagem é Gestor, usar linha Gestor
-        return 'Gestor';
-      }
-      // Fallback para Funcional se linguagem não reconhecida
-      return 'Funcional';
-    };
+      console.log('📦 Tipo de produto:', tipoProduto);
 
-    const funcaoTecnico = mapearLinguagemParaFuncao(bloco.linguagem);
-    console.log('🎯 Funções mapeadas:', { 
-      funcaoFuncional, 
-      funcaoTecnico, 
-      linguagem: bloco.linguagem || 'N/A (sem horas técnicas)',
-      horasTecnicoDecimal,
-      explicacao: horasTecnicoDecimal > 0 
-        ? `Valor/Hora Funcional usa linha "${funcaoFuncional}", Valor/Hora Técnico usa linha "${funcaoTecnico}"`
-        : `Sem horas técnicas - ambos os valores usam linha "${funcaoFuncional}"`
-    });
+      // REGRA CORRETA:
+      // Valor/Hora Funcional: SEMPRE usar linha "Funcional"
+      // Valor/Hora Técnico:
+      //   - Se NÃO há horas técnicas: usar linha "Funcional" também
+      //   - Se HÁ horas técnicas: usar linha correspondente à LINGUAGEM selecionada
 
-    // Determinar se deve usar valores locais ou remotos
-    const usarValoresLocais = bloco.atendimento_presencial || false;
-    const valoresParaUsar = usarValoresLocais ? taxaVigente.valores_local : taxaVigente.valores_remota;
-    const tipoValor = usarValoresLocais ? 'locais' : 'remotos';
-    
-    console.log('🔍 Buscando valores na taxa...');
-    console.log('📊 Tipo de atendimento:', usarValoresLocais ? 'PRESENCIAL (valores locais)' : 'REMOTO (valores remotos)');
-    console.log('📊 Valores disponíveis:', valoresParaUsar);
-    console.log('📊 Funções disponíveis na taxa:', valoresParaUsar?.map(v => v.funcao));
-    
-    const valorFuncaoFuncional = valoresParaUsar?.find(v => v.funcao === funcaoFuncional);
-    const valorFuncaoTecnico = valoresParaUsar?.find(v => v.funcao === funcaoTecnico);
+      const funcaoFuncional: TipoFuncao = 'Funcional';
 
-    console.log('🔍 Procurando por:', { funcaoFuncional, funcaoTecnico });
-    console.log('💰 Valor encontrado para Funcional:', valorFuncaoFuncional);
-    console.log('💰 Valor encontrado para Técnico:', valorFuncaoTecnico);
-
-    if (!valorFuncaoFuncional || !valorFuncaoTecnico) {
-      console.log('❌ ERRO: Valores não encontrados na taxa!');
-      console.log('❌ Tipo de valor:', tipoValor);
-      console.log('❌ Funções procuradas:', { funcaoFuncional, funcaoTecnico });
-      console.log('❌ Funções disponíveis:', valoresParaUsar?.map(v => v.funcao));
-      return;
-    }
-    
-    console.log('✅ SUCESSO: Valores encontrados!');
-    console.log('✅ Estrutura do valor Funcional:', JSON.stringify(valorFuncaoFuncional, null, 2));
-    console.log('✅ Estrutura do valor Técnico:', JSON.stringify(valorFuncaoTecnico, null, 2));
-
-    let valorHoraFuncional = 0;
-    let valorHoraTecnico = 0;
-
-    if (bloco.tipo_cobranca === 'Faturado') {
-      valorHoraFuncional = valorFuncaoFuncional.valor_base;
-      valorHoraTecnico = valorFuncaoTecnico.valor_base;
-      console.log('📊 Usando valores de Hora Normal (Seg-Sex 08h30-17h30)');
-      console.log('📊 valorFuncaoFuncional.valor_base:', valorFuncaoFuncional.valor_base);
-      console.log('📊 valorFuncaoTecnico.valor_base:', valorFuncaoTecnico.valor_base);
-    } else if (bloco.tipo_cobranca === 'Hora Extra') {
-      if (!bloco.tipo_hora_extra) {
-        console.log('⚠️ Tipo de hora extra não selecionado - limpando campos');
-        console.log('   Valor Funcional atual:', bloco.valor_hora_funcional);
-        console.log('   Valor Técnico atual:', bloco.valor_hora_tecnico);
-        
-        // Sempre limpar valores quando tipo de hora extra não está selecionado
-        // Verificar se há algum valor diferente de 0 ou undefined
-        const temValorFuncional = bloco.valor_hora_funcional && bloco.valor_hora_funcional !== 0;
-        const temValorTecnico = bloco.valor_hora_tecnico && bloco.valor_hora_tecnico !== 0;
-        
-        if (temValorFuncional || temValorTecnico) {
-          console.log('🧹 LIMPANDO VALORES DOS CAMPOS');
-          console.log('   Funcional:', bloco.valor_hora_funcional, '→ 0');
-          console.log('   Técnico:', bloco.valor_hora_tecnico, '→ 0');
-          
-          // Resetar ref para permitir novo preenchimento
-          valoresAnterioresRef.current = { funcional: 0, tecnico: 0 };
-          
-          // Limpar ambos os campos para 0 (sempre limpar ambos juntos)
-          onUpdate(bloco.id, 'valor_hora_funcional', 0);
-          onUpdate(bloco.id, 'valor_hora_tecnico', 0);
-        } else {
-          console.log('✅ Campos já estão limpos (0 ou undefined)');
+      const mapearLinguagemParaFuncao = (ling: string | undefined): TipoFuncao => {
+        // Se não há linguagem (não há horas técnicas), usar Funcional
+        if (!ling) {
+          console.log('⚠️ Sem linguagem técnica - usando Funcional para ambos os valores');
+          return 'Funcional';
         }
+
+        // Mapear linguagem para a linha correspondente na tabela de taxas
+        if (ling === 'Técnico') {
+          // Se linguagem é Técnico, usar linha Técnico (Instalação / Atualização) ou Técnico / ABAP
+          return tipoProduto === 'GALLERY'
+            ? 'Técnico / ABAP'
+            : 'Técnico (Instalação / Atualização)';
+        }
+        if (ling === 'ABAP' || ling === 'PL/SQL') {
+          // Se linguagem é ABAP ou PL/SQL, usar linha ABAP - PL/SQL ou Técnico / ABAP
+          return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'ABAP - PL/SQL';
+        }
+        if (ling === 'DBA') {
+          // Se linguagem é DBA, usar linha DBA ou DBA / Basis
+          return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
+        }
+        if (ling === 'Gestor') {
+          // Se linguagem é Gestor, usar linha Gestor
+          return 'Gestor';
+        }
+        // Fallback para Funcional se linguagem não reconhecida
+        return 'Funcional';
+      };
+
+      const funcaoTecnico = mapearLinguagemParaFuncao(bloco.linguagem);
+      console.log('🎯 Funções mapeadas:', {
+        funcaoFuncional,
+        funcaoTecnico,
+        linguagem: bloco.linguagem || 'N/A (sem horas técnicas)',
+        horasTecnicoDecimal,
+        explicacao:
+          horasTecnicoDecimal > 0
+            ? `Valor/Hora Funcional usa linha "${funcaoFuncional}", Valor/Hora Técnico usa linha "${funcaoTecnico}"`
+            : `Sem horas técnicas - ambos os valores usam linha "${funcaoFuncional}"`,
+      });
+
+      // Determinar se deve usar valores locais ou remotos
+      const usarValoresLocais = bloco.atendimento_presencial || false;
+      const valoresParaUsar = usarValoresLocais
+        ? taxaVigente.valores_local
+        : taxaVigente.valores_remota;
+      const tipoValor = usarValoresLocais ? 'locais' : 'remotos';
+
+      console.log('🔍 Buscando valores na taxa...');
+      console.log(
+        '📊 Tipo de atendimento:',
+        usarValoresLocais ? 'PRESENCIAL (valores locais)' : 'REMOTO (valores remotos)'
+      );
+      console.log('📊 Valores disponíveis:', valoresParaUsar);
+      console.log(
+        '📊 Funções disponíveis na taxa:',
+        valoresParaUsar?.map((v) => v.funcao)
+      );
+
+      const valorFuncaoFuncional = valoresParaUsar?.find((v) => v.funcao === funcaoFuncional);
+      const valorFuncaoTecnico = valoresParaUsar?.find((v) => v.funcao === funcaoTecnico);
+
+      console.log('🔍 Procurando por:', { funcaoFuncional, funcaoTecnico });
+      console.log('💰 Valor encontrado para Funcional:', valorFuncaoFuncional);
+      console.log('💰 Valor encontrado para Técnico:', valorFuncaoTecnico);
+
+      if (!valorFuncaoFuncional || !valorFuncaoTecnico) {
+        console.log('❌ ERRO: Valores não encontrados na taxa!');
+        console.log('❌ Tipo de valor:', tipoValor);
+        console.log('❌ Funções procuradas:', { funcaoFuncional, funcaoTecnico });
+        console.log(
+          '❌ Funções disponíveis:',
+          valoresParaUsar?.map((v) => v.funcao)
+        );
         return;
       }
-      
-      if (bloco.tipo_hora_extra === '17h30-19h30') {
-        valorHoraFuncional = valorFuncaoFuncional.valor_17h30_19h30;
-        valorHoraTecnico = valorFuncaoTecnico.valor_17h30_19h30;
-        console.log('📊 Usando valores de Hora Extra (Seg-Sex 17h30-19h30)');
-      } else if (bloco.tipo_hora_extra === 'apos_19h30') {
-        valorHoraFuncional = valorFuncaoFuncional.valor_apos_19h30;
-        valorHoraTecnico = valorFuncaoTecnico.valor_apos_19h30;
-        console.log('📊 Usando valores de Hora Extra (Seg-Sex Após 19h30)');
-      } else if (bloco.tipo_hora_extra === 'fim_semana') {
-        valorHoraFuncional = valorFuncaoFuncional.valor_fim_semana;
-        valorHoraTecnico = valorFuncaoTecnico.valor_fim_semana;
-        console.log('📊 Usando valores de Hora Extra (Sáb/Dom/Feriados)');
+
+      console.log('✅ SUCESSO: Valores encontrados!');
+      console.log(
+        '✅ Estrutura do valor Funcional:',
+        JSON.stringify(valorFuncaoFuncional, null, 2)
+      );
+      console.log('✅ Estrutura do valor Técnico:', JSON.stringify(valorFuncaoTecnico, null, 2));
+
+      let valorHoraFuncional = 0;
+      let valorHoraTecnico = 0;
+
+      if (bloco.tipo_cobranca === 'Faturado') {
+        valorHoraFuncional = valorFuncaoFuncional.valor_base;
+        valorHoraTecnico = valorFuncaoTecnico.valor_base;
+        console.log('📊 Usando valores de Hora Normal (Seg-Sex 08h30-17h30)');
+        console.log('📊 valorFuncaoFuncional.valor_base:', valorFuncaoFuncional.valor_base);
+        console.log('📊 valorFuncaoTecnico.valor_base:', valorFuncaoTecnico.valor_base);
+      } else if (bloco.tipo_cobranca === 'Hora Extra') {
+        if (!bloco.tipo_hora_extra) {
+          console.log('⚠️ Tipo de hora extra não selecionado - limpando campos');
+          console.log('   Valor Funcional atual:', bloco.valor_hora_funcional);
+          console.log('   Valor Técnico atual:', bloco.valor_hora_tecnico);
+
+          // Sempre limpar valores quando tipo de hora extra não está selecionado
+          // Verificar se há algum valor diferente de 0 ou undefined
+          const temValorFuncional = bloco.valor_hora_funcional && bloco.valor_hora_funcional !== 0;
+          const temValorTecnico = bloco.valor_hora_tecnico && bloco.valor_hora_tecnico !== 0;
+
+          if (temValorFuncional || temValorTecnico) {
+            console.log('🧹 LIMPANDO VALORES DOS CAMPOS');
+            console.log('   Funcional:', bloco.valor_hora_funcional, '→ 0');
+            console.log('   Técnico:', bloco.valor_hora_tecnico, '→ 0');
+
+            // Resetar ref para permitir novo preenchimento
+            valoresAnterioresRef.current = { funcional: 0, tecnico: 0 };
+
+            // Limpar ambos os campos para 0 (sempre limpar ambos juntos)
+            onUpdate(bloco.id, 'valor_hora_funcional', 0);
+            onUpdate(bloco.id, 'valor_hora_tecnico', 0);
+          } else {
+            console.log('✅ Campos já estão limpos (0 ou undefined)');
+          }
+          return;
+        }
+
+        if (bloco.tipo_hora_extra === '17h30-19h30') {
+          valorHoraFuncional = valorFuncaoFuncional.valor_17h30_19h30;
+          valorHoraTecnico = valorFuncaoTecnico.valor_17h30_19h30;
+          console.log('📊 Usando valores de Hora Extra (Seg-Sex 17h30-19h30)');
+        } else if (bloco.tipo_hora_extra === 'apos_19h30') {
+          valorHoraFuncional = valorFuncaoFuncional.valor_apos_19h30;
+          valorHoraTecnico = valorFuncaoTecnico.valor_apos_19h30;
+          console.log('📊 Usando valores de Hora Extra (Seg-Sex Após 19h30)');
+        } else if (bloco.tipo_hora_extra === 'fim_semana') {
+          valorHoraFuncional = valorFuncaoFuncional.valor_fim_semana;
+          valorHoraTecnico = valorFuncaoTecnico.valor_fim_semana;
+          console.log('📊 Usando valores de Hora Extra (Sáb/Dom/Feriados)');
+        }
+      } else if (bloco.tipo_cobranca === 'Sobreaviso') {
+        valorHoraFuncional = valorFuncaoFuncional.valor_standby;
+        valorHoraTecnico = valorFuncaoTecnico.valor_standby;
+        console.log('📊 Usando valores de Sobreaviso (Stand By)');
       }
-    } else if (bloco.tipo_cobranca === 'Sobreaviso') {
-      valorHoraFuncional = valorFuncaoFuncional.valor_standby;
-      valorHoraTecnico = valorFuncaoTecnico.valor_standby;
-      console.log('📊 Usando valores de Sobreaviso (Stand By)');
-    }
 
-    const valorHoraFuncionalArredondado = Math.round(valorHoraFuncional * 100) / 100;
-    const valorHoraTecnicoArredondado = Math.round(valorHoraTecnico * 100) / 100;
+      const valorHoraFuncionalArredondado = Math.round(valorHoraFuncional * 100) / 100;
+      const valorHoraTecnicoArredondado = Math.round(valorHoraTecnico * 100) / 100;
 
-    console.log('💵 Valores calculados:', {
-      valorHoraFuncional: valorHoraFuncionalArredondado,
-      valorHoraTecnico: valorHoraTecnicoArredondado
-    });
+      console.log('💵 Valores calculados:', {
+        valorHoraFuncional: valorHoraFuncionalArredondado,
+        valorHoraTecnico: valorHoraTecnicoArredondado,
+      });
 
-    // Preencher os campos apenas se não foram editados manualmente
-    const valorAtualFuncional = bloco.valor_hora_funcional;
-    const valorAtualTecnico = bloco.valor_hora_tecnico;
-    
-    console.log('📝 Valores atuais no bloco:', {
-      valorAtualFuncional,
-      valorAtualTecnico,
-      editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
-      editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
-    });
-    
+      // Preencher os campos apenas se não foram editados manualmente
+      const valorAtualFuncional = bloco.valor_hora_funcional;
+      const valorAtualTecnico = bloco.valor_hora_tecnico;
+
+      console.log('📝 Valores atuais no bloco:', {
+        valorAtualFuncional,
+        valorAtualTecnico,
+        editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
+        editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico,
+      });
+
       // Preencher valor funcional se não foi editado manualmente E tem horas funcionais
       if (!valoresEditadosManualmenteRef.current.funcional) {
         if (horasFuncionalDecimal > 0) {
-          console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
+          console.log(
+            '✅ PREENCHENDO valor_hora_funcional (automático):',
+            valorHoraFuncionalArredondado
+          );
           onUpdate(bloco.id, 'valor_hora_funcional', valorHoraFuncionalArredondado);
         } else {
           console.log('⏭️ Sem horas funcionais informadas, mantendo valor zerado');
@@ -355,11 +404,14 @@ export function TipoCobrancaBloco({
       } else {
         console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
       }
-      
+
       // Preencher valor técnico se não foi editado manualmente E tem horas técnicas E linguagem selecionada
       if (!valoresEditadosManualmenteRef.current.tecnico) {
         if (horasTecnicoDecimal > 0 && bloco.linguagem) {
-          console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
+          console.log(
+            '✅ PREENCHENDO valor_hora_tecnico (automático):',
+            valorHoraTecnicoArredondado
+          );
           onUpdate(bloco.id, 'valor_hora_tecnico', valorHoraTecnicoArredondado);
         } else {
           console.log('⏭️ Sem horas técnicas ou linguagem não selecionada, mantendo valor zerado');
@@ -372,7 +424,7 @@ export function TipoCobrancaBloco({
       // Preencher valor gestor automaticamente usando linha 'Gestor' da taxa
       if (!valoresEditadosManualmenteRef.current.gestor && horasGestorDecimal > 0) {
         const funcaoGestor: TipoFuncao = 'Gestor';
-        const valorFuncaoGestor = valoresParaUsar?.find(v => v.funcao === funcaoGestor);
+        const valorFuncaoGestor = valoresParaUsar?.find((v) => v.funcao === funcaoGestor);
         if (valorFuncaoGestor) {
           let valorHoraGestor = 0;
           if (bloco.tipo_cobranca === 'Faturado') {
@@ -393,7 +445,7 @@ export function TipoCobrancaBloco({
           onUpdate(bloco.id, 'valor_hora_gestor', valorHoraGestorArredondado);
         }
       }
-    
+
       console.log('='.repeat(80));
       console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO (TipoCobrancaBloco)');
       console.log('='.repeat(80));
@@ -401,7 +453,16 @@ export function TipoCobrancaBloco({
 
     // Cleanup do timeout
     return () => clearTimeout(timeoutId);
-  }, [taxaVigente, bloco.linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial, bloco.horas_gestor, bloco.horas_funcional, bloco.horas_tecnico]); // Adicionado horas_funcional e horas_tecnico para reagir quando horas são informadas
+  }, [
+    taxaVigente,
+    bloco.linguagem,
+    bloco.tipo_cobranca,
+    bloco.tipo_hora_extra,
+    bloco.atendimento_presencial,
+    bloco.horas_gestor,
+    bloco.horas_funcional,
+    bloco.horas_tecnico,
+  ]); // Adicionado horas_funcional e horas_tecnico para reagir quando horas são informadas
 
   // Função para marcar valor como editado manualmente
   const handleValorEditadoManualmente = (campo: 'funcional' | 'tecnico' | 'gestor') => {
@@ -409,21 +470,21 @@ export function TipoCobrancaBloco({
     console.log('   Campo:', campo);
     console.log('   Bloco ID:', bloco.id);
     console.log('   Estado anterior da ref:', valoresEditadosManualmenteRef.current);
-    
+
     // Atualizar ref IMEDIATAMENTE (não causa re-render)
     valoresEditadosManualmenteRef.current = {
       ...valoresEditadosManualmenteRef.current,
-      [campo]: true
+      [campo]: true,
     };
-    
+
     console.log('   Estado novo da ref:', valoresEditadosManualmenteRef.current);
     console.log('   🚨 BLOQUEANDO PREENCHIMENTO AUTOMÁTICO PARA:', campo);
-    
+
     // Atualizar estado para indicadores visuais
-    setValoresEditadosManualmente(prev => {
+    setValoresEditadosManualmente((prev) => {
       const novoEstado = {
         ...prev,
-        [campo]: true
+        [campo]: true,
       };
       console.log('   Estado visual atualizado:', novoEstado);
       return novoEstado;
@@ -438,31 +499,48 @@ export function TipoCobrancaBloco({
     console.log('   Tipo de cobrança:', bloco.tipo_cobranca);
     console.log('   Valores atuais:', {
       funcional: bloco.valor_hora_funcional,
-      tecnico: bloco.valor_hora_tecnico
+      tecnico: bloco.valor_hora_tecnico,
     });
     console.log('   Flags atuais:', valoresEditadosManualmenteRef.current);
-    
+
     // Só resetar se há mudança significativa no contexto E não há valores significativos preenchidos
-    const temValorFuncionalSignificativo = bloco.valor_hora_funcional && bloco.valor_hora_funcional > 1;
+    const temValorFuncionalSignificativo =
+      bloco.valor_hora_funcional && bloco.valor_hora_funcional > 1;
     const temValorTecnicoSignificativo = bloco.valor_hora_tecnico && bloco.valor_hora_tecnico > 1;
-    
+
     // Reset mais conservador: só resetar se realmente não há valores ou se são valores muito baixos (provavelmente automáticos)
     if (!temValorFuncionalSignificativo && !temValorTecnicoSignificativo) {
-      console.log('✅ RESETANDO FLAGS - Contexto mudou e não há valores significativos preenchidos');
+      console.log(
+        '✅ RESETANDO FLAGS - Contexto mudou e não há valores significativos preenchidos'
+      );
       // Resetar ref
       valoresEditadosManualmenteRef.current = {
         funcional: false,
-        tecnico: false
+        tecnico: false,
       };
       // Resetar estado para indicadores visuais
       setValoresEditadosManualmente({
         funcional: false,
-        tecnico: false
+        tecnico: false,
       });
     } else {
-      console.log('⏭️ MANTENDO FLAGS - Há valores significativos preenchidos, preservando estado de edição manual');
-      console.log('   Valor funcional significativo:', temValorFuncionalSignificativo, '(valor:', bloco.valor_hora_funcional, ')');
-      console.log('   Valor técnico significativo:', temValorTecnicoSignificativo, '(valor:', bloco.valor_hora_tecnico, ')');
+      console.log(
+        '⏭️ MANTENDO FLAGS - Há valores significativos preenchidos, preservando estado de edição manual'
+      );
+      console.log(
+        '   Valor funcional significativo:',
+        temValorFuncionalSignificativo,
+        '(valor:',
+        bloco.valor_hora_funcional,
+        ')'
+      );
+      console.log(
+        '   Valor técnico significativo:',
+        temValorTecnicoSignificativo,
+        '(valor:',
+        bloco.valor_hora_tecnico,
+        ')'
+      );
     }
   }, [clienteId, bloco.linguagem, bloco.tipo_cobranca]); // Removido bloco.tipo_hora_extra para evitar reset desnecessário
 
@@ -473,18 +551,19 @@ export function TipoCobrancaBloco({
       // Resetar flags para permitir preenchimento automático
       valoresEditadosManualmenteRef.current = {
         funcional: false,
-        tecnico: false
+        tecnico: false,
       };
       // Resetar estado visual
       setValoresEditadosManualmente({
         funcional: false,
-        tecnico: false
+        tecnico: false,
       });
     }
   }, [bloco.tipo_hora_extra]); // Só dispara quando tipo_hora_extra mudar
 
   // Verificar se tipo de cobrança requer valores/hora
-  const mostrarCamposValor = bloco.tipo_cobranca && 
+  const mostrarCamposValor =
+    bloco.tipo_cobranca &&
     ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(bloco.tipo_cobranca);
 
   // Verificar se deve mostrar campo de atendimento presencial
@@ -495,47 +574,53 @@ export function TipoCobrancaBloco({
   const mostrarTipoHoraExtra = bloco.tipo_cobranca === 'Hora Extra';
 
   // Verificar se deve mostrar campo de tickets
-  const mostrarCampoTickets = bloco.tipo_cobranca === 'Banco de Horas' && 
-    empresaTipoCobranca === 'ticket';
+  const mostrarCampoTickets =
+    bloco.tipo_cobranca === 'Banco de Horas' && empresaTipoCobranca === 'ticket';
 
   // Verificar se deve mostrar campo de horas de análise EF
   const mostrarCampoAnaliseEF = bloco.tipo_cobranca === 'Reprovado';
 
   // Calcular horas total
-  const horasFuncionalDecimal = typeof bloco.horas_funcional === 'string' 
-    ? converterParaHorasDecimal(bloco.horas_funcional)
-    : bloco.horas_funcional || 0;
-  
-  const horasTecnicoDecimal = typeof bloco.horas_tecnico === 'string'
-    ? converterParaHorasDecimal(bloco.horas_tecnico)
-    : bloco.horas_tecnico || 0;
+  const horasFuncionalDecimal =
+    typeof bloco.horas_funcional === 'string'
+      ? converterParaHorasDecimal(bloco.horas_funcional)
+      : bloco.horas_funcional || 0;
 
-  const horasGestorDecimal = typeof bloco.horas_gestor === 'string'
-    ? converterParaHorasDecimal(bloco.horas_gestor)
-    : bloco.horas_gestor || 0;
+  const horasTecnicoDecimal =
+    typeof bloco.horas_tecnico === 'string'
+      ? converterParaHorasDecimal(bloco.horas_tecnico)
+      : bloco.horas_tecnico || 0;
+
+  const horasGestorDecimal =
+    typeof bloco.horas_gestor === 'string'
+      ? converterParaHorasDecimal(bloco.horas_gestor)
+      : bloco.horas_gestor || 0;
 
   const horasTotalDecimal = horasFuncionalDecimal + horasTecnicoDecimal + horasGestorDecimal;
-  
+
   // Converter para string HH:MM para exibição
-  const horasFuncionalStr = typeof bloco.horas_funcional === 'string' 
-    ? bloco.horas_funcional 
-    : (bloco.horas_funcional ?? '').toString();
-  
-  const horasTecnicoStr = typeof bloco.horas_tecnico === 'string'
-    ? bloco.horas_tecnico
-    : (bloco.horas_tecnico ?? '').toString();
-  
-  const horasGestorStr = typeof bloco.horas_gestor === 'string'
-    ? bloco.horas_gestor
-    : (bloco.horas_gestor ?? '').toString();
-  
+  const horasFuncionalStr =
+    typeof bloco.horas_funcional === 'string'
+      ? bloco.horas_funcional
+      : (bloco.horas_funcional ?? '').toString();
+
+  const horasTecnicoStr =
+    typeof bloco.horas_tecnico === 'string'
+      ? bloco.horas_tecnico
+      : (bloco.horas_tecnico ?? '').toString();
+
+  const horasGestorStr =
+    typeof bloco.horas_gestor === 'string'
+      ? bloco.horas_gestor
+      : (bloco.horas_gestor ?? '').toString();
+
   const horasTotalStr = somarHoras(somarHoras(horasFuncionalStr, horasTecnicoStr), horasGestorStr);
 
   // Calcular valor total
   const valorTotal = mostrarCamposValor
-    ? (horasFuncionalDecimal * (bloco.valor_hora_funcional || 0)) +
-      (horasTecnicoDecimal * (bloco.valor_hora_tecnico || 0)) +
-      (horasGestorDecimal * (bloco.valor_hora_gestor || 0))
+    ? horasFuncionalDecimal * (bloco.valor_hora_funcional || 0) +
+      horasTecnicoDecimal * (bloco.valor_hora_tecnico || 0) +
+      horasGestorDecimal * (bloco.valor_hora_gestor || 0)
     : 0;
 
   // Cores para tipos de cobrança
@@ -543,12 +628,12 @@ export function TipoCobrancaBloco({
     const cores = {
       'Banco de Horas': 'bg-blue-500',
       'Cobro Interno': 'bg-green-500',
-      'Contrato': 'bg-gray-500',
-      'Faturado': 'bg-orange-500',
+      Contrato: 'bg-gray-500',
+      Faturado: 'bg-orange-500',
       'Hora Extra': 'bg-red-500',
-      'Sobreaviso': 'bg-purple-500',
-      'Reprovado': 'bg-slate-500',
-      'Bolsão Enel': 'bg-yellow-500'
+      Sobreaviso: 'bg-purple-500',
+      Reprovado: 'bg-slate-500',
+      'Bolsão Enel': 'bg-yellow-500',
     };
     return cores[tipo as keyof typeof cores] || 'bg-gray-500';
   };
@@ -602,9 +687,7 @@ export function TipoCobrancaBloco({
           </div>
 
           <div className="space-y-2">
-            <Label>
-              Horas Gestor
-            </Label>
+            <Label>Horas Gestor</Label>
             <InputHoras
               value={bloco.horas_gestor}
               onChange={(valorString) => onUpdate(bloco.id, 'horas_gestor', valorString)}
@@ -643,7 +726,7 @@ export function TipoCobrancaBloco({
                 {tiposDisponiveis.map((tipo) => (
                   <SelectItem key={tipo.value} value={tipo.value}>
                     <div className="flex items-center gap-2">
-                      <div className={cn("h-3 w-3 rounded-full", getCorTipoCobranca(tipo.value))} />
+                      <div className={cn('h-3 w-3 rounded-full', getCorTipoCobranca(tipo.value))} />
                       <span>{tipo.label}</span>
                     </div>
                   </SelectItem>
@@ -651,26 +734,26 @@ export function TipoCobrancaBloco({
               </SelectContent>
             </Select>
             {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores, exceto Sobreaviso) */}
-          {mostrarAtendimentoPresencial && (
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id={`atendimento-presencial-${bloco.id}`}
-                  checked={bloco.atendimento_presencial || false}
-                  onCheckedChange={(checked) => onUpdate(bloco.id, 'atendimento_presencial', checked)}
-                />
-                <Label 
-                  htmlFor={`atendimento-presencial-${bloco.id}`}
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  {t('reqForm.onSiteService')}
-                </Label>
+            {mostrarAtendimentoPresencial && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`atendimento-presencial-${bloco.id}`}
+                    checked={bloco.atendimento_presencial || false}
+                    onCheckedChange={(checked) =>
+                      onUpdate(bloco.id, 'atendimento_presencial', checked)
+                    }
+                  />
+                  <Label
+                    htmlFor={`atendimento-presencial-${bloco.id}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {t('reqForm.onSiteService')}
+                  </Label>
+                </div>
               </div>
-            </div>
-          )}
+            )}
           </div>
-
-          
 
           <div className="space-y-2">
             <Label>{t('reqForm.billingMonthYear')}</Label>
@@ -684,7 +767,16 @@ export function TipoCobrancaBloco({
             />
           </div>
 
-
+          {/* Banco (só empresa liberada, tipo que desconta do banco) */}
+          <CampoBancoRequerimento
+            empresaId={clienteId}
+            tipoCobranca={bloco.tipo_cobranca}
+            horasAnaliseEF={bloco.horas_analise_ef}
+            mesCobranca={bloco.mes_cobranca}
+            valor={bloco.banco_horas_id}
+            onChange={atualizarBanco}
+            mostrarErro={tentouSubmeter}
+          />
 
           {/* Tipo de Hora Extra (condicional) */}
           {mostrarTipoHoraExtra && (
@@ -716,7 +808,10 @@ export function TipoCobrancaBloco({
               <Label>
                 Linguagem Técnica <span className="text-red-500">*</span>
               </Label>
-              <Select value={bloco.linguagem || ''} onValueChange={(valor) => onUpdate(bloco.id, 'linguagem', valor)}>
+              <Select
+                value={bloco.linguagem || ''}
+                onValueChange={(valor) => onUpdate(bloco.id, 'linguagem', valor)}
+              >
                 <SelectTrigger className={cn(getErrorClasses(bloco.linguagem))}>
                   <SelectValue placeholder="Selecione uma linguagem técnica" />
                 </SelectTrigger>
@@ -741,7 +836,9 @@ export function TipoCobrancaBloco({
                 min="1"
                 placeholder="Digite a quantidade"
                 value={bloco.quantidade_tickets || ''}
-                onChange={(e) => onUpdate(bloco.id, 'quantidade_tickets', parseInt(e.target.value) || undefined)}
+                onChange={(e) =>
+                  onUpdate(bloco.id, 'quantidade_tickets', parseInt(e.target.value) || undefined)
+                }
               />
             </div>
           )}
@@ -771,7 +868,9 @@ export function TipoCobrancaBloco({
               <Label>
                 Valor/Hora Funcional <span className="text-red-500">*</span>
                 {valoresEditadosManualmente.funcional && (
-                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">
+                    ✏️
+                  </span>
                 )}
               </Label>
               <div className="relative">
@@ -787,7 +886,8 @@ export function TipoCobrancaBloco({
                   value={(() => {
                     const valor = bloco.valor_hora_funcional;
                     console.log('🔍 INPUT FUNCIONAL - Valor bruto:', valor, 'Tipo:', typeof valor);
-                    const valorFormatado = valor === undefined || valor === null ? '' : valor.toString();
+                    const valorFormatado =
+                      valor === undefined || valor === null ? '' : valor.toString();
                     console.log('🔍 INPUT FUNCIONAL - Valor formatado:', valorFormatado);
                     return valorFormatado;
                   })()}
@@ -805,7 +905,9 @@ export function TipoCobrancaBloco({
               <Label>
                 Valor/Hora Técnico <span className="text-red-500">*</span>
                 {valoresEditadosManualmente.tecnico && (
-                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">
+                    ✏️
+                  </span>
                 )}
               </Label>
               <div className="relative">
@@ -821,7 +923,8 @@ export function TipoCobrancaBloco({
                   value={(() => {
                     const valor = bloco.valor_hora_tecnico;
                     console.log('🔍 INPUT TÉCNICO - Valor bruto:', valor, 'Tipo:', typeof valor);
-                    const valorFormatado = valor === undefined || valor === null ? '' : valor.toString();
+                    const valorFormatado =
+                      valor === undefined || valor === null ? '' : valor.toString();
                     console.log('🔍 INPUT TÉCNICO - Valor formatado:', valorFormatado);
                     return valorFormatado;
                   })()}
@@ -839,7 +942,9 @@ export function TipoCobrancaBloco({
               <Label>
                 Valor/Hora Gestor
                 {valoresEditadosManualmente.gestor && (
-                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">
+                    ✏️
+                  </span>
                 )}
               </Label>
               <div className="relative">
@@ -854,7 +959,8 @@ export function TipoCobrancaBloco({
                   className="pl-8"
                   value={(() => {
                     const valor = bloco.valor_hora_gestor;
-                    const valorFormatado = valor === undefined || valor === null ? '' : valor.toString();
+                    const valorFormatado =
+                      valor === undefined || valor === null ? '' : valor.toString();
                     return valorFormatado;
                   })()}
                   onChange={(e) => {
@@ -869,9 +975,10 @@ export function TipoCobrancaBloco({
               <Label>Valor Total Estimado</Label>
               <div className="flex items-center h-10 px-3 py-2 border border-input bg-green-50 rounded-md">
                 <span className="font-semibold text-green-600">
-                  R$ {valorTotal.toLocaleString('pt-BR', {
+                  R${' '}
+                  {valorTotal.toLocaleString('pt-BR', {
                     minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
+                    maximumFractionDigits: 2,
                   })}
                 </span>
               </div>

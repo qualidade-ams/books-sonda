@@ -8,17 +8,18 @@ import {
   FiltrosRequerimentos,
   TipoCobrancaType,
   StatusRequerimento,
-  MesPendenteAnterior
+  MesPendenteAnterior,
 } from '@/types/requerimentos';
-import { 
-  converterParaHorasDecimal, 
+import {
+  converterParaHorasDecimal,
   converterDeHorasDecimal,
   converterHorasParaMinutos,
   somarHoras,
-  formatarHorasParaExibicao 
+  formatarHorasParaExibicao,
 } from '@/utils/horasUtils';
 import { converterParaBanco, converterDoBanco } from '@/utils/mesCobrancaUtils';
 import { RequerimentoErrorFactory } from '@/errors/requerimentosErrors';
+import { requerimentoBancoService } from '@/services/requerimentoBancoService';
 
 /**
  * Serviço para gerenciamento de requerimentos
@@ -39,24 +40,27 @@ export class RequerimentosService {
     await this.verificarRequerimentoDuplicado(data);
 
     // Verificar se precisa criar requerimento adicional de análise EF
-    
+
     const criarRequerimentoAnaliseEF = data.tipo_cobranca === 'Reprovado' && data.horas_analise_ef;
     let horasAnaliseEFDecimal = 0;
-    
+
     if (criarRequerimentoAnaliseEF) {
-      horasAnaliseEFDecimal = typeof data.horas_analise_ef === 'string' 
-        ? converterParaHorasDecimal(data.horas_analise_ef) 
-        : data.horas_analise_ef || 0;
+      horasAnaliseEFDecimal =
+        typeof data.horas_analise_ef === 'string'
+          ? converterParaHorasDecimal(data.horas_analise_ef)
+          : data.horas_analise_ef || 0;
     }
 
     // Preparar dados para inserção (converter horas para decimal se necessário)
-    const horasFuncionalDecimal = typeof data.horas_funcional === 'string' 
-      ? converterParaHorasDecimal(data.horas_funcional)
-      : data.horas_funcional;
-    
-    const horasTecnicoDecimal = typeof data.horas_tecnico === 'string'
-      ? converterParaHorasDecimal(data.horas_tecnico)
-      : data.horas_tecnico;
+    const horasFuncionalDecimal =
+      typeof data.horas_funcional === 'string'
+        ? converterParaHorasDecimal(data.horas_funcional)
+        : data.horas_funcional;
+
+    const horasTecnicoDecimal =
+      typeof data.horas_tecnico === 'string'
+        ? converterParaHorasDecimal(data.horas_tecnico)
+        : data.horas_tecnico;
 
     const requerimentoData = {
       chamado: data.chamado.trim().toUpperCase(), // Sempre salvar em maiúsculas
@@ -68,10 +72,13 @@ export class RequerimentosService {
       data_aprovacao: data.data_aprovacao?.trim() || null,
       horas_funcional: horasFuncionalDecimal,
       horas_tecnico: horasTecnicoDecimal,
-      horas_gestor: typeof data.horas_gestor === 'string'
-        ? converterParaHorasDecimal(data.horas_gestor)
-        : (data.horas_gestor || 0),
-      linguagem: data.linguagem?.trim() || (horasFuncionalDecimal > 0 && !horasTecnicoDecimal ? 'Funcional' : null),
+      horas_gestor:
+        typeof data.horas_gestor === 'string'
+          ? converterParaHorasDecimal(data.horas_gestor)
+          : data.horas_gestor || 0,
+      linguagem:
+        data.linguagem?.trim() ||
+        (horasFuncionalDecimal > 0 && !horasTecnicoDecimal ? 'Funcional' : null),
       tipo_cobranca: data.tipo_cobranca,
       mes_cobranca: data.mes_cobranca?.trim() || null,
       observacao: data.observacao?.trim() || null,
@@ -87,7 +94,7 @@ export class RequerimentosService {
       autor_id: data.autor_id || null,
       autor_nome: data.autor_nome || 'Sistema',
       status: 'lancado' as StatusRequerimento,
-      enviado_faturamento: false
+      enviado_faturamento: false,
       // Nota: horas_analise_ef NÃO é salvo no banco - é apenas para controle do formulário
     };
 
@@ -95,13 +102,15 @@ export class RequerimentosService {
     const { data: requerimento, error } = await supabase
       .from('requerimentos')
       .insert(requerimentoData)
-      .select(`
+      .select(
+        `
         *,
         cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
-      `)
+      `
+      )
       .single();
 
     if (error) {
@@ -110,7 +119,6 @@ export class RequerimentosService {
 
     // Se tipo é "Reprovado" e há horas de análise EF, criar segundo requerimento
     if (criarRequerimentoAnaliseEF && horasAnaliseEFDecimal > 0) {
-      
       const requerimentoAnaliseEFData = {
         chamado: data.chamado.trim().toUpperCase(),
         cliente_id: data.cliente_id,
@@ -135,7 +143,7 @@ export class RequerimentosService {
         autor_id: data.autor_id || null,
         autor_nome: data.autor_nome || 'Sistema',
         status: 'lancado' as StatusRequerimento,
-        enviado_faturamento: false
+        enviado_faturamento: false,
       };
 
       const { data: requerimentoAnaliseEF, error: errorAnaliseEF } = await supabase
@@ -147,10 +155,41 @@ export class RequerimentosService {
       if (errorAnaliseEF) {
         console.error('❌ Erro ao criar requerimento de análise EF:', errorAnaliseEF.message);
         // Não falhar a operação principal, apenas logar o erro
+      } else if (data.banco_horas_id) {
+        // O banco escolhido vale para o requerimento de Banco de Horas da EF
+        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.banco_horas_id, [
+          requerimentoAnaliseEF.id,
+          requerimento.id,
+        ]);
       }
     }
 
+    if (data.banco_horas_id && data.tipo_cobranca === 'Banco de Horas') {
+      await this.gravarBancoOuDesfazer(requerimento.id, data.banco_horas_id, [requerimento.id]);
+    }
+
     return this.formatarRequerimento(requerimento);
+  }
+
+  /**
+   * Banco escolhido no lançamento (empresa liberada). Se a gravação for
+   * recusada, apaga os requerimentos recém-criados: sem o banco, eles iriam
+   * para o banco do módulo, e o usuário ainda veria o lançamento como feito.
+   */
+  private async gravarBancoOuDesfazer(
+    requerimentoId: string,
+    bancoId: string,
+    criados: string[]
+  ): Promise<void> {
+    try {
+      await requerimentoBancoService.definirBanco(requerimentoId, bancoId);
+    } catch (erro) {
+      for (const id of criados) {
+        const { error } = await supabase.from('requerimentos').delete().eq('id', id);
+        if (error) console.error('Erro ao desfazer requerimento sem banco:', error.message);
+      }
+      throw erro;
+    }
   }
 
   /**
@@ -175,26 +214,29 @@ export class RequerimentosService {
       }
 
       if (profiles && profiles.length > 0) {
-        profiles.forEach(profile => {
+        profiles.forEach((profile) => {
           const nome = profile.full_name?.trim() || profile.email || 'Usuário não identificado';
           usersMap[profile.id] = nome;
         });
       }
 
       // Para IDs que não foram encontrados na profiles, buscar diretamente no auth.users via RPC
-      const idsNaoEncontrados = userIds.filter(id => !usersMap[id]);
+      const idsNaoEncontrados = userIds.filter((id) => !usersMap[id]);
       if (idsNaoEncontrados.length > 0) {
         // Tentar buscar via função RPC que acessa auth.users
         try {
           const { data: authUsers, error: authError } = await supabase.rpc('get_users_by_ids', {
-            user_ids: idsNaoEncontrados
+            user_ids: idsNaoEncontrados,
           });
 
           if (authError) {
             console.error('❌ Erro ao buscar auth.users via RPC:', authError.message);
           } else if (authUsers && authUsers.length > 0) {
             authUsers.forEach((user: any) => {
-              const nome = user.raw_user_meta_data?.full_name || user.email || `Usuário ${user.id.substring(0, 8)}...`;
+              const nome =
+                user.raw_user_meta_data?.full_name ||
+                user.email ||
+                `Usuário ${user.id.substring(0, 8)}...`;
               usersMap[user.id] = nome;
             });
           }
@@ -203,9 +245,9 @@ export class RequerimentosService {
         }
 
         // Para IDs ainda não encontrados, usar fallback
-        const idsAindaNaoEncontrados = idsNaoEncontrados.filter(id => !usersMap[id]);
+        const idsAindaNaoEncontrados = idsNaoEncontrados.filter((id) => !usersMap[id]);
         if (idsAindaNaoEncontrados.length > 0) {
-          idsAindaNaoEncontrados.forEach(id => {
+          idsAindaNaoEncontrados.forEach((id) => {
             usersMap[id] = `Usuário ${id.substring(0, 8)}...`;
           });
         }
@@ -221,9 +263,7 @@ export class RequerimentosService {
    * Listar requerimentos com filtros
    */
   async listarRequerimentos(filtros?: FiltrosRequerimentos): Promise<Requerimento[]> {
-    let query = supabase
-      .from('requerimentos')
-      .select(`
+    let query = supabase.from('requerimentos').select(`
         *,
         cliente:empresas_clientes!cliente_id(
           id,
@@ -280,18 +320,18 @@ export class RequerimentosService {
     }
 
     // Resolver nomes de usuários para os campos autor_id (se existirem)
-    const userIds = [...new Set((data || [])
-      .map(req => (req as any).autor_id)
-      .filter(Boolean))] as string[];
-    
+    const userIds = [
+      ...new Set((data || []).map((req) => (req as any).autor_id).filter(Boolean)),
+    ] as string[];
+
     const usersMap = await this.resolverNomesUsuarios(userIds);
 
     // Buscar ticket_externo para os chamados dos requerimentos
     const chamadosNumeros = (data || [])
-      .map(req => (req.chamado || '').replace('RF-', ''))
+      .map((req) => (req.chamado || '').replace('RF-', ''))
       .filter(Boolean);
 
-    let ticketExternoMap: Record<string, string> = {};
+    const ticketExternoMap: Record<string, string> = {};
     if (chamadosNumeros.length > 0) {
       const { data: ticketsData } = await supabase
         .from('apontamentos_tickets_aranda')
@@ -308,9 +348,9 @@ export class RequerimentosService {
     }
 
     // Mapear requerimentos e atualizar nomes de autores e ticket_externo
-    return (data || []).map(req => {
+    return (data || []).map((req) => {
       const requerimento = this.formatarRequerimento(req);
-      
+
       // Atualizar nome do autor se temos o mapeamento
       const autorId = (req as any).autor_id;
       if (autorId && usersMap[autorId]) {
@@ -322,7 +362,7 @@ export class RequerimentosService {
       if (numChamado && ticketExternoMap[numChamado]) {
         requerimento.ticket_externo = ticketExternoMap[numChamado];
       }
-      
+
       return requerimento;
     });
   }
@@ -332,7 +372,7 @@ export class RequerimentosService {
    */
   async buscarRequerimentosNaoEnviados(): Promise<Requerimento[]> {
     return this.listarRequerimentos({
-      status: 'lancado'
+      status: 'lancado',
     });
   }
 
@@ -344,7 +384,7 @@ export class RequerimentosService {
     mesCobranca?: string
   ): Promise<Requerimento[]> {
     const filtros: FiltrosRequerimentos = { status };
-    
+
     if (mesCobranca) {
       filtros.mes_cobranca = mesCobranca;
     }
@@ -356,13 +396,15 @@ export class RequerimentosService {
    * Buscar requerimentos enviados para faturamento no mês atual
    */
   async buscarRequerimentosParaFaturamento(mesCobranca?: string): Promise<Requerimento[]> {
-    const mesCobrancaAtual = mesCobranca || (() => {
-      const hoje = new Date();
-      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-      const ano = hoje.getFullYear();
-      return `${mes}/${ano}`;
-    })();
-    
+    const mesCobrancaAtual =
+      mesCobranca ||
+      (() => {
+        const hoje = new Date();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const ano = hoje.getFullYear();
+        return `${mes}/${ano}`;
+      })();
+
     return this.buscarRequerimentosPorStatusEMes('enviado_faturamento', mesCobrancaAtual);
   }
 
@@ -406,13 +448,15 @@ export class RequerimentosService {
 
     const { data, error } = await supabase
       .from('requerimentos')
-      .select(`
+      .select(
+        `
         *,
         cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
-      `)
+      `
+      )
       .eq('id', id)
       .single();
 
@@ -455,7 +499,7 @@ export class RequerimentosService {
 
     // Preparar dados para atualização
     const updateData: any = {
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (data.chamado) updateData.chamado = data.chamado.trim().toUpperCase(); // Sempre salvar em maiúsculas
@@ -466,49 +510,72 @@ export class RequerimentosService {
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
     if (data.data_envio) updateData.data_envio = data.data_envio;
-    if (data.data_aprovacao !== undefined) updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
+    if (data.data_aprovacao !== undefined)
+      updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
     if (data.horas_funcional !== undefined) {
-      updateData.horas_funcional = typeof data.horas_funcional === 'string' 
-        ? converterParaHorasDecimal(data.horas_funcional)
-        : data.horas_funcional;
+      updateData.horas_funcional =
+        typeof data.horas_funcional === 'string'
+          ? converterParaHorasDecimal(data.horas_funcional)
+          : data.horas_funcional;
     }
     if (data.horas_tecnico !== undefined) {
-      updateData.horas_tecnico = typeof data.horas_tecnico === 'string'
-        ? converterParaHorasDecimal(data.horas_tecnico)
-        : data.horas_tecnico;
+      updateData.horas_tecnico =
+        typeof data.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(data.horas_tecnico)
+          : data.horas_tecnico;
     }
     if (data.horas_gestor !== undefined) {
-      updateData.horas_gestor = typeof data.horas_gestor === 'string'
-        ? converterParaHorasDecimal(data.horas_gestor)
-        : (data.horas_gestor || 0);
+      updateData.horas_gestor =
+        typeof data.horas_gestor === 'string'
+          ? converterParaHorasDecimal(data.horas_gestor)
+          : data.horas_gestor || 0;
     }
     if (data.linguagem) {
       updateData.linguagem = data.linguagem;
     } else if (data.horas_funcional !== undefined || data.horas_tecnico !== undefined) {
-      const hFunc = typeof data.horas_funcional === 'string' ? converterParaHorasDecimal(data.horas_funcional) : (data.horas_funcional || 0);
-      const hTec = typeof data.horas_tecnico === 'string' ? converterParaHorasDecimal(data.horas_tecnico) : (data.horas_tecnico || 0);
+      const hFunc =
+        typeof data.horas_funcional === 'string'
+          ? converterParaHorasDecimal(data.horas_funcional)
+          : data.horas_funcional || 0;
+      const hTec =
+        typeof data.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(data.horas_tecnico)
+          : data.horas_tecnico || 0;
       if (hFunc > 0 && hTec === 0) updateData.linguagem = 'Funcional';
     }
     if (data.tipo_cobranca) updateData.tipo_cobranca = data.tipo_cobranca;
-    if (data.mes_cobranca !== undefined) updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
+    if (data.mes_cobranca !== undefined)
+      updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
     if (data.observacao !== undefined) updateData.observacao = data.observacao?.trim() || null;
     // Campos de valor/hora
-    if (data.valor_hora_funcional !== undefined) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
-    if (data.valor_hora_tecnico !== undefined) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
-    if (data.valor_hora_gestor !== undefined) updateData.valor_hora_gestor = data.valor_hora_gestor || null;
+    if (data.valor_hora_funcional !== undefined)
+      updateData.valor_hora_funcional = data.valor_hora_funcional || null;
+    if (data.valor_hora_tecnico !== undefined)
+      updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
+    if (data.valor_hora_gestor !== undefined)
+      updateData.valor_hora_gestor = data.valor_hora_gestor || null;
     // Campo de tipo de hora extra
-    if (data.tipo_hora_extra !== undefined) updateData.tipo_hora_extra = data.tipo_hora_extra || null;
+    if (data.tipo_hora_extra !== undefined)
+      updateData.tipo_hora_extra = data.tipo_hora_extra || null;
     // Campos de ticket (automático baseado na empresa)
-    if (data.quantidade_tickets !== undefined) updateData.quantidade_tickets = data.quantidade_tickets || null;
+    if (data.quantidade_tickets !== undefined)
+      updateData.quantidade_tickets = data.quantidade_tickets || null;
     // NOTA: Campo horas_analise_ef não é atualizado aqui pois é usado apenas na criação de requerimentos de análise EF
 
-    const { error } = await supabase
-      .from('requerimentos')
-      .update(updateData)
-      .eq('id', id);
+    const { error } = await supabase.from('requerimentos').update(updateData).eq('id', id);
 
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
+    }
+
+    // Banco escolhido na edição (empresa liberada)
+    if (data.banco_horas_id && data.tipo_cobranca === 'Banco de Horas') {
+      try {
+        await requerimentoBancoService.definirBanco(id, data.banco_horas_id);
+      } catch (erro) {
+        const motivo = erro instanceof Error ? erro.message : String(erro);
+        throw new Error(`Requerimento salvo, mas o banco não foi gravado: ${motivo}`);
+      }
     }
   }
 
@@ -531,10 +598,7 @@ export class RequerimentosService {
       throw new Error('Não é possível deletar requerimento já enviado para faturamento');
     }
 
-    const { error } = await supabase
-      .from('requerimentos')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('requerimentos').delete().eq('id', id);
 
     if (error) {
       throw new Error(`Erro ao deletar requerimento: ${error.message}`);
@@ -562,12 +626,19 @@ export class RequerimentosService {
 
     // Verificar se tipo de cobrança é válido para faturamento
     if (!requerimento.tipo_cobranca) {
-      throw new Error('É necessário selecionar um tipo de cobrança válido antes de enviar para faturamento');
+      throw new Error(
+        'É necessário selecionar um tipo de cobrança válido antes de enviar para faturamento'
+      );
     }
 
     // Verificar se mês de cobrança está preenchido para faturamento
-    if (!requerimento.mes_cobranca || !requerimento.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
-      throw new Error('Mês de cobrança é obrigatório para envio ao faturamento e deve estar no formato MM/YYYY');
+    if (
+      !requerimento.mes_cobranca ||
+      !requerimento.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)
+    ) {
+      throw new Error(
+        'Mês de cobrança é obrigatório para envio ao faturamento e deve estar no formato MM/YYYY'
+      );
     }
 
     // Verificar se data de aprovação está preenchida para faturamento
@@ -583,7 +654,7 @@ export class RequerimentosService {
         status: 'enviado_faturamento',
         enviado_faturamento: true,
         data_envio_faturamento: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id);
 
@@ -609,7 +680,9 @@ export class RequerimentosService {
     // Verificar se está no status correto para rejeição
     // Permitir rejeitar requerimentos enviados para faturamento ou já faturados
     if (requerimento.status !== 'enviado_faturamento' && requerimento.status !== 'faturado') {
-      throw new Error('Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados');
+      throw new Error(
+        'Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados'
+      );
     }
 
     // Voltar para status lançado
@@ -620,7 +693,7 @@ export class RequerimentosService {
         enviado_faturamento: false,
         data_envio_faturamento: null,
         data_faturamento: null, // Limpar data de faturamento também
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id);
 
@@ -652,9 +725,13 @@ export class RequerimentosService {
     }
 
     // Verificar se todos estão no status correto
-    const requerimentosInvalidos = requerimentos.filter(req => req.status !== 'enviado_faturamento');
+    const requerimentosInvalidos = requerimentos.filter(
+      (req) => req.status !== 'enviado_faturamento'
+    );
     if (requerimentosInvalidos.length > 0) {
-      throw new Error(`Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inválidos: ${requerimentosInvalidos.map(r => r.chamado).join(', ')}`);
+      throw new Error(
+        `Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inválidos: ${requerimentosInvalidos.map((r) => r.chamado).join(', ')}`
+      );
     }
 
     // Marcar como faturados
@@ -663,7 +740,7 @@ export class RequerimentosService {
       .update({
         status: 'faturado',
         data_faturamento: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .in('id', ids);
 
@@ -679,10 +756,7 @@ export class RequerimentosService {
     try {
       // Consulta simples sem JOIN para evitar erro 400
       // Buscar APENAS requerimentos já faturados (não incluir enviado_faturamento)
-      let query = supabase
-        .from('requerimentos')
-        .select('*')
-        .eq('status', 'faturado');
+      let query = supabase.from('requerimentos').select('*').eq('status', 'faturado');
 
       // Ordenar por data_envio_faturamento (quando foi enviado para faturamento)
       // Se não existir, ordenar por data_faturamento, senão por created_at
@@ -716,7 +790,7 @@ export class RequerimentosService {
       const requerimentosComNomes = await Promise.all(
         data.map(async (req) => {
           let cliente_nome = 'N/A';
-          
+
           if (req.cliente_id) {
             try {
               const { data: cliente, error: clienteError } = await supabase
@@ -735,12 +809,12 @@ export class RequerimentosService {
 
           return {
             ...req,
-            cliente_nome
+            cliente_nome,
           };
         })
       );
 
-      return requerimentosComNomes.map(req => this.formatarRequerimento(req));
+      return requerimentosComNomes.map((req) => this.formatarRequerimento(req));
     } catch (error) {
       console.error('Erro geral ao buscar requerimentos faturados');
       // Retornar array vazio para não quebrar a interface
@@ -782,7 +856,7 @@ export class RequerimentosService {
       const requerimentosComNomes = await Promise.all(
         data.map(async (req) => {
           let cliente_nome = 'N/A';
-          
+
           if (req.cliente_id) {
             try {
               const { data: cliente, error: clienteError } = await supabase
@@ -801,31 +875,32 @@ export class RequerimentosService {
 
           return {
             ...req,
-            cliente_nome
+            cliente_nome,
           } as Requerimento;
         })
       );
 
       // Resolver nomes dos autores
       const autoresIds = requerimentosComNomes
-        .map(req => req.autor_id)
+        .map((req) => req.autor_id)
         .filter((id): id is string => !!id);
 
       let requerimentosFinais = requerimentosComNomes;
 
       if (autoresIds.length > 0) {
         const usersMap = await this.resolverNomesUsuarios(autoresIds);
-        
-        requerimentosFinais = requerimentosComNomes.map(req => ({
+
+        requerimentosFinais = requerimentosComNomes.map((req) => ({
           ...req,
-          autor_nome: req.autor_id && usersMap[req.autor_id] 
-            ? usersMap[req.autor_id] 
-            : req.autor_nome || 'N/A'
+          autor_nome:
+            req.autor_id && usersMap[req.autor_id]
+              ? usersMap[req.autor_id]
+              : req.autor_nome || 'N/A',
         }));
       }
 
       // Formatar requerimentos para converter horas decimais para HH:MM
-      return requerimentosFinais.map(req => this.formatarRequerimento(req));
+      return requerimentosFinais.map((req) => this.formatarRequerimento(req));
     } catch (error) {
       console.error('Erro ao buscar requerimentos enviados');
       return [];
@@ -860,26 +935,32 @@ export class RequerimentosService {
 
     // Inicializar totais para todos os tipos de cobrança
     const tiposCobranca: TipoCobrancaType[] = [
-      'Banco de Horas', 'Cobro Interno', 'Contrato', 'Faturado',
-      'Hora Extra', 'Sobreaviso', 'Reprovado', 'Bolsão Enel'
+      'Banco de Horas',
+      'Cobro Interno',
+      'Contrato',
+      'Faturado',
+      'Hora Extra',
+      'Sobreaviso',
+      'Reprovado',
+      'Bolsão Enel',
     ];
 
-    tiposCobranca.forEach(tipo => {
+    tiposCobranca.forEach((tipo) => {
       totais[tipo] = {
         quantidade: 0,
-        horas_total: 0
+        horas_total: 0,
       };
     });
 
     // Calcular totais
-    requerimentos.forEach(req => {
+    requerimentos.forEach((req) => {
       totais[req.tipo_cobranca].quantidade += 1;
       totais[req.tipo_cobranca].horas_total += Number(req.horas_total || 0);
     });
 
     return {
       requerimentos,
-      totais
+      totais,
     };
   }
 
@@ -895,25 +976,31 @@ export class RequerimentosService {
       requerimentos_por_status: {
         lancado: 0,
         enviado_faturamento: 0,
-        faturado: 0
+        faturado: 0,
       },
       requerimentos_por_tipo_cobranca: {} as any,
-      horas_por_tipo_cobranca: {} as any
+      horas_por_tipo_cobranca: {} as any,
     };
 
     // Inicializar contadores
     const tiposCobranca: TipoCobrancaType[] = [
-      'Banco de Horas', 'Cobro Interno', 'Contrato', 'Faturado',
-      'Hora Extra', 'Sobreaviso', 'Reprovado', 'Bolsão Enel'
+      'Banco de Horas',
+      'Cobro Interno',
+      'Contrato',
+      'Faturado',
+      'Hora Extra',
+      'Sobreaviso',
+      'Reprovado',
+      'Bolsão Enel',
     ];
 
-    tiposCobranca.forEach(tipo => {
+    tiposCobranca.forEach((tipo) => {
       stats.requerimentos_por_tipo_cobranca[tipo] = 0;
       stats.horas_por_tipo_cobranca[tipo] = 0;
     });
 
     // Calcular estatísticas
-    requerimentos.forEach(req => {
+    requerimentos.forEach((req) => {
       // Converter horas_total (formato HH:MM) para minutos antes de somar
       const horasTotalMinutos = converterHorasParaMinutos(req.horas_total?.toString() || '0');
       stats.total_horas += horasTotalMinutos;
@@ -978,9 +1065,10 @@ export class RequerimentosService {
 
       try {
         if (data.horas_funcional !== undefined) {
-          const horasFuncionalStr = typeof data.horas_funcional === 'string' 
-            ? data.horas_funcional 
-            : data.horas_funcional.toString();
+          const horasFuncionalStr =
+            typeof data.horas_funcional === 'string'
+              ? data.horas_funcional
+              : data.horas_funcional.toString();
           horasFuncional = converterParaHorasDecimal(horasFuncionalStr);
         }
       } catch (error) {
@@ -989,15 +1077,16 @@ export class RequerimentosService {
 
       try {
         if (data.horas_tecnico !== undefined) {
-          const horasTecnicoStr = typeof data.horas_tecnico === 'string'
-            ? data.horas_tecnico
-            : data.horas_tecnico.toString();
+          const horasTecnicoStr =
+            typeof data.horas_tecnico === 'string'
+              ? data.horas_tecnico
+              : data.horas_tecnico.toString();
           horasTecnico = converterParaHorasDecimal(horasTecnicoStr);
         }
       } catch (error) {
         errors.push('Formato de horas técnicas inválido');
       }
-      
+
       if (data.horas_funcional === undefined || horasFuncional < 0) {
         errors.push('Horas funcionais são obrigatórias e devem ser >= 0');
       }
@@ -1007,7 +1096,7 @@ export class RequerimentosService {
       if (horasFuncional + horasTecnico === 0) {
         errors.push('Deve haver pelo menos uma hora (funcional ou técnica)');
       }
-      
+
       // Linguagem só é obrigatória se houver horas técnicas > 0
       if (horasTecnico > 0 && !data.linguagem) {
         errors.push('Linguagem é obrigatória quando há horas técnicas');
@@ -1038,7 +1127,7 @@ export class RequerimentosService {
     if (data.data_envio && data.data_aprovacao) {
       const dataEnvio = new Date(data.data_envio);
       const dataAprovacao = new Date(data.data_aprovacao);
-      
+
       if (dataAprovacao < dataEnvio) {
         errors.push('Data de aprovação não pode ser anterior à data de envio');
       }
@@ -1078,9 +1167,10 @@ export class RequerimentosService {
     const mesCobranca = data.mes_cobranca?.trim() || null;
 
     // Determinar se a linguagem entra na chave (horas técnicas > 0)
-    const horasTecnico = typeof data.horas_tecnico === 'string'
-      ? converterParaHorasDecimal(data.horas_tecnico)
-      : (data.horas_tecnico || 0);
+    const horasTecnico =
+      typeof data.horas_tecnico === 'string'
+        ? converterParaHorasDecimal(data.horas_tecnico)
+        : data.horas_tecnico || 0;
     const linguagem = data.linguagem?.trim() || null;
 
     let query = supabase
@@ -1091,15 +1181,12 @@ export class RequerimentosService {
       .eq('tipo_cobranca', data.tipo_cobranca);
 
     // mes_cobranca entra na chave: mesmo chamado/tipo pode repetir em mês diferente
-    query = mesCobranca === null
-      ? query.is('mes_cobranca', null)
-      : query.eq('mes_cobranca', mesCobranca);
+    query =
+      mesCobranca === null ? query.is('mes_cobranca', null) : query.eq('mes_cobranca', mesCobranca);
 
     // Quando há horas técnicas, a linguagem diferencia os requerimentos
     if (horasTecnico > 0) {
-      query = linguagem === null
-        ? query.is('linguagem', null)
-        : query.eq('linguagem', linguagem);
+      query = linguagem === null ? query.is('linguagem', null) : query.eq('linguagem', linguagem);
     }
 
     const { data: existentes, error } = await query.limit(1);
@@ -1112,8 +1199,8 @@ export class RequerimentosService {
       throw RequerimentoErrorFactory.requerimentoDuplicateChamado(chamadoNormalizado, {
         tipoCobranca: data.tipo_cobranca,
         // Linguagem só faz parte da chave quando há horas técnicas
-        linguagem: horasTecnico > 0 ? (linguagem || undefined) : undefined,
-        mesCobranca: mesCobranca || undefined
+        linguagem: horasTecnico > 0 ? linguagem || undefined : undefined,
+        mesCobranca: mesCobranca || undefined,
       });
     }
   }
@@ -1123,24 +1210,24 @@ export class RequerimentosService {
    */
   private formatarRequerimento(data: any): Requerimento {
     // Converter horas decimais de volta para formato HH:MM para exibição
-    const horasFuncional = typeof data.horas_funcional === 'number' 
-      ? converterDeHorasDecimal(data.horas_funcional)
-      : data.horas_funcional;
-    
-    const horasTecnico = typeof data.horas_tecnico === 'number'
-      ? converterDeHorasDecimal(data.horas_tecnico)
-      : data.horas_tecnico;
+    const horasFuncional =
+      typeof data.horas_funcional === 'number'
+        ? converterDeHorasDecimal(data.horas_funcional)
+        : data.horas_funcional;
 
-    const horasGestor = typeof data.horas_gestor === 'number'
-      ? converterDeHorasDecimal(data.horas_gestor)
-      : data.horas_gestor;
+    const horasTecnico =
+      typeof data.horas_tecnico === 'number'
+        ? converterDeHorasDecimal(data.horas_tecnico)
+        : data.horas_tecnico;
+
+    const horasGestor =
+      typeof data.horas_gestor === 'number'
+        ? converterDeHorasDecimal(data.horas_gestor)
+        : data.horas_gestor;
 
     // Calcular total das horas (funcional + técnico + gestor)
     const horasTotal = somarHoras(
-      somarHoras(
-        horasFuncional?.toString() || '0',
-        horasTecnico?.toString() || '0'
-      ),
+      somarHoras(horasFuncional?.toString() || '0', horasTecnico?.toString() || '0'),
       horasGestor?.toString() || '0'
     );
 
@@ -1184,7 +1271,7 @@ export class RequerimentosService {
       quantidade_tickets: data.quantidade_tickets,
       // Campos de autor (podem não existir na tabela ainda)
       autor_id: (data as any).autor_id || undefined,
-      autor_nome: (data as any).autor_nome || 'Sistema'
+      autor_nome: (data as any).autor_nome || 'Sistema',
     };
   }
 }

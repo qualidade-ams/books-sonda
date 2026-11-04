@@ -15,7 +15,7 @@ import {
   useDeleteRequerimento,
   useEnviarParaFaturamento,
   useEnviarMultiplosParaFaturamento,
-  REQUERIMENTOS_QUERY_KEYS
+  REQUERIMENTOS_QUERY_KEYS,
 } from '../useRequerimentos';
 import { requerimentosService } from '@/services/requerimentosService';
 import { RequerimentoFormData, Requerimento } from '@/types/requerimentos';
@@ -25,8 +25,8 @@ import React, { ReactNode } from 'react';
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn()
-  }
+    error: vi.fn(),
+  },
 }));
 
 // Mock do serviço
@@ -42,13 +42,13 @@ vi.mock('@/services/requerimentosService', () => ({
     criarRequerimento: vi.fn(),
     atualizarRequerimento: vi.fn(),
     deletarRequerimento: vi.fn(),
-    enviarParaFaturamento: vi.fn()
-  }
+    enviarParaFaturamento: vi.fn(),
+  },
 }));
 
 // Mock da função de erro
 vi.mock('@/errors/requerimentosErrors', () => ({
-  getRequerimentoErrorMessage: vi.fn((error) => error.message || 'Erro desconhecido')
+  getRequerimentoErrorMessage: vi.fn((error) => error.message || 'Erro desconhecido'),
 }));
 
 describe('useRequerimentos hooks', () => {
@@ -75,7 +75,7 @@ describe('useRequerimentos hooks', () => {
     enviado_faturamento: false,
     data_envio_faturamento: null,
     created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z'
+    updated_at: '2024-01-15T10:00:00Z',
   };
 
   const mockRequerimentoFormData: RequerimentoFormData = {
@@ -90,7 +90,7 @@ describe('useRequerimentos hooks', () => {
     linguagem: 'Funcional',
     tipo_cobranca: 'Faturado',
     mes_cobranca: 1,
-    observacao: 'Observação de teste'
+    observacao: 'Observação de teste',
   };
 
   beforeEach(() => {
@@ -105,7 +105,7 @@ describe('useRequerimentos hooks', () => {
       },
     });
 
-    wrapper = ({ children }: { children: ReactNode }) => 
+    wrapper = ({ children }: { children: ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children);
 
     vi.clearAllMocks();
@@ -173,7 +173,9 @@ describe('useRequerimentos hooks', () => {
     it('deve buscar requerimentos não enviados', async () => {
       // Arrange
       const mockRequerimentos = [mockRequerimento];
-      vi.mocked(requerimentosService.buscarRequerimentosNaoEnviados).mockResolvedValue(mockRequerimentos);
+      vi.mocked(requerimentosService.buscarRequerimentosNaoEnviados).mockResolvedValue(
+        mockRequerimentos
+      );
 
       // Act
       const { result } = renderHook(() => useRequerimentosNaoEnviados(), { wrapper });
@@ -194,8 +196,8 @@ describe('useRequerimentos hooks', () => {
       const mockFaturamentoData = {
         requerimentos: [mockRequerimento],
         totais: {
-          'Faturado': { quantidade: 1, horas_total: 15.5 }
-        } as any
+          Faturado: { quantidade: 1, horas_total: 15.5 },
+        } as any,
       };
       vi.mocked(requerimentosService.gerarDadosFaturamento).mockResolvedValue(mockFaturamentoData);
 
@@ -245,7 +247,7 @@ describe('useRequerimentos hooks', () => {
       // Arrange
       const mockClientes = [
         { id: '1', nome_completo: 'Cliente 1' },
-        { id: '2', nome_completo: 'Cliente 2' }
+        { id: '2', nome_completo: 'Cliente 2' },
       ];
       vi.mocked(requerimentosService.buscarClientes).mockResolvedValue(mockClientes);
 
@@ -271,10 +273,10 @@ describe('useRequerimentos hooks', () => {
         requerimentos_por_status: {
           lancado: 3,
           enviado_faturamento: 2,
-          faturado: 0
+          faturado: 0,
         },
         requerimentos_por_tipo_cobranca: {} as any,
-        horas_por_tipo_cobranca: {} as any
+        horas_por_tipo_cobranca: {} as any,
       };
       vi.mocked(requerimentosService.obterEstatisticas).mockResolvedValue(mockEstatisticas);
 
@@ -351,7 +353,10 @@ describe('useRequerimentos hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(requerimentosService.atualizarRequerimento).toHaveBeenCalledWith(mockRequerimento.id, updateData);
+      expect(requerimentosService.atualizarRequerimento).toHaveBeenCalledWith(
+        mockRequerimento.id,
+        updateData
+      );
       expect(toast.success).toHaveBeenCalledWith('Requerimento atualizado com sucesso!');
     });
 
@@ -374,6 +379,30 @@ describe('useRequerimentos hooks', () => {
       });
 
       expect(toast.error).toHaveBeenCalledWith('Erro ao atualizar requerimento: Erro de validação');
+    });
+
+    it('recarrega o banco escolhido do requerimento depois de salvar', async () => {
+      vi.mocked(requerimentosService.atualizarRequerimento).mockResolvedValue();
+      const invalidar = vi.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useUpdateRequerimento(), { wrapper });
+      result.current.mutate({ id: mockRequerimento.id, data: { descricao: 'Nova descrição' } });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: ['requerimento-bancos'] });
+    });
+
+    it('com o banco recusado depois de salvar, ainda recarrega a lista', async () => {
+      vi.mocked(requerimentosService.atualizarRequerimento).mockRejectedValue(
+        new Error('Requerimento salvo, mas o banco não foi gravado: inativo')
+      );
+      const invalidar = vi.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useUpdateRequerimento(), { wrapper });
+      result.current.mutate({ id: mockRequerimento.id, data: { descricao: 'Nova descrição' } });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
     });
   });
 
@@ -415,7 +444,9 @@ describe('useRequerimentos hooks', () => {
         expect(result.current.isError).toBe(true);
       });
 
-      expect(toast.error).toHaveBeenCalledWith('Erro ao deletar requerimento: Requerimento já enviado para faturamento');
+      expect(toast.error).toHaveBeenCalledWith(
+        'Erro ao deletar requerimento: Requerimento já enviado para faturamento'
+      );
     });
   });
 
@@ -437,7 +468,9 @@ describe('useRequerimentos hooks', () => {
       });
 
       expect(requerimentosService.enviarParaFaturamento).toHaveBeenCalledWith(mockRequerimento.id);
-      expect(toast.success).toHaveBeenCalledWith('Requerimento enviado para faturamento com sucesso!');
+      expect(toast.success).toHaveBeenCalledWith(
+        'Requerimento enviado para faturamento com sucesso!'
+      );
     });
 
     it('deve lidar com erro no envio', async () => {
@@ -457,7 +490,9 @@ describe('useRequerimentos hooks', () => {
         expect(result.current.isError).toBe(true);
       });
 
-      expect(toast.error).toHaveBeenCalledWith('Erro ao enviar para faturamento: Requerimento já foi enviado');
+      expect(toast.error).toHaveBeenCalledWith(
+        'Erro ao enviar para faturamento: Requerimento já foi enviado'
+      );
     });
   });
 
@@ -482,7 +517,9 @@ describe('useRequerimentos hooks', () => {
       });
 
       expect(requerimentosService.enviarParaFaturamento).toHaveBeenCalledTimes(2);
-      expect(toast.success).toHaveBeenCalledWith('2 requerimento(s) enviado(s) para faturamento com sucesso!');
+      expect(toast.success).toHaveBeenCalledWith(
+        '2 requerimento(s) enviado(s) para faturamento com sucesso!'
+      );
     });
 
     it('deve lidar com erro no envio múltiplo', async () => {
@@ -503,7 +540,9 @@ describe('useRequerimentos hooks', () => {
         expect(result.current.isError).toBe(true);
       });
 
-      expect(toast.error).toHaveBeenCalledWith('Erro ao enviar requerimentos para faturamento: Erro no envio');
+      expect(toast.error).toHaveBeenCalledWith(
+        'Erro ao enviar requerimentos para faturamento: Erro no envio'
+      );
     });
   });
 
@@ -525,7 +564,7 @@ describe('useRequerimentos hooks', () => {
         'requerimentos',
         'pendentes-anteriores',
         10,
-        2026
+        2026,
       ]);
     });
   });
@@ -534,13 +573,21 @@ describe('useRequerimentos hooks', () => {
     it('deve gerar chaves de cache corretas', () => {
       expect(REQUERIMENTOS_QUERY_KEYS.all).toEqual(['requerimentos']);
       expect(REQUERIMENTOS_QUERY_KEYS.lists()).toEqual(['requerimentos', 'list']);
-      expect(REQUERIMENTOS_QUERY_KEYS.list({ status: 'lancado' })).toEqual(['requerimentos', 'list', { status: 'lancado' }]);
+      expect(REQUERIMENTOS_QUERY_KEYS.list({ status: 'lancado' })).toEqual([
+        'requerimentos',
+        'list',
+        { status: 'lancado' },
+      ]);
       expect(REQUERIMENTOS_QUERY_KEYS.details()).toEqual(['requerimentos', 'detail']);
       expect(REQUERIMENTOS_QUERY_KEYS.detail('123')).toEqual(['requerimentos', 'detail', '123']);
       expect(REQUERIMENTOS_QUERY_KEYS.naoEnviados()).toEqual(['requerimentos', 'nao-enviados']);
       expect(REQUERIMENTOS_QUERY_KEYS.faturamento(1)).toEqual(['requerimentos', 'faturamento', 1]);
       expect(REQUERIMENTOS_QUERY_KEYS.clientes()).toEqual(['clientes-requerimentos']);
-      expect(REQUERIMENTOS_QUERY_KEYS.estatisticas({ status: 'lancado' })).toEqual(['requerimentos', 'estatisticas', { status: 'lancado' }]);
+      expect(REQUERIMENTOS_QUERY_KEYS.estatisticas({ status: 'lancado' })).toEqual([
+        'requerimentos',
+        'estatisticas',
+        { status: 'lancado' },
+      ]);
     });
   });
 });
