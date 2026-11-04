@@ -47,9 +47,18 @@ export interface Requerimento {
 }
 
 // Tipos para opções de select
-export type ModuloType = '' | 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
+export type ModuloType =
+  '' | 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = '' | 'ABAP' | 'DBA' | 'PL/SQL' | 'Técnico' | 'Funcional';
-export type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
+export type TipoCobrancaType =
+  | 'Banco de Horas'
+  | 'Cobro Interno'
+  | 'Contrato'
+  | 'Faturado'
+  | 'Hora Extra'
+  | 'Sobreaviso'
+  | 'Reprovado'
+  | 'Bolsão Enel';
 export type TipoHoraExtraType = '17h30-19h30' | 'apos_19h30' | 'fim_semana';
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
 
@@ -61,7 +70,7 @@ export const MODULO_OPTIONS: { value: ModuloType; label: string }[] = [
   { value: 'Gallery', label: 'Gallery' },
   { value: 'pw.SATI', label: 'pw.SATI' },
   { value: 'pw.SPED', label: 'pw.SPED' },
-  { value: 'pw.SATI/pw.SPED', label: 'pw.SATI/pw.SPED' }
+  { value: 'pw.SATI/pw.SPED', label: 'pw.SATI/pw.SPED' },
 ];
 
 export const LINGUAGEM_OPTIONS: { value: LinguagemType; label: string }[] = [
@@ -69,7 +78,7 @@ export const LINGUAGEM_OPTIONS: { value: LinguagemType; label: string }[] = [
   { value: 'DBA', label: 'DBA' },
   { value: 'Funcional', label: 'Funcional' },
   { value: 'PL/SQL', label: 'PL/SQL' },
-  { value: 'Técnico', label: 'Técnico' }
+  { value: 'Técnico', label: 'Técnico' },
 ];
 
 export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[] = [
@@ -80,13 +89,13 @@ export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[]
   { value: 'Hora Extra', label: 'Faturado - Hora Extra' },
   { value: 'Sobreaviso', label: 'Faturado - Sobreaviso' },
   { value: 'Reprovado', label: 'Reprovado' },
-  { value: 'Bolsão Enel', label: 'Bolsão Enel' }
+  { value: 'Bolsão Enel', label: 'Bolsão Enel' },
 ];
 
 export const TIPO_HORA_EXTRA_OPTIONS: { value: TipoHoraExtraType; label: string }[] = [
   { value: '17h30-19h30', label: 'Seg-Sex 17h30-19h30' },
   { value: 'apos_19h30', label: 'Seg-Sex Após 19h30' },
-  { value: 'fim_semana', label: 'Sáb/Dom/Feriados' }
+  { value: 'fim_semana', label: 'Sáb/Dom/Feriados' },
 ];
 
 // Tipos de cobrança que requerem campos de valor/hora
@@ -94,15 +103,13 @@ export const TIPOS_COM_VALOR_HORA: TipoCobrancaType[] = [
   'Faturado',
   'Hora Extra',
   'Sobreaviso',
-  'Bolsão Enel'
+  'Bolsão Enel',
 ];
 
 // Função utilitária para verificar se tipo requer valor/hora
 export const requerValorHora = (tipoCobranca: TipoCobrancaType): boolean => {
   return TIPOS_COM_VALOR_HORA.includes(tipoCobranca);
 };
-
-
 
 // Interface para dados do formulário
 export interface RequerimentoFormData {
@@ -130,6 +137,8 @@ export interface RequerimentoFormData {
   quantidade_tickets?: number;
   // Campo de horas de análise EF (para tipo Reprovado - opcional)
   horas_analise_ef?: number | string; // Suporta formato HH:MM
+  // Banco escolhido (empresa liberada); gravado em requerimentos_bancos, não em requerimentos
+  banco_horas_id?: string;
   // Campo de atendimento presencial (usa valores locais ao invés de remotos)
   atendimento_presencial?: boolean;
   // Campos de autor (preenchidos automaticamente)

@@ -18798,6 +18798,38 @@ var RequerimentoErrorFactory = class {
   }
 };
 
+// src/services/requerimentoBancoService.ts
+init_clienteSupabaseServidor();
+var RequerimentoBancoService = class {
+  constructor(cliente2 = supabase) {
+    this.cliente = cliente2;
+  }
+  async bancosDisponiveis(empresaId, requerimentoId) {
+    const { data, error } = await this.cliente.rpc("requerimento_bancos_disponiveis", {
+      p_empresa_id: empresaId,
+      p_requerimento_id: requerimentoId ?? null
+    });
+    if (error) throw new Error(`Erro ao carregar os bancos do requerimento: ${error.message}`);
+    return (data ?? []).map((b) => ({
+      id: b.banco_id,
+      nome: b.nome,
+      padrao: b.padrao,
+      ordem: b.ordem,
+      inicioVigencia: b.inicio_vigencia,
+      fimVigencia: b.fim_vigencia,
+      escolhido: b.escolhido
+    }));
+  }
+  async definirBanco(requerimentoId, bancoId) {
+    const { error } = await this.cliente.rpc("requerimento_definir_banco", {
+      p_requerimento_id: requerimentoId,
+      p_banco_id: bancoId
+    });
+    if (error) throw new Error(`Erro ao gravar o banco do requerimento: ${error.message}`);
+  }
+};
+var requerimentoBancoService = new RequerimentoBancoService();
+
 // src/services/requerimentosService.ts
 var RequerimentosService = class {
   /**
@@ -18888,9 +18920,33 @@ var RequerimentosService = class {
       const { data: requerimentoAnaliseEF, error: errorAnaliseEF } = await supabase.from("requerimentos").insert(requerimentoAnaliseEFData).select().single();
       if (errorAnaliseEF) {
         console.error("\u274C Erro ao criar requerimento de an\xE1lise EF:", errorAnaliseEF.message);
+      } else if (data.banco_horas_id) {
+        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.banco_horas_id, [
+          requerimentoAnaliseEF.id,
+          requerimento.id
+        ]);
       }
     }
+    if (data.banco_horas_id && data.tipo_cobranca === "Banco de Horas") {
+      await this.gravarBancoOuDesfazer(requerimento.id, data.banco_horas_id, [requerimento.id]);
+    }
     return this.formatarRequerimento(requerimento);
+  }
+  /**
+   * Banco escolhido no lançamento (empresa liberada). Se a gravação for
+   * recusada, apaga os requerimentos recém-criados: sem o banco, eles iriam
+   * para o banco do módulo, e o usuário ainda veria o lançamento como feito.
+   */
+  async gravarBancoOuDesfazer(requerimentoId, bancoId, criados) {
+    try {
+      await requerimentoBancoService.definirBanco(requerimentoId, bancoId);
+    } catch (erro) {
+      for (const id of criados) {
+        const { error } = await supabase.from("requerimentos").delete().eq("id", id);
+        if (error) console.error("Erro ao desfazer requerimento sem banco:", error.message);
+      }
+      throw erro;
+    }
   }
   /**
    * Resolver nomes de usuários baseado nos IDs
@@ -19147,6 +19203,14 @@ var RequerimentosService = class {
     const { error } = await supabase.from("requerimentos").update(updateData).eq("id", id);
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
+    }
+    if (data.banco_horas_id && data.tipo_cobranca === "Banco de Horas") {
+      try {
+        await requerimentoBancoService.definirBanco(id, data.banco_horas_id);
+      } catch (erro) {
+        const motivo = erro instanceof Error ? erro.message : String(erro);
+        throw new Error(`Requerimento salvo, mas o banco n\xE3o foi gravado: ${motivo}`);
+      }
     }
   }
   /**
@@ -26635,6 +26699,11 @@ var ptBR = {
     billingType: "Tipo de Cobran\xE7a",
     billingMonthYear: "M\xEAs/Ano de Cobran\xE7a",
     billingMonthYearPlaceholder: "Selecione m\xEAs e ano (opcional)",
+    bank: "Banco de horas",
+    bankPlaceholder: "Selecione o banco",
+    bankHelp: "Banco que recebe o desconto deste requerimento.",
+    bankNoneInMonth: "Nenhum banco vigente no m\xEAs de cobran\xE7a",
+    bankRequired: "Banco de horas \xE9 obrigat\xF3rio",
     onSiteService: "Atendimento presencial",
     selectBillingType: "Selecione o tipo de cobran\xE7a",
     technicalLanguage: "Linguagem T\xE9cnica",
@@ -29091,6 +29160,11 @@ var en = {
     billingType: "Billing Type",
     billingMonthYear: "Billing Month/Year",
     billingMonthYearPlaceholder: "Select month and year (optional)",
+    bank: "Hour bank",
+    bankPlaceholder: "Select the bank",
+    bankHelp: "Bank charged for this request.",
+    bankNoneInMonth: "No bank in effect in the billing month",
+    bankRequired: "Hour bank is required",
     onSiteService: "On-site service",
     selectBillingType: "Select billing type",
     technicalLanguage: "Technical Language",
@@ -31547,6 +31621,11 @@ var es = {
     billingType: "Tipo de Cobro",
     billingMonthYear: "Mes/A\xF1o de Cobro",
     billingMonthYearPlaceholder: "Seleccione mes y a\xF1o (opcional)",
+    bank: "Banco de horas",
+    bankPlaceholder: "Seleccione el banco",
+    bankHelp: "Banco que recibe el descuento de este requerimiento.",
+    bankNoneInMonth: "Ning\xFAn banco vigente en el mes de cobro",
+    bankRequired: "El banco de horas es obligatorio",
     onSiteService: "Atenci\xF3n presencial",
     selectBillingType: "Seleccione el tipo de cobro",
     technicalLanguage: "Lenguaje T\xE9cnico",

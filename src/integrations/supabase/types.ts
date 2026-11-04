@@ -7113,6 +7113,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      requerimento_bancos_disponiveis: {
+        Args: { p_empresa_id: string; p_requerimento_id?: string }
+        Returns: {
+          banco_id: string
+          escolhido: boolean
+          fim_vigencia: string
+          inicio_vigencia: string
+          nome: string
+          ordem: number
+          padrao: boolean
+        }[]
+      }
+      requerimento_definir_banco: {
+        Args: { p_banco_id: string; p_requerimento_id: string }
+        Returns: undefined
+      }
       salvar_menu: {
         Args: { p_aparencia?: Json; p_itens: Json }
         Returns: undefined
