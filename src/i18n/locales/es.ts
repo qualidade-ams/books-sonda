@@ -908,6 +908,8 @@ const es = {
         'Requerimientos en curso que aún no han sido enviados para facturación',
       requirementsInDevelopmentTotal: 'Total de Requerimientos',
       requirementsInDevelopmentHours: 'Total de Horas',
+      requirementsTicketsTotal: 'Total de Tickets',
+      requirementsTicketsColumn: 'Tickets',
       requirementsInDevelopmentStatus: 'En Desarrollo',
       requirementsInDevelopmentStatusLabel: 'Estado',
       requirementsCompensatedTitle: 'Requerimientos Compensados',

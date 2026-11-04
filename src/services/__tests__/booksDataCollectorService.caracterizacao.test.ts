@@ -554,7 +554,7 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
       ]);
     });
 
-    it('descontado: total = funcional + técnico em "HH:MM:00"; tickets sempre 0; valor_total 0 se faltar um dos dois valores; ticket externo pelo número sem "RF-"', async () => {
+    it('descontado: total = funcional + técnico em "HH:MM:00"; tickets = quantidade_tickets; valor_total 0 se faltar um dos dois valores; ticket externo pelo número sem "RF-"', async () => {
       responder(ehDescontados, [
         {
           id: 'req-1',
@@ -592,7 +592,7 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
           horas_funcional: '1.5',
           horas_tecnica: '0.25',
           total_horas: '01:45:00',
-          tickets: 0,
+          tickets: 4,
           data_envio: '2026-01-20',
           data_aprovacao: null,
           valor_total: 0,
@@ -650,6 +650,32 @@ describe('Caracterização — regra de consumo do BOOK (booksDataCollectorServi
         numero_chamado: 'RF-1',
         descricao: 'Nova interface',
       });
+    });
+
+    it('contrato "tickets": em desenvolvimento e faturados levam a quantidade de tickets', async () => {
+      responder(ehEmDesenvolvimento, [
+        { id: 'req-d', chamado: 'RF-1', data_envio: '2026-01-10', quantidade_tickets: 3 },
+      ]);
+      responder(ehFaturadosDoBook, [
+        { id: 'req-f', chamado: 'RF-2', mes_cobranca: '01/2026', quantidade_tickets: 5 },
+      ]);
+
+      const { requerimentos_em_desenvolvimento, requerimentos_faturados } = await coletar({
+        tipo_contrato: 'tickets',
+      });
+
+      expect(requerimentos_em_desenvolvimento[0].tickets).toBe(3);
+      expect(requerimentos_faturados[0].tickets).toBe(5);
+    });
+
+    it('contrato "horas": as abas de requerimentos não levam tickets', async () => {
+      responder(ehEmDesenvolvimento, [
+        { id: 'req-d', chamado: 'RF-1', data_envio: '2026-01-10', quantidade_tickets: 3 },
+      ]);
+
+      const { requerimentos_em_desenvolvimento } = await coletar({ tipo_contrato: 'horas' });
+
+      expect(requerimentos_em_desenvolvimento[0]).not.toHaveProperty('tickets');
     });
 
     it('coleta os requerimentos faturados do mês para a aba "Requerimentos Faturados"', async () => {

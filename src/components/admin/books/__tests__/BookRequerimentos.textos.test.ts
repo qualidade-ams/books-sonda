@@ -21,4 +21,13 @@ describe('textos das abas de requerimentos do book', () => {
       expect(locale.books.bookContent.requirementsCompensatedTitle).toBe(compensados);
     }
   );
+
+  it.each([
+    ['pt-BR', ptBR, 'Total de Tickets'],
+    ['en', en, 'Total Tickets'],
+    ['es', es, 'Total de Tickets'],
+  ])('%s: rótulos de tickets das abas de requerimentos', (_idioma, locale: any, total) => {
+    expect(locale.books.bookContent.requirementsTicketsTotal).toBe(total);
+    expect(locale.books.bookContent.requirementsTicketsColumn).toBe('Tickets');
+  });
 });

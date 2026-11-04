@@ -104,4 +104,41 @@ describe('BookRequerimentos', () => {
     ).parentElement!;
     expect(within(cards).getByText('84:00')).toBeInTheDocument();
   });
+
+  describe('cliente com contrato de tickets (linhas com "tickets")', () => {
+    const LINHAS_TICKETS = [
+      { ...LINHAS[0], tickets: 5 },
+      { ...LINHAS[1], tickets: 2 },
+    ];
+
+    it('o card de resumo mostra o total de tickets no lugar do total de horas', () => {
+      render(<BookRequerimentos data={LINHAS_TICKETS} variante="faturado" />);
+
+      expect(
+        screen.queryByText('books.bookContent.requirementsInDevelopmentHours')
+      ).not.toBeInTheDocument();
+      const card = screen.getByText('books.bookContent.requirementsTicketsTotal').parentElement!;
+      expect(within(card).getByText('7')).toBeInTheDocument();
+    });
+
+    it('a tabela troca as colunas de horas pela coluna Tickets', () => {
+      render(<BookRequerimentos data={LINHAS_TICKETS} variante="faturado" />);
+
+      expect(screen.getByText('books.bookContent.requirementsTicketsColumn')).toBeInTheDocument();
+      [
+        'books.bookContent.requirementsFunctionalColumn',
+        'books.bookContent.requirementsTechnicalColumn',
+        'books.bookContent.requirementsTotalColumn',
+      ].forEach((coluna) => expect(screen.queryByText(coluna)).not.toBeInTheDocument());
+      expect(screen.queryByText('60:00')).not.toBeInTheDocument();
+      expect(screen.queryByText('84:00')).not.toBeInTheDocument();
+    });
+
+    it('cada linha mostra a quantidade de tickets do requerimento', () => {
+      render(<BookRequerimentos data={LINHAS_TICKETS} variante="faturado" />);
+
+      const linha = screen.getByText('RF-9175039').closest('tr')!;
+      expect(within(linha).getByText('5')).toBeInTheDocument();
+    });
+  });
 });

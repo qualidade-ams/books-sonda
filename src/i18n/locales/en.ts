@@ -907,6 +907,8 @@ const en = {
       requirementsInDevelopmentSubtitle: 'Ongoing requirements not yet sent for billing',
       requirementsInDevelopmentTotal: 'Total Requirements',
       requirementsInDevelopmentHours: 'Total Hours',
+      requirementsTicketsTotal: 'Total Tickets',
+      requirementsTicketsColumn: 'Tickets',
       requirementsInDevelopmentStatus: 'In Progress',
       requirementsInDevelopmentStatusLabel: 'Status',
       requirementsCompensatedTitle: 'Offset Requirements',
