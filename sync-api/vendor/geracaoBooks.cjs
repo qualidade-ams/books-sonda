@@ -14861,10 +14861,15 @@ function formatarData(data) {
   const [ano, mes, dia] = data.split("-");
   return `${dia}/${mes}/${ano}`;
 }
+function contratoEmTickets(tipoContrato) {
+  const tipo = (tipoContrato || "").toLowerCase();
+  return tipo === "tickets" || tipo === "ticket" || tipo === "ambos";
+}
 function formatarRequerimentoParaBook(req, opcoes) {
   const minutosFuncional = paraMinutos(req.horas_funcional);
   const minutosTecnico = paraMinutos(req.horas_tecnico);
   return {
+    ...opcoes.emTickets ? { tickets: Number(req.quantidade_tickets) || 0 } : {},
     id: req.id,
     numero_chamado: req.chamado || "--",
     ticket_externo: opcoes.ticketExterno,
@@ -14902,13 +14907,15 @@ async function buscarRequerimentosFaturadosParaBook(empresaId, mes, ano) {
 async function formatarLinhas(empresaId, requerimentos, status) {
   if (requerimentos.length === 0) return [];
   const ticketsExternos = await buscarTicketsExternos(requerimentos.map((req) => req.chamado));
-  const { data: empresa } = await supabase.from("empresas_clientes").select("nome_abreviado").eq("id", empresaId).single();
+  const { data: empresa } = await supabase.from("empresas_clientes").select("nome_abreviado, tipo_contrato").eq("id", empresaId).single();
   const nomeCliente = empresa?.nome_abreviado || "--";
+  const emTickets = contratoEmTickets(empresa?.tipo_contrato);
   return requerimentos.map(
     (req) => formatarRequerimentoParaBook(req, {
       nomeCliente,
       ticketExterno: ticketsExternos[(req.chamado || "").replace("RF-", "")] || "",
-      status
+      status,
+      emTickets
     })
   );
 }
@@ -17238,7 +17245,7 @@ var BooksDataCollectorService = class {
           horas_funcional: req.horas_funcional?.toString() || "00:00",
           horas_tecnica: req.horas_tecnico?.toString() || "00:00",
           total_horas: totalHorasFormatado,
-          tickets: 0,
+          tickets: Number(req.quantidade_tickets) || 0,
           data_envio: req.data_envio_faturamento || null,
           data_aprovacao: req.data_aprovacao || null,
           valor_total: req.valor_total_funcional && req.valor_total_tecnico ? (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0) : 0,
@@ -17295,8 +17302,9 @@ var BooksDataCollectorService = class {
           });
         }
       }
-      const { data: empresaData } = await supabase.from("empresas_clientes").select("nome_abreviado").eq("id", empresaId).single();
+      const { data: empresaData } = await supabase.from("empresas_clientes").select("nome_abreviado, tipo_contrato").eq("id", empresaId).single();
       const nomeCliente = empresaData?.nome_abreviado || "--";
+      const emTickets = contratoEmTickets(empresaData?.tipo_contrato);
       return requerimentosFiltrados.map((req) => {
         let horasFuncional = 0;
         let horasTecnico = 0;
@@ -17326,6 +17334,7 @@ var BooksDataCollectorService = class {
         const horasTecH = Math.floor(horasTecnico);
         const horasTecM = Math.round((horasTecnico - horasTecH) * 60);
         return {
+          ...emTickets ? { tickets: Number(req.quantidade_tickets) || 0 } : {},
           id: req.id,
           numero_chamado: req.chamado || "--",
           ticket_externo: ticketExternoMap[(req.chamado || "").replace("RF-", "")] || "",
@@ -26705,6 +26714,8 @@ var ptBR = {
       requirementsInDevelopmentSubtitle: "Requerimentos em andamento que ainda n\xE3o foram considerados no banco de horas/faturamento",
       requirementsInDevelopmentTotal: "Total de Requerimentos",
       requirementsInDevelopmentHours: "Total de Horas",
+      requirementsTicketsTotal: "Total de Tickets",
+      requirementsTicketsColumn: "Tickets",
       requirementsInDevelopmentStatus: "Em Andamento",
       requirementsInDevelopmentStatusLabel: "Status",
       requirementsCompensatedTitle: "Requerimentos Compensados",
@@ -29166,6 +29177,8 @@ var en = {
       requirementsInDevelopmentSubtitle: "Ongoing requirements not yet sent for billing",
       requirementsInDevelopmentTotal: "Total Requirements",
       requirementsInDevelopmentHours: "Total Hours",
+      requirementsTicketsTotal: "Total Tickets",
+      requirementsTicketsColumn: "Tickets",
       requirementsInDevelopmentStatus: "In Progress",
       requirementsInDevelopmentStatusLabel: "Status",
       requirementsCompensatedTitle: "Offset Requirements",
@@ -31627,6 +31640,8 @@ var es = {
       requirementsInDevelopmentSubtitle: "Requerimientos en curso que a\xFAn no han sido enviados para facturaci\xF3n",
       requirementsInDevelopmentTotal: "Total de Requerimientos",
       requirementsInDevelopmentHours: "Total de Horas",
+      requirementsTicketsTotal: "Total de Tickets",
+      requirementsTicketsColumn: "Tickets",
       requirementsInDevelopmentStatus: "En Desarrollo",
       requirementsInDevelopmentStatusLabel: "Estado",
       requirementsCompensatedTitle: "Requerimientos Compensados",

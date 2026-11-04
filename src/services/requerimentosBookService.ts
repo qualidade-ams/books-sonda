@@ -43,14 +43,21 @@ function formatarData(data: string | null | undefined): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+/** Contrato cujo consumo é contado em tickets (mesma regra do BookConsumo e do histórico do book) */
+export function contratoEmTickets(tipoContrato: string | null | undefined): boolean {
+  const tipo = (tipoContrato || '').toLowerCase();
+  return tipo === 'tickets' || tipo === 'ticket' || tipo === 'ambos';
+}
+
 export function formatarRequerimentoParaBook(
   req: Record<string, any>,
-  opcoes: { nomeCliente: string; ticketExterno: string; status: string }
+  opcoes: { nomeCliente: string; ticketExterno: string; status: string; emTickets?: boolean }
 ): RequerimentoEmDesenvolvimentoData {
   const minutosFuncional = paraMinutos(req.horas_funcional);
   const minutosTecnico = paraMinutos(req.horas_tecnico);
 
   return {
+    ...(opcoes.emTickets ? { tickets: Number(req.quantidade_tickets) || 0 } : {}),
     id: req.id,
     numero_chamado: req.chamado || '--',
     ticket_externo: opcoes.ticketExterno,
@@ -208,16 +215,18 @@ async function formatarLinhas(
 
   const { data: empresa } = await supabase
     .from('empresas_clientes')
-    .select('nome_abreviado')
+    .select('nome_abreviado, tipo_contrato')
     .eq('id', empresaId)
     .single();
   const nomeCliente = empresa?.nome_abreviado || '--';
+  const emTickets = contratoEmTickets(empresa?.tipo_contrato);
 
   return requerimentos.map((req) =>
     formatarRequerimentoParaBook(req, {
       nomeCliente,
       ticketExterno: ticketsExternos[(req.chamado || '').replace('RF-', '')] || '',
       status,
+      emTickets,
     })
   );
 }

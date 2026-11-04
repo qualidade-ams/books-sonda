@@ -908,6 +908,8 @@ const ptBR = {
         'Requerimentos em andamento que ainda não foram considerados no banco de horas/faturamento',
       requirementsInDevelopmentTotal: 'Total de Requerimentos',
       requirementsInDevelopmentHours: 'Total de Horas',
+      requirementsTicketsTotal: 'Total de Tickets',
+      requirementsTicketsColumn: 'Tickets',
       requirementsInDevelopmentStatus: 'Em Andamento',
       requirementsInDevelopmentStatusLabel: 'Status',
       requirementsCompensatedTitle: 'Requerimentos Compensados',

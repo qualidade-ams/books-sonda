@@ -126,6 +126,74 @@ describe('requerimentosBookService', () => {
     });
   });
 
+  describe('cliente com contrato de tickets', () => {
+    it('formatarRequerimentoParaBook leva a quantidade de tickets quando o contrato é de tickets', () => {
+      const linha = formatarRequerimentoParaBook(
+        { ...REQ_FATURADO, quantidade_tickets: 5 },
+        { nomeCliente: 'CSN', ticketExterno: '', status: 'Faturado', emTickets: true }
+      );
+
+      expect(linha.tickets).toBe(5);
+    });
+
+    it('formatarRequerimentoParaBook não leva tickets quando o contrato é de horas', () => {
+      const linha = formatarRequerimentoParaBook(
+        { ...REQ_FATURADO, quantidade_tickets: 5 },
+        { nomeCliente: 'SAINT GOBAIN', ticketExterno: '', status: 'Faturado' }
+      );
+
+      expect(linha).not.toHaveProperty('tickets');
+    });
+
+    it.each(['tickets', 'ambos'])(
+      'contrato "%s": as linhas faturadas trazem a quantidade de tickets',
+      async (tipoContrato) => {
+        estado.respostas.empresas_clientes = {
+          data: { nome_abreviado: 'CSN', tipo_contrato: tipoContrato },
+          error: null,
+        };
+        estado.respostas.requerimentos = {
+          data: [{ ...REQ_FATURADO, quantidade_tickets: 5 }],
+          error: null,
+        };
+
+        const linhas = await buscarRequerimentosFaturadosParaBook(EMPRESA_ID, 9, 2026);
+
+        expect(linhas[0].tickets).toBe(5);
+        expect(
+          consultaDe('empresas_clientes').chamadas.find(([m]) => m === 'select')[1][0]
+        ).toContain('tipo_contrato');
+      }
+    );
+
+    it('contrato "tickets" sem quantidade lançada conta 0 tickets', async () => {
+      estado.respostas.empresas_clientes = {
+        data: { nome_abreviado: 'CSN', tipo_contrato: 'tickets' },
+        error: null,
+      };
+      estado.respostas.requerimentos = { data: [REQ_FATURADO], error: null };
+
+      const linhas = await buscarRequerimentosFaturadosParaBook(EMPRESA_ID, 9, 2026);
+
+      expect(linhas[0].tickets).toBe(0);
+    });
+
+    it('contrato "horas": as linhas não trazem tickets', async () => {
+      estado.respostas.empresas_clientes = {
+        data: { nome_abreviado: 'SAINT GOBAIN', tipo_contrato: 'horas' },
+        error: null,
+      };
+      estado.respostas.requerimentos = {
+        data: [{ ...REQ_FATURADO, quantidade_tickets: 5 }],
+        error: null,
+      };
+
+      const linhas = await buscarRequerimentosFaturadosParaBook(EMPRESA_ID, 9, 2026);
+
+      expect(linhas[0]).not.toHaveProperty('tickets');
+    });
+  });
+
   describe('buscarRequerimentosFaturadosParaBook', () => {
     it('busca os requerimentos de Banco de Horas faturados com mês de cobrança do book', async () => {
       estado.respostas.requerimentos = { data: [REQ_FATURADO], error: null };

@@ -289,6 +289,8 @@ export interface RequerimentoEmDesenvolvimentoData {
   status: string;
   valor_total?: number;
   periodo_cobranca?: string;
+  /** Quantidade de tickets; presente só quando o contrato da empresa é de tickets (a aba mostra tickets no lugar das horas) */
+  tickets?: number;
 }
 
 export interface HistoricoConsumoData {
