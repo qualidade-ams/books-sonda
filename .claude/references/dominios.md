@@ -62,7 +62,7 @@ Mexer em Permissões, Auth ou Empresas tem raio de impacto amplo — verifique o
 | Renderização de imagem de email                                                                                          | `api/email/render-image.ts`                                                                                                   |
 | Envio de e-mail (proxy autenticado do webhook Power Automate; a URL assinada fica em `webhook_config`, lida no servidor) | `api/email/send.ts`                                                                                                           |
 | Criação de usuário                                                                                                       | `api/users/create.ts`                                                                                                         |
-| Edge Functions (Deno)                                                                                                    | `supabase/functions/{admin-reset-password,create-user,sync-elogios-sql-server}`                                               |
+| Edge Functions (Deno)                                                                                                    | `supabase/functions/{admin-reset-password,consulta-empresas,create-user,sync-elogios-sql-server}`                             |
 | Sync SQL Server externo                                                                                                  | `sync-api/` (Node, serviço Windows no servidor interno, exposto via Cloudflare Tunnel em `https://sync-api.sondalyze.com.br`) |
 
 ## Armadilhas conhecidas
