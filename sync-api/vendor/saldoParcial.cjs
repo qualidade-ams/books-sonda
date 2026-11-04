@@ -18878,13 +18878,15 @@ var RequerimentosService = class {
       enviado_faturamento: false
       // Nota: horas_analise_ef NÃO é salvo no banco - é apenas para controle do formulário
     };
-    const { data: requerimento, error } = await supabase.from("requerimentos").insert(requerimentoData).select(`
+    const { data: requerimento, error } = await supabase.from("requerimentos").insert(requerimentoData).select(
+      `
         *,
         cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
-      `).single();
+      `
+    ).single();
     if (error) {
       throw new Error(`Erro ao criar requerimento: ${error.message}`);
     }
@@ -19043,10 +19045,12 @@ var RequerimentosService = class {
     if (error) {
       throw new Error(`Erro ao listar requerimentos: ${error.message}`);
     }
-    const userIds = [...new Set((data || []).map((req) => req.autor_id).filter(Boolean))];
+    const userIds = [
+      ...new Set((data || []).map((req) => req.autor_id).filter(Boolean))
+    ];
     const usersMap = await this.resolverNomesUsuarios(userIds);
     const chamadosNumeros = (data || []).map((req) => (req.chamado || "").replace("RF-", "")).filter(Boolean);
-    let ticketExternoMap = {};
+    const ticketExternoMap = {};
     if (chamadosNumeros.length > 0) {
       const { data: ticketsData } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, ticket_externo").in("nro_solicitacao", chamadosNumeros);
       if (ticketsData) {
@@ -19129,13 +19133,15 @@ var RequerimentosService = class {
     if (!id?.trim()) {
       throw new Error("ID \xE9 obrigat\xF3rio");
     }
-    const { data, error } = await supabase.from("requerimentos").select(`
+    const { data, error } = await supabase.from("requerimentos").select(
+      `
         *,
         cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
-      `).eq("id", id).single();
+      `
+    ).eq("id", id).single();
     if (error) {
       if (error.code === "PGRST116") {
         return null;
@@ -19175,7 +19181,8 @@ var RequerimentosService = class {
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
     if (data.data_envio) updateData.data_envio = data.data_envio;
-    if (data.data_aprovacao !== void 0) updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
+    if (data.data_aprovacao !== void 0)
+      updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
     if (data.horas_funcional !== void 0) {
       updateData.horas_funcional = typeof data.horas_funcional === "string" ? converterParaHorasDecimal(data.horas_funcional) : data.horas_funcional;
     }
@@ -19193,13 +19200,19 @@ var RequerimentosService = class {
       if (hFunc > 0 && hTec === 0) updateData.linguagem = "Funcional";
     }
     if (data.tipo_cobranca) updateData.tipo_cobranca = data.tipo_cobranca;
-    if (data.mes_cobranca !== void 0) updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
+    if (data.mes_cobranca !== void 0)
+      updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
     if (data.observacao !== void 0) updateData.observacao = data.observacao?.trim() || null;
-    if (data.valor_hora_funcional !== void 0) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
-    if (data.valor_hora_tecnico !== void 0) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
-    if (data.valor_hora_gestor !== void 0) updateData.valor_hora_gestor = data.valor_hora_gestor || null;
-    if (data.tipo_hora_extra !== void 0) updateData.tipo_hora_extra = data.tipo_hora_extra || null;
-    if (data.quantidade_tickets !== void 0) updateData.quantidade_tickets = data.quantidade_tickets || null;
+    if (data.valor_hora_funcional !== void 0)
+      updateData.valor_hora_funcional = data.valor_hora_funcional || null;
+    if (data.valor_hora_tecnico !== void 0)
+      updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
+    if (data.valor_hora_gestor !== void 0)
+      updateData.valor_hora_gestor = data.valor_hora_gestor || null;
+    if (data.tipo_hora_extra !== void 0)
+      updateData.tipo_hora_extra = data.tipo_hora_extra || null;
+    if (data.quantidade_tickets !== void 0)
+      updateData.quantidade_tickets = data.quantidade_tickets || null;
     const { error } = await supabase.from("requerimentos").update(updateData).eq("id", id);
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
@@ -19247,10 +19260,14 @@ var RequerimentosService = class {
       throw new Error("Requerimento j\xE1 foi enviado para faturamento");
     }
     if (!requerimento.tipo_cobranca) {
-      throw new Error("\xC9 necess\xE1rio selecionar um tipo de cobran\xE7a v\xE1lido antes de enviar para faturamento");
+      throw new Error(
+        "\xC9 necess\xE1rio selecionar um tipo de cobran\xE7a v\xE1lido antes de enviar para faturamento"
+      );
     }
     if (!requerimento.mes_cobranca || !requerimento.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
-      throw new Error("M\xEAs de cobran\xE7a \xE9 obrigat\xF3rio para envio ao faturamento e deve estar no formato MM/YYYY");
+      throw new Error(
+        "M\xEAs de cobran\xE7a \xE9 obrigat\xF3rio para envio ao faturamento e deve estar no formato MM/YYYY"
+      );
     }
     if (!requerimento.data_aprovacao || requerimento.data_aprovacao.trim() === "") {
       throw new Error("Data de aprova\xE7\xE3o do or\xE7amento \xE9 obrigat\xF3ria para envio ao faturamento");
@@ -19277,7 +19294,9 @@ var RequerimentosService = class {
       throw new Error("Requerimento n\xE3o encontrado");
     }
     if (requerimento.status !== "enviado_faturamento" && requerimento.status !== "faturado") {
-      throw new Error("Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados");
+      throw new Error(
+        "Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados"
+      );
     }
     const { error } = await supabase.from("requerimentos").update({
       status: "lancado",
@@ -19305,9 +19324,13 @@ var RequerimentosService = class {
     if (!requerimentos || requerimentos.length !== ids.length) {
       throw new Error("Um ou mais requerimentos n\xE3o foram encontrados");
     }
-    const requerimentosInvalidos = requerimentos.filter((req) => req.status !== "enviado_faturamento");
+    const requerimentosInvalidos = requerimentos.filter(
+      (req) => req.status !== "enviado_faturamento"
+    );
     if (requerimentosInvalidos.length > 0) {
-      throw new Error(`Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inv\xE1lidos: ${requerimentosInvalidos.map((r) => r.chamado).join(", ")}`);
+      throw new Error(
+        `Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inv\xE1lidos: ${requerimentosInvalidos.map((r) => r.chamado).join(", ")}`
+      );
     }
     const { error } = await supabase.from("requerimentos").update({
       status: "faturado",
@@ -19640,10 +19663,7 @@ var RequerimentosService = class {
     const horasTecnico = typeof data.horas_tecnico === "number" ? converterDeHorasDecimal(data.horas_tecnico) : data.horas_tecnico;
     const horasGestor = typeof data.horas_gestor === "number" ? converterDeHorasDecimal(data.horas_gestor) : data.horas_gestor;
     const horasTotal = somarHoras(
-      somarHoras(
-        horasFuncional?.toString() || "0",
-        horasTecnico?.toString() || "0"
-      ),
+      somarHoras(horasFuncional?.toString() || "0", horasTecnico?.toString() || "0"),
       horasGestor?.toString() || "0"
     );
     return {
