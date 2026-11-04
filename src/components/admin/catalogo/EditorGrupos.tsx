@@ -26,9 +26,7 @@ function useOndeEsta(catalogo: Catalogo) {
           produto: nome(catalogo.produtos, v.produtoId),
           modulo: nome(catalogo.modulos, v.moduloId),
         })
-      : v.produtoId
-        ? t('produtosModulos.grupos.emProduto', { produto: nome(catalogo.produtos, v.produtoId) })
-        : t('produtosModulos.grupos.servicoDe', { solucao: nome(catalogo.solucoes, v.solucaoId) });
+      : t('produtosModulos.grupos.emProduto', { produto: nome(catalogo.produtos, v.produtoId) });
   return (g: MapeamentoGrupo) =>
     g.vinculos.length ? g.vinculos.map(lugar).join(' · ') : t('produtosModulos.grupos.semSolucao');
 }

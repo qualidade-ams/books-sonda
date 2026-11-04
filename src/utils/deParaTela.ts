@@ -81,6 +81,9 @@ export const grupoJaMapeado = (grupo: string, mapeamentos: MapeamentoGrupo[]) =>
   return mapeamentos.some((m) => m.grupoAranda.toLowerCase() === chave);
 };
 
+/** Só a solução não é destino: o grupo de serviço deixou de existir (03/11/2026) */
+export const faltaProduto = (destino: DestinoGrupo) => !!destino.solucaoId && !destino.produtoId;
+
 export const destinoMudou = (atual: DestinoGrupo, novo: DestinoGrupo) =>
   atual.solucaoId !== novo.solucaoId ||
   atual.produtoId !== novo.produtoId ||
@@ -161,9 +164,10 @@ function destinoDaLinha(
     };
   const soSolucao = { ...SEM_DESTINO, solucaoId: solucao.id };
   if (!v.produto)
-    return v.modulo
-      ? { destino: soSolucao, erro: { chave: 'moduloSemProduto' } }
-      : { destino: soSolucao };
+    return {
+      destino: soSolucao,
+      erro: { chave: v.modulo ? 'moduloSemProduto' : 'produtoVazio' },
+    };
 
   const produto = catalogo.produtos.find(
     (p) => p.ativo && p.solucaoId === solucao.id && igual(p.nome, v.produto)

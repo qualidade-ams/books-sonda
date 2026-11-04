@@ -18,7 +18,6 @@ const deParaGrupos = {
   classificacao: {
     modulo: 'With module',
     produto: 'All modules',
-    solucao: 'Service group',
     nao_se_aplica: 'Not applicable',
   },
   destino: {
@@ -26,14 +25,14 @@ const deParaGrupos = {
     produto: 'Product',
     modulo: 'Module',
     nenhumaSolucao: 'None (not applicable)',
-    nenhumProduto: 'None (service group)',
+    escolhaProduto: 'Choose the product',
     todosModulos: 'All modules',
     produtoSemModulos: 'Product without modules',
-    servico: 'service',
     textoModulo:
       'Bank that covers {{produto}} › {{modulo}} or the whole product; without a bank, the default bank.',
     textoProduto: 'Bank that covers the whole {{produto}}; without a bank, the default bank.',
-    textoSolucao: 'Service group of {{solucao}}: always the default bank.',
+    textoSemProduto:
+      'Choose the product. A group that serves the whole solution (DBA, Technical…) goes in each of its products.',
     textoNenhum: 'Always the default bank.',
   },
   lista: {
@@ -120,7 +119,7 @@ const deParaGrupos = {
     solucao:
       'Solution of the group. Without a solution, the group is "not applicable" (DEDICATED, T&M…) and its hours always go to the default bank.',
     produto:
-      'Product of the group. With only the solution and no product, it is a service group (DBA, Technical…): its hours always go to the default bank.',
+      'Product of the group, required with the solution. A group that serves the whole solution (DBA, Technical…) is linked to each of its products, in Products and Modules.',
     modulo:
       'Module of the group. Without a module, the hours go to the bank that covers the whole product or, if there is none, to the default bank.',
     paraOnde:
@@ -143,7 +142,7 @@ const deParaGrupos = {
       grupo:
         'The group is found by its Aranda name (case-insensitive); if already mapped, the row updates the mapping.',
       destino:
-        'Without a product, the group is a service group of the solution; without a solution, "not applicable". Both go to the default bank.',
+        'With a solution, the product is required. Without a solution, the group is "not applicable" and its hours go to the default bank.',
       catalogo: 'Solution, product and module must exist and be active in Products and Modules.',
     },
     aviso: {
@@ -156,6 +155,7 @@ const deParaGrupos = {
       bookVazio: 'Empty Book group.',
       solucaoNaoExiste: 'Solution "{{nome}}" does not exist or is inactive.',
       produtoSemSolucao: "Enter the product's solution.",
+      produtoVazio: "Enter the solution's product.",
       produtoNaoExiste: 'Product "{{nome}}" does not exist in {{solucao}} or is inactive.',
       moduloSemProduto: "Enter the module's product.",
       moduloNaoExiste: 'Module "{{nome}}" does not exist in {{produto}} or is inactive.',

@@ -143,7 +143,7 @@ describe('AbaMapeamentos', () => {
         moduloId: 'cambio',
         vinculos: [
           { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
-          { solucaoId: 's1', produtoId: null, moduloId: null },
+          { solucaoId: 's1', produtoId: 'ce', moduloId: null },
         ],
       },
       'modulo'
@@ -152,7 +152,7 @@ describe('AbaMapeamentos', () => {
     const destinos = lista().getAllByTestId('lugar-do-grupo');
     expect(destinos.map((d) => d.textContent)).toEqual([
       'COMEX › CE PLUS › Câmbio',
-      'COMEX · deParaGrupos.destino.servico',
+      'COMEX › CE PLUS',
     ]);
   });
 
@@ -168,7 +168,7 @@ describe('AbaMapeamentos', () => {
 
   it('a situação vinda do indicador filtra e mostra os filtros abertos', () => {
     renderizar({
-      filtroInicial: { ...SEM_FILTRO, situacao: ['produto', 'solucao', 'nao_se_aplica'] },
+      filtroInicial: { ...SEM_FILTRO, situacao: ['produto', 'nao_se_aplica'] },
     });
     expect(lista().queryByText('AMS APL - CAMBIO - N2')).not.toBeInTheDocument();
     expect(lista().getByText('DEDICADOS')).toBeInTheDocument();
@@ -193,6 +193,10 @@ describe('AbaMapeamentos', () => {
     expect(screen.getByText('deParaGrupos.lista.selecionados.varios {"n":2}')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('combobox', { name: 'deParaGrupos.destino.solucao' }));
     await userEvent.click(screen.getByRole('option', { name: 'COMEX' }));
+    // Só a solução não é destino: o grupo de serviço deixou de existir (03/11/2026)
+    expect(screen.getByRole('button', { name: 'deParaGrupos.lista.atribuir' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('combobox', { name: 'deParaGrupos.destino.produto' }));
+    await userEvent.click(screen.getByRole('option', { name: 'CE PLUS' }));
     fireEvent.click(screen.getByRole('button', { name: 'deParaGrupos.lista.atribuir' }));
     const dialogo = screen.getByRole('alertdialog', {
       name: 'deParaGrupos.lote.titulo.varios {"n":2}',
@@ -204,7 +208,7 @@ describe('AbaMapeamentos', () => {
     await waitFor(() =>
       expect(onAtribuir).toHaveBeenCalledWith(['g1', 'g2'], {
         solucaoId: 's1',
-        produtoId: null,
+        produtoId: 'ce',
         moduloId: null,
       })
     );

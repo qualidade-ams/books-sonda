@@ -66,7 +66,6 @@ const DICAS: [string, string][] = [
   ['produtosModulos.edicao.solucao.codigo', 'codigo'],
   ['produtosModulos.edicao.solucao.nome', 'nomeSolucao'],
   ['produtosModulos.edicao.solucao.ativa', 'solucaoAtiva'],
-  ['produtosModulos.solucao.gruposServico', 'gruposServico'],
   ['produtosModulos.edicao.produto.solucao', 'solucao'],
   ['produtosModulos.edicao.produto.nome', 'nomeProduto'],
   ['produtosModulos.edicao.produto.descricao', 'descricao'],
@@ -281,7 +280,9 @@ export default function ProdutosModulos() {
           key={editando.solucao?.id ?? 'nova'}
           {...comuns}
           solucao={editando.solucao}
-          onSalvar={comGrupos('solucao', salvarSolucao)}
+          onSalvar={async (dados) => {
+            await salvarSolucao(dados);
+          }}
           onExcluir={
             editando.solucao && solucaoSemUso(editando.solucao, catalogo, usoDoCatalogo)
               ? () =>

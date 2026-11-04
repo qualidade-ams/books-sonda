@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import { useUltimaAlteracao } from '@/hooks/useUltimaAlteracao';
 import { classificar } from '@/services/deParaService';
-import { destinoMudou, grupoJaMapeado, gruposDoBook } from '@/utils/deParaTela';
+import { destinoMudou, faltaProduto, grupoJaMapeado, gruposDoBook } from '@/utils/deParaTela';
 import type { Catalogo } from '@/types/catalogo';
 import type {
   DestinoGrupo,
@@ -99,7 +99,7 @@ export function EdicaoMapeamento({
       voltarPara={t('deParaGrupos.titulo')}
       titulo={novo ? t('deParaGrupos.edicao.novo') : mapeamento.grupoAranda}
       subtitulo={ultimaAlteracao}
-      podeSalvar={!erroGrupo && !erroBook && !salvando}
+      podeSalvar={!erroGrupo && !erroBook && !faltaProduto(destino) && !salvando}
       rotuloSalvar={novo ? t('deParaGrupos.edicao.mapear') : undefined}
       onFechar={onFechar}
       onSalvar={() =>

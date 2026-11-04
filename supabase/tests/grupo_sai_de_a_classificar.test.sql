@@ -1,7 +1,8 @@
 -- =====================================================================
 -- Teste da migration 20261103000002_grupo_sai_de_a_classificar
 -- (vincular o grupo a um lugar de verdade tira o grupo do "A classificar"
--- da mesma solução).
+-- da mesma solução). Ajustado para a migration 20261103000005: sem o grupo
+-- de serviço da solução, vincular só pela solução é recusado.
 --
 -- Um único bloco DO. Se todas as verificações passarem, termina com o ERRO
 -- proposital "TESTE OK — tudo revertido", que desfaz tudo o que o teste gravou.
@@ -17,6 +18,7 @@ DECLARE
   v_mac uuid;               -- módulo dentro do "A classificar" de S1
   v_m1 uuid;                -- módulo de P1
   v_g uuid;
+  v_falhou boolean;
 BEGIN
   IF v_admin IS NULL THEN
     RAISE EXCEPTION 'Preparação: nenhum usuário no grupo Administradores';
@@ -57,12 +59,20 @@ BEGIN
     RAISE EXCEPTION '2. Vinculado ao módulo M1, o grupo deveria sair do módulo do "A classificar"';
   END IF;
 
-  -- 3. Vincular ao serviço da solução também tira do "A classificar" dela
+  -- 3. Sem grupo de serviço (20261103000005): vincular só pela solução é recusado
+  --    e o grupo continua no "A classificar"
   PERFORM grupos_aranda_vincular(ARRAY[v_g], NULL, NULL, NULL, true);
   PERFORM grupos_aranda_vincular(ARRAY[v_g], NULL, v_ac1, NULL);
-  PERFORM grupos_aranda_vincular(ARRAY[v_g], v_s1, NULL, NULL);
-  IF EXISTS (SELECT 1 FROM grupos_aranda_vinculos WHERE grupo_id = v_g AND produto_id = v_ac1) THEN
-    RAISE EXCEPTION '3. Vinculado ao serviço de S1, o grupo deveria sair do "A classificar" de S1';
+  v_falhou := false;
+  BEGIN
+    PERFORM grupos_aranda_vincular(ARRAY[v_g], v_s1, NULL, NULL);
+  EXCEPTION WHEN check_violation THEN v_falhou := true;
+  END;
+  IF NOT v_falhou THEN
+    RAISE EXCEPTION '3. Vincular só pela solução deveria ser recusado';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM grupos_aranda_vinculos WHERE grupo_id = v_g AND produto_id = v_ac1) THEN
+    RAISE EXCEPTION '3. O grupo deveria continuar no "A classificar" de S1';
   END IF;
 
   -- 4. Um produto de outra solução não mexe no "A classificar" de S1
@@ -95,8 +105,7 @@ BEGIN
                FROM grupos_aranda_vinculos v
                JOIN produtos p ON p.id = v.produto_id AND p.a_classificar
                JOIN grupos_aranda_vinculos o ON o.grupo_id = v.grupo_id AND o.solucao_id = v.solucao_id AND o.id <> v.id
-              WHERE o.produto_id IS NULL
-                 OR NOT EXISTS (SELECT 1 FROM produtos q WHERE q.id = o.produto_id AND q.a_classificar)) THEN
+              WHERE NOT EXISTS (SELECT 1 FROM produtos q WHERE q.id = o.produto_id AND q.a_classificar)) THEN
     RAISE EXCEPTION '7. Há grupo no "A classificar" e num lugar de verdade da mesma solução';
   END IF;
 

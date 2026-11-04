@@ -19,7 +19,6 @@ import { useUltimaAlteracao } from '@/hooks/useUltimaAlteracao';
 import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import {
-  gruposDaSolucao,
   gruposDoModulo,
   gruposSoDoProduto,
   mudancasDeGrupos,
@@ -45,6 +44,8 @@ export interface MudancasGrupos {
   vincular: string[];
   desvincular: string[];
 }
+
+const SEM_MUDANCAS: MudancasGrupos = { vincular: [], desvincular: [] };
 
 interface Comuns {
   catalogo: Catalogo;
@@ -128,14 +129,12 @@ function SecaoGrupos({ titulo, children }: { titulo: string; children: ReactNode
 export function EdicaoSolucao({
   solucao,
   catalogo,
-  mapeamentos,
-  podeEditarGrupos,
   onFechar,
   onSalvar,
   onExcluir,
 }: Comuns & {
   solucao: Solucao | null;
-  onSalvar: (dados: SolucaoInput, grupos: MudancasGrupos) => Promise<void>;
+  onSalvar: (dados: SolucaoInput) => Promise<void>;
   /** Só para a solução que nunca foi usada */
   onExcluir?: () => void;
 }) {
@@ -145,9 +144,8 @@ export function EdicaoSolucao({
   const [codigo, setCodigo] = useState(solucao?.codigo ?? '');
   const [nome, setNome] = useState(solucao?.nome ?? '');
   const [ativo, setAtivo] = useState(solucao?.ativo ?? true);
-  const inicial = solucao ? gruposDaSolucao(mapeamentos, solucao.id) : [];
-  const [grupos, setGrupos] = useState(inicial);
-  const { salvando, salvar } = useSalvar(onSalvar, onFechar);
+  // A solução não tem grupos: eles ficam nos produtos e módulos (03/11/2026)
+  const { salvando, salvar } = useSalvar<SolucaoInput>((dados) => onSalvar(dados), onFechar);
 
   const outras = catalogo.solucoes.filter((s) => s.id !== solucao?.id);
   const erroCodigo = !codigo.trim()
@@ -180,7 +178,7 @@ export function EdicaoSolucao({
             nome: nome.trim(),
             ativo,
           },
-          mudancasDeGrupos(inicial, grupos, mapeamentos)
+          SEM_MUDANCAS
         )
       }
     >
@@ -221,21 +219,6 @@ export function EdicaoSolucao({
           />
         )}
       </Secao>
-      {!novo && (
-        <SecaoGrupos titulo={t('produtosModulos.solucao.gruposServico')}>
-          <EditorGrupos
-            alvo={{ tipo: 'solucao', id: solucao.id }}
-            catalogo={catalogo}
-            mapeamentos={mapeamentos}
-            inicial={inicial}
-            grupos={grupos}
-            onChange={setGrupos}
-            vazioTexto={t('produtosModulos.solucao.nenhumGrupoServico')}
-            ajuda={t('produtosModulos.edicao.solucao.ajudaServico')}
-            somenteLeitura={!podeEditarGrupos}
-          />
-        </SecaoGrupos>
-      )}
       {!novo && onExcluir && (
         <Secao titulo={t('produtosModulos.edicao.solucao.excluirTitulo')}>
           <Ajuda>{t('produtosModulos.edicao.solucao.excluirAjuda')}</Ajuda>

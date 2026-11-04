@@ -69,12 +69,13 @@ export function EscolhaDestino({
           aria-label={rotulo}
           value={produtoId ?? ''}
           disabled={!solucaoId}
+          aria-invalid={!!solucaoId && !produtoId}
           onChange={(e) =>
             onChange({ solucaoId, produtoId: e.target.value || null, moduloId: null })
           }
           className="w-full"
         >
-          <option value="">{t('deParaGrupos.destino.nenhumProduto')}</option>
+          <option value="">{t('deParaGrupos.destino.escolhaProduto')}</option>
           {produtos.map((p) => (
             <option key={p.id} value={p.id}>
               {p.nome}
@@ -130,10 +131,7 @@ export function EscolhaDestino({
   );
 }
 
-/**
- * Destino na linha da lista: cada lugar do grupo numa linha (solução › produto › módulo ou
- * "serviço"); sem lugar, "não se aplica"
- */
+/** Destino na linha da lista: cada lugar do grupo numa linha; sem lugar, "não se aplica" */
 export function DestinoNaLista({ m, catalogo }: { m: MapeamentoGrupo; catalogo: Catalogo }) {
   const { t } = useTranslation();
   if (!m.vinculos.length)
@@ -148,19 +146,10 @@ export function DestinoNaLista({ m, catalogo }: { m: MapeamentoGrupo; catalogo: 
           data-testid="lugar-do-grupo"
         >
           <span className="text-ds-fg-muted">{nome(catalogo.solucoes, v.solucaoId)}</span>
-          {v.produtoId ? (
-            <>
-              <span className="text-ds-fg-muted"> › </span>
-              <span className="font-medium">{nome(catalogo.produtos, v.produtoId)}</span>
-              {v.moduloId && (
-                <span className="text-ds-fg-secondary">
-                  {' '}
-                  › {nome(catalogo.modulos, v.moduloId)}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-ds-fg-secondary"> · {t('deParaGrupos.destino.servico')}</span>
+          <span className="text-ds-fg-muted"> › </span>
+          <span className="font-medium">{nome(catalogo.produtos, v.produtoId)}</span>
+          {v.moduloId && (
+            <span className="text-ds-fg-secondary"> › {nome(catalogo.modulos, v.moduloId)}</span>
           )}
         </span>
       ))}

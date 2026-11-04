@@ -115,7 +115,8 @@ describe('classificar', () => {
   it('a classificação vem do nível mais fundo do destino', () => {
     expect(classificar({ solucaoId: 's', produtoId: 'p', moduloId: 'm' })).toBe('modulo');
     expect(classificar({ solucaoId: 's', produtoId: 'p', moduloId: null })).toBe('produto');
-    expect(classificar({ solucaoId: 's', produtoId: null, moduloId: null })).toBe('solucao');
+    // Sem produto não há lugar: o grupo de serviço da solução deixou de existir (03/11/2026)
+    expect(classificar({ solucaoId: 's', produtoId: null, moduloId: null })).toBe('nao_se_aplica');
     expect(classificar({ solucaoId: null, produtoId: null, moduloId: null })).toBe('nao_se_aplica');
   });
 });
@@ -210,7 +211,7 @@ describe('DeParaService.salvar', () => {
     await new DeParaService(fake as any).salvar({
       grupoAranda: 'ams apl - antigo - n2',
       grupoBook: 'COMEX - Antigo 2',
-      destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+      destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
     });
     expect(fake.tabelas.grupos_aranda).toHaveLength(3);
     expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g3')).toMatchObject({
@@ -218,7 +219,7 @@ describe('DeParaService.salvar', () => {
       grupo_book: 'COMEX - Antigo 2',
       ativo: true,
     });
-    expect(fake.chamadasRpc).toEqual([vincular(['g3'], destinoRpc('s1', null, null), true)]);
+    expect(fake.chamadasRpc).toEqual([vincular(['g3'], destinoRpc('s1', 'p1', null), true)]);
   });
 
   it('edição muda Grupo do Book e troca os vínculos; nunca o grupo do Aranda', async () => {
@@ -364,7 +365,7 @@ describe('DeParaService.importar', () => {
       {
         grupoAranda: 'AMS APL - NOVO - N2',
         grupoBook: 'COMEX - Novo',
-        destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+        destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
       },
     ]);
     const grupos = fake.tabelas.grupos_aranda;

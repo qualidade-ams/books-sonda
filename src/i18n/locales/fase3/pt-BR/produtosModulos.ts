@@ -42,9 +42,6 @@ const produtosModulos = {
     colunaUso: 'Usado nos bancos',
     semModulos: 'Sem módulos',
     nenhumProduto: 'Nenhum produto nesta solução',
-    gruposServico: 'Grupos de serviço',
-    nenhumGrupoServico: 'Nenhum grupo de serviço nesta solução.',
-    horasServico: 'As horas dos grupos de serviço vão sempre para o Banco padrão da empresa.',
     gruposLigadosA: 'Grupos ligados a {{produto}} inteiro',
     gruposNosModulos: { um: '{{n}} grupo nos módulos', varios: '{{n}} grupos nos módulos' },
     gruposNosModulosDe: 'Grupos nos módulos de {{produto}}',
@@ -87,7 +84,6 @@ const produtosModulos = {
     desvincularGrupo: 'Desvincular {{grupo}}',
     emModulo: 'Em {{produto}} › {{modulo}}',
     emProduto: 'Em {{produto}}, sem módulo',
-    servicoDe: 'Serviço de {{solucao}}',
     semSolucao: 'Sem solução (não se aplica)',
     ficaTambem: 'continua lá e passa a ficar aqui também',
     podeMoverTitulo: 'Pode mover horas entre bancos',
@@ -129,11 +125,10 @@ const produtosModulos = {
       codigoNaoMuda: 'O código não muda depois de criado.',
       excluirTitulo: 'Excluir a solução',
       excluirAjuda:
-        'Esta solução nunca foi usada (sem grupo de serviço, e os produtos dela, se houver, também sem uso). Excluída, ela e os produtos somem do catálogo de vez.',
+        'Esta solução nunca foi usada (sem grupo do Aranda, e os produtos dela, se houver, também sem uso). Excluída, ela e os produtos somem do catálogo de vez.',
       excluir: 'Excluir solução',
       codigoRepetido: 'Já existe uma solução com este código.',
       nomeRepetido: 'Já existe uma solução com este nome.',
-      ajudaServico: 'As horas dos grupos de serviço vão sempre para o Banco padrão.',
     },
     produto: {
       novo: 'Novo produto',
@@ -179,8 +174,6 @@ const produtosModulos = {
     nomeSolucao: 'Nome exibido nas telas e no contrato da empresa. Único.',
     solucaoAtiva:
       'Solução inativa não aparece para empresas novas. As empresas que já a contratam não mudam.',
-    gruposServico:
-      'Grupos do Aranda que atendem a solução toda (DBA, Técnico…), sem ser de um produto. As horas deles vão sempre para o Banco padrão.',
     solucao:
       'A empresa contrata soluções. O produto pertence a uma solução e não muda de solução depois de criado.',
     nomeProduto: 'Nome exibido no escopo dos bancos e no Book. Único na solução.',
