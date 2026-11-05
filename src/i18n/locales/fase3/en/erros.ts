@@ -91,6 +91,7 @@ const erros = {
     moverOModulo: 'Could not move the module: {{detalhe}}',
     reativarOBanco: 'Could not reactivate the bank: {{detalhe}}',
     registrarAVigencia: 'Could not register the validity period: {{detalhe}}',
+    corrigirAVigencia: 'Could not correct the validity period: {{detalhe}}',
     reordenarOsBancos: 'Could not reorder the banks: {{detalhe}}',
     reordenarOsProdutos: 'Could not reorder the products: {{detalhe}}',
     salvarAmsEProjetos: 'Could not save AMS and projects: {{detalhe}}',

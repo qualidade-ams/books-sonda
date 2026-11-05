@@ -175,6 +175,7 @@ const bancosHook = {
   inativar: vi.fn(async () => undefined),
   reativar: vi.fn(async () => undefined),
   novaVigencia: vi.fn(async () => undefined),
+  editarVigencia: vi.fn(async () => undefined),
   recarregar: vi.fn(),
   isSalvando: false,
 };
@@ -201,17 +202,17 @@ beforeEach(() => {
   Object.assign(detalheHook, { empresa: DETALHE, isLoading: false, error: null });
 });
 
-const renderizar = (rota: string) =>
-  render(
-    <MemoryRouter initialEntries={[rota]}>
-      <TooltipProvider>
-        <Routes>
-          <Route path="/admin/empresas" element={<Empresas />} />
-          <Route path="/admin/empresas/:empresaId" element={<EmpresaDetalhe />} />
-        </Routes>
-      </TooltipProvider>
-    </MemoryRouter>
-  );
+const arvore = (rota: string) => (
+  <MemoryRouter initialEntries={[rota]}>
+    <TooltipProvider>
+      <Routes>
+        <Route path="/admin/empresas" element={<Empresas />} />
+        <Route path="/admin/empresas/:empresaId" element={<EmpresaDetalhe />} />
+      </Routes>
+    </TooltipProvider>
+  </MemoryRouter>
+);
+const renderizar = (rota: string) => render(arvore(rota));
 
 describe('Empresas (lista)', () => {
   it('indicadores; "Informações pendentes" filtra; a linha abre o detalhe', () => {
@@ -296,6 +297,42 @@ describe('Empresas (detalhe)', () => {
         expect.objectContaining({ organizacoes: ['ALFA SA'] })
       )
     );
+  });
+
+  it('edição do banco aberta mostra a vigência nova assim que os bancos recarregam', () => {
+    const { rerender } = renderizar('/admin/empresas/alfa');
+    fireEvent.click(screen.getByRole('tab', { name: /empresasCadastro.abas.bancos/ }));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'empresasCadastro.bancos.editarBanco {"nome":"Banco padrão"}',
+      })
+    );
+    expect(
+      screen.queryByText('empresasCadastro.bancos.porMes {"valor":"24:00"}')
+    ).not.toBeInTheDocument();
+
+    // A gravação da vigência recarrega a lista de bancos (hook)
+    const vigencia = {
+      id: 'v-nova',
+      dataInicio: '2026-01-01',
+      dataFim: null,
+      baselineMinutos: 1440,
+      baselineTickets: null,
+      credito: 'mensal',
+      motivo: 'Nova',
+      atualizadoEm: '2026-11-05T12:00:00Z',
+      atualizadoPor: null,
+    };
+    const antes = bancosHook.bancos;
+    bancosHook.bancos = [{ ...BANCO_PADRAO, baselines: [vigencia] }] as typeof antes;
+    try {
+      rerender(arvore('/admin/empresas/alfa'));
+      expect(
+        screen.getByText('empresasCadastro.bancos.porMes {"valor":"24:00"}')
+      ).toBeInTheDocument();
+    } finally {
+      bancosHook.bancos = antes;
+    }
   });
 
   it('aba Bancos de Horas: editar o banco salva pelo hook e volta para a empresa', async () => {

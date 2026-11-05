@@ -33,6 +33,7 @@ import {
 } from '@/utils/bancosTela';
 import type {
   BancoCadastro,
+  EditarVigenciaInput,
   NovaVigenciaInput,
   NovoBancoInput,
   ParametrosBanco,
@@ -41,7 +42,7 @@ import type {
 import type { Catalogo } from '@/types/catalogo';
 import type { EmpresaDetalhe } from '@/types/empresas';
 import { ArvoreEscopo } from './ArvoreEscopo';
-import { PERIODOS_COM_NOME, usePeriodoTexto } from './periodoTexto';
+import { PERIODOS_APURACAO, usePeriodoTexto } from './periodoTexto';
 import { VigenciaComHistorico } from './VigenciasBanco';
 
 const HORAS = /^\d{1,4}:[0-5]\d$/;
@@ -65,6 +66,7 @@ export function EdicaoBanco({
   onCriar,
   onSalvar,
   onNovaVigencia,
+  onEditarVigencia,
 }: {
   empresa: Pick<EmpresaDetalhe, 'id' | 'nomeAbreviado' | 'solucoes' | 'vigenciaInicio'>;
   /** null = banco novo */
@@ -79,6 +81,7 @@ export function EdicaoBanco({
   onCriar: (input: NovoBancoInput) => Promise<void>;
   onSalvar: (bancoId: string, parametros: ParametrosBanco) => Promise<void>;
   onNovaVigencia: (input: NovaVigenciaInput) => Promise<void>;
+  onEditarVigencia: (input: EditarVigenciaInput) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const e = (chave: string, valores?: Record<string, unknown>) =>
@@ -260,13 +263,11 @@ export function EdicaoBanco({
                 onChange={(ev) => mudar({ periodoApuracao: Number(ev.target.value) })}
                 className="w-full"
               >
-                {[...new Set([...PERIODOS_COM_NOME, p.periodoApuracao])]
-                  .sort((a, b) => a - b)
-                  .map((n) => (
-                    <option key={n} value={n}>
-                      {periodoTexto(n)}
-                    </option>
-                  ))}
+                {PERIODOS_APURACAO.map((n) => (
+                  <option key={n} value={n}>
+                    {periodoTexto(n)}
+                  </option>
+                ))}
               </Select>
             </div>
             <div>
@@ -336,12 +337,14 @@ export function EdicaoBanco({
                 banco={{ ...banco, ...p }}
                 podeEditar
                 onNovaVigencia={onNovaVigencia}
+                onEditarVigencia={onEditarVigencia}
               />
               <VigenciaComHistorico
                 tipo="repasse"
                 banco={{ ...banco, ...p }}
                 podeEditar
                 onNovaVigencia={onNovaVigencia}
+                onEditarVigencia={onEditarVigencia}
               />
             </div>
           ) : (

@@ -13,6 +13,7 @@ import { ErroTraduzivel, falhaDoBanco } from '@/errors/erroTraduzivel';
 import type {
   BancoCadastro,
   EscopoBancoCadastro,
+  EditarVigenciaInput,
   NovaVigenciaInput,
   NovoBancoInput,
   ParametrosBanco,
@@ -338,27 +339,43 @@ export class BancosHorasCadastroService {
 
   /** Fecha a vigência aberta no mês anterior e abre a nova, com motivo */
   async novaVigencia(input: NovaVigenciaInput): Promise<void> {
-    const valores =
-      input.tipo === 'baseline'
-        ? {
-            baseline_minutos: input.valores.baselineMinutos,
-            baseline_tickets: input.valores.baselineTickets,
-            credito: input.valores.credito,
-          }
-        : {
-            percentual_mensal: input.valores.percentualMensal,
-            percentual_dentro_periodo: input.valores.percentualDentroPeriodo,
-            percentual_entre_periodos: input.valores.percentualEntrePeriodos,
-          };
     const { error } = await this.cliente.rpc('bancos_horas_nova_vigencia', {
       p_banco_id: input.bancoId,
       p_tipo: input.tipo,
       p_desde: input.desde,
-      p_valores: valores,
+      p_valores: valoresDaVigencia(input),
       p_motivo: input.motivo.trim(),
     });
     if (error) throw falha('registrar a vigência', error);
   }
+
+  /** Corrige valores e meses de uma vigência; a vizinha acompanha a fronteira (função do banco) */
+  async editarVigencia(input: EditarVigenciaInput): Promise<void> {
+    const { error } = await this.cliente.rpc('bancos_horas_editar_vigencia', {
+      p_vigencia_id: input.vigenciaId,
+      p_tipo: input.tipo,
+      p_inicio: input.desde,
+      p_ate: input.ate,
+      p_valores: valoresDaVigencia(input),
+      p_motivo: input.motivo.trim(),
+    });
+    if (error) throw falha('corrigir a vigência', error);
+  }
+}
+
+/** Valores da vigência nas colunas do banco */
+function valoresDaVigencia(input: NovaVigenciaInput | EditarVigenciaInput) {
+  return input.tipo === 'baseline'
+    ? {
+        baseline_minutos: input.valores.baselineMinutos,
+        baseline_tickets: input.valores.baselineTickets,
+        credito: input.valores.credito,
+      }
+    : {
+        percentual_mensal: input.valores.percentualMensal,
+        percentual_dentro_periodo: input.valores.percentualDentroPeriodo,
+        percentual_entre_periodos: input.valores.percentualEntrePeriodos,
+      };
 }
 
 export const bancosHorasCadastroService = new BancosHorasCadastroService();

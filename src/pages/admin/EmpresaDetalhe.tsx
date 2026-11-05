@@ -223,7 +223,11 @@ export default function EmpresaDetalhe() {
         <EdicaoBanco
           key={editando.banco?.id ?? 'novo'}
           empresa={empresa}
-          banco={editando.banco}
+          // A versão da lista, que recarrega depois de cada gravação (vigência nova ou corrigida)
+          banco={
+            editando.banco &&
+            (bancosHook.bancos.find((b) => b.id === editando.banco!.id) ?? editando.banco)
+          }
           bancos={bancosHook.bancos}
           catalogo={catalogo}
           onFechar={() => setEditando(null)}
@@ -232,6 +236,7 @@ export default function EmpresaDetalhe() {
           }}
           onSalvar={(bancoId, parametros) => bancosHook.salvar({ bancoId, parametros })}
           onNovaVigencia={bancosHook.novaVigencia}
+          onEditarVigencia={bancosHook.editarVigencia}
         />
       );
 

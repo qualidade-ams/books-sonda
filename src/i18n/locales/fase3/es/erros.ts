@@ -92,6 +92,7 @@ const erros = {
     moverOModulo: 'No fue posible mover el módulo: {{detalhe}}',
     reativarOBanco: 'No fue posible reactivar el banco: {{detalhe}}',
     registrarAVigencia: 'No fue posible registrar la vigencia: {{detalhe}}',
+    corrigirAVigencia: 'No fue posible corregir la vigencia: {{detalhe}}',
     reordenarOsBancos: 'No fue posible reordenar los bancos: {{detalhe}}',
     reordenarOsProdutos: 'No fue posible reordenar los productos: {{detalhe}}',
     salvarAmsEProjetos: 'No fue posible guardar AMS y proyectos: {{detalhe}}',

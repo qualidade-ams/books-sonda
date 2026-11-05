@@ -6546,6 +6546,17 @@ export type Database = {
         Args: { p_texto: string }
         Returns: number
       }
+      bancos_horas_editar_vigencia: {
+        Args: {
+          p_ate: string
+          p_inicio: string
+          p_motivo: string
+          p_tipo: string
+          p_valores: Json
+          p_vigencia_id: string
+        }
+        Returns: undefined
+      }
       bancos_horas_nova_vigencia: {
         Args: {
           p_banco_id: string

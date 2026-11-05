@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { EdicaoBanco } from '../EdicaoBanco';
@@ -125,6 +126,7 @@ const renderizar = (props: Partial<React.ComponentProps<typeof EdicaoBanco>> = {
         onCriar={vi.fn(async () => undefined)}
         onSalvar={vi.fn(async () => undefined)}
         onNovaVigencia={vi.fn(async () => undefined)}
+        onEditarVigencia={vi.fn(async () => undefined)}
         {...props}
       />
     </TooltipProvider>
@@ -132,6 +134,20 @@ const renderizar = (props: Partial<React.ComponentProps<typeof EdicaoBanco>> = {
 const campo = (nome: RegExp) => screen.getByLabelText(nome, { selector: 'input' });
 
 describe('EdicaoBanco', () => {
+  it('período de apuração de 1 a 12 meses; os sem nome próprio saem como "N meses"', async () => {
+    renderizar();
+    await userEvent.click(
+      screen.getByRole('combobox', { name: /empresasCadastro.edicaoBanco.periodoApuracao/ })
+    );
+    const nome = (n: number) =>
+      [1, 2, 3, 4, 6, 12].includes(n)
+        ? `empresasCadastro.bancos.periodo.${n}`
+        : `empresasCadastro.bancos.periodoMeses {"n":${n}}`;
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(
+      Array.from({ length: 12 }, (_, i) => nome(i + 1))
+    );
+  });
+
   it('primeiro banco da empresa é o Banco padrão, sem escopo; cria com baseline e repasse', async () => {
     const onCriar = vi.fn(async () => undefined);
     const onFechar = vi.fn();

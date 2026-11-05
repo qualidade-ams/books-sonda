@@ -97,3 +97,25 @@ export interface NovoBancoInput extends ParametrosBanco {
 export type NovaVigenciaInput =
   | { bancoId: string; tipo: 'baseline'; desde: string; valores: ValoresBaseline; motivo: string }
   | { bancoId: string; tipo: 'repasse'; desde: string; valores: ValoresRepasse; motivo: string };
+
+/**
+ * Correção de uma vigência existente. desde: dia 1 do primeiro mês; ate: dia 1 do último
+ * mês, nulo = em aberto (só a última). A vizinha acompanha a fronteira no banco.
+ */
+export type EditarVigenciaInput =
+  | {
+      vigenciaId: string;
+      tipo: 'baseline';
+      desde: string;
+      ate: string | null;
+      valores: ValoresBaseline;
+      motivo: string;
+    }
+  | {
+      vigenciaId: string;
+      tipo: 'repasse';
+      desde: string;
+      ate: string | null;
+      valores: ValoresRepasse;
+      motivo: string;
+    };

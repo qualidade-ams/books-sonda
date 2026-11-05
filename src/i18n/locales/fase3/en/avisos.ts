@@ -13,6 +13,8 @@ const avisos = {
     erroReativar: 'Could not reactivate the bank',
     vigenciaRegistrada: 'Validity period registered',
     erroVigencia: 'Could not register the validity period',
+    vigenciaEditada: 'Validity period corrected',
+    erroEditarVigencia: 'Could not correct the validity period',
   },
   catalogo: {
     solucaoSalva: 'Solution saved',
