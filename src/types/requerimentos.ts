@@ -137,8 +137,8 @@ export interface RequerimentoFormData {
   quantidade_tickets?: number;
   // Campo de horas de análise EF (para tipo Reprovado - opcional)
   horas_analise_ef?: number | string; // Suporta formato HH:MM
-  // Banco escolhido (empresa liberada); gravado em requerimentos_bancos, não em requerimentos
-  banco_horas_id?: string;
+  // Produto/módulo do banco (empresa liberada), "produto|módulo"; gravado em requerimentos_bancos, não em requerimentos
+  destino_banco?: string;
   // Campo de atendimento presencial (usa valores locais ao invés de remotos)
   atendimento_presencial?: boolean;
   // Campos de autor (preenchidos automaticamente)

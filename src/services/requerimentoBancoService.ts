@@ -1,68 +1,91 @@
 /**
- * Banco do requerimento escolhido no lançamento (empresa liberada).
+ * Produto/módulo do requerimento escolhido no lançamento (empresa liberada).
  *
- * Quem lança requerimento não tem acesso ao Controle, então a leitura dos
- * bancos e a gravação em requerimentos_bancos passam pelas funções
- * SECURITY DEFINER da migration 20261104000001, que conferem a permissão de
- * Lançar Requerimentos. Empresa no legado: a lista vem vazia.
+ * Quem lança escolhe o produto (e o módulo, quando o banco do produto é por
+ * módulo) entre os que os bancos do cliente cobrem; o banco sai dessa escolha
+ * e nunca é o Banco padrão. Quem lança requerimento não tem acesso ao
+ * Controle, então a leitura e a gravação passam pelas funções SECURITY
+ * DEFINER da migration 20261105000001, que conferem a permissão de Lançar
+ * Requerimentos. Empresa no legado: liberada = false, sem opções.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 
 type Cliente = typeof supabase;
 
-export interface BancoDoRequerimento {
-  id: string;
-  nome: string;
-  padrao: boolean;
-  ordem: number;
+/** Um produto/módulo coberto por um banco ativo e não padrão do cliente */
+export interface OpcaoDestino {
+  bancoId: string;
+  bancoNome: string;
+  bancoOrdem: number;
   /** AAAA-MM-01 */
   inicioVigencia: string;
   /** AAAA-MM-01; nulo = sem fim */
   fimVigencia: string | null;
-  /** Já escolhido para o requerimento consultado (edição) */
-  escolhido: boolean;
+  produtoId: string;
+  produtoNome: string;
+  produtoOrdem: number;
+  /** Nulo = produto sem módulos */
+  moduloId: string | null;
+  moduloNome: string | null;
+  moduloOrdem: number | null;
+  /** Módulos ativos do produto no catálogo */
+  totalModulos: number;
 }
 
-interface LinhaBanco {
-  banco_id: string;
-  nome: string;
-  padrao: boolean;
-  ordem: number;
-  inicio_vigencia: string;
-  fim_vigencia: string | null;
-  escolhido: boolean;
+export interface Destino {
+  produtoId: string;
+  /** Nulo = produto inteiro */
+  moduloId: string | null;
+}
+
+export interface DestinosDoRequerimento {
+  liberada: boolean;
+  /** Já escolhido para o requerimento consultado (edição) */
+  escolhido: (Destino & { bancoId: string }) | null;
+  opcoes: OpcaoDestino[];
 }
 
 export class RequerimentoBancoService {
   constructor(private readonly cliente: Cliente = supabase) {}
 
-  async bancosDisponiveis(
-    empresaId: string,
-    requerimentoId?: string
-  ): Promise<BancoDoRequerimento[]> {
-    const { data, error } = await this.cliente.rpc('requerimento_bancos_disponiveis', {
+  async destinos(empresaId: string, requerimentoId?: string): Promise<DestinosDoRequerimento> {
+    const { data, error } = await this.cliente.rpc('requerimento_destinos', {
       p_empresa_id: empresaId,
       p_requerimento_id: requerimentoId ?? null,
     });
-    if (error) throw new Error(`Erro ao carregar os bancos do requerimento: ${error.message}`);
-    return ((data ?? []) as LinhaBanco[]).map((b) => ({
-      id: b.banco_id,
-      nome: b.nome,
-      padrao: b.padrao,
-      ordem: b.ordem,
-      inicioVigencia: b.inicio_vigencia,
-      fimVigencia: b.fim_vigencia,
-      escolhido: b.escolhido,
-    }));
+    if (error) throw new Error(`Erro ao carregar os produtos do requerimento: ${error.message}`);
+    const resposta = (data ?? {}) as Partial<DestinosDoRequerimento>;
+    return {
+      liberada: !!resposta.liberada,
+      escolhido: resposta.escolhido ?? null,
+      opcoes: resposta.opcoes ?? [],
+    };
   }
 
-  async definirBanco(requerimentoId: string, bancoId: string): Promise<void> {
-    const { error } = await this.cliente.rpc('requerimento_definir_banco', {
+  /** Grava o produto/módulo; o banco é calculado no servidor e devolvido */
+  async definirDestino(requerimentoId: string, destino: Destino): Promise<string> {
+    const { data, error } = await this.cliente.rpc('requerimento_definir_destino', {
       p_requerimento_id: requerimentoId,
-      p_banco_id: bancoId,
+      p_produto_id: destino.produtoId,
+      p_modulo_id: destino.moduloId,
     });
-    if (error) throw new Error(`Erro ao gravar o banco do requerimento: ${error.message}`);
+    if (error) throw new Error(`Erro ao gravar o produto do requerimento: ${error.message}`);
+    return data as string;
+  }
+
+  /** De-para do campo Módulo antigo (Comex, Comply…) para produto/módulo do catálogo */
+  async produtosDosModulosLegados(): Promise<Record<string, Destino>> {
+    const { data, error } = await this.cliente
+      .from('modulos_requerimento_produto')
+      .select('modulo_requerimento, produto_id, modulo_id');
+    if (error) throw new Error(`Erro ao carregar os módulos de requerimento: ${error.message}`);
+    return Object.fromEntries(
+      (data ?? []).map((l) => [
+        l.modulo_requerimento,
+        { produtoId: l.produto_id, moduloId: l.modulo_id ?? null },
+      ])
+    );
   }
 }
 

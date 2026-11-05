@@ -42,7 +42,7 @@ export interface TipoCobrancaBlocoData {
   atendimento_presencial?: boolean;
   linguagem?: string;
   /** Banco escolhido (empresa liberada) */
-  banco_horas_id?: string;
+  destino_banco?: string;
 }
 
 interface TipoCobrancaBlocoProps {
@@ -55,6 +55,8 @@ interface TipoCobrancaBlocoProps {
   empresaTipoCobranca?: string;
   clienteId?: string; // NOVO: ID do cliente para buscar taxa
   tentouSubmeter?: boolean; // NOVO: Flag para mostrar erros visuais
+  /** Campo Módulo do formulário: sugere o produto do banco (empresa liberada) */
+  moduloLegado?: string;
 }
 
 export function TipoCobrancaBloco({
@@ -67,10 +69,11 @@ export function TipoCobrancaBloco({
   empresaTipoCobranca,
   clienteId,
   tentouSubmeter = false,
+  moduloLegado,
 }: TipoCobrancaBlocoProps) {
   const { t } = useTranslation();
   const atualizarBanco = useCallback(
-    (bancoId: string | undefined) => onUpdate(bloco.id, 'banco_horas_id', bancoId),
+    (bancoId: string | undefined) => onUpdate(bloco.id, 'destino_banco', bancoId),
     [onUpdate, bloco.id]
   );
   console.log('🎨🎨🎨 TipoCobrancaBloco RENDERIZADO 🎨🎨🎨', {
@@ -773,7 +776,8 @@ export function TipoCobrancaBloco({
             tipoCobranca={bloco.tipo_cobranca}
             horasAnaliseEF={bloco.horas_analise_ef}
             mesCobranca={bloco.mes_cobranca}
-            valor={bloco.banco_horas_id}
+            moduloLegado={moduloLegado}
+            valor={bloco.destino_banco}
             onChange={atualizarBanco}
             mostrarErro={tentouSubmeter}
           />

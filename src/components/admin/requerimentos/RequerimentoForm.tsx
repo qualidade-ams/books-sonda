@@ -78,7 +78,7 @@ import type { TaxaClienteCompleta, TipoFuncao } from '@/types/taxasClientes';
 import { calcularValores } from '@/types/taxasClientes';
 import { useState } from 'react';
 import { CampoBancoRequerimento } from './CampoBancoRequerimento';
-import { useBancosDoRequerimento } from '@/hooks/useBancosDoRequerimento';
+import { useDestinosDoRequerimento } from '@/hooks/useDestinosDoRequerimento';
 import { faltaBanco } from '@/utils/bancoDoRequerimento';
 
 interface RequerimentoFormProps {
@@ -235,11 +235,11 @@ export function RequerimentoForm({
 
   // Banco escolhido (empresa liberada)
   const mesCobrancaWatch = form.watch('mes_cobranca');
-  const bancoHorasId = form.watch('banco_horas_id');
-  const { liberada: empresaLiberada } = useBancosDoRequerimento(clienteId, requerimento?.id);
+  const bancoHorasId = form.watch('destino_banco');
+  const { liberada: empresaLiberada } = useDestinosDoRequerimento(clienteId, requerimento?.id);
   const [mostrarErroBanco, setMostrarErroBanco] = useState(false);
   const atualizarBanco = useCallback(
-    (bancoId: string | undefined) => form.setValue('banco_horas_id', bancoId),
+    (bancoId: string | undefined) => form.setValue('destino_banco', bancoId),
     [form]
   );
 
@@ -1282,7 +1282,7 @@ export function RequerimentoForm({
           liberada: empresaLiberada,
           tipoCobranca: data.tipo_cobranca,
           horasAnaliseEF: data.horas_analise_ef,
-          bancoId: data.banco_horas_id,
+          destino: data.destino_banco,
         })
       ) {
         setMostrarErroBanco(true);
@@ -1913,6 +1913,7 @@ export function RequerimentoForm({
                   tipoCobranca={tipoCobranca}
                   horasAnaliseEF={horasAnaliseEF}
                   mesCobranca={mesCobrancaWatch}
+                  moduloLegado={modulo}
                   valor={bancoHorasId}
                   onChange={atualizarBanco}
                   mostrarErro={mostrarErroBanco}

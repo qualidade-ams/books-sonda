@@ -221,8 +221,8 @@ export const requerimentoFormSchema = z
     horas_analise_ef: horasSchema.optional(),
     // Campo de atendimento presencial (usa valores locais ao invés de remotos)
     atendimento_presencial: z.boolean().optional(),
-    // Banco escolhido (empresa liberada); a obrigatoriedade é conferida no formulário
-    banco_horas_id: z.string().optional(),
+    // Produto/módulo do banco (empresa liberada); a obrigatoriedade é conferida no formulário
+    destino_banco: z.string().optional(),
     // Campo auxiliar para validação condicional de tickets (não será salvo no banco)
     empresa_tipo_cobranca: z.string().optional(),
   })

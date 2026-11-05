@@ -5668,6 +5668,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           motivo: string
+          modulo_id: string | null
+          produto_id: string | null
           requerimento_id: string
           updated_at: string
           updated_by: string | null
@@ -5677,6 +5679,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           motivo: string
+          modulo_id?: string | null
+          produto_id?: string | null
           requerimento_id: string
           updated_at?: string
           updated_by?: string | null
@@ -5686,11 +5690,27 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           motivo?: string
+          modulo_id?: string | null
+          produto_id?: string | null
           requerimento_id?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "requerimentos_bancos_modulo_fk"
+            columns: ["modulo_id", "produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto_modulos"
+            referencedColumns: ["id", "produto_id"]
+          },
+          {
+            foreignKeyName: "requerimentos_bancos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "requerimentos_bancos_banco_id_fkey"
             columns: ["banco_id"]
@@ -7128,6 +7148,18 @@ export type Database = {
       requerimento_definir_banco: {
         Args: { p_banco_id: string; p_requerimento_id: string }
         Returns: undefined
+      }
+      requerimento_definir_destino: {
+        Args: {
+          p_modulo_id: string
+          p_produto_id: string
+          p_requerimento_id: string
+        }
+        Returns: string
+      }
+      requerimento_destinos: {
+        Args: { p_empresa_id: string; p_requerimento_id?: string }
+        Returns: Json
       }
       salvar_menu: {
         Args: { p_aparencia?: Json; p_itens: Json }

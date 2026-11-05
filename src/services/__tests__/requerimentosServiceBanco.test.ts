@@ -11,11 +11,11 @@ import type { RequerimentoFormData } from '@/types/requerimentos';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: vi.fn() } }));
 vi.mock('@/services/requerimentoBancoService', () => ({
-  requerimentoBancoService: { definirBanco: vi.fn() },
+  requerimentoBancoService: { definirDestino: vi.fn() },
 }));
 
 const from = vi.mocked(supabase.from);
-const definirBanco = vi.mocked(requerimentoBancoService.definirBanco);
+const definirDestino = vi.mocked(requerimentoBancoService.definirDestino);
 
 let idsCriados: string[];
 let inseridos: any[];
@@ -78,29 +78,32 @@ describe('RequerimentosService — banco escolhido no lançamento', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     idsCriados = ['req-principal', 'req-analise-ef'];
-    definirBanco.mockResolvedValue(undefined);
+    definirDestino.mockResolvedValue('banco-x');
     montarBanco();
     service = new RequerimentosService();
   });
 
   describe('criarRequerimento', () => {
     it('Banco de Horas com banco escolhido grava a escolha no requerimento criado', async () => {
-      await service.criarRequerimento({ ...base, banco_horas_id: 'banco-fiscal' });
+      await service.criarRequerimento({ ...base, destino_banco: 'p-comply|m-obrig' });
 
-      expect(definirBanco).toHaveBeenCalledTimes(1);
-      expect(definirBanco).toHaveBeenCalledWith('req-principal', 'banco-fiscal');
+      expect(definirDestino).toHaveBeenCalledTimes(1);
+      expect(definirDestino).toHaveBeenCalledWith('req-principal', {
+        produtoId: 'p-comply',
+        moduloId: 'm-obrig',
+      });
     });
 
-    it('o banco não vai para a tabela de requerimentos', async () => {
-      await service.criarRequerimento({ ...base, banco_horas_id: 'banco-fiscal' });
+    it('o produto/módulo não vai para a tabela de requerimentos', async () => {
+      await service.criarRequerimento({ ...base, destino_banco: 'p-comply|m-obrig' });
 
-      expect(inseridos[0]).not.toHaveProperty('banco_horas_id');
+      expect(inseridos[0]).not.toHaveProperty('destino_banco');
     });
 
     it('sem banco escolhido (empresa no legado), nada é gravado', async () => {
       await service.criarRequerimento(base);
 
-      expect(definirBanco).not.toHaveBeenCalled();
+      expect(definirDestino).not.toHaveBeenCalled();
     });
 
     it('tipo que não desconta do banco ignora o banco', async () => {
@@ -108,10 +111,10 @@ describe('RequerimentosService — banco escolhido no lançamento', () => {
         ...base,
         tipo_cobranca: 'Faturado',
         valor_hora_funcional: 100,
-        banco_horas_id: 'banco-fiscal',
+        destino_banco: 'p-comply|m-obrig',
       });
 
-      expect(definirBanco).not.toHaveBeenCalled();
+      expect(definirDestino).not.toHaveBeenCalled();
     });
 
     it('Reprovado com análise EF grava o banco só no requerimento de Banco de Horas da EF', async () => {
@@ -119,37 +122,45 @@ describe('RequerimentosService — banco escolhido no lançamento', () => {
         ...base,
         tipo_cobranca: 'Reprovado',
         horas_analise_ef: '3:00',
-        banco_horas_id: 'banco-fiscal',
+        destino_banco: 'p-comply|m-obrig',
       });
 
       expect(inseridos.map((r) => r.tipo_cobranca)).toEqual(['Reprovado', 'Banco de Horas']);
-      expect(definirBanco).toHaveBeenCalledTimes(1);
-      expect(definirBanco).toHaveBeenCalledWith('req-analise-ef', 'banco-fiscal');
+      expect(definirDestino).toHaveBeenCalledTimes(1);
+      expect(definirDestino).toHaveBeenCalledWith('req-analise-ef', {
+        produtoId: 'p-comply',
+        moduloId: 'm-obrig',
+      });
     });
 
     it('se o banco for recusado, desfaz o requerimento criado e avisa o motivo', async () => {
-      definirBanco.mockRejectedValue(
-        new Error('Erro ao gravar o banco do requerimento: O banco escolhido está inativo.')
+      definirDestino.mockRejectedValue(
+        new Error(
+          'Erro ao gravar o produto do requerimento: Nenhum banco do cliente cobre esse produto/módulo no mês de cobrança.'
+        )
       );
 
       await expect(
-        service.criarRequerimento({ ...base, banco_horas_id: 'banco-inativo' })
-      ).rejects.toThrow('O banco escolhido está inativo.');
+        service.criarRequerimento({ ...base, destino_banco: 'p-ceplus|m-cambio' })
+      ).rejects.toThrow('Nenhum banco do cliente cobre esse produto/módulo');
       expect(apagados).toEqual(['req-principal']);
     });
   });
 
   describe('atualizarRequerimento', () => {
     it('Banco de Horas com banco escolhido grava a escolha depois de salvar', async () => {
-      await service.atualizarRequerimento('req-1', { ...base, banco_horas_id: 'banco-padrao' });
+      await service.atualizarRequerimento('req-1', { ...base, destino_banco: 'p-gallery|' });
 
-      expect(definirBanco).toHaveBeenCalledWith('req-1', 'banco-padrao');
+      expect(definirDestino).toHaveBeenCalledWith('req-1', {
+        produtoId: 'p-gallery',
+        moduloId: null,
+      });
     });
 
     it('sem banco escolhido, nada é gravado', async () => {
       await service.atualizarRequerimento('req-1', base);
 
-      expect(definirBanco).not.toHaveBeenCalled();
+      expect(definirDestino).not.toHaveBeenCalled();
     });
 
     it('tipo que não desconta do banco ignora o banco', async () => {
@@ -157,21 +168,23 @@ describe('RequerimentosService — banco escolhido no lançamento', () => {
         ...base,
         tipo_cobranca: 'Reprovado',
         horas_analise_ef: '3:00',
-        banco_horas_id: 'banco-padrao',
+        destino_banco: 'p-gallery|',
       });
 
-      expect(definirBanco).not.toHaveBeenCalled();
+      expect(definirDestino).not.toHaveBeenCalled();
     });
 
     it('se o banco for recusado, avisa que o requerimento foi salvo sem o banco', async () => {
-      definirBanco.mockRejectedValue(
-        new Error('Erro ao gravar o banco do requerimento: O banco escolhido está inativo.')
+      definirDestino.mockRejectedValue(
+        new Error(
+          'Erro ao gravar o produto do requerimento: Nenhum banco do cliente cobre esse produto/módulo no mês de cobrança.'
+        )
       );
 
       await expect(
-        service.atualizarRequerimento('req-1', { ...base, banco_horas_id: 'banco-inativo' })
+        service.atualizarRequerimento('req-1', { ...base, destino_banco: 'p-ceplus|m-cambio' })
       ).rejects.toThrow(
-        'Requerimento salvo, mas o banco não foi gravado: Erro ao gravar o banco do requerimento: O banco escolhido está inativo.'
+        'Requerimento salvo, mas o banco não foi gravado: Erro ao gravar o produto do requerimento: Nenhum banco do cliente cobre esse produto/módulo no mês de cobrança.'
       );
     });
   });

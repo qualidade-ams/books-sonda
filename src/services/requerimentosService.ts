@@ -20,6 +20,7 @@ import {
 import { converterParaBanco, converterDoBanco } from '@/utils/mesCobrancaUtils';
 import { RequerimentoErrorFactory } from '@/errors/requerimentosErrors';
 import { requerimentoBancoService } from '@/services/requerimentoBancoService';
+import { lerDestino } from '@/utils/bancoDoRequerimento';
 
 /**
  * Serviço para gerenciamento de requerimentos
@@ -155,34 +156,35 @@ export class RequerimentosService {
       if (errorAnaliseEF) {
         console.error('❌ Erro ao criar requerimento de análise EF:', errorAnaliseEF.message);
         // Não falhar a operação principal, apenas logar o erro
-      } else if (data.banco_horas_id) {
+      } else if (data.destino_banco) {
         // O banco escolhido vale para o requerimento de Banco de Horas da EF
-        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.banco_horas_id, [
+        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.destino_banco, [
           requerimentoAnaliseEF.id,
           requerimento.id,
         ]);
       }
     }
 
-    if (data.banco_horas_id && data.tipo_cobranca === 'Banco de Horas') {
-      await this.gravarBancoOuDesfazer(requerimento.id, data.banco_horas_id, [requerimento.id]);
+    if (data.destino_banco && data.tipo_cobranca === 'Banco de Horas') {
+      await this.gravarBancoOuDesfazer(requerimento.id, data.destino_banco, [requerimento.id]);
     }
 
     return this.formatarRequerimento(requerimento);
   }
 
   /**
-   * Banco escolhido no lançamento (empresa liberada). Se a gravação for
-   * recusada, apaga os requerimentos recém-criados: sem o banco, eles iriam
-   * para o banco do módulo, e o usuário ainda veria o lançamento como feito.
+   * Produto/módulo escolhido no lançamento (empresa liberada); o banco sai
+   * dele no servidor. Se a gravação for recusada, apaga os requerimentos
+   * recém-criados: sem o banco, eles iriam para o banco do módulo, e o
+   * usuário ainda veria o lançamento como feito.
    */
   private async gravarBancoOuDesfazer(
     requerimentoId: string,
-    bancoId: string,
+    destino: string,
     criados: string[]
   ): Promise<void> {
     try {
-      await requerimentoBancoService.definirBanco(requerimentoId, bancoId);
+      await requerimentoBancoService.definirDestino(requerimentoId, lerDestino(destino)!);
     } catch (erro) {
       for (const id of criados) {
         const { error } = await supabase.from('requerimentos').delete().eq('id', id);
@@ -568,10 +570,10 @@ export class RequerimentosService {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
     }
 
-    // Banco escolhido na edição (empresa liberada)
-    if (data.banco_horas_id && data.tipo_cobranca === 'Banco de Horas') {
+    // Produto/módulo escolhido na edição (empresa liberada); o banco sai dele
+    if (data.destino_banco && data.tipo_cobranca === 'Banco de Horas') {
       try {
-        await requerimentoBancoService.definirBanco(id, data.banco_horas_id);
+        await requerimentoBancoService.definirDestino(id, lerDestino(data.destino_banco)!);
       } catch (erro) {
         const motivo = erro instanceof Error ? erro.message : String(erro);
         throw new Error(`Requerimento salvo, mas o banco não foi gravado: ${motivo}`);
