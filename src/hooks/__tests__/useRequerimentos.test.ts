@@ -381,7 +381,7 @@ describe('useRequerimentos hooks', () => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao atualizar requerimento: Erro de validação');
     });
 
-    it('recarrega o banco escolhido do requerimento depois de salvar', async () => {
+    it('recarrega o produto/banco escolhido do requerimento depois de salvar', async () => {
       vi.mocked(requerimentosService.atualizarRequerimento).mockResolvedValue();
       const invalidar = vi.spyOn(queryClient, 'invalidateQueries');
 
@@ -389,7 +389,7 @@ describe('useRequerimentos hooks', () => {
       result.current.mutate({ id: mockRequerimento.id, data: { descricao: 'Nova descrição' } });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(invalidar).toHaveBeenCalledWith({ queryKey: ['requerimento-bancos'] });
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: ['requerimento-destinos'] });
     });
 
     it('com o banco recusado depois de salvar, ainda recarrega a lista', async () => {

@@ -18804,31 +18804,50 @@ var RequerimentoBancoService = class {
   constructor(cliente2 = supabase) {
     this.cliente = cliente2;
   }
-  async bancosDisponiveis(empresaId, requerimentoId) {
-    const { data, error } = await this.cliente.rpc("requerimento_bancos_disponiveis", {
+  async destinos(empresaId, requerimentoId) {
+    const { data, error } = await this.cliente.rpc("requerimento_destinos", {
       p_empresa_id: empresaId,
       p_requerimento_id: requerimentoId ?? null
     });
-    if (error) throw new Error(`Erro ao carregar os bancos do requerimento: ${error.message}`);
-    return (data ?? []).map((b) => ({
-      id: b.banco_id,
-      nome: b.nome,
-      padrao: b.padrao,
-      ordem: b.ordem,
-      inicioVigencia: b.inicio_vigencia,
-      fimVigencia: b.fim_vigencia,
-      escolhido: b.escolhido
-    }));
+    if (error) throw new Error(`Erro ao carregar os produtos do requerimento: ${error.message}`);
+    const resposta = data ?? {};
+    return {
+      liberada: !!resposta.liberada,
+      escolhido: resposta.escolhido ?? null,
+      opcoes: resposta.opcoes ?? []
+    };
   }
-  async definirBanco(requerimentoId, bancoId) {
-    const { error } = await this.cliente.rpc("requerimento_definir_banco", {
+  /** Grava o produto/módulo; o banco é calculado no servidor e devolvido */
+  async definirDestino(requerimentoId, destino) {
+    const { data, error } = await this.cliente.rpc("requerimento_definir_destino", {
       p_requerimento_id: requerimentoId,
-      p_banco_id: bancoId
+      p_produto_id: destino.produtoId,
+      p_modulo_id: destino.moduloId
     });
-    if (error) throw new Error(`Erro ao gravar o banco do requerimento: ${error.message}`);
+    if (error) throw new Error(`Erro ao gravar o produto do requerimento: ${error.message}`);
+    return data;
+  }
+  /** De-para do campo Módulo antigo (Comex, Comply…) para produto/módulo do catálogo */
+  async produtosDosModulosLegados() {
+    const { data, error } = await this.cliente.from("modulos_requerimento_produto").select("modulo_requerimento, produto_id, modulo_id");
+    if (error) throw new Error(`Erro ao carregar os m\xF3dulos de requerimento: ${error.message}`);
+    return Object.fromEntries(
+      (data ?? []).map((l) => [
+        l.modulo_requerimento,
+        { produtoId: l.produto_id, moduloId: l.modulo_id ?? null }
+      ])
+    );
   }
 };
 var requerimentoBancoService = new RequerimentoBancoService();
+
+// src/utils/bancoDoRequerimento.ts
+init_horasUtils();
+function lerDestino(chave3) {
+  if (!chave3) return null;
+  const [produtoId, moduloId] = chave3.split("|");
+  return produtoId ? { produtoId, moduloId: moduloId || null } : null;
+}
 
 // src/services/requerimentosService.ts
 var RequerimentosService = class {
@@ -18922,26 +18941,27 @@ var RequerimentosService = class {
       const { data: requerimentoAnaliseEF, error: errorAnaliseEF } = await supabase.from("requerimentos").insert(requerimentoAnaliseEFData).select().single();
       if (errorAnaliseEF) {
         console.error("\u274C Erro ao criar requerimento de an\xE1lise EF:", errorAnaliseEF.message);
-      } else if (data.banco_horas_id) {
-        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.banco_horas_id, [
+      } else if (data.destino_banco) {
+        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.destino_banco, [
           requerimentoAnaliseEF.id,
           requerimento.id
         ]);
       }
     }
-    if (data.banco_horas_id && data.tipo_cobranca === "Banco de Horas") {
-      await this.gravarBancoOuDesfazer(requerimento.id, data.banco_horas_id, [requerimento.id]);
+    if (data.destino_banco && data.tipo_cobranca === "Banco de Horas") {
+      await this.gravarBancoOuDesfazer(requerimento.id, data.destino_banco, [requerimento.id]);
     }
     return this.formatarRequerimento(requerimento);
   }
   /**
-   * Banco escolhido no lançamento (empresa liberada). Se a gravação for
-   * recusada, apaga os requerimentos recém-criados: sem o banco, eles iriam
-   * para o banco do módulo, e o usuário ainda veria o lançamento como feito.
+   * Produto/módulo escolhido no lançamento (empresa liberada); o banco sai
+   * dele no servidor. Se a gravação for recusada, apaga os requerimentos
+   * recém-criados: sem o banco, eles iriam para o banco do módulo, e o
+   * usuário ainda veria o lançamento como feito.
    */
-  async gravarBancoOuDesfazer(requerimentoId, bancoId, criados) {
+  async gravarBancoOuDesfazer(requerimentoId, destino, criados) {
     try {
-      await requerimentoBancoService.definirBanco(requerimentoId, bancoId);
+      await requerimentoBancoService.definirDestino(requerimentoId, lerDestino(destino));
     } catch (erro) {
       for (const id of criados) {
         const { error } = await supabase.from("requerimentos").delete().eq("id", id);
@@ -19217,9 +19237,9 @@ var RequerimentosService = class {
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
     }
-    if (data.banco_horas_id && data.tipo_cobranca === "Banco de Horas") {
+    if (data.destino_banco && data.tipo_cobranca === "Banco de Horas") {
       try {
-        await requerimentoBancoService.definirBanco(id, data.banco_horas_id);
+        await requerimentoBancoService.definirDestino(id, lerDestino(data.destino_banco));
       } catch (erro) {
         const motivo = erro instanceof Error ? erro.message : String(erro);
         throw new Error(`Requerimento salvo, mas o banco n\xE3o foi gravado: ${motivo}`);
@@ -26719,11 +26739,16 @@ var ptBR = {
     billingType: "Tipo de Cobran\xE7a",
     billingMonthYear: "M\xEAs/Ano de Cobran\xE7a",
     billingMonthYearPlaceholder: "Selecione m\xEAs e ano (opcional)",
-    bank: "Banco de horas",
-    bankPlaceholder: "Selecione o banco",
-    bankHelp: "Banco que recebe o desconto deste requerimento.",
-    bankNoneInMonth: "Nenhum banco vigente no m\xEAs de cobran\xE7a",
-    bankRequired: "Banco de horas \xE9 obrigat\xF3rio",
+    bankProduct: "Produto do banco de horas",
+    bankProductPlaceholder: "Selecione o produto",
+    bankModule: "M\xF3dulo",
+    bankModulePlaceholder: "Selecione o m\xF3dulo",
+    bankHelp: "O banco que recebe o desconto sai do produto e do m\xF3dulo.",
+    bankDiscountsFrom: "Desconta do banco: {{banco}}",
+    bankNoneInMonth: "Nenhum produto com banco vigente no m\xEAs de cobran\xE7a",
+    bankNotRegistered: "Este cliente n\xE3o tem banco de horas cadastrado para requerimentos. Cadastre o banco com o produto na tela Empresas antes de lan\xE7ar.",
+    bankRequired: "O produto do banco de horas \xE9 obrigat\xF3rio",
+    bankModuleRequired: "O m\xF3dulo \xE9 obrigat\xF3rio para este produto",
     onSiteService: "Atendimento presencial",
     selectBillingType: "Selecione o tipo de cobran\xE7a",
     technicalLanguage: "Linguagem T\xE9cnica",
@@ -29182,11 +29207,16 @@ var en = {
     billingType: "Billing Type",
     billingMonthYear: "Billing Month/Year",
     billingMonthYearPlaceholder: "Select month and year (optional)",
-    bank: "Hour bank",
-    bankPlaceholder: "Select the bank",
-    bankHelp: "Bank charged for this request.",
-    bankNoneInMonth: "No bank in effect in the billing month",
-    bankRequired: "Hour bank is required",
+    bankProduct: "Hour bank product",
+    bankProductPlaceholder: "Select the product",
+    bankModule: "Module",
+    bankModulePlaceholder: "Select the module",
+    bankHelp: "The bank charged comes from the product and module.",
+    bankDiscountsFrom: "Charged to bank: {{banco}}",
+    bankNoneInMonth: "No product with a bank in effect in the billing month",
+    bankNotRegistered: "This client has no hour bank registered for requests. Register the bank with the product on the Companies screen before submitting.",
+    bankRequired: "The hour bank product is required",
+    bankModuleRequired: "The module is required for this product",
     onSiteService: "On-site service",
     selectBillingType: "Select billing type",
     technicalLanguage: "Technical Language",
@@ -31645,11 +31675,16 @@ var es = {
     billingType: "Tipo de Cobro",
     billingMonthYear: "Mes/A\xF1o de Cobro",
     billingMonthYearPlaceholder: "Seleccione mes y a\xF1o (opcional)",
-    bank: "Banco de horas",
-    bankPlaceholder: "Seleccione el banco",
-    bankHelp: "Banco que recibe el descuento de este requerimiento.",
-    bankNoneInMonth: "Ning\xFAn banco vigente en el mes de cobro",
-    bankRequired: "El banco de horas es obligatorio",
+    bankProduct: "Producto del banco de horas",
+    bankProductPlaceholder: "Seleccione el producto",
+    bankModule: "M\xF3dulo",
+    bankModulePlaceholder: "Seleccione el m\xF3dulo",
+    bankHelp: "El banco que recibe el descuento sale del producto y del m\xF3dulo.",
+    bankDiscountsFrom: "Descuenta del banco: {{banco}}",
+    bankNoneInMonth: "Ning\xFAn producto con banco vigente en el mes de cobro",
+    bankNotRegistered: "Este cliente no tiene banco de horas registrado para requerimientos. Registre el banco con el producto en la pantalla Empresas antes de lanzar.",
+    bankRequired: "El producto del banco de horas es obligatorio",
+    bankModuleRequired: "El m\xF3dulo es obligatorio para este producto",
     onSiteService: "Atenci\xF3n presencial",
     selectBillingType: "Seleccione el tipo de cobro",
     technicalLanguage: "Lenguaje T\xE9cnico",

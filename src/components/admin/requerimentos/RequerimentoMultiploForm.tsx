@@ -18,7 +18,7 @@ import { TipoCobrancaBloco, TipoCobrancaBlocoData } from './TipoCobrancaBloco';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
 import { useTranslatedTipoCobranca } from '@/hooks/useTranslatedOptions';
-import { useBancosDoRequerimento } from '@/hooks/useBancosDoRequerimento';
+import { useDestinosDoRequerimento } from '@/hooks/useDestinosDoRequerimento';
 import { faltaBanco } from '@/utils/bancoDoRequerimento';
 import { MODULO_OPTIONS, TIPO_COBRANCA_OPTIONS } from '@/types/requerimentos';
 import { formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
@@ -137,7 +137,7 @@ export function RequerimentoMultiploForm({
   }, [clienteId, clientes]);
 
   // Empresa liberada: o requerimento de Banco de Horas escolhe o banco
-  const { liberada: empresaLiberada } = useBancosDoRequerimento(clienteId);
+  const { liberada: empresaLiberada } = useDestinosDoRequerimento(clienteId);
 
   // Função para determinar o tipo de cobrança padrão baseado no cliente
   const getTipoCobrancaPadrao = () => {
@@ -377,7 +377,7 @@ export function RequerimentoMultiploForm({
           liberada: empresaLiberada,
           tipoCobranca: bloco.tipo_cobranca,
           horasAnaliseEF: bloco.horas_analise_ef,
-          bancoId: bloco.banco_horas_id,
+          destino: bloco.destino_banco,
         })
       ) {
         erros.push(`Bloco ${index + 1}: ${t('reqForm.bankRequired')}`);
@@ -478,7 +478,7 @@ export function RequerimentoMultiploForm({
       quantidade_tickets: bloco.quantidade_tickets,
       horas_analise_ef: bloco.horas_analise_ef,
       mes_cobranca: bloco.mes_cobranca || undefined,
-      banco_horas_id: bloco.banco_horas_id || undefined,
+      destino_banco: bloco.destino_banco || undefined,
     }));
 
     try {
@@ -674,6 +674,7 @@ export function RequerimentoMultiploForm({
                   empresaTipoCobranca={clienteSelecionado?.tipo_cobranca}
                   clienteId={clienteId}
                   tentouSubmeter={tentouSubmeter}
+                  moduloLegado={modulo}
                 />
               </React.Fragment>
             ))}

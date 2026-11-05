@@ -13,7 +13,7 @@ import {
   StatusRequerimento,
 } from '@/types/requerimentos';
 import { getRequerimentoErrorMessage } from '@/errors/requerimentosErrors';
-import { BANCOS_DO_REQUERIMENTO_KEY } from '@/hooks/useBancosDoRequerimento';
+import { DESTINOS_DO_REQUERIMENTO_KEY } from '@/hooks/useDestinosDoRequerimento';
 
 // Chaves de cache para React Query
 export const REQUERIMENTOS_QUERY_KEYS = {
@@ -208,7 +208,7 @@ export function useUpdateRequerimento() {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.detail(id) });
-      queryClient.invalidateQueries({ queryKey: [...BANCOS_DO_REQUERIMENTO_KEY] });
+      queryClient.invalidateQueries({ queryKey: [...DESTINOS_DO_REQUERIMENTO_KEY] });
 
       toast.success('Requerimento atualizado com sucesso!');
     },
