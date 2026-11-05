@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ApontamentosRetroativos from '../ApontamentosRetroativos';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { Retroativo } from '@/types/retroativos';
 import { exportarTabela } from '@/utils/exportarTabela';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -249,5 +251,13 @@ describe('ApontamentosRetroativos', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'ds.exportar.excel' }));
     const [exportacao] = vi.mocked(exportarTabela).mock.calls[0];
     expect(exportacao.abas[0].linhas).toHaveLength(1);
+  });
+});
+
+describe('ApontamentosRetroativos: ao abrir', () => {
+  it('recarrega os retroativos', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('retroativos-bh');
   });
 });

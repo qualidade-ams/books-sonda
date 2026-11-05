@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import RamosAtividade from '../RamosAtividade';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { RamoAtividade } from '@/types/ramosAtividade';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { lerPlanilha } from '@/utils/importarPlanilha';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -268,5 +270,17 @@ describe('RamosAtividade', () => {
       </TooltipProvider>
     );
     expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
+  });
+});
+
+describe('RamosAtividade: ao abrir', () => {
+  it('recarrega os ramos', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    render(
+      <TooltipProvider>
+        <RamosAtividade />
+      </TooltipProvider>
+    );
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('ramos-atividade');
   });
 });

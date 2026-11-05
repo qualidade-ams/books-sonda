@@ -31,6 +31,7 @@ import {
 import { useCatalogo, useModulosRequerimento } from '@/hooks/useCatalogo';
 import { useDePara } from '@/hooks/useDePara';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import {
@@ -92,6 +93,7 @@ function selecaoInicial(catalogo: Catalogo): SelecaoCatalogo | null {
 }
 
 export default function ProdutosModulos() {
+  useAtualizarAoAbrir('catalogo', 'grupos-aranda');
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('produtos_modulos', 'edit');

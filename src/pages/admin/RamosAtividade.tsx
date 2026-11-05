@@ -36,6 +36,7 @@ import { campo } from '@/components/ds/estilos';
 import { LinhaRamo } from '@/components/admin/ramos/LinhaRamo';
 import { useRamosAtividade } from '@/hooks/useRamosAtividade';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
@@ -58,6 +59,7 @@ import {
 const primeiraMaiuscula = (texto: string) => texto.replace(/^./, (c) => c.toUpperCase());
 
 export default function RamosAtividade() {
+  useAtualizarAoAbrir('ramos-atividade');
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('ramos_atividade', 'edit');

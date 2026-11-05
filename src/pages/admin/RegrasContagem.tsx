@@ -22,6 +22,7 @@ import { AbaSemRegra } from '@/components/admin/regras/AbaSemRegra';
 import { AbaFiltros } from '@/components/admin/regras/AbaFiltros';
 import { useRegrasContagem } from '@/hooks/useRegrasContagem';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import {
@@ -51,6 +52,7 @@ const DICAS: [string, string][] = [
 const primeiraMaiuscula = (texto: string) => texto.replace(/^./, (c) => c.toUpperCase());
 
 export default function RegrasContagem() {
+  useAtualizarAoAbrir('regras-contagem');
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('regras_contagem', 'edit');

@@ -4,10 +4,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Empresas from '../Empresas';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import EmpresaDetalhe from '../EmpresaDetalhe';
 import type { EmpresaDetalhe as Detalhe, EmpresaLista } from '@/types/empresas';
 import { exportarTabela } from '@/utils/exportarTabela';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -383,5 +385,26 @@ describe('Empresas (detalhe)', () => {
     Object.assign(detalheHook, { error: null, empresa: null });
     renderizar('/admin/empresas/alfa');
     expect(screen.getByText('empresasCadastro.detalhe.naoEncontrada')).toBeInTheDocument();
+  });
+});
+
+describe('Empresas: ao abrir', () => {
+  it('a lista recarrega as empresas', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar('/admin/empresas');
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('empresas-cadastro');
+  });
+
+  it('o detalhe recarrega a empresa, os bancos, os anexos, o catálogo e os ramos', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar('/admin/empresas/alfa');
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith(
+      'empresas-cadastro',
+      'bancos-horas-cadastro',
+      'empresa-anexos',
+      'catalogo',
+      'grupos-aranda',
+      'ramos-atividade'
+    );
   });
 });

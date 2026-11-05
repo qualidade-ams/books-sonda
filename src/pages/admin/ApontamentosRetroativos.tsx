@@ -24,6 +24,7 @@ import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { useEmailsConsultores, useRetroativos } from '@/hooks/useRetroativos';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { rotuloMesLocal } from '@/utils/controleTela';
 import {
   SEM_FILTRO_RETROATIVOS,
@@ -38,6 +39,7 @@ import type { Retroativo, SituacaoRetroativo } from '@/types/retroativos';
 const SITUACOES: SituacaoRetroativo[] = ['pendente', 'aprovado', 'aplicado', 'descartado'];
 
 export default function ApontamentosRetroativos() {
+  useAtualizarAoAbrir('retroativos-bh');
   const { t, i18n } = useTranslation();
   const a = (chave: string, valores?: Record<string, unknown>) =>
     t(`apontamentosRetroativos.${chave}`, valores);

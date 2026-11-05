@@ -3,9 +3,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import OrganizarMenu from '../OrganizarMenu';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { APARENCIA_PADRAO } from '@/config/aparenciaPadrao';
 import type { ItemMenuSalvo, NoMenu } from '@/types/menuOrganizado';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -239,5 +241,13 @@ describe('OrganizarMenu', () => {
       fireEvent.click(screen.getByRole('button', { name: /organizarMenu.cores.padrao/ }));
       expect(codigo('menu', 'fundo')).toHaveValue('#FAFBFC');
     });
+  });
+});
+
+describe('OrganizarMenu: ao abrir', () => {
+  it('recarrega o menu', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('menu-organizado');
   });
 });

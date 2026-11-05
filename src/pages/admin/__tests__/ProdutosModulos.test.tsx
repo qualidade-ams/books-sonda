@@ -3,11 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ProdutosModulos from '../ProdutosModulos';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { Catalogo } from '@/types/catalogo';
 import type { MapeamentoGrupo } from '@/types/dePara';
 import { exportarTabela, matrizDaAba } from '@/utils/exportarTabela';
 import { lerPlanilha } from '@/utils/importarPlanilha';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -360,5 +362,13 @@ describe('ProdutosModulos', () => {
     permissoes = ['produtos_modulos:view'];
     renderizar();
     expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ProdutosModulos: ao abrir', () => {
+  it('recarrega o catálogo e os grupos do Aranda', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('catalogo', 'grupos-aranda');
   });
 });

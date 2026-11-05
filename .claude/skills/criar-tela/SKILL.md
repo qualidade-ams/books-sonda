@@ -48,8 +48,11 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
 
 ```tsx
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 
 function NomePagina() {
+  // primeiro item da queryKey de cada hook da tela: sem isso, o que mudou em outra tela só aparece com Ctrl+R
+  useAtualizarAoAbrir('meu-dominio');
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -80,7 +83,7 @@ import NomePagina from './pages/admin/NomePagina';
       <NomePagina />
     </ProtectedRoute>
   }
-/>
+/>;
 ```
 
 ## 7. Adicionar no menu

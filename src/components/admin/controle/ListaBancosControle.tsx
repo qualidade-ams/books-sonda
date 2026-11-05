@@ -31,7 +31,6 @@ export function ListaBancosControle({
       {bancos.map((b, i) => {
         const unidade = unidadePrincipal(b.tipoContrato);
         const u = resultados[b.bancoId]?.[unidade] ?? null;
-        const saldo = u?.saldo ?? 0;
         const ativo = b.bancoId === selecionado;
         return (
           <button
@@ -63,13 +62,16 @@ export function ListaBancosControle({
                 </StatusBadge>
               )}
             </span>
-            <span
-              className={cn(
-                'mt-1 block text-lg font-semibold leading-6 tracking-tight tabular-nums',
-                saldo < 0 ? 'text-ds-danger-fg' : saldo > 0 ? 'text-ds-success-fg' : 'text-ds-fg'
+            {/* Baseline contratado, não o saldo: o saldo do mês fica nos indicadores e no quadro */}
+            <span className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-lg font-semibold leading-6 tracking-tight text-ds-fg tabular-nums">
+                {u ? (unidade === 'horas' ? formatarHoras(u.baseline) : u.baseline) : '—'}
+              </span>
+              {u && (
+                <span className="text-xs text-ds-fg-muted">
+                  {t('controleBancoHoras.bancos.baseline')}
+                </span>
               )}
-            >
-              {u ? (unidade === 'horas' ? formatarHoras(saldo) : saldo) : '—'}
             </span>
             {u && unidade === 'horas' && (
               <BarraConsumo

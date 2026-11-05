@@ -80,11 +80,17 @@ describe('mesesComSituacao', () => {
 });
 
 describe('indiceReferencia', () => {
-  it('o mês aberto; sem aberto, o último fechado; sem nenhum, o primeiro', () => {
-    const s = (...situacoes: string[]) => situacoes.map((situacao) => ({ situacao })) as never;
+  const s = (...situacoes: string[]) => situacoes.map((situacao) => ({ situacao })) as never;
+
+  it('o último mês já iniciado (o corrente, no período atual); sem nenhum, o primeiro', () => {
     expect(indiceReferencia(s('fechado', 'aberto', 'futuro'))).toBe(1);
     expect(indiceReferencia(s('fechado', 'fechado', 'futuro'))).toBe(1);
     expect(indiceReferencia(s('futuro', 'futuro'))).toBe(0);
+  });
+
+  it('mês antigo ainda sem fechar não passa na frente do mês corrente', () => {
+    expect(indiceReferencia(s('aberto', 'fechado', 'aberto'))).toBe(2);
+    expect(indiceReferencia(s('aberto', 'aberto', 'futuro'))).toBe(1);
   });
 });
 
