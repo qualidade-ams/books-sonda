@@ -27,6 +27,7 @@ import { useBancosHorasCadastro } from '@/hooks/useBancosHorasCadastro';
 import { useCatalogo } from '@/hooks/useCatalogo';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { cn } from '@/lib/utils';
 import { telaAtualDaEmpresa } from '@/utils/empresasTela';
 import type { Anexo, ModeloEmpresa } from '@/types/empresas';
@@ -130,6 +131,14 @@ function SeloTopo({
 }
 
 export default function EmpresaDetalhe() {
+  useAtualizarAoAbrir(
+    'empresas-cadastro',
+    'bancos-horas-cadastro',
+    'empresa-anexos',
+    'catalogo',
+    'grupos-aranda',
+    'ramos-atividade'
+  );
   const { t } = useTranslation();
   const { empresaId } = useParams();
   const { hasPermission } = usePermissions();

@@ -21,6 +21,7 @@ import { EdicaoMapeamento } from '@/components/admin/de-para/EdicaoMapeamento';
 import { useDePara } from '@/hooks/useDePara';
 import { useCatalogo } from '@/hooks/useCatalogo';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { plural } from '@/utils/plural';
 import {
@@ -52,6 +53,7 @@ const DICAS: [string, string][] = [
 ];
 
 export default function DeParaGrupos() {
+  useAtualizarAoAbrir('grupos-aranda', 'catalogo');
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('de_para_grupos', 'edit');

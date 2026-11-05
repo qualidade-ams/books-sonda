@@ -50,11 +50,12 @@ export const mesesComSituacao = (
     };
   });
 
-/** O mês aberto; sem aberto, o último fechado; sem nenhum, o primeiro */
+/**
+ * O último mês já iniciado (aberto ou fechado): no período atual, o mês corrente; num período
+ * passado, o último. Mês antigo que ficou sem fechar não passa na frente. Sem nenhum, o primeiro.
+ */
 export function indiceReferencia(meses: Pick<MesDoQuadro, 'situacao'>[]): number {
-  const aberto = meses.findIndex((m) => m.situacao === 'aberto');
-  if (aberto >= 0) return aberto;
-  for (let i = meses.length - 1; i >= 0; i--) if (meses[i].situacao === 'fechado') return i;
+  for (let i = meses.length - 1; i >= 0; i--) if (meses[i].situacao !== 'futuro') return i;
   return 0;
 }
 

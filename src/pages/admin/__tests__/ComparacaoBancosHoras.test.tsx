@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ComparacaoBancosHoras from '../ComparacaoBancosHoras';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { exportarTabela } from '@/utils/exportarTabela';
 import type { ComparacaoEmpresa, MesComparacao } from '@/types/comparacao';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -499,5 +501,13 @@ describe('ComparacaoBancosHoras: detalhe', () => {
     expect(
       screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ComparacaoBancosHoras: ao abrir', () => {
+  it('recarrega a comparação', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('comparacao-bh');
   });
 });

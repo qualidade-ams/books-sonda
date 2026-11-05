@@ -68,6 +68,7 @@ const props = {
   rotuloPeriodo: 'Jul – Set/2026',
   podeEditar: true,
   onReajuste: vi.fn(),
+  hoje: { ano: 2026, mes: 8 },
 };
 const tabela = () =>
   within(
@@ -90,6 +91,26 @@ describe('QuadroControle', () => {
     expect(
       screen.getByText('controleBancoHoras.quadro.legendaProjecao {"mes":"Ago/2026"}')
     ).toBeInTheDocument();
+  });
+
+  it('só o mês corrente fica em destaque, não o mês antigo ainda sem fechar', () => {
+    const meses = [
+      mes(9, 'aberto', resultado(9)),
+      mes(10, 'fechado', resultado(10, { fechado: true })),
+      mes(11, 'aberto', resultado(11)),
+    ];
+    render(
+      <QuadroControle
+        {...props}
+        meses={meses}
+        rotuloPeriodo="Set – Nov/2026"
+        hoje={{ ano: 2026, mes: 11 }}
+      />
+    );
+    const cabecalho = (nome: string) => tabela().getByRole('columnheader', { name: nome });
+    expect(cabecalho('Nov/2026')).toHaveAttribute('aria-current', 'date');
+    expect(cabecalho('Set/2026')).not.toHaveAttribute('aria-current');
+    expect(cabecalho('Out/2026')).not.toHaveAttribute('aria-current');
   });
 
   it('reajuste do mês abre o lançamento; quem só vê enxerga só o valor', () => {

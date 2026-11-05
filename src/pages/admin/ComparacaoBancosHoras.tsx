@@ -30,6 +30,7 @@ import { DetalheComparacao } from '@/components/admin/comparacao/DetalheComparac
 import { useComparacao } from '@/hooks/useComparacao';
 import { usePermissions } from '@/hooks/usePermissions';
 import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { plural } from '@/utils/plural';
 import { exportarTabela } from '@/utils/exportarTabela';
 import {
@@ -44,6 +45,7 @@ import type { ComparacaoEmpresa, GrupoComparacao } from '@/types/comparacao';
 const SEM_FILTRO: FiltroComparacao = { busca: '', grupo: null };
 
 export default function ComparacaoBancosHoras() {
+  useAtualizarAoAbrir('comparacao-bh');
   const { t, i18n } = useTranslation();
   const a = (chave: string, valores?: Record<string, unknown>) =>
     t(`comparacaoBancosHoras.${chave}`, valores);

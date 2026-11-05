@@ -3,8 +3,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AuditoriaBancosHoras from '../AuditoriaBancosHoras';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { FiltrosAuditoria, RegistroAuditoria } from '@/types/auditoria';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -160,5 +162,13 @@ describe('AuditoriaBancosHoras', () => {
     expect(screen.getByText('auditoriaBancosHoras.erro')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'fase3Comum.tentarNovamente' }));
     expect(estado.recarregar).toHaveBeenCalled();
+  });
+});
+
+describe('AuditoriaBancosHoras: ao abrir', () => {
+  it('recarrega a auditoria', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('auditoria-bh');
   });
 });

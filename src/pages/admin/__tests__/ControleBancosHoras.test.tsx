@@ -4,9 +4,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterAll, beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ControleBancosHoras from '../ControleBancosHoras';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { BancoCadastro } from '@/services/bancosHoras/motorBancosHoras';
 import { exportarTabela } from '@/utils/exportarTabela';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -390,5 +392,17 @@ describe('ControleBancosHoras', () => {
     sincronizacao.data = null;
     renderizar();
     expect(screen.queryByText(/controleBancoHoras.sincronizadoEm/)).not.toBeInTheDocument();
+  });
+});
+
+describe('ControleBancosHoras: ao abrir', () => {
+  it('recarrega o Controle, os e-mails do cliente e a última sincronização', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith(
+      'controle-bh',
+      'clientes',
+      'sql-server-ultimas-sincronizacoes-por-tabela'
+    );
   });
 });

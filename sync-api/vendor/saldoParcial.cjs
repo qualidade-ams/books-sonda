@@ -21991,9 +21991,7 @@ var mesesComSituacao = (meses, quadro, bancoId, hoje) => meses.map((mes) => {
   };
 });
 function indiceReferencia(meses) {
-  const aberto = meses.findIndex((m) => m.situacao === "aberto");
-  if (aberto >= 0) return aberto;
-  for (let i = meses.length - 1; i >= 0; i--) if (meses[i].situacao === "fechado") return i;
+  for (let i = meses.length - 1; i >= 0; i--) if (meses[i].situacao !== "futuro") return i;
   return 0;
 }
 function mesCurto(mes, idioma) {
@@ -33731,7 +33729,8 @@ var controleBancoHoras = {
   bancos: {
     titulo: "Bancos da empresa",
     padrao: "padr\xE3o",
-    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}"
+    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}",
+    baseline: "baseline"
   },
   tipoBanco: {
     horas: "Banco de horas",
@@ -36153,7 +36152,8 @@ var controleBancoHoras2 = {
   bancos: {
     titulo: "Company banks",
     padrao: "default",
-    consumoDe: "Usage in {{mes}} \xB7 {{banco}}"
+    consumoDe: "Usage in {{mes}} \xB7 {{banco}}",
+    baseline: "baseline"
   },
   tipoBanco: {
     horas: "Hour bank",
@@ -38572,7 +38572,8 @@ var controleBancoHoras3 = {
   bancos: {
     titulo: "Bancos de la empresa",
     padrao: "predeterminado",
-    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}"
+    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}",
+    baseline: "baseline"
   },
   tipoBanco: {
     horas: "Banco de horas",
