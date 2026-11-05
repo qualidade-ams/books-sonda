@@ -134,6 +134,7 @@ const POSICAO_ROTULO: Record<PosicaoRotulo, string> = {
   acima: 'bottom-full left-1/2 -translate-x-1/2 mb-1.5 text-center',
   abaixo: 'top-full left-1/2 -translate-x-1/2 mt-1.5 text-center',
   esquerda: 'right-full top-1/2 -translate-y-1/2 mr-2 text-right',
+  direita: 'left-full top-1/2 -translate-y-1/2 ml-2 text-left',
 };
 
 function RotuloExterno({ texto, posicao = 'acima' }: { texto: string; posicao?: PosicaoRotulo }) {
@@ -141,7 +142,7 @@ function RotuloExterno({ texto, posicao = 'acima' }: { texto: string; posicao?: 
   return (
     <div
       className={cn(
-        'pointer-events-none absolute w-40 text-[11px] font-semibold leading-tight text-gray-700 dark:text-gray-200',
+        'pointer-events-none absolute w-28 text-[11px] font-semibold leading-tight text-gray-700 dark:text-gray-200',
         POSICAO_ROTULO[posicao]
       )}
     >
@@ -210,6 +211,14 @@ function NoLink({ id, data, selected }: NodeProps<NoFluxo>) {
       <div className="flex h-8 w-8 items-center justify-center rounded-full border border-sonda-blue bg-white">
         <ArrowRight className="h-4 w-4 text-sonda-blue" />
       </div>
+    </Circulo>
+  );
+}
+
+function NoIntermediario({ id, data, selected }: NodeProps<NoFluxo>) {
+  return (
+    <Circulo id={id} data={data} selected={selected} classe="border-2 border-sonda-blue bg-blue-50">
+      <div className="h-9 w-9 rounded-full border-2 border-sonda-blue" />
     </Circulo>
   );
 }
@@ -332,6 +341,7 @@ export const TIPOS_NO: NodeTypes = {
   inicio: NoInicio,
   fim: NoFim,
   link: NoLink,
+  intermediario: NoIntermediario,
   tarefa: NoTarefa,
   decisao: NoDecisao,
   paralelo: NoParalelo,

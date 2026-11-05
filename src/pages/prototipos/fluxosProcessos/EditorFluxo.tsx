@@ -32,6 +32,7 @@ import {
   AlignVerticalDistributeCenter,
   ArrowRightCircle,
   ChevronDown,
+  CircleDot,
   Diamond,
   Hand,
   Lock,
@@ -216,6 +217,7 @@ const PALETA: { tipo: TipoNo; rotulo: string; icone: typeof Square }[] = [
   { tipo: 'inicio', rotulo: 'Início', icone: PlayCircle },
   { tipo: 'fim', rotulo: 'Fim', icone: StopCircle },
   { tipo: 'link', rotulo: 'Link', icone: ArrowRightCircle },
+  { tipo: 'intermediario', rotulo: 'Evento intermediário', icone: CircleDot },
   { tipo: 'raia', rotulo: 'Raia', icone: PanelLeft },
 ];
 
@@ -226,6 +228,7 @@ const ROTULO_PADRAO: Partial<Record<TipoNo, string>> = {
   inicio: 'Início',
   fim: 'Fim',
   link: 'Processo vinculado',
+  intermediario: 'Evento',
 };
 
 const TAMANHO: Partial<Record<TipoNo, { w: number; h: number }>> = {
@@ -242,6 +245,7 @@ const COR_MINIMAPA: Record<string, string> = {
   inicio: '#10b981',
   fim: '#ef4444',
   link: '#60a5fa',
+  intermediario: '#60a5fa',
 };
 
 const VARIAVEIS_ARESTA = {

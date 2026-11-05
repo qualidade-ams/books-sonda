@@ -60,6 +60,7 @@ export const ROTULO_TIPO: Record<TipoNo, string> = {
   inicio: 'Evento de início',
   fim: 'Evento de fim',
   link: 'Link com outro processo',
+  intermediario: 'Evento intermediário',
   tarefa: 'Tarefa',
   decisao: 'Decisão (exclusiva)',
   paralelo: 'Paralelo',
