@@ -6,8 +6,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, TrendingUp, AlertCircle, CheckCircle2, FileText, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import {
   LineChart,
   Line,
@@ -25,6 +23,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import BookFooterBar from './BookFooterBar';
 import BookRequerimentosDescontados from './BookRequerimentosDescontados';
+import BookRequerimentosMesModal from './BookRequerimentosMesModal';
+import { formatarRequerimentoDoMesConsumo } from '@/services/requerimentosBookService';
 
 interface BookConsumoProps {
   data: BookConsumoData;
@@ -1046,29 +1046,9 @@ export default function BookConsumo({
         .order('data_envio_faturamento', { ascending: false });
 
       if (requerimentos) {
-        const requerimentosFormatados = requerimentos.map((req) => ({
-          id: req.id,
-          numero_chamado: req.chamado || '--',
-          cliente: req.cliente_id || '--',
-          modulo: req.modulo || '--',
-          tipo_cobranca: req.tipo_cobranca || '--',
-          horas_funcional: req.horas_funcional?.toString() || '--',
-          horas_tecnica: req.horas_tecnico?.toString() || '--',
-          total_horas:
-            req.horas_funcional && req.horas_tecnico
-              ? ((Number(req.horas_funcional) || 0) + (Number(req.horas_tecnico) || 0)).toString()
-              : '--',
-          tickets: 0,
-          data_envio: req.data_envio_faturamento || null,
-          data_aprovacao: req.data_aprovacao || null,
-          valor_total:
-            req.valor_total_funcional && req.valor_total_tecnico
-              ? (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0)
-              : 0,
-          periodo_cobranca: req.mes_cobranca || mesCobranca,
-        }));
-
-        setRequerimentosMes(requerimentosFormatados);
+        setRequerimentosMes(
+          requerimentos.map((req) => formatarRequerimentoDoMesConsumo(req, mesCobranca))
+        );
       }
     } catch (error) {
       console.error('Erro ao buscar requerimentos:', error);
@@ -2283,113 +2263,14 @@ export default function BookConsumo({
         )}
 
         {/* Modal de Detalhes dos Requerimentos do Mês */}
-        <Dialog open={modalRequerimentosAberto} onOpenChange={setModalRequerimentosAberto}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                {t('books.bookContent.requirementsOfMonth', { month: mesSelecionado })}
-              </DialogTitle>
-              <p className="text-sm text-gray-500 mt-1">
-                {t('books.bookContent.requirementsDetails')}
-              </p>
-            </DialogHeader>
-
-            <div className="space-y-3 mt-4">
-              {carregandoRequerimentos ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sonda-blue mx-auto mb-4"></div>
-                    <p className="text-gray-500">{t('books.bookContent.loadingRequirements')}</p>
-                  </div>
-                </div>
-              ) : requerimentosMes.length > 0 ? (
-                <>
-                  {requerimentosMes.map((req) => (
-                    <div
-                      key={req.id}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <span className="font-semibold text-sm text-blue-600">
-                            {req.numero_chamado}
-                          </span>
-                        </div>
-                        {req.tipo_cobranca && (
-                          <Badge className="bg-green-100 text-green-800 text-xs">
-                            {req.tipo_cobranca}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 text-xs text-gray-600">
-                        {req.modulo && (
-                          <div className="flex justify-between">
-                            <span>{t('books.bookContent.moduleLabel')}</span>
-                            <span className="font-medium text-gray-900">{req.modulo}</span>
-                          </div>
-                        )}
-
-                        {req.horas_funcional && req.horas_funcional !== '--' && (
-                          <div className="flex justify-between">
-                            <span>{t('books.bookContent.functionalH')}</span>
-                            <span className="font-medium text-gray-900">{req.horas_funcional}</span>
-                          </div>
-                        )}
-                        {req.horas_tecnica && req.horas_tecnica !== '--' && (
-                          <div className="flex justify-between">
-                            <span>{t('books.bookContent.technicalH')}</span>
-                            <span className="font-medium text-gray-900">{req.horas_tecnica}</span>
-                          </div>
-                        )}
-                        {req.total_horas && req.total_horas !== '--' && (
-                          <div className="flex justify-between border-t pt-2 mt-2">
-                            <span className="font-semibold">
-                              {t('books.bookContent.totalLabel')}
-                            </span>
-                            <span className="font-semibold text-green-600">{req.total_horas}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="pt-4 border-t mt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-green-600">
-                        {t('books.bookContent.totalRequirements')}
-                      </span>
-                      <span className="text-2xl font-bold text-green-600">
-                        {requerimentosMes.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-sm font-semibold text-green-600">
-                        {t('books.bookContent.totalHours')}
-                      </span>
-                      <span className="text-2xl font-bold text-green-600">
-                        {requerimentosMes
-                          .reduce((sum, req) => {
-                            const total = Number(req.total_horas) || 0;
-                            return sum + total;
-                          }, 0)
-                          .toFixed(2)}
-                        h
-                      </span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <FileText className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">{t('books.bookContent.noRequirementsMonth')}</p>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <BookRequerimentosMesModal
+          aberto={modalRequerimentosAberto}
+          onOpenChange={setModalRequerimentosAberto}
+          mes={mesSelecionado}
+          carregando={carregandoRequerimentos}
+          requerimentos={requerimentosMes}
+          emTickets={isTicket}
+        />
       </div>
       {/* Wrapper para imagem decorativa - colada nos cantos da página */}
       <div

@@ -41,6 +41,7 @@ vi.mock('@/integrations/supabase/client', () => {
 import {
   buscarRequerimentosEmDesenvolvimentoParaBook,
   buscarRequerimentosFaturadosParaBook,
+  formatarRequerimentoDoMesConsumo,
   formatarRequerimentoParaBook,
   garantirSnapshotRequerimentosBook,
   paginarRequerimentosBook,
@@ -122,6 +123,64 @@ describe('requerimentosBookService', () => {
         horas_tecnica: '00:00',
         total_horas: '02:15',
         data_envio: '--',
+      });
+    });
+  });
+
+  describe('formatarRequerimentoDoMesConsumo (modal de requerimentos do mês no Consumo)', () => {
+    it('leva a quantidade_tickets do requerimento (não 0 fixo)', () => {
+      const linha = formatarRequerimentoDoMesConsumo(
+        { ...REQ_FATURADO, quantidade_tickets: 5 },
+        '09/2026'
+      );
+
+      expect(linha.tickets).toBe(5);
+    });
+
+    it('sem quantidade_tickets, tickets é 0', () => {
+      const linha = formatarRequerimentoDoMesConsumo(
+        { ...REQ_FATURADO, quantidade_tickets: null },
+        '09/2026'
+      );
+
+      expect(linha.tickets).toBe(0);
+    });
+
+    it('mantém as horas como o modal já exibia', () => {
+      const linha = formatarRequerimentoDoMesConsumo(
+        { ...REQ_FATURADO, valor_total_funcional: 10, valor_total_tecnico: 20 },
+        '09/2026'
+      );
+
+      expect(linha).toMatchObject({
+        id: 'req-1',
+        numero_chamado: 'RF-9175039',
+        cliente: EMPRESA_ID,
+        modulo: 'Comply',
+        tipo_cobranca: 'Banco de Horas',
+        horas_funcional: '1.50',
+        horas_tecnica: '60.00',
+        total_horas: '61.5',
+        valor_total: 30,
+        periodo_cobranca: '09/2026',
+      });
+    });
+
+    it('campos vazios viram "--" e o período cai no mês consultado', () => {
+      const linha = formatarRequerimentoDoMesConsumo(
+        { id: 'req-3', horas_funcional: null, horas_tecnico: null, mes_cobranca: null },
+        '10/2026'
+      );
+
+      expect(linha).toMatchObject({
+        numero_chamado: '--',
+        modulo: '--',
+        horas_funcional: '--',
+        horas_tecnica: '--',
+        total_horas: '--',
+        tickets: 0,
+        valor_total: 0,
+        periodo_cobranca: '10/2026',
       });
     });
   });
