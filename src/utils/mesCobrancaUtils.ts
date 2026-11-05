@@ -25,12 +25,12 @@ export function converterParaBanco(valor: string | number): number {
   if (typeof valor === 'number') {
     return valor;
   }
-  
+
   // Se é string no formato MM/YYYY, extrair apenas o mês
   if (typeof valor === 'string' && valor.includes('/')) {
     return converterStringParaMes(valor);
   }
-  
+
   // Se é string numérica, converter para número
   return parseInt(valor, 10);
 }
@@ -43,11 +43,11 @@ export function converterDoBanco(valor: number | string, ano?: number): string {
   if (typeof valor === 'string' && valor.includes('/')) {
     return valor; // Já está no formato correto
   }
-  
+
   if (typeof valor === 'number') {
     return converterMesParaString(valor, ano);
   }
-  
+
   // Fallback
   const mesNum = parseInt(valor, 10);
   return converterMesParaString(mesNum, ano);
@@ -60,17 +60,32 @@ export function validarMesCobranca(valor: string | number): boolean {
   if (typeof valor === 'number') {
     return valor >= 1 && valor <= 12;
   }
-  
+
   if (typeof valor === 'string') {
     // Formato MM/YYYY
     if (valor.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
       return true;
     }
-    
+
     // Formato numérico como string
     const num = parseInt(valor, 10);
     return !isNaN(num) && num >= 1 && num <= 12;
   }
-  
+
   return false;
+}
+/**
+ * Mês de cobrança ("MM/AAAA") do ponto do gráfico de consumo do book. Os pontos são os meses que
+ * terminam no mês do book, então o mês e o ano saem da posição: o último é o próprio mês do book.
+ */
+export function mesCobrancaDoPontoDoGrafico(
+  indice: number,
+  totalPontos: number,
+  mesBook: number,
+  anoBook: number
+): string {
+  const absoluto = anoBook * 12 + (mesBook - 1) - (totalPontos - 1 - indice);
+  const mes = (absoluto % 12) + 1;
+  const ano = Math.floor(absoluto / 12);
+  return `${String(mes).padStart(2, '0')}/${ano}`;
 }

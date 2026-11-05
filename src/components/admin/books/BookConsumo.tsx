@@ -25,6 +25,7 @@ import BookFooterBar from './BookFooterBar';
 import BookRequerimentosDescontados from './BookRequerimentosDescontados';
 import BookRequerimentosMesModal from './BookRequerimentosMesModal';
 import { formatarRequerimentoDoMesConsumo } from '@/services/requerimentosBookService';
+import { mesCobrancaDoPontoDoGrafico } from '@/utils/mesCobrancaUtils';
 
 interface BookConsumoProps {
   data: BookConsumoData;
@@ -1023,17 +1024,13 @@ export default function BookConsumo({
   }, [empresaId, mes, ano, data.requerimentos_descontados]);
 
   // Função para buscar requerimentos de um mês específico
-  const buscarRequerimentosMes = async (mes: string, ano: string) => {
+  const buscarRequerimentosMes = async (mesCobranca: string) => {
     if (!empresaId) return;
 
     setCarregandoRequerimentos(true);
-    setMesSelecionado(mes);
+    setMesSelecionado(mesCobranca);
 
     try {
-      const mesCobranca = `${mes}/${ano}`;
-
-      console.log(`🔍 Modal: Clicou em ${mes}/${ano} → Buscando requerimentos de ${mesCobranca}`);
-
       // Buscar requerimentos do mês
       const { supabase } = await import('@/integrations/supabase/client');
       const { data: requerimentos } = await supabase
@@ -1057,25 +1054,6 @@ export default function BookConsumo({
       setCarregandoRequerimentos(false);
       setModalRequerimentosAberto(true);
     }
-  };
-
-  // Função para converter nome do mês abreviado para número
-  const mesParaNumero = (mesAbrev: string): string => {
-    const meses: Record<string, string> = {
-      JAN: '01',
-      FEV: '02',
-      MAR: '03',
-      ABR: '04',
-      MAI: '05',
-      JUN: '06',
-      JUL: '07',
-      AGO: '08',
-      SET: '09',
-      OUT: '10',
-      NOV: '11',
-      DEZ: '12',
-    };
-    return meses[mesAbrev] || '01';
   };
 
   // Calcular total de horas de requerimentos
@@ -1862,11 +1840,17 @@ export default function BookConsumo({
                     activeDot={{
                       r: 7,
                       cursor: 'pointer',
-                      onClick: (e: any, payload: any) => {
-                        const mesAbrev = payload.payload.mes;
-                        const ano = '2025'; // TODO: Pegar ano dinâmico
-                        const mesNum = mesParaNumero(mesAbrev);
-                        buscarRequerimentosMes(mesNum, ano);
+                      onClick: (_e: any, ponto: any) => {
+                        // Pela posição do ponto (o nome do mês vem traduzido e sem ano)
+                        if (!mes || !ano) return;
+                        buscarRequerimentosMes(
+                          mesCobrancaDoPontoDoGrafico(
+                            ponto.index,
+                            dadosGrafico.length,
+                            Number(mes),
+                            Number(ano)
+                          )
+                        );
                       },
                     }}
                     name={t('books.bookContent.requirementsLine')}
