@@ -91,6 +91,7 @@ const erros = {
     moverOModulo: 'Falha ao mover o módulo: {{detalhe}}',
     reativarOBanco: 'Falha ao reativar o banco: {{detalhe}}',
     registrarAVigencia: 'Falha ao registrar a vigência: {{detalhe}}',
+    corrigirAVigencia: 'Falha ao corrigir a vigência: {{detalhe}}',
     reordenarOsBancos: 'Falha ao reordenar os bancos: {{detalhe}}',
     reordenarOsProdutos: 'Falha ao reordenar os produtos: {{detalhe}}',
     salvarAmsEProjetos: 'Falha ao salvar AMS e projetos: {{detalhe}}',

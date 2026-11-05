@@ -124,6 +124,7 @@ function cenario() {
       bancos_horas_criar: () => 'b-novo',
       bancos_horas_inativar: () => null,
       bancos_horas_nova_vigencia: () => 'v-novo',
+      bancos_horas_editar_vigencia: () => null,
     }
   );
 }
@@ -427,6 +428,77 @@ describe('BancosHorasCadastroService — ordem, situação e vigências', () => 
         },
       },
     ]);
+  });
+
+  it('editar vigência pela função do banco: valores, primeiro e último mês (nulo = em aberto)', async () => {
+    const fake = cenario();
+    const s = new BancosHorasCadastroService(fake as any);
+    await s.editarVigencia({
+      vigenciaId: 'v1',
+      tipo: 'baseline',
+      desde: '2025-01-01',
+      ate: '2025-06-01',
+      valores: { baselineMinutos: 1800, baselineTickets: null, credito: 'mensal' },
+      motivo: ' Baseline errado ',
+    });
+    await s.editarVigencia({
+      vigenciaId: 'r2',
+      tipo: 'repasse',
+      desde: '2026-02-01',
+      ate: null,
+      valores: {
+        percentualMensal: 60,
+        percentualDentroPeriodo: null,
+        percentualEntrePeriodos: null,
+      },
+      motivo: 'Percentual errado',
+    });
+    expect(fake.chamadasRpc).toEqual([
+      {
+        nome: 'bancos_horas_editar_vigencia',
+        args: {
+          p_vigencia_id: 'v1',
+          p_tipo: 'baseline',
+          p_inicio: '2025-01-01',
+          p_ate: '2025-06-01',
+          p_valores: { baseline_minutos: 1800, baseline_tickets: null, credito: 'mensal' },
+          p_motivo: 'Baseline errado',
+        },
+      },
+      {
+        nome: 'bancos_horas_editar_vigencia',
+        args: {
+          p_vigencia_id: 'r2',
+          p_tipo: 'repasse',
+          p_inicio: '2026-02-01',
+          p_ate: null,
+          p_valores: {
+            percentual_mensal: 60,
+            percentual_dentro_periodo: null,
+            percentual_entre_periodos: null,
+          },
+          p_motivo: 'Percentual errado',
+        },
+      },
+    ]);
+  });
+
+  it('editar vigência repassa a recusa do banco', async () => {
+    const fake = cenario();
+    fake.rpc = async () => ({
+      data: null,
+      error: { message: 'A vigência anterior (desde 01/2025) ficaria sem nenhum mês.' },
+    });
+    await expect(
+      new BancosHorasCadastroService(fake as any).editarVigencia({
+        vigenciaId: 'v2',
+        tipo: 'baseline',
+        desde: '2025-01-01',
+        ate: null,
+        valores: { baselineMinutos: 1440, baselineTickets: null, credito: 'mensal' },
+        motivo: 'x',
+      })
+    ).rejects.toThrow('A vigência anterior (desde 01/2025) ficaria sem nenhum mês.');
   });
 
   it('repassa a mensagem do banco', async () => {

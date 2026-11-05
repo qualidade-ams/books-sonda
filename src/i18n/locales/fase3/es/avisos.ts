@@ -13,6 +13,8 @@ const avisos = {
     erroReativar: 'No fue posible reactivar el banco',
     vigenciaRegistrada: 'Vigencia registrada',
     erroVigencia: 'No fue posible registrar la vigencia',
+    vigenciaEditada: 'Vigencia corregida',
+    erroEditarVigencia: 'No fue posible corregir la vigencia',
   },
   catalogo: {
     solucaoSalva: 'Solución guardada',

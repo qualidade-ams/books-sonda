@@ -288,6 +288,15 @@ const empresasCadastro = {
     motivoVigencia: 'Reason',
     motivoVigenciaPlaceholder: 'E.g.: contract amendment',
     registrar: 'Register term',
+    editarVigencia: 'Edit the term starting {{inicio}}',
+    editarVigenciaTitulo: 'Edit {{rotulo}} term',
+    editarVigenciaDescricao:
+      'Corrects the values and months of this term. The neighboring term follows the month change.',
+    edicaoMesFechado:
+      'Closed months keep their frozen result until the Book is rectified; open months already use the new value.',
+    ateMes: 'Until',
+    emAberto: 'Open-ended (current term)',
+    salvarVigencia: 'Save term',
     excedente: 'Overage',
     taxa: 'Client rate',
     tipoHora: 'Hour type',

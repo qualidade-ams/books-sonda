@@ -181,3 +181,114 @@ describe('VigenciaComHistorico', () => {
     );
   });
 });
+
+describe('VigenciaComHistorico: editar vigência', () => {
+  const abrir = async (onEditarVigencia = vi.fn(async () => undefined), podeEditar = true) => {
+    render(
+      <VigenciaComHistorico
+        tipo="baseline"
+        banco={BANCO}
+        podeEditar={podeEditar}
+        onNovaVigencia={vi.fn()}
+        onEditarVigencia={onEditarVigencia}
+      />
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /empresasCadastro.edicaoBanco.gerenciar/ })
+    );
+    return onEditarVigencia;
+  };
+  const editar = (inicio: string) =>
+    userEvent.click(
+      screen.getByRole('button', {
+        name: `empresasCadastro.edicaoBanco.editarVigencia {"inicio":"${inicio}"}`,
+      })
+    );
+
+  it('quem só vê não edita', async () => {
+    await abrir(vi.fn(), false);
+    expect(
+      screen.queryByRole('button', { name: /empresasCadastro.edicaoBanco.editarVigencia/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('vigência anterior: corrige o valor e o último mês; a primeira começa no início do banco', async () => {
+    const onEditarVigencia = await abrir();
+    await editar('01/2026');
+    const dialogo = within(screen.getByRole('alertdialog'));
+    expect(dialogo.getByText('empresasCadastro.edicaoBanco.edicaoMesFechado')).toBeInTheDocument();
+    const inicio = dialogo.getByLabelText(/empresasCadastro.edicaoBanco.aPartirDe/);
+    expect(inicio).toHaveValue('2026-01');
+    expect(inicio).toBeDisabled();
+    expect(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.ateMes/)).toHaveValue('2026-05');
+    expect(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.baselineHoras/)).toHaveValue(
+      '10:00'
+    );
+
+    fireEvent.change(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.baselineHoras/), {
+      target: { value: '08:00' },
+    });
+    fireEvent.change(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.ateMes/), {
+      target: { value: '2026-07' },
+    });
+    fireEvent.change(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.motivoVigencia/), {
+      target: { value: 'Baseline cadastrado errado' },
+    });
+    fireEvent.click(
+      dialogo.getByRole('button', { name: 'empresasCadastro.edicaoBanco.salvarVigencia' })
+    );
+
+    await waitFor(() =>
+      expect(onEditarVigencia).toHaveBeenCalledWith({
+        vigenciaId: 'v1',
+        tipo: 'baseline',
+        desde: '2026-01-01',
+        ate: '2026-07-01',
+        valores: { baselineMinutos: 480, baselineTickets: null, credito: 'mensal' },
+        motivo: 'Baseline cadastrado errado',
+      })
+    );
+  });
+
+  it('a última fica em aberto: muda o primeiro mês, sem último mês', async () => {
+    const onEditarVigencia = await abrir();
+    await editar('06/2026');
+    const dialogo = within(screen.getByRole('alertdialog'));
+    expect(dialogo.queryByLabelText(/empresasCadastro.edicaoBanco.ateMes/)).not.toBeInTheDocument();
+    const inicio = dialogo.getByLabelText(/empresasCadastro.edicaoBanco.aPartirDe/);
+    expect(inicio).toBeEnabled();
+    fireEvent.change(inicio, { target: { value: '2026-04' } });
+    fireEvent.change(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.motivoVigencia/), {
+      target: { value: 'Começou em abril' },
+    });
+    fireEvent.click(
+      dialogo.getByRole('button', { name: 'empresasCadastro.edicaoBanco.salvarVigencia' })
+    );
+
+    await waitFor(() =>
+      expect(onEditarVigencia).toHaveBeenCalledWith({
+        vigenciaId: 'v2',
+        tipo: 'baseline',
+        desde: '2026-04-01',
+        ate: null,
+        valores: { baselineMinutos: 720, baselineTickets: null, credito: 'mensal' },
+        motivo: 'Começou em abril',
+      })
+    );
+  });
+
+  it('último mês antes do primeiro não salva', async () => {
+    await abrir();
+    await editar('01/2026');
+    const dialogo = within(screen.getByRole('alertdialog'));
+    fireEvent.change(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.ateMes/), {
+      target: { value: '2025-12' },
+    });
+    fireEvent.change(dialogo.getByLabelText(/empresasCadastro.edicaoBanco.motivoVigencia/), {
+      target: { value: 'x' },
+    });
+    expect(
+      dialogo.getByRole('button', { name: 'empresasCadastro.edicaoBanco.salvarVigencia' })
+    ).toBeDisabled();
+  });
+});

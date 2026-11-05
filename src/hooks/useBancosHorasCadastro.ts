@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { textoDoErro } from '@/errors/erroTraduzivel';
 import { bancosHorasCadastroService } from '@/services/bancosHorasCadastroService';
 import type {
+  EditarVigenciaInput,
   NovaVigenciaInput,
   NovoBancoInput,
   ParametrosBanco,
@@ -82,6 +83,13 @@ export function useBancosHorasCadastro(empresaId: string | undefined) {
     onSettled: recarregar,
   });
 
+  const editarVigencia = useMutation({
+    mutationFn: (input: EditarVigenciaInput) => bancosHorasCadastroService.editarVigencia(input),
+    onSuccess: () => toast({ title: t('avisos.bancos.vigenciaEditada') }),
+    onError: avisarErro(t('avisos.bancos.erroEditarVigencia')),
+    onSettled: recarregar,
+  });
+
   return {
     bancos: query.data ?? [],
     isLoading: query.isLoading,
@@ -93,12 +101,14 @@ export function useBancosHorasCadastro(empresaId: string | undefined) {
     inativar: inativar.mutateAsync,
     reativar: reativar.mutateAsync,
     novaVigencia: novaVigencia.mutateAsync,
+    editarVigencia: editarVigencia.mutateAsync,
     isSalvando:
       criar.isPending ||
       salvar.isPending ||
       reordenar.isPending ||
       inativar.isPending ||
       reativar.isPending ||
-      novaVigencia.isPending,
+      novaVigencia.isPending ||
+      editarVigencia.isPending,
   };
 }

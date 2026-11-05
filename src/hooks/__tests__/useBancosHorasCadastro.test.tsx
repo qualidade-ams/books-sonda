@@ -25,6 +25,7 @@ vi.mock('@/services/bancosHorasCadastroService', () => ({
     inativar: vi.fn(),
     reativar: vi.fn(),
     novaVigencia: vi.fn(),
+    editarVigencia: vi.fn(),
   },
 }));
 
@@ -125,6 +126,28 @@ describe('useBancosHorasCadastro', () => {
     expect(toast).toHaveBeenCalledWith({ title: 'avisos.bancos.vigenciaRegistrada' });
     // Reordenar não avisa no sucesso
     expect(toast).toHaveBeenCalledTimes(3);
+  });
+
+  it('editar vigência grava pelo service, avisa e recarrega os bancos', async () => {
+    service.editarVigencia.mockResolvedValue(undefined);
+    service.listar.mockResolvedValue([]);
+    const { client, wrapper } = criarWrapper();
+    const invalidar = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useBancosHorasCadastro('e1'), { wrapper });
+    const edicao = {
+      vigenciaId: 'v1',
+      tipo: 'baseline',
+      desde: '2025-01-01',
+      ate: '2025-06-01',
+      valores: {},
+      motivo: 'x',
+    } as any;
+
+    await act(() => result.current.editarVigencia(edicao));
+
+    expect(service.editarVigencia).toHaveBeenCalledWith(edicao);
+    expect(toast).toHaveBeenCalledWith({ title: 'avisos.bancos.vigenciaEditada' });
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ['bancos-horas-cadastro', 'e1'] });
   });
 
   it('erro aparece no aviso e recarrega (parte pode ter sido gravada)', async () => {
