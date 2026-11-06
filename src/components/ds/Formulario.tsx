@@ -211,17 +211,14 @@ export function Escolha<T extends string>({
   opcoes: { valor: T; rotulo: string }[];
   valor: T | null;
   onChange: (v: T) => void;
-  /** Muitas opções: ficam numa linha a partir de sm, com espaçamento menor */
+  /** Muitas opções: espaçamento menor e largura pelo texto; quebra a linha se não couber */
   umaLinha?: boolean;
 }) {
   return (
     <div
       role="radiogroup"
       aria-label={rotulo}
-      className={cn(
-        'flex flex-wrap gap-1 rounded-xl bg-ds-bg-subtle p-1',
-        umaLinha && 'sm:flex-nowrap'
-      )}
+      className="flex flex-wrap gap-1 rounded-xl bg-ds-bg-subtle p-1"
     >
       {opcoes.map((o) => {
         const ativo = o.valor === valor;
