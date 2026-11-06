@@ -88,6 +88,44 @@ describe('orquestradorSync', () => {
     expect(fechar).toHaveBeenCalled();
   });
 
+  it('registra no log a comparação SQL Server x Supabase de cada tabela', async () => {
+    const { orq } = criar(
+      criarEtapas({
+        validacao: vi.fn(async () => ({
+          resumo: { tabelas_ok: 1, tabelas_com_diferenca: 2, tabelas_com_erro: 1 },
+          tabelas: {
+            pesquisas: { sql_server: 13202, supabase: 13184, diferenca: 18 },
+            especialistas: { sql_server_total: 426, supabase: 446, diferenca: -20 },
+            apontamentos: { sql_server: 105491, supabase: 105491, diferenca: 0 },
+            tickets: { erro: 'Timeout ao contar' },
+          },
+        })),
+      })
+    );
+    const inicio = await orq.iniciar({ tabelas: TODAS, origem: 'manual' });
+    await inicio.conclusao;
+
+    const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+    const logs: { mensagem: string; nivel: string }[] = updates[updates.length - 1].logs;
+    const linha = (texto: string) => logs.find((l) => l.mensagem.includes(texto));
+
+    expect(linha('Comparação Pesquisas')).toMatchObject({
+      mensagem: 'Comparação Pesquisas: SQL Server 13.202 · Supabase 13.184 · faltam 18 no Supabase',
+      nivel: 'erro',
+    });
+    expect(linha('Comparação Especialistas')?.mensagem).toBe(
+      'Comparação Especialistas: SQL Server 426 · Supabase 446 · Supabase tem 20 a mais'
+    );
+    expect(linha('Comparação Apontamentos')).toMatchObject({
+      mensagem: 'Comparação Apontamentos: SQL Server 105.491 · Supabase 105.491 · igual',
+      nivel: 'info',
+    });
+    expect(linha('Comparação Tickets')).toMatchObject({
+      mensagem: 'Comparação Tickets: falhou — Timeout ao contar',
+      nivel: 'erro',
+    });
+  });
+
   it('pula etapas não selecionadas', async () => {
     const { orq, etapas } = criar();
     const inicio = await orq.iniciar({ tabelas: { pesquisas: true }, origem: 'manual' });

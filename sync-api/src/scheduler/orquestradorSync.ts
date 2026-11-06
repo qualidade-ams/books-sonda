@@ -169,6 +169,32 @@ function resumirEtapaTabela(r: any) {
   };
 }
 
+const NOMES_COMPARACAO: Record<string, string> = {
+  pesquisas: 'Pesquisas',
+  especialistas: 'Especialistas',
+  apontamentos: 'Apontamentos',
+  tickets: 'Tickets',
+};
+
+/** Uma linha de log por tabela com as contagens SQL Server x Supabase da validação */
+function logComparacao(tabelas: Record<string, any> | null | undefined, log: (m: string, n?: 'info' | 'erro') => void) {
+  for (const [tabela, dados] of Object.entries(tabelas ?? {})) {
+    const nome = `Comparação ${NOMES_COMPARACAO[tabela] ?? tabela}`;
+    if (dados?.erro) {
+      log(`${nome}: falhou — ${dados.erro}`, 'erro');
+      continue;
+    }
+    const numero = (n: unknown) => (typeof n === 'number' ? n.toLocaleString('pt-BR') : '—');
+    const diferenca = dados?.diferenca ?? 0;
+    const situacao =
+      diferenca === 0 ? 'igual' : diferenca > 0 ? `faltam ${diferenca} no Supabase` : `Supabase tem ${-diferenca} a mais`;
+    log(
+      `${nome}: SQL Server ${numero(dados?.sql_server ?? dados?.sql_server_total)} · Supabase ${numero(dados?.supabase)} · ${situacao}`,
+      diferenca > 0 ? 'erro' : 'info'
+    );
+  }
+}
+
 export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
   const { supabase, etapas } = deps;
   const intervaloLogs = deps.intervaloGravacaoLogsMs ?? 3000;
@@ -347,6 +373,7 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
         resumo: r?.resumo ?? null,
         tabelas: r?.tabelas ?? null,
       }));
+      logComparacao(resultado.validacao?.tabelas, log);
 
       // As inconsistências guardam dados dessas tabelas: se uma delas foi sincronizada,
       // a detecção roda mesmo desmarcada, para a auditoria não ficar desatualizada.

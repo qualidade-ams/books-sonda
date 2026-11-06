@@ -167,6 +167,38 @@ describe('SincronizacaoSqlServer', () => {
     estado.execucoes = [];
   });
 
+  it('detalhes da execução mostram a comparação SQL Server x Supabase', () => {
+    estado.execucoes = [
+      {
+        id: 'x2',
+        tipo: 'sincronizacao',
+        agendamento_id: null,
+        origem: 'manual',
+        disparado_por: null,
+        tabelas: { apontamentos: true },
+        status: 'sucesso',
+        iniciado_em: '2026-11-03T10:40:00Z',
+        finalizado_em: '2026-11-03T10:47:00Z',
+        resultado: {
+          validacao: {
+            sucesso: true,
+            tabelas: { apontamentos: { sql_server: 10, supabase: 9, diferenca: 1, status: '' } },
+          },
+        },
+        logs: [],
+      },
+    ];
+    renderTela('/admin/rotinas-automaticas?aba=historico');
+    expect(
+      screen.queryByText('sincronizacaoSql.historico.comparacao.titulo')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('sincronizacaoSql.historico.manual'));
+
+    expect(screen.getByText('sincronizacaoSql.historico.comparacao.titulo')).toBeInTheDocument();
+    estado.execucoes = [];
+  });
+
   it('mostra estado vazio sem agendamentos', () => {
     renderTela();
     expect(screen.getByText('sincronizacaoSql.agendamentos.vazio')).toBeInTheDocument();

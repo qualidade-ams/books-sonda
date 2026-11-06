@@ -61,6 +61,7 @@ import {
 } from '@/components/admin/pesquisas-satisfacao/SyncSelectionModal';
 import { AgendamentoFormModal } from '@/components/admin/sincronizacao/AgendamentoFormModal';
 import { GerarBooksAgoraModal } from '@/components/admin/sincronizacao/GerarBooksAgoraModal';
+import { ComparacaoSqlSupabase } from '@/components/admin/sincronizacao/ComparacaoSqlSupabase';
 import {
   AbaSaldoParcial,
   SCREEN_KEY_SALDO_PARCIAL,
@@ -468,6 +469,7 @@ function SincronizacaoSqlServer() {
             </div>
           ))}
         </div>
+        <ComparacaoSqlSupabase validacao={r.validacao} />
         <div>
           <p className="text-xs font-semibold text-gray-700 mb-1">
             {t('sincronizacaoSql.historico.logs')}

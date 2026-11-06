@@ -2412,6 +2412,15 @@ const en = {
       booksResumo:
         'Reference {{mes}}/{{ano}}: {{gerados}} generated and sent · {{erros}} with errors · {{pulados}} skipped',
       booksSelecionadas: 'Only {{count}} selected company(ies)',
+      comparacao: {
+        titulo: 'SQL Server x Supabase comparison',
+        sqlServer: 'SQL Server',
+        supabase: 'Supabase',
+        diferenca: 'Difference',
+        ok: 'Equal',
+        faltam: '{{count}} missing in Supabase',
+        sobram: 'Supabase has {{count}} more',
+      },
     },
     status: {
       executando: 'Running',
