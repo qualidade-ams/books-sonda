@@ -3,11 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ProdutosModulos from '../ProdutosModulos';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { Catalogo } from '@/types/catalogo';
 import type { MapeamentoGrupo } from '@/types/dePara';
 import { exportarTabela, matrizDaAba } from '@/utils/exportarTabela';
 import { lerPlanilha } from '@/utils/importarPlanilha';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -228,6 +230,32 @@ describe('ProdutosModulos', () => {
     );
   });
 
+  it('excluir a solução só com produtos sem uso avisa que eles saem junto', async () => {
+    catalogo.solucoes = [
+      ...CATALOGO.solucoes,
+      { id: 's2', codigo: 'FIN', nome: 'FINANCEIRAS', ordem: 2, ativo: true, ...autoria },
+    ];
+    catalogo.produtos = [
+      ...CATALOGO.produtos,
+      produto('fc', 'FC', 1, { solucaoId: 's2', ativo: false }),
+      produto('sapc', 'SAPC', 2, { solucaoId: 's2', ativo: false }),
+    ];
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /^FINANCEIRAS/ }));
+    fireEvent.click(screen.getByRole('button', { name: /produtosModulos.solucao.editar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /produtosModulos.edicao.solucao.excluir/ }));
+    const dialogo = screen.getByRole('alertdialog', {
+      name: 'produtosModulos.excluir.titulo {"nome":"FINANCEIRAS"}',
+    });
+    expect(
+      within(dialogo).getByText('produtosModulos.excluir.produtosJuntos {"produtos":"FC, SAPC"}')
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'fase3Comum.excluir' }));
+    await waitFor(() =>
+      expect(catalogo.excluir).toHaveBeenCalledWith({ tipo: 'solucao', id: 's2' })
+    );
+  });
+
   it('inativar um produto pela solução pede confirmação', async () => {
     renderizar();
     fireEvent.click(screen.getByRole('button', { name: /^COMEX/ }));
@@ -334,5 +362,13 @@ describe('ProdutosModulos', () => {
     permissoes = ['produtos_modulos:view'];
     renderizar();
     expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ProdutosModulos: ao abrir', () => {
+  it('recarrega o catálogo e os grupos do Aranda', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('catalogo', 'grupos-aranda');
   });
 });

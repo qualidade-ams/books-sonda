@@ -18798,6 +18798,57 @@ var RequerimentoErrorFactory = class {
   }
 };
 
+// src/services/requerimentoBancoService.ts
+init_clienteSupabaseServidor();
+var RequerimentoBancoService = class {
+  constructor(cliente2 = supabase) {
+    this.cliente = cliente2;
+  }
+  async destinos(empresaId, requerimentoId) {
+    const { data, error } = await this.cliente.rpc("requerimento_destinos", {
+      p_empresa_id: empresaId,
+      p_requerimento_id: requerimentoId ?? null
+    });
+    if (error) throw new Error(`Erro ao carregar os produtos do requerimento: ${error.message}`);
+    const resposta = data ?? {};
+    return {
+      liberada: !!resposta.liberada,
+      escolhido: resposta.escolhido ?? null,
+      opcoes: resposta.opcoes ?? []
+    };
+  }
+  /** Grava o produto/módulo; o banco é calculado no servidor e devolvido */
+  async definirDestino(requerimentoId, destino) {
+    const { data, error } = await this.cliente.rpc("requerimento_definir_destino", {
+      p_requerimento_id: requerimentoId,
+      p_produto_id: destino.produtoId,
+      p_modulo_id: destino.moduloId
+    });
+    if (error) throw new Error(`Erro ao gravar o produto do requerimento: ${error.message}`);
+    return data;
+  }
+  /** De-para do campo Módulo antigo (Comex, Comply…) para produto/módulo do catálogo */
+  async produtosDosModulosLegados() {
+    const { data, error } = await this.cliente.from("modulos_requerimento_produto").select("modulo_requerimento, produto_id, modulo_id");
+    if (error) throw new Error(`Erro ao carregar os m\xF3dulos de requerimento: ${error.message}`);
+    return Object.fromEntries(
+      (data ?? []).map((l) => [
+        l.modulo_requerimento,
+        { produtoId: l.produto_id, moduloId: l.modulo_id ?? null }
+      ])
+    );
+  }
+};
+var requerimentoBancoService = new RequerimentoBancoService();
+
+// src/utils/bancoDoRequerimento.ts
+init_horasUtils();
+function lerDestino(chave3) {
+  if (!chave3) return null;
+  const [produtoId, moduloId] = chave3.split("|");
+  return produtoId ? { produtoId, moduloId: moduloId || null } : null;
+}
+
 // src/services/requerimentosService.ts
 var RequerimentosService = class {
   /**
@@ -18846,13 +18897,15 @@ var RequerimentosService = class {
       enviado_faturamento: false
       // Nota: horas_analise_ef NÃO é salvo no banco - é apenas para controle do formulário
     };
-    const { data: requerimento, error } = await supabase.from("requerimentos").insert(requerimentoData).select(`
+    const { data: requerimento, error } = await supabase.from("requerimentos").insert(requerimentoData).select(
+      `
         *,
         cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
-      `).single();
+      `
+    ).single();
     if (error) {
       throw new Error(`Erro ao criar requerimento: ${error.message}`);
     }
@@ -18888,9 +18941,34 @@ var RequerimentosService = class {
       const { data: requerimentoAnaliseEF, error: errorAnaliseEF } = await supabase.from("requerimentos").insert(requerimentoAnaliseEFData).select().single();
       if (errorAnaliseEF) {
         console.error("\u274C Erro ao criar requerimento de an\xE1lise EF:", errorAnaliseEF.message);
+      } else if (data.destino_banco) {
+        await this.gravarBancoOuDesfazer(requerimentoAnaliseEF.id, data.destino_banco, [
+          requerimentoAnaliseEF.id,
+          requerimento.id
+        ]);
       }
     }
+    if (data.destino_banco && data.tipo_cobranca === "Banco de Horas") {
+      await this.gravarBancoOuDesfazer(requerimento.id, data.destino_banco, [requerimento.id]);
+    }
     return this.formatarRequerimento(requerimento);
+  }
+  /**
+   * Produto/módulo escolhido no lançamento (empresa liberada); o banco sai
+   * dele no servidor. Se a gravação for recusada, apaga os requerimentos
+   * recém-criados: sem o banco, eles iriam para o banco do módulo, e o
+   * usuário ainda veria o lançamento como feito.
+   */
+  async gravarBancoOuDesfazer(requerimentoId, destino, criados) {
+    try {
+      await requerimentoBancoService.definirDestino(requerimentoId, lerDestino(destino));
+    } catch (erro) {
+      for (const id of criados) {
+        const { error } = await supabase.from("requerimentos").delete().eq("id", id);
+        if (error) console.error("Erro ao desfazer requerimento sem banco:", error.message);
+      }
+      throw erro;
+    }
   }
   /**
    * Resolver nomes de usuários baseado nos IDs
@@ -18987,10 +19065,12 @@ var RequerimentosService = class {
     if (error) {
       throw new Error(`Erro ao listar requerimentos: ${error.message}`);
     }
-    const userIds = [...new Set((data || []).map((req) => req.autor_id).filter(Boolean))];
+    const userIds = [
+      ...new Set((data || []).map((req) => req.autor_id).filter(Boolean))
+    ];
     const usersMap = await this.resolverNomesUsuarios(userIds);
     const chamadosNumeros = (data || []).map((req) => (req.chamado || "").replace("RF-", "")).filter(Boolean);
-    let ticketExternoMap = {};
+    const ticketExternoMap = {};
     if (chamadosNumeros.length > 0) {
       const { data: ticketsData } = await supabase.from("apontamentos_tickets_aranda").select("nro_solicitacao, ticket_externo").in("nro_solicitacao", chamadosNumeros);
       if (ticketsData) {
@@ -19073,13 +19153,15 @@ var RequerimentosService = class {
     if (!id?.trim()) {
       throw new Error("ID \xE9 obrigat\xF3rio");
     }
-    const { data, error } = await supabase.from("requerimentos").select(`
+    const { data, error } = await supabase.from("requerimentos").select(
+      `
         *,
         cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
-      `).eq("id", id).single();
+      `
+    ).eq("id", id).single();
     if (error) {
       if (error.code === "PGRST116") {
         return null;
@@ -19119,7 +19201,8 @@ var RequerimentosService = class {
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
     if (data.data_envio) updateData.data_envio = data.data_envio;
-    if (data.data_aprovacao !== void 0) updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
+    if (data.data_aprovacao !== void 0)
+      updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
     if (data.horas_funcional !== void 0) {
       updateData.horas_funcional = typeof data.horas_funcional === "string" ? converterParaHorasDecimal(data.horas_funcional) : data.horas_funcional;
     }
@@ -19137,16 +19220,30 @@ var RequerimentosService = class {
       if (hFunc > 0 && hTec === 0) updateData.linguagem = "Funcional";
     }
     if (data.tipo_cobranca) updateData.tipo_cobranca = data.tipo_cobranca;
-    if (data.mes_cobranca !== void 0) updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
+    if (data.mes_cobranca !== void 0)
+      updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
     if (data.observacao !== void 0) updateData.observacao = data.observacao?.trim() || null;
-    if (data.valor_hora_funcional !== void 0) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
-    if (data.valor_hora_tecnico !== void 0) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
-    if (data.valor_hora_gestor !== void 0) updateData.valor_hora_gestor = data.valor_hora_gestor || null;
-    if (data.tipo_hora_extra !== void 0) updateData.tipo_hora_extra = data.tipo_hora_extra || null;
-    if (data.quantidade_tickets !== void 0) updateData.quantidade_tickets = data.quantidade_tickets || null;
+    if (data.valor_hora_funcional !== void 0)
+      updateData.valor_hora_funcional = data.valor_hora_funcional || null;
+    if (data.valor_hora_tecnico !== void 0)
+      updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
+    if (data.valor_hora_gestor !== void 0)
+      updateData.valor_hora_gestor = data.valor_hora_gestor || null;
+    if (data.tipo_hora_extra !== void 0)
+      updateData.tipo_hora_extra = data.tipo_hora_extra || null;
+    if (data.quantidade_tickets !== void 0)
+      updateData.quantidade_tickets = data.quantidade_tickets || null;
     const { error } = await supabase.from("requerimentos").update(updateData).eq("id", id);
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
+    }
+    if (data.destino_banco && data.tipo_cobranca === "Banco de Horas") {
+      try {
+        await requerimentoBancoService.definirDestino(id, lerDestino(data.destino_banco));
+      } catch (erro) {
+        const motivo = erro instanceof Error ? erro.message : String(erro);
+        throw new Error(`Requerimento salvo, mas o banco n\xE3o foi gravado: ${motivo}`);
+      }
     }
   }
   /**
@@ -19183,10 +19280,14 @@ var RequerimentosService = class {
       throw new Error("Requerimento j\xE1 foi enviado para faturamento");
     }
     if (!requerimento.tipo_cobranca) {
-      throw new Error("\xC9 necess\xE1rio selecionar um tipo de cobran\xE7a v\xE1lido antes de enviar para faturamento");
+      throw new Error(
+        "\xC9 necess\xE1rio selecionar um tipo de cobran\xE7a v\xE1lido antes de enviar para faturamento"
+      );
     }
     if (!requerimento.mes_cobranca || !requerimento.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
-      throw new Error("M\xEAs de cobran\xE7a \xE9 obrigat\xF3rio para envio ao faturamento e deve estar no formato MM/YYYY");
+      throw new Error(
+        "M\xEAs de cobran\xE7a \xE9 obrigat\xF3rio para envio ao faturamento e deve estar no formato MM/YYYY"
+      );
     }
     if (!requerimento.data_aprovacao || requerimento.data_aprovacao.trim() === "") {
       throw new Error("Data de aprova\xE7\xE3o do or\xE7amento \xE9 obrigat\xF3ria para envio ao faturamento");
@@ -19213,7 +19314,9 @@ var RequerimentosService = class {
       throw new Error("Requerimento n\xE3o encontrado");
     }
     if (requerimento.status !== "enviado_faturamento" && requerimento.status !== "faturado") {
-      throw new Error("Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados");
+      throw new Error(
+        "Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados"
+      );
     }
     const { error } = await supabase.from("requerimentos").update({
       status: "lancado",
@@ -19241,9 +19344,13 @@ var RequerimentosService = class {
     if (!requerimentos || requerimentos.length !== ids.length) {
       throw new Error("Um ou mais requerimentos n\xE3o foram encontrados");
     }
-    const requerimentosInvalidos = requerimentos.filter((req) => req.status !== "enviado_faturamento");
+    const requerimentosInvalidos = requerimentos.filter(
+      (req) => req.status !== "enviado_faturamento"
+    );
     if (requerimentosInvalidos.length > 0) {
-      throw new Error(`Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inv\xE1lidos: ${requerimentosInvalidos.map((r) => r.chamado).join(", ")}`);
+      throw new Error(
+        `Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inv\xE1lidos: ${requerimentosInvalidos.map((r) => r.chamado).join(", ")}`
+      );
     }
     const { error } = await supabase.from("requerimentos").update({
       status: "faturado",
@@ -19576,10 +19683,7 @@ var RequerimentosService = class {
     const horasTecnico = typeof data.horas_tecnico === "number" ? converterDeHorasDecimal(data.horas_tecnico) : data.horas_tecnico;
     const horasGestor = typeof data.horas_gestor === "number" ? converterDeHorasDecimal(data.horas_gestor) : data.horas_gestor;
     const horasTotal = somarHoras(
-      somarHoras(
-        horasFuncional?.toString() || "0",
-        horasTecnico?.toString() || "0"
-      ),
+      somarHoras(horasFuncional?.toString() || "0", horasTecnico?.toString() || "0"),
       horasGestor?.toString() || "0"
     );
     return {
@@ -21907,9 +22011,7 @@ var mesesComSituacao = (meses, quadro, bancoId, hoje) => meses.map((mes) => {
   };
 });
 function indiceReferencia(meses) {
-  const aberto = meses.findIndex((m) => m.situacao === "aberto");
-  if (aberto >= 0) return aberto;
-  for (let i = meses.length - 1; i >= 0; i--) if (meses[i].situacao === "fechado") return i;
+  for (let i = meses.length - 1; i >= 0; i--) if (meses[i].situacao !== "futuro") return i;
   return 0;
 }
 function mesCurto(mes, idioma) {
@@ -26084,6 +26186,8 @@ var ptBR = {
       requirementsInDevelopmentSubtitle: "Requerimentos em andamento que ainda n\xE3o foram considerados no banco de horas/faturamento",
       requirementsInDevelopmentTotal: "Total de Requerimentos",
       requirementsInDevelopmentHours: "Total de Horas",
+      requirementsTicketsTotal: "Total de Tickets",
+      requirementsTicketsColumn: "Tickets",
       requirementsInDevelopmentStatus: "Em Andamento",
       requirementsInDevelopmentStatusLabel: "Status",
       requirementsCompensatedTitle: "Requerimentos Compensados",
@@ -26635,6 +26739,16 @@ var ptBR = {
     billingType: "Tipo de Cobran\xE7a",
     billingMonthYear: "M\xEAs/Ano de Cobran\xE7a",
     billingMonthYearPlaceholder: "Selecione m\xEAs e ano (opcional)",
+    bankProduct: "Produto do banco de horas",
+    bankProductPlaceholder: "Selecione o produto",
+    bankModule: "M\xF3dulo",
+    bankModulePlaceholder: "Selecione o m\xF3dulo",
+    bankHelp: "O banco que recebe o desconto sai do produto e do m\xF3dulo.",
+    bankDiscountsFrom: "Desconta do banco: {{banco}}",
+    bankNoneInMonth: "Nenhum produto com banco vigente no m\xEAs de cobran\xE7a",
+    bankNotRegistered: "Este cliente n\xE3o tem banco de horas cadastrado para requerimentos. Cadastre o banco com o produto na tela Empresas antes de lan\xE7ar.",
+    bankRequired: "O produto do banco de horas \xE9 obrigat\xF3rio",
+    bankModuleRequired: "O m\xF3dulo \xE9 obrigat\xF3rio para este produto",
     onSiteService: "Atendimento presencial",
     selectBillingType: "Selecione o tipo de cobran\xE7a",
     technicalLanguage: "Linguagem T\xE9cnica",
@@ -28549,6 +28663,8 @@ var en = {
       requirementsInDevelopmentSubtitle: "Ongoing requirements not yet sent for billing",
       requirementsInDevelopmentTotal: "Total Requirements",
       requirementsInDevelopmentHours: "Total Hours",
+      requirementsTicketsTotal: "Total Tickets",
+      requirementsTicketsColumn: "Tickets",
       requirementsInDevelopmentStatus: "In Progress",
       requirementsInDevelopmentStatusLabel: "Status",
       requirementsCompensatedTitle: "Offset Requirements",
@@ -29100,6 +29216,16 @@ var en = {
     billingType: "Billing Type",
     billingMonthYear: "Billing Month/Year",
     billingMonthYearPlaceholder: "Select month and year (optional)",
+    bankProduct: "Hour bank product",
+    bankProductPlaceholder: "Select the product",
+    bankModule: "Module",
+    bankModulePlaceholder: "Select the module",
+    bankHelp: "The bank charged comes from the product and module.",
+    bankDiscountsFrom: "Charged to bank: {{banco}}",
+    bankNoneInMonth: "No product with a bank in effect in the billing month",
+    bankNotRegistered: "This client has no hour bank registered for requests. Register the bank with the product on the Companies screen before submitting.",
+    bankRequired: "The hour bank product is required",
+    bankModuleRequired: "The module is required for this product",
     onSiteService: "On-site service",
     selectBillingType: "Select billing type",
     technicalLanguage: "Technical Language",
@@ -31014,6 +31140,8 @@ var es = {
       requirementsInDevelopmentSubtitle: "Requerimientos en curso que a\xFAn no han sido enviados para facturaci\xF3n",
       requirementsInDevelopmentTotal: "Total de Requerimientos",
       requirementsInDevelopmentHours: "Total de Horas",
+      requirementsTicketsTotal: "Total de Tickets",
+      requirementsTicketsColumn: "Tickets",
       requirementsInDevelopmentStatus: "En Desarrollo",
       requirementsInDevelopmentStatusLabel: "Estado",
       requirementsCompensatedTitle: "Requerimientos Compensados",
@@ -31565,6 +31693,16 @@ var es = {
     billingType: "Tipo de Cobro",
     billingMonthYear: "Mes/A\xF1o de Cobro",
     billingMonthYearPlaceholder: "Seleccione mes y a\xF1o (opcional)",
+    bankProduct: "Producto del banco de horas",
+    bankProductPlaceholder: "Seleccione el producto",
+    bankModule: "M\xF3dulo",
+    bankModulePlaceholder: "Seleccione el m\xF3dulo",
+    bankHelp: "El banco que recibe el descuento sale del producto y del m\xF3dulo.",
+    bankDiscountsFrom: "Descuenta del banco: {{banco}}",
+    bankNoneInMonth: "Ning\xFAn producto con banco vigente en el mes de cobro",
+    bankNotRegistered: "Este cliente no tiene banco de horas registrado para requerimientos. Registre el banco con el producto en la pantalla Empresas antes de lanzar.",
+    bankRequired: "El producto del banco de horas es obligatorio",
+    bankModuleRequired: "El m\xF3dulo es obligatorio para este producto",
     onSiteService: "Atenci\xF3n presencial",
     selectBillingType: "Seleccione el tipo de cobro",
     technicalLanguage: "Lenguaje T\xE9cnico",
@@ -32659,10 +32797,9 @@ var produtosModulos = {
     colunaUso: "Usado nos bancos",
     semModulos: "Sem m\xF3dulos",
     nenhumProduto: "Nenhum produto nesta solu\xE7\xE3o",
-    gruposServico: "Grupos de servi\xE7o",
-    nenhumGrupoServico: "Nenhum grupo de servi\xE7o nesta solu\xE7\xE3o.",
-    horasServico: "As horas dos grupos de servi\xE7o v\xE3o sempre para o Banco padr\xE3o da empresa.",
-    gruposLigadosA: "Grupos ligados a {{produto}} inteiro"
+    gruposLigadosA: "Grupos ligados a {{produto}} inteiro",
+    gruposNosModulos: { um: "{{n}} grupo nos m\xF3dulos", varios: "{{n}} grupos nos m\xF3dulos" },
+    gruposNosModulosDe: "Grupos nos m\xF3dulos de {{produto}}"
   },
   produto: {
     editar: "Editar produto",
@@ -32700,10 +32837,8 @@ var produtosModulos = {
     desvincularGrupo: "Desvincular {{grupo}}",
     emModulo: "Em {{produto}} \u203A {{modulo}}",
     emProduto: "Em {{produto}}, sem m\xF3dulo",
-    servicoDe: "Servi\xE7o de {{solucao}}",
     semSolucao: "Sem solu\xE7\xE3o (n\xE3o se aplica)",
     ficaTambem: "continua l\xE1 e passa a ficar aqui tamb\xE9m",
-    saiParaCa: "sai de l\xE1 e vem para c\xE1",
     podeMoverTitulo: "Pode mover horas entre bancos",
     podeMoverTexto: "Nas empresas com bancos m\xFAltiplos, as horas desses grupos passam para outro banco a partir do pr\xF3ximo rec\xE1lculo. Meses fechados n\xE3o mudam.",
     soLeitura: "Para vincular grupos do Aranda, \xE9 preciso Edi\xE7\xE3o no De-para de Grupos."
@@ -32740,11 +32875,10 @@ var produtosModulos = {
       ativa: "Solu\xE7\xE3o ativa",
       codigoNaoMuda: "O c\xF3digo n\xE3o muda depois de criado.",
       excluirTitulo: "Excluir a solu\xE7\xE3o",
-      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem produto e sem grupo de servi\xE7o). Exclu\xEDda, ela some do cat\xE1logo de vez.",
+      excluirAjuda: "Esta solu\xE7\xE3o nunca foi usada (sem grupo do Aranda, e os produtos dela, se houver, tamb\xE9m sem uso). Exclu\xEDda, ela e os produtos somem do cat\xE1logo de vez.",
       excluir: "Excluir solu\xE7\xE3o",
       codigoRepetido: "J\xE1 existe uma solu\xE7\xE3o com este c\xF3digo.",
-      nomeRepetido: "J\xE1 existe uma solu\xE7\xE3o com este nome.",
-      ajudaServico: "As horas dos grupos de servi\xE7o v\xE3o sempre para o Banco padr\xE3o."
+      nomeRepetido: "J\xE1 existe uma solu\xE7\xE3o com este nome."
     },
     produto: {
       novo: "Novo produto",
@@ -32753,7 +32887,8 @@ var produtosModulos = {
       nome: "Nome do produto",
       descricao: "Descri\xE7\xE3o do produto",
       ativo: "Produto ativo",
-      solucaoNaoMuda: "A solu\xE7\xE3o do produto n\xE3o muda depois de criado.",
+      solucaoNaoMuda: 'Produto usado em banco ativo (ou "A classificar") n\xE3o muda de solu\xE7\xE3o.',
+      solucaoMuda: "Ao trocar a solu\xE7\xE3o, os m\xF3dulos e os grupos do Aranda v\xE3o junto com o produto.",
       nomeRepetido: "J\xE1 existe o produto {{nome}} em {{solucao}}.",
       grupos: "Grupos do produto",
       semGrupo: "Nenhum grupo ligado ao produto inteiro. Se o produto n\xE3o tem m\xF3dulos, sem grupo nenhuma hora chega a ele.",
@@ -32770,7 +32905,7 @@ var produtosModulos = {
       nomeRepetido: "J\xE1 existe um m\xF3dulo {{nome}} em {{produto}}.",
       grupos: "Grupos do Aranda",
       semGrupo: "Sem grupo do Aranda, nenhuma hora apontada chega a este m\xF3dulo.",
-      ajudaGrupos: "Um grupo pode estar em v\xE1rios produtos, um lugar por produto. Desvinculado, ele fica no produto, sem m\xF3dulo."
+      ajudaGrupos: "Um grupo pode estar em v\xE1rios produtos e m\xF3dulos. Desvinculado do \xFAltimo m\xF3dulo do produto, ele fica no produto inteiro."
     }
   },
   mover: {
@@ -32784,7 +32919,6 @@ var produtosModulos = {
     codigo: "Identificador da solu\xE7\xE3o usado pelo sistema. N\xE3o muda depois de criado: FISCAIS habilita o Contrato FISCAL na empresa.",
     nomeSolucao: "Nome exibido nas telas e no contrato da empresa. \xDAnico.",
     solucaoAtiva: "Solu\xE7\xE3o inativa n\xE3o aparece para empresas novas. As empresas que j\xE1 a contratam n\xE3o mudam.",
-    gruposServico: "Grupos do Aranda que atendem a solu\xE7\xE3o toda (DBA, T\xE9cnico\u2026), sem ser de um produto. As horas deles v\xE3o sempre para o Banco padr\xE3o.",
     solucao: "A empresa contrata solu\xE7\xF5es. O produto pertence a uma solu\xE7\xE3o e n\xE3o muda de solu\xE7\xE3o depois de criado.",
     nomeProduto: "Nome exibido no escopo dos bancos e no Book. \xDAnico na solu\xE7\xE3o.",
     descricao: "Texto livre, s\xF3 para consulta.",
@@ -32793,7 +32927,7 @@ var produtosModulos = {
     produto: "Produto ao qual o m\xF3dulo pertence. N\xE3o muda depois de criado.",
     nomeModulo: "Nome do m\xF3dulo, como aparece no escopo dos bancos e no Book. \xDAnico no produto.",
     moduloAtivo: "M\xF3dulo inativo n\xE3o aparece para escopos novos. Os bancos que j\xE1 o usam n\xE3o mudam.",
-    gruposAranda: "Grupos de atendimento do Aranda que pertencem a este m\xF3dulo. \xC9 por eles que cada hora apontada chega ao m\xF3dulo e, da\xED, ao banco. Um grupo pode estar em v\xE1rios produtos, mas em um s\xF3 m\xF3dulo de cada produto.",
+    gruposAranda: "Grupos de atendimento do Aranda que pertencem a este m\xF3dulo. \xC9 por eles que cada hora apontada chega ao m\xF3dulo e, da\xED, ao banco. Um grupo pode estar em v\xE1rios m\xF3dulos, inclusive do mesmo produto.",
     usadoNosBancos: "Bancos ativos que t\xEAm isto no escopo, diretamente ou por terem marcado o produto inteiro. O escopo marca produtos e m\xF3dulos; a solu\xE7\xE3o s\xF3 agrupa.",
     moduloRequerimento: "Valor do campo M\xF3dulo na tela de Requerimentos. A lista \xE9 fixa e n\xE3o \xE9 editada aqui.",
     produtoEModulo: 'Para onde v\xE3o os requerimentos de Banco de Horas com este m\xF3dulo. "Todos os m\xF3dulos" leva ao banco que cobre o produto inteiro; sem banco que cubra, v\xE3o para o Banco padr\xE3o.'
@@ -32826,6 +32960,7 @@ var produtosModulos = {
   excluir: {
     titulo: "Excluir {{nome}}?",
     descricao: "O item nunca foi usado: some do cat\xE1logo de vez, em vez de ficar inativo.",
+    produtosJuntos: "Os produtos da solu\xE7\xE3o, sem uso, saem junto: {{produtos}}",
     semVolta: "N\xE3o d\xE1 para desfazer; a auditoria guarda uma c\xF3pia",
     emUso: "Se algo j\xE1 usa o item (empresa, banco, requerimento), a exclus\xE3o \xE9 recusada: a\xED, inative"
   }
@@ -32851,7 +32986,6 @@ var deParaGrupos = {
   classificacao: {
     modulo: "Com m\xF3dulo",
     produto: "Todos os m\xF3dulos",
-    solucao: "Grupo de servi\xE7o",
     nao_se_aplica: "N\xE3o se aplica"
   },
   destino: {
@@ -32859,13 +32993,12 @@ var deParaGrupos = {
     produto: "Produto",
     modulo: "M\xF3dulo",
     nenhumaSolucao: "Nenhuma (n\xE3o se aplica)",
-    nenhumProduto: "Nenhum (grupo de servi\xE7o)",
+    escolhaProduto: "Escolha o produto",
     todosModulos: "Todos os m\xF3dulos",
     produtoSemModulos: "Produto sem m\xF3dulos",
-    servico: "servi\xE7o",
     textoModulo: "Banco que cobre {{produto}} \u203A {{modulo}} ou o produto inteiro; sem banco, o Banco padr\xE3o.",
     textoProduto: "Banco que cobre {{produto}} inteiro; sem banco, o Banco padr\xE3o.",
-    textoSolucao: "Grupo de servi\xE7o de {{solucao}}: sempre o Banco padr\xE3o.",
+    textoSemProduto: "Escolha o produto. Grupo que atende a solu\xE7\xE3o toda (DBA, T\xE9cnico\u2026) fica em cada produto dela.",
     textoNenhum: "Sempre o Banco padr\xE3o."
   },
   lista: {
@@ -32943,7 +33076,7 @@ var deParaGrupos = {
     grupoAranda: "Nome do grupo de atendimento exatamente como vem do Aranda. \xC9 por ele que cada apontamento e ticket \xE9 ligado ao m\xF3dulo. \xDAnico.",
     grupoBook: "Nome exibido no Book, em Elogios, em Pesquisas e no Dashboard. V\xE1rios grupos do Aranda podem ter o mesmo Grupo do Book.",
     solucao: 'Solu\xE7\xE3o do grupo. Sem solu\xE7\xE3o, o grupo "n\xE3o se aplica" (DEDICADOS, T&M\u2026) e as horas v\xE3o sempre para o Banco padr\xE3o.',
-    produto: "Produto do grupo. S\xF3 com a solu\xE7\xE3o, sem produto, \xE9 um grupo de servi\xE7o (DBA, T\xE9cnico\u2026): as horas v\xE3o sempre para o Banco padr\xE3o.",
+    produto: "Produto do grupo, obrigat\xF3rio com a solu\xE7\xE3o. Grupo que atende a solu\xE7\xE3o toda (DBA, T\xE9cnico\u2026) \xE9 vinculado a cada produto dela, em Produtos e M\xF3dulos.",
     modulo: "M\xF3dulo do grupo. Sem m\xF3dulo, as horas v\xE3o para o banco que cobre o produto inteiro ou, se n\xE3o houver, para o Banco padr\xE3o.",
     paraOnde: "Resultado da solu\xE7\xE3o, do produto e do m\xF3dulo escolhidos: em que banco as horas deste grupo s\xE3o consumidas nas empresas com bancos m\xFAltiplos.",
     uso: "Apontamentos e tickets dos \xFAltimos 6 meses com este grupo e as empresas com bancos m\xFAltiplos que eles alcan\xE7am."
@@ -32962,7 +33095,7 @@ var deParaGrupos = {
     modelo: "modelo-de-para-de-grupos",
     regras: {
       grupo: "O grupo \xE9 encontrado pelo nome do Aranda (sem diferenciar mai\xFAsculas); se j\xE1 estiver mapeado, a linha atualiza o mapeamento.",
-      destino: 'Sem produto, o grupo \xE9 de servi\xE7o da solu\xE7\xE3o; sem solu\xE7\xE3o, "n\xE3o se aplica". Os dois v\xE3o para o Banco padr\xE3o.',
+      destino: 'Com solu\xE7\xE3o, o produto \xE9 obrigat\xF3rio. Sem solu\xE7\xE3o, o grupo "n\xE3o se aplica" e as horas v\xE3o para o Banco padr\xE3o.',
       catalogo: "Solu\xE7\xE3o, produto e m\xF3dulo precisam existir e estar ativos em Produtos e M\xF3dulos."
     },
     aviso: {
@@ -32974,6 +33107,7 @@ var deParaGrupos = {
       bookVazio: "Grupo do Book vazio.",
       solucaoNaoExiste: 'Solu\xE7\xE3o "{{nome}}" n\xE3o existe ou est\xE1 inativa.',
       produtoSemSolucao: "Informe a solu\xE7\xE3o do produto.",
+      produtoVazio: "Informe o produto da solu\xE7\xE3o.",
       produtoNaoExiste: 'Produto "{{nome}}" n\xE3o existe em {{solucao}} ou est\xE1 inativo.',
       moduloSemProduto: "Informe o produto do m\xF3dulo.",
       moduloNaoExiste: 'M\xF3dulo "{{nome}}" n\xE3o existe em {{produto}} ou est\xE1 inativo.',
@@ -33502,6 +33636,13 @@ var empresasCadastro = {
     motivoVigencia: "Motivo",
     motivoVigenciaPlaceholder: "Ex.: aditivo de contrato",
     registrar: "Registrar vig\xEAncia",
+    editarVigencia: "Editar a vig\xEAncia de {{inicio}}",
+    editarVigenciaTitulo: "Editar vig\xEAncia de {{rotulo}}",
+    editarVigenciaDescricao: "Corrige os valores e os meses desta vig\xEAncia. A vig\xEAncia vizinha acompanha a mudan\xE7a de m\xEAs.",
+    edicaoMesFechado: "Meses j\xE1 fechados continuam com o resultado congelado at\xE9 a retifica\xE7\xE3o do Book; os meses abertos j\xE1 usam o valor novo.",
+    ateMes: "At\xE9",
+    emAberto: "Em aberto (vig\xEAncia atual)",
+    salvarVigencia: "Salvar vig\xEAncia",
     excedente: "Excedente",
     taxa: "Taxa do cliente",
     tipoHora: "Tipo de hora",
@@ -33657,7 +33798,8 @@ var controleBancoHoras = {
   bancos: {
     titulo: "Bancos da empresa",
     padrao: "padr\xE3o",
-    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}"
+    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}",
+    baseline: "baseline"
   },
   tipoBanco: {
     horas: "Banco de horas",
@@ -34293,6 +34435,8 @@ var comparacaoBancosHoras = {
     mostrando: "Mostrando {{n}} de {{total}} itens com diferen\xE7a",
     semItens: "A diferen\xE7a deste m\xEAs n\xE3o vem de apontamentos nem de tickets: est\xE1 em requerimentos, reajustes ou no saldo.",
     origemSaldo: "saldo herdado de {{mes}}",
+    ticketsNaoContam: "N\xE3o conta: os bancos deste m\xEAs s\xE3o s\xF3 de horas",
+    ticketsNaoContamNota: "\u2014 nos tickets: os bancos do m\xEAs s\xE3o s\xF3 de horas, e o modelo novo n\xE3o conta ticket neles. O legado soma os tickets fechados mesmo sem contrato de tickets; a diferen\xE7a n\xE3o entra na situa\xE7\xE3o.",
     carregando: "Carregando os meses",
     erro: "N\xE3o foi poss\xEDvel carregar os meses"
   },
@@ -34717,7 +34861,9 @@ var avisos = {
     reativado: "Banco reativado",
     erroReativar: "Erro ao reativar o banco",
     vigenciaRegistrada: "Vig\xEAncia registrada",
-    erroVigencia: "Erro ao registrar a vig\xEAncia"
+    erroVigencia: "Erro ao registrar a vig\xEAncia",
+    vigenciaEditada: "Vig\xEAncia corrigida",
+    erroEditarVigencia: "Erro ao corrigir a vig\xEAncia"
   },
   catalogo: {
     solucaoSalva: "Solu\xE7\xE3o salva",
@@ -34928,6 +35074,7 @@ var erros = {
     moverOModulo: "Falha ao mover o m\xF3dulo: {{detalhe}}",
     reativarOBanco: "Falha ao reativar o banco: {{detalhe}}",
     registrarAVigencia: "Falha ao registrar a vig\xEAncia: {{detalhe}}",
+    corrigirAVigencia: "Falha ao corrigir a vig\xEAncia: {{detalhe}}",
     reordenarOsBancos: "Falha ao reordenar os bancos: {{detalhe}}",
     reordenarOsProdutos: "Falha ao reordenar os produtos: {{detalhe}}",
     salvarAmsEProjetos: "Falha ao salvar AMS e projetos: {{detalhe}}",
@@ -35083,10 +35230,9 @@ var produtosModulos2 = {
     colunaUso: "Used in banks",
     semModulos: "No modules",
     nenhumProduto: "No products in this solution",
-    gruposServico: "Service groups",
-    nenhumGrupoServico: "No service groups in this solution.",
-    horasServico: "Hours from service groups always go to the company's default bank.",
-    gruposLigadosA: "Groups linked to the whole {{produto}}"
+    gruposLigadosA: "Groups linked to the whole {{produto}}",
+    gruposNosModulos: { um: "{{n}} group in the modules", varios: "{{n}} groups in the modules" },
+    gruposNosModulosDe: "Groups in the modules of {{produto}}"
   },
   produto: {
     editar: "Edit product",
@@ -35124,10 +35270,8 @@ var produtosModulos2 = {
     desvincularGrupo: "Unlink {{grupo}}",
     emModulo: "In {{produto}} \u203A {{modulo}}",
     emProduto: "In {{produto}}, no module",
-    servicoDe: "Service of {{solucao}}",
     semSolucao: "No solution (not applicable)",
     ficaTambem: "stays there and is also placed here",
-    saiParaCa: "leaves there and comes here",
     podeMoverTitulo: "May move hours between banks",
     podeMoverTexto: "In companies with multiple banks, hours from these groups move to another bank from the next recalculation. Closed months do not change.",
     soLeitura: "To link Aranda groups, you need Edit permission on Group Mapping."
@@ -35164,11 +35308,10 @@ var produtosModulos2 = {
       ativa: "Active solution",
       codigoNaoMuda: "The code does not change after it is created.",
       excluirTitulo: "Delete the solution",
-      excluirAjuda: "This solution was never used (no product and no service group). Once deleted, it leaves the catalog for good.",
+      excluirAjuda: "This solution was never used (no Aranda group, and its products, if any, are unused too). Once deleted, it and its products leave the catalog for good.",
       excluir: "Delete solution",
       codigoRepetido: "A solution with this code already exists.",
-      nomeRepetido: "A solution with this name already exists.",
-      ajudaServico: "Hours from service groups always go to the default bank."
+      nomeRepetido: "A solution with this name already exists."
     },
     produto: {
       novo: "New product",
@@ -35177,7 +35320,8 @@ var produtosModulos2 = {
       nome: "Product name",
       descricao: "Product description",
       ativo: "Active product",
-      solucaoNaoMuda: "The product's solution does not change after it is created.",
+      solucaoNaoMuda: 'A product used by an active bank (or "To classify") does not change solution.',
+      solucaoMuda: "When the solution changes, the modules and Aranda groups move with the product.",
       nomeRepetido: "Product {{nome}} already exists in {{solucao}}.",
       grupos: "Product groups",
       semGrupo: "No group linked to the whole product. If the product has no modules, without a group no hour reaches it.",
@@ -35194,7 +35338,7 @@ var produtosModulos2 = {
       nomeRepetido: "Module {{nome}} already exists in {{produto}}.",
       grupos: "Aranda groups",
       semGrupo: "Without an Aranda group, no logged hour reaches this module.",
-      ajudaGrupos: "A group can be in several products, one place per product. When unlinked, it stays in the product, without a module."
+      ajudaGrupos: "A group can be in several products and modules. When unlinked from the last module of the product, it stays in the whole product."
     }
   },
   mover: {
@@ -35208,7 +35352,6 @@ var produtosModulos2 = {
     codigo: "Solution identifier used by the system. It does not change after it is created: FISCAIS enables the FISCAL Contract for the company.",
     nomeSolucao: "Name shown on screens and in the company's contract. Unique.",
     solucaoAtiva: "An inactive solution does not appear for new companies. Companies that already contract it do not change.",
-    gruposServico: "Aranda groups that serve the whole solution (DBA, Technical\u2026), not a product. Their hours always go to the default bank.",
     solucao: "The company contracts solutions. The product belongs to a solution and does not change solution after it is created.",
     nomeProduto: "Name shown in the bank scope and in the Book. Unique within the solution.",
     descricao: "Free text, for reference only.",
@@ -35217,7 +35360,7 @@ var produtosModulos2 = {
     produto: "Product the module belongs to. It does not change after it is created.",
     nomeModulo: "Module name, as it appears in the bank scope and in the Book. Unique within the product.",
     moduloAtivo: "An inactive module does not appear for new scopes. Banks that already use it do not change.",
-    gruposAranda: "Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several products, but in only one module of each product.",
+    gruposAranda: "Aranda service groups that belong to this module. Through them each logged hour reaches the module and, from there, the bank. A group can be in several modules, even of the same product.",
     usadoNosBancos: "Active banks that have this in scope, directly or because they marked the whole product. The scope marks products and modules; the solution only groups them.",
     moduloRequerimento: "Value of the Module field on the Requirements screen. The list is fixed and is not edited here.",
     produtoEModulo: 'Where Hour Bank requirements with this module go. "All modules" leads to the bank that covers the whole product; without a covering bank, they go to the default bank.'
@@ -35250,6 +35393,7 @@ var produtosModulos2 = {
   excluir: {
     titulo: "Delete {{nome}}?",
     descricao: "The item was never used: it leaves the catalog for good instead of becoming inactive.",
+    produtosJuntos: "The solution's unused products are deleted too: {{produtos}}",
     semVolta: "This cannot be undone; the audit trail keeps a copy",
     emUso: "If anything already uses the item (company, bank, requirement), the deletion is refused: deactivate it instead"
   }
@@ -35275,7 +35419,6 @@ var deParaGrupos2 = {
   classificacao: {
     modulo: "With module",
     produto: "All modules",
-    solucao: "Service group",
     nao_se_aplica: "Not applicable"
   },
   destino: {
@@ -35283,13 +35426,12 @@ var deParaGrupos2 = {
     produto: "Product",
     modulo: "Module",
     nenhumaSolucao: "None (not applicable)",
-    nenhumProduto: "None (service group)",
+    escolhaProduto: "Choose the product",
     todosModulos: "All modules",
     produtoSemModulos: "Product without modules",
-    servico: "service",
     textoModulo: "Bank that covers {{produto}} \u203A {{modulo}} or the whole product; without a bank, the default bank.",
     textoProduto: "Bank that covers the whole {{produto}}; without a bank, the default bank.",
-    textoSolucao: "Service group of {{solucao}}: always the default bank.",
+    textoSemProduto: "Choose the product. A group that serves the whole solution (DBA, Technical\u2026) goes in each of its products.",
     textoNenhum: "Always the default bank."
   },
   lista: {
@@ -35367,7 +35509,7 @@ var deParaGrupos2 = {
     grupoAranda: "Name of the service group exactly as it comes from Aranda. It is how each time entry and ticket is linked to the module. Unique.",
     grupoBook: "Name shown in the Book, Compliments, Surveys and Dashboard. Several Aranda groups can share the same Book Group.",
     solucao: 'Solution of the group. Without a solution, the group is "not applicable" (DEDICATED, T&M\u2026) and its hours always go to the default bank.',
-    produto: "Product of the group. With only the solution and no product, it is a service group (DBA, Technical\u2026): its hours always go to the default bank.",
+    produto: "Product of the group, required with the solution. A group that serves the whole solution (DBA, Technical\u2026) is linked to each of its products, in Products and Modules.",
     modulo: "Module of the group. Without a module, the hours go to the bank that covers the whole product or, if there is none, to the default bank.",
     paraOnde: "Result of the chosen solution, product and module: which bank consumes the hours of this group in companies with multiple banks.",
     uso: "Time entries and tickets of the last 6 months with this group and the companies with multiple banks they reach."
@@ -35386,7 +35528,7 @@ var deParaGrupos2 = {
     modelo: "group-mapping-template",
     regras: {
       grupo: "The group is found by its Aranda name (case-insensitive); if already mapped, the row updates the mapping.",
-      destino: 'Without a product, the group is a service group of the solution; without a solution, "not applicable". Both go to the default bank.',
+      destino: 'With a solution, the product is required. Without a solution, the group is "not applicable" and its hours go to the default bank.',
       catalogo: "Solution, product and module must exist and be active in Products and Modules."
     },
     aviso: {
@@ -35398,6 +35540,7 @@ var deParaGrupos2 = {
       bookVazio: "Empty Book group.",
       solucaoNaoExiste: 'Solution "{{nome}}" does not exist or is inactive.',
       produtoSemSolucao: "Enter the product's solution.",
+      produtoVazio: "Enter the solution's product.",
       produtoNaoExiste: 'Product "{{nome}}" does not exist in {{solucao}} or is inactive.',
       moduloSemProduto: "Enter the module's product.",
       moduloNaoExiste: 'Module "{{nome}}" does not exist in {{produto}} or is inactive.',
@@ -35926,6 +36069,13 @@ var empresasCadastro2 = {
     motivoVigencia: "Reason",
     motivoVigenciaPlaceholder: "E.g.: contract amendment",
     registrar: "Register term",
+    editarVigencia: "Edit the term starting {{inicio}}",
+    editarVigenciaTitulo: "Edit {{rotulo}} term",
+    editarVigenciaDescricao: "Corrects the values and months of this term. The neighboring term follows the month change.",
+    edicaoMesFechado: "Closed months keep their frozen result until the Book is rectified; open months already use the new value.",
+    ateMes: "Until",
+    emAberto: "Open-ended (current term)",
+    salvarVigencia: "Save term",
     excedente: "Overage",
     taxa: "Client rate",
     tipoHora: "Hour type",
@@ -36081,7 +36231,8 @@ var controleBancoHoras2 = {
   bancos: {
     titulo: "Company banks",
     padrao: "default",
-    consumoDe: "Usage in {{mes}} \xB7 {{banco}}"
+    consumoDe: "Usage in {{mes}} \xB7 {{banco}}",
+    baseline: "baseline"
   },
   tipoBanco: {
     horas: "Hour bank",
@@ -36717,6 +36868,8 @@ var comparacaoBancosHoras2 = {
     mostrando: "Showing {{n}} of {{total}} items with differences",
     semItens: "The difference of this month does not come from time entries or tickets: it is in requests, adjustments or the balance.",
     origemSaldo: "balance carried from {{mes}}",
+    ticketsNaoContam: "Not counted: the banks of this month are hours only",
+    ticketsNaoContamNota: "\u2014 in tickets: the banks of the month are hours only, and the new model does not count tickets in them. The legacy adds up closed tickets even without a tickets contract; the difference does not affect the status.",
     carregando: "Loading the months",
     erro: "Could not load the months"
   },
@@ -37141,7 +37294,9 @@ var avisos2 = {
     reativado: "Bank reactivated",
     erroReativar: "Could not reactivate the bank",
     vigenciaRegistrada: "Validity period registered",
-    erroVigencia: "Could not register the validity period"
+    erroVigencia: "Could not register the validity period",
+    vigenciaEditada: "Validity period corrected",
+    erroEditarVigencia: "Could not correct the validity period"
   },
   catalogo: {
     solucaoSalva: "Solution saved",
@@ -37352,6 +37507,7 @@ var erros2 = {
     moverOModulo: "Could not move the module: {{detalhe}}",
     reativarOBanco: "Could not reactivate the bank: {{detalhe}}",
     registrarAVigencia: "Could not register the validity period: {{detalhe}}",
+    corrigirAVigencia: "Could not correct the validity period: {{detalhe}}",
     reordenarOsBancos: "Could not reorder the banks: {{detalhe}}",
     reordenarOsProdutos: "Could not reorder the products: {{detalhe}}",
     salvarAmsEProjetos: "Could not save AMS and projects: {{detalhe}}",
@@ -37504,10 +37660,9 @@ var produtosModulos3 = {
     colunaUso: "Usado en los bancos",
     semModulos: "Sin m\xF3dulos",
     nenhumProduto: "Ning\xFAn producto en esta soluci\xF3n",
-    gruposServico: "Grupos de servicio",
-    nenhumGrupoServico: "Ning\xFAn grupo de servicio en esta soluci\xF3n.",
-    horasServico: "Las horas de los grupos de servicio van siempre al Banco predeterminado de la empresa.",
-    gruposLigadosA: "Grupos vinculados a {{produto}} entero"
+    gruposLigadosA: "Grupos vinculados a {{produto}} entero",
+    gruposNosModulos: { um: "{{n}} grupo en los m\xF3dulos", varios: "{{n}} grupos en los m\xF3dulos" },
+    gruposNosModulosDe: "Grupos en los m\xF3dulos de {{produto}}"
   },
   produto: {
     editar: "Editar producto",
@@ -37545,10 +37700,8 @@ var produtosModulos3 = {
     desvincularGrupo: "Desvincular {{grupo}}",
     emModulo: "En {{produto}} \u203A {{modulo}}",
     emProduto: "En {{produto}}, sin m\xF3dulo",
-    servicoDe: "Servicio de {{solucao}}",
     semSolucao: "Sin soluci\xF3n (no se aplica)",
     ficaTambem: "sigue all\xED y pasa a estar aqu\xED tambi\xE9n",
-    saiParaCa: "sale de all\xED y viene aqu\xED",
     podeMoverTitulo: "Puede mover horas entre bancos",
     podeMoverTexto: "En las empresas con varios bancos, las horas de estos grupos pasan a otro banco a partir del pr\xF3ximo rec\xE1lculo. Los meses cerrados no cambian.",
     soLeitura: "Para vincular grupos de Aranda, se necesita Edici\xF3n en De-para de Grupos."
@@ -37585,11 +37738,10 @@ var produtosModulos3 = {
       ativa: "Soluci\xF3n activa",
       codigoNaoMuda: "El c\xF3digo no cambia despu\xE9s de creado.",
       excluirTitulo: "Eliminar la soluci\xF3n",
-      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin producto y sin grupo de servicio). Eliminada, sale del cat\xE1logo para siempre.",
+      excluirAjuda: "Esta soluci\xF3n nunca se us\xF3 (sin grupo de Aranda, y sus productos, si los hay, tampoco se usaron). Eliminada, ella y sus productos salen del cat\xE1logo para siempre.",
       excluir: "Eliminar soluci\xF3n",
       codigoRepetido: "Ya existe una soluci\xF3n con este c\xF3digo.",
-      nomeRepetido: "Ya existe una soluci\xF3n con este nombre.",
-      ajudaServico: "Las horas de los grupos de servicio van siempre al Banco predeterminado."
+      nomeRepetido: "Ya existe una soluci\xF3n con este nombre."
     },
     produto: {
       novo: "Nuevo producto",
@@ -37598,7 +37750,8 @@ var produtosModulos3 = {
       nome: "Nombre del producto",
       descricao: "Descripci\xF3n del producto",
       ativo: "Producto activo",
-      solucaoNaoMuda: "La soluci\xF3n del producto no cambia despu\xE9s de creado.",
+      solucaoNaoMuda: 'Un producto usado en un banco activo (o "Por clasificar") no cambia de soluci\xF3n.',
+      solucaoMuda: "Al cambiar la soluci\xF3n, los m\xF3dulos y los grupos de Aranda van con el producto.",
       nomeRepetido: "Ya existe el producto {{nome}} en {{solucao}}.",
       grupos: "Grupos del producto",
       semGrupo: "Ning\xFAn grupo vinculado al producto entero. Si el producto no tiene m\xF3dulos, sin grupo ninguna hora llega a \xE9l.",
@@ -37615,7 +37768,7 @@ var produtosModulos3 = {
       nomeRepetido: "Ya existe un m\xF3dulo {{nome}} en {{produto}}.",
       grupos: "Grupos de Aranda",
       semGrupo: "Sin grupo de Aranda, ninguna hora registrada llega a este m\xF3dulo.",
-      ajudaGrupos: "Un grupo puede estar en varios productos, un lugar por producto. Desvinculado, queda en el producto, sin m\xF3dulo."
+      ajudaGrupos: "Un grupo puede estar en varios productos y m\xF3dulos. Desvinculado del \xFAltimo m\xF3dulo del producto, queda en el producto entero."
     }
   },
   mover: {
@@ -37629,7 +37782,6 @@ var produtosModulos3 = {
     codigo: "Identificador de la soluci\xF3n usado por el sistema. No cambia despu\xE9s de creado: FISCAIS habilita el Contrato FISCAL en la empresa.",
     nomeSolucao: "Nombre mostrado en las pantallas y en el contrato de la empresa. \xDAnico.",
     solucaoAtiva: "Una soluci\xF3n inactiva no aparece para empresas nuevas. Las empresas que ya la contratan no cambian.",
-    gruposServico: "Grupos de Aranda que atienden toda la soluci\xF3n (DBA, T\xE9cnico\u2026), sin ser de un producto. Sus horas van siempre al Banco predeterminado.",
     solucao: "La empresa contrata soluciones. El producto pertenece a una soluci\xF3n y no cambia de soluci\xF3n despu\xE9s de creado.",
     nomeProduto: "Nombre mostrado en el alcance de los bancos y en el Book. \xDAnico en la soluci\xF3n.",
     descricao: "Texto libre, solo para consulta.",
@@ -37638,7 +37790,7 @@ var produtosModulos3 = {
     produto: "Producto al que pertenece el m\xF3dulo. No cambia despu\xE9s de creado.",
     nomeModulo: "Nombre del m\xF3dulo, como aparece en el alcance de los bancos y en el Book. \xDAnico en el producto.",
     moduloAtivo: "Un m\xF3dulo inactivo no aparece para alcances nuevos. Los bancos que ya lo usan no cambian.",
-    gruposAranda: "Grupos de atenci\xF3n de Aranda que pertenecen a este m\xF3dulo. Por ellos cada hora registrada llega al m\xF3dulo y, de ah\xED, al banco. Un grupo puede estar en varios productos, pero en un solo m\xF3dulo de cada producto.",
+    gruposAranda: "Grupos de atenci\xF3n de Aranda que pertenecen a este m\xF3dulo. Por ellos cada hora registrada llega al m\xF3dulo y, de ah\xED, al banco. Un grupo puede estar en varios m\xF3dulos, incluso del mismo producto.",
     usadoNosBancos: "Bancos activos que tienen esto en el alcance, directamente o por haber marcado el producto entero. El alcance marca productos y m\xF3dulos; la soluci\xF3n solo agrupa.",
     moduloRequerimento: "Valor del campo M\xF3dulo en la pantalla de Requerimientos. La lista es fija y no se edita aqu\xED.",
     produtoEModulo: 'A d\xF3nde van los requerimientos de Banco de Horas con este m\xF3dulo. "Todos los m\xF3dulos" lleva al banco que cubre el producto entero; sin banco que lo cubra, van al Banco predeterminado.'
@@ -37671,6 +37823,7 @@ var produtosModulos3 = {
   excluir: {
     titulo: "\xBFEliminar {{nome}}?",
     descricao: "El \xEDtem nunca se us\xF3: sale del cat\xE1logo para siempre, en lugar de quedar inactivo.",
+    produtosJuntos: "Los productos sin uso de la soluci\xF3n tambi\xE9n se eliminan: {{produtos}}",
     semVolta: "No se puede deshacer; la auditor\xEDa guarda una copia",
     emUso: "Si algo ya usa el \xEDtem (empresa, banco, requerimiento), la eliminaci\xF3n se rechaza: entonces, desact\xEDvelo"
   }
@@ -37696,7 +37849,6 @@ var deParaGrupos3 = {
   classificacao: {
     modulo: "Con m\xF3dulo",
     produto: "Todos los m\xF3dulos",
-    solucao: "Grupo de servicio",
     nao_se_aplica: "No aplica"
   },
   destino: {
@@ -37704,13 +37856,12 @@ var deParaGrupos3 = {
     produto: "Producto",
     modulo: "M\xF3dulo",
     nenhumaSolucao: "Ninguna (no aplica)",
-    nenhumProduto: "Ninguno (grupo de servicio)",
+    escolhaProduto: "Elija el producto",
     todosModulos: "Todos los m\xF3dulos",
     produtoSemModulos: "Producto sin m\xF3dulos",
-    servico: "servicio",
     textoModulo: "Banco que cubre {{produto}} \u203A {{modulo}} o el producto completo; sin banco, el Banco predeterminado.",
     textoProduto: "Banco que cubre {{produto}} completo; sin banco, el Banco predeterminado.",
-    textoSolucao: "Grupo de servicio de {{solucao}}: siempre el Banco predeterminado.",
+    textoSemProduto: "Elija el producto. El grupo que atiende toda la soluci\xF3n (DBA, T\xE9cnico\u2026) va en cada uno de sus productos.",
     textoNenhum: "Siempre el Banco predeterminado."
   },
   lista: {
@@ -37788,7 +37939,7 @@ var deParaGrupos3 = {
     grupoAranda: "Nombre del grupo de atenci\xF3n exactamente como viene de Aranda. Por \xE9l cada registro y ticket se vincula al m\xF3dulo. \xDAnico.",
     grupoBook: "Nombre que se muestra en el Book, Elogios, Encuestas y Dashboard. Varios grupos de Aranda pueden tener el mismo Grupo del Book.",
     solucao: 'Soluci\xF3n del grupo. Sin soluci\xF3n, el grupo "no aplica" (DEDICADOS, T&M\u2026) y sus horas van siempre al Banco predeterminado.',
-    produto: "Producto del grupo. Solo con la soluci\xF3n, sin producto, es un grupo de servicio (DBA, T\xE9cnico\u2026): sus horas van siempre al Banco predeterminado.",
+    produto: "Producto del grupo, obligatorio con la soluci\xF3n. El grupo que atiende toda la soluci\xF3n (DBA, T\xE9cnico\u2026) se vincula a cada uno de sus productos, en Productos y M\xF3dulos.",
     modulo: "M\xF3dulo del grupo. Sin m\xF3dulo, las horas van al banco que cubre el producto completo o, si no hay, al Banco predeterminado.",
     paraOnde: "Resultado de la soluci\xF3n, el producto y el m\xF3dulo elegidos: en qu\xE9 banco se consumen las horas de este grupo en las empresas con m\xFAltiples bancos.",
     uso: "Registros y tickets de los \xFAltimos 6 meses con este grupo y las empresas con m\xFAltiples bancos que alcanzan."
@@ -37807,7 +37958,7 @@ var deParaGrupos3 = {
     modelo: "modelo-mapeo-de-grupos",
     regras: {
       grupo: "El grupo se encuentra por el nombre de Aranda (sin distinguir may\xFAsculas); si ya est\xE1 mapeado, la fila actualiza el mapeo.",
-      destino: 'Sin producto, el grupo es de servicio de la soluci\xF3n; sin soluci\xF3n, "no aplica". Ambos van al Banco predeterminado.',
+      destino: 'Con soluci\xF3n, el producto es obligatorio. Sin soluci\xF3n, el grupo "no aplica" y sus horas van al Banco predeterminado.',
       catalogo: "Soluci\xF3n, producto y m\xF3dulo deben existir y estar activos en Productos y M\xF3dulos."
     },
     aviso: {
@@ -37819,6 +37970,7 @@ var deParaGrupos3 = {
       bookVazio: "Grupo del Book vac\xEDo.",
       solucaoNaoExiste: 'La soluci\xF3n "{{nome}}" no existe o est\xE1 inactiva.',
       produtoSemSolucao: "Informe la soluci\xF3n del producto.",
+      produtoVazio: "Informe el producto de la soluci\xF3n.",
       produtoNaoExiste: 'El producto "{{nome}}" no existe en {{solucao}} o est\xE1 inactivo.',
       moduloSemProduto: "Informe el producto del m\xF3dulo.",
       moduloNaoExiste: 'El m\xF3dulo "{{nome}}" no existe en {{produto}} o est\xE1 inactivo.',
@@ -38347,6 +38499,13 @@ var empresasCadastro3 = {
     motivoVigencia: "Motivo",
     motivoVigenciaPlaceholder: "Ej.: adenda del contrato",
     registrar: "Registrar vigencia",
+    editarVigencia: "Editar la vigencia de {{inicio}}",
+    editarVigenciaTitulo: "Editar vigencia de {{rotulo}}",
+    editarVigenciaDescricao: "Corrige los valores y los meses de esta vigencia. La vigencia vecina acompa\xF1a el cambio de mes.",
+    edicaoMesFechado: "Los meses cerrados mantienen el resultado congelado hasta la rectificaci\xF3n del Book; los meses abiertos ya usan el valor nuevo.",
+    ateMes: "Hasta",
+    emAberto: "Abierta (vigencia actual)",
+    salvarVigencia: "Guardar vigencia",
     excedente: "Excedente",
     taxa: "Tasa del cliente",
     tipoHora: "Tipo de hora",
@@ -38502,7 +38661,8 @@ var controleBancoHoras3 = {
   bancos: {
     titulo: "Bancos de la empresa",
     padrao: "predeterminado",
-    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}"
+    consumoDe: "Consumo de {{mes}} \xB7 {{banco}}",
+    baseline: "baseline"
   },
   tipoBanco: {
     horas: "Banco de horas",
@@ -39138,6 +39298,8 @@ var comparacaoBancosHoras3 = {
     mostrando: "Mostrando {{n}} de {{total}} \xEDtems con diferencia",
     semItens: "La diferencia de este mes no viene de registros de horas ni de tickets: est\xE1 en requerimientos, reajustes o en el saldo.",
     origemSaldo: "saldo heredado de {{mes}}",
+    ticketsNaoContam: "No cuenta: los bancos de este mes son solo de horas",
+    ticketsNaoContamNota: "\u2014 en tickets: los bancos del mes son solo de horas y el modelo nuevo no cuenta tickets en ellos. El legado suma los tickets cerrados aunque no haya contrato de tickets; la diferencia no entra en la situaci\xF3n.",
     carregando: "Cargando los meses",
     erro: "No fue posible cargar los meses"
   },
@@ -39562,7 +39724,9 @@ var avisos3 = {
     reativado: "Banco reactivado",
     erroReativar: "No fue posible reactivar el banco",
     vigenciaRegistrada: "Vigencia registrada",
-    erroVigencia: "No fue posible registrar la vigencia"
+    erroVigencia: "No fue posible registrar la vigencia",
+    vigenciaEditada: "Vigencia corregida",
+    erroEditarVigencia: "No fue posible corregir la vigencia"
   },
   catalogo: {
     solucaoSalva: "Soluci\xF3n guardada",
@@ -39773,6 +39937,7 @@ var erros3 = {
     moverOModulo: "No fue posible mover el m\xF3dulo: {{detalhe}}",
     reativarOBanco: "No fue posible reactivar el banco: {{detalhe}}",
     registrarAVigencia: "No fue posible registrar la vigencia: {{detalhe}}",
+    corrigirAVigencia: "No fue posible corregir la vigencia: {{detalhe}}",
     reordenarOsBancos: "No fue posible reordenar los bancos: {{detalhe}}",
     reordenarOsProdutos: "No fue posible reordenar los productos: {{detalhe}}",
     salvarAmsEProjetos: "No fue posible guardar AMS y proyectos: {{detalhe}}",

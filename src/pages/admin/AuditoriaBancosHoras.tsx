@@ -18,6 +18,7 @@ import { campo } from '@/components/ds/estilos';
 import { DetalheAlteracao } from '@/components/admin/auditoria/DetalheAlteracao';
 import { useRotulosAuditoria } from '@/components/admin/auditoria/rotulos';
 import { useAuditoria } from '@/hooks/useAuditoria';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { AREAS } from '@/services/auditoriaService';
 import {
   OPCOES_VAZIAS,
@@ -58,6 +59,7 @@ const LISTA_VAZIA = {
 };
 
 export default function AuditoriaBancosHoras() {
+  useAtualizarAoAbrir('auditoria-bh');
   const { t } = useTranslation();
   const { a, dataHora, quem, registro: nomeDoRegistro, area } = useRotulosAuditoria();
 

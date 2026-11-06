@@ -65,19 +65,33 @@ onSuccess: () => {
 
 Consulte `.claude/references/dominios.md` (seção "Dependências entre domínios") para saber o que mais precisa ser invalidado.
 
+## Dado que muda fora da tela: recarregar ao abrir
+
+Com `staleTime` de minutos, a tela que reabre mostra o cache, e o que mudou em outra tela (requerimento lançado, sincronização do Aranda, cadastro antigo) só aparece com Ctrl+R. Toda tela nova chama, na primeira linha da página, `useAtualizarAoAbrir` com o primeiro item da `queryKey` de cada hook que ela usa:
+
+```ts
+export default function ControleBancosHoras() {
+  useAtualizarAoAbrir('controle-bh', 'clientes', 'sql-server-ultimas-sincronizacoes-por-tabela');
+  // ...
+}
+```
+
+O que está na tela é buscado de novo (sem cancelar a primeira busca) e o resto do cache desses prefixos é buscado quando aparecer. O teste da página faz `vi.mock('@/hooks/useAtualizarAoAbrir', ...)` e confere os prefixos.
+
 ## Hooks utilitários já existentes
 
 Antes de escrever um genérico, veja se já existe:
 
-| Hook | Uso |
-|---|---|
-| `useToast` | notificações (preferir a `sonner` em código novo) |
-| `useConfirmDialog` | confirmação imperativa |
-| `useDebounce` | atraso em campo de busca |
-| `useLocalStorage` | persistência local |
-| `useCacheManager` | limpeza de cache |
-| `useAuth` | sessão e usuário |
-| `usePermissions` | nível de permissão por tela |
+| Hook                  | Uso                                               |
+| --------------------- | ------------------------------------------------- |
+| `useToast`            | notificações (preferir a `sonner` em código novo) |
+| `useConfirmDialog`    | confirmação imperativa                            |
+| `useDebounce`         | atraso em campo de busca                          |
+| `useLocalStorage`     | persistência local                                |
+| `useCacheManager`     | limpeza de cache                                  |
+| `useAtualizarAoAbrir` | recarregar o cache da tela quando ela abre        |
+| `useAuth`             | sessão e usuário                                  |
+| `usePermissions`      | nível de permissão por tela                       |
 
 ## Mutation com estado otimista
 
@@ -90,7 +104,7 @@ const updateMutation = useMutation({
     await queryClient.cancelQueries({ queryKey: ['books'] });
     const previous = queryClient.getQueryData(['books']);
     queryClient.setQueryData(['books'], (old: BookData[] = []) =>
-      old.map((b) => (b.id === id ? { ...b, ...input } : b)),
+      old.map((b) => (b.id === id ? { ...b, ...input } : b))
     );
     return { previous };
   },

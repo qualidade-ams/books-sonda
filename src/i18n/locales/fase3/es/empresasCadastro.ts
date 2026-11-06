@@ -289,6 +289,15 @@ const empresasCadastro = {
     motivoVigencia: 'Motivo',
     motivoVigenciaPlaceholder: 'Ej.: adenda del contrato',
     registrar: 'Registrar vigencia',
+    editarVigencia: 'Editar la vigencia de {{inicio}}',
+    editarVigenciaTitulo: 'Editar vigencia de {{rotulo}}',
+    editarVigenciaDescricao:
+      'Corrige los valores y los meses de esta vigencia. La vigencia vecina acompaña el cambio de mes.',
+    edicaoMesFechado:
+      'Los meses cerrados mantienen el resultado congelado hasta la rectificación del Book; los meses abiertos ya usan el valor nuevo.',
+    ateMes: 'Hasta',
+    emAberto: 'Abierta (vigencia actual)',
+    salvarVigencia: 'Guardar vigencia',
     excedente: 'Excedente',
     taxa: 'Tasa del cliente',
     tipoHora: 'Tipo de hora',

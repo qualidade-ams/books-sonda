@@ -11,7 +11,6 @@ import {
   Pencil,
   Plus,
   Search,
-  Wrench,
 } from 'lucide-react';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { DataTable, type ColunaTabela } from '@/components/ds/DataTable';
@@ -21,15 +20,14 @@ import { Callout } from '@/components/ds/Callout';
 import { Button } from '@/components/ds/Button';
 import { Select } from '@/components/ds/Select';
 import { ConfirmDialog } from '@/components/ds/ConfirmDialog';
-import { DicaDoRotulo } from '@/components/ds/Formulario';
 import { BotaoLimparFiltros, FiltroAlternar, FiltroMultiplo } from '@/components/ds/Filtros';
 import { campo, itemMenu } from '@/components/ds/estilos';
 import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import {
   bancosDoProduto,
-  gruposDaSolucao,
   gruposDoModulo,
+  gruposNosModulos,
   gruposSoDoProduto,
   usosDoModulo,
 } from '@/utils/catalogoTela';
@@ -98,7 +96,6 @@ export function PainelSolucao({
   const daSolucao = catalogo.produtos
     .filter((p) => p.solucaoId === solucao.id)
     .sort((a, b) => a.ordem - b.ordem);
-  const servico = gruposDaSolucao(mapeamentos, solucao.id);
 
   const colunas: ColunaTabela<Produto>[] = [
     {
@@ -122,12 +119,28 @@ export function PainelSolucao({
     {
       id: 'grupos',
       cabecalho: t('produtosModulos.solucao.colunaGrupos'),
-      celula: (p) => (
-        <ListaGrupos
-          titulo={t('produtosModulos.solucao.gruposLigadosA', { produto: p.nome })}
-          grupos={gruposSoDoProduto(mapeamentos, p.id)}
-        />
-      ),
+      celula: (p) => {
+        const doProduto = gruposSoDoProduto(mapeamentos, p.id);
+        const nosModulos = gruposNosModulos(mapeamentos, p.id);
+        // Sem grupo no produto inteiro, mas com grupos nos módulos, as horas chegam: não é aviso
+        if (!doProduto.length && nosModulos.length)
+          return (
+            <span className="text-ds-fg-muted">
+              <ComLista
+                rotulo={t('produtosModulos.solucao.gruposNosModulosDe', { produto: p.nome })}
+                itens={nosModulos}
+              >
+                {plural(t, 'produtosModulos.solucao.gruposNosModulos', nosModulos.length)}
+              </ComLista>
+            </span>
+          );
+        return (
+          <ListaGrupos
+            titulo={t('produtosModulos.solucao.gruposLigadosA', { produto: p.nome })}
+            grupos={doProduto}
+          />
+        );
+      },
     },
     {
       id: 'uso',
@@ -189,32 +202,6 @@ export function PainelSolucao({
             <EmptyState icone={<Package />} titulo={t('produtosModulos.solucao.nenhumProduto')} />
           }
         />
-      </section>
-
-      <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-bg-surface">
-        <header className="flex items-center gap-1.5 border-b border-ds-border px-4 py-4 md:px-5">
-          <Wrench className="h-4 w-4 text-ds-fg-muted" aria-hidden />
-          <h2 className="text-xs font-bold uppercase tracking-[0.06em]">
-            {t('produtosModulos.solucao.gruposServico')}
-          </h2>
-          <DicaDoRotulo rotulo={t('produtosModulos.solucao.gruposServico')} />
-        </header>
-        {servico.length ? (
-          <ul className="divide-y divide-ds-border">
-            {servico.map((g) => (
-              <li key={g} className="truncate px-4 py-2 font-mono text-xs md:px-5">
-                {g}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="px-4 py-4 text-sm text-ds-fg-muted md:px-5">
-            {t('produtosModulos.solucao.nenhumGrupoServico')}
-          </p>
-        )}
-        <p className="border-t border-ds-border px-4 py-2.5 text-xs text-ds-fg-muted md:px-5">
-          {t('produtosModulos.solucao.horasServico')}
-        </p>
       </section>
     </div>
   );

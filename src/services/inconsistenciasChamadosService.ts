@@ -1,21 +1,21 @@
 /**
  * Serviço para leitura de inconsistências de chamados persistidas
- * 
+ *
  * Este serviço lê dados da tabela `inconsistencias_chamados` que é populada
  * automaticamente após cada sincronização com o SQL Server.
- * 
+ *
  * A detecção de inconsistências é feita pelo `inconsistenciasDeteccaoService.ts`
  * que roda após a sincronização.
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { 
-  InconsistenciaChamado, 
+import type {
+  InconsistenciaChamado,
   InconsistenciasChamadosFiltros,
   InconsistenciasChamadosEstatisticas,
   EnviosPorInconsistencia,
   EnviarNotificacaoRequest,
-  TarefasAntesDaTroca
+  TarefasAntesDaTroca,
 } from '@/types/inconsistenciasChamados';
 
 /** Minutos em HH:MM, sem truncar acima de 99 horas */
@@ -25,7 +25,6 @@ function formatarMinutosHHMM(minutos: number): string {
 }
 
 export class InconsistenciasChamadosService {
-
   /**
    * Tamanho do lote para paginação (Supabase retorna no máximo 1000 por request)
    */
@@ -35,16 +34,13 @@ export class InconsistenciasChamadosService {
    * Busca TODOS os registros de uma query paginando automaticamente.
    * O Supabase retorna no máximo 1000 registros por request.
    */
-  private async buscarTodosPaginado(
-    queryBuilder: () => any
-  ): Promise<any[]> {
+  private async buscarTodosPaginado(queryBuilder: () => any): Promise<any[]> {
     const todosRegistros: any[] = [];
     let offset = 0;
     let continuar = true;
 
     while (continuar) {
-      const { data, error } = await queryBuilder()
-        .range(offset, offset + this.PAGE_SIZE - 1);
+      const { data, error } = await queryBuilder().range(offset, offset + this.PAGE_SIZE - 1);
 
       if (error) {
         console.error(`❌ Erro na paginação (offset ${offset}):`, error);
@@ -71,7 +67,9 @@ export class InconsistenciasChamadosService {
    * Substitui o campo status_chamado pelo status mais recente da tabela apontamentos_tickets_aranda
    * e preenche data_ultima_nota_publica com a do chamado.
    */
-  private async enriquecerComStatusTicket(inconsistencias: InconsistenciaChamado[]): Promise<InconsistenciaChamado[]> {
+  private async enriquecerComStatusTicket(
+    inconsistencias: InconsistenciaChamado[]
+  ): Promise<InconsistenciaChamado[]> {
     if (inconsistencias.length === 0) return inconsistencias;
 
     try {
@@ -133,17 +131,21 @@ export class InconsistenciasChamadosService {
   /**
    * Resolve as inconsistências "sem_atualizacao" ativas cujo chamado recebeu nota
    * pública (data_ultima_nota_publica de apontamentos_tickets_aranda) há menos de 16 dias,
-   * movendo-as para o Histórico sem esperar a próxima detecção do sync-api.
+   * ou cujo chamado está com status Resolved, movendo-as para o Histórico sem esperar a
+   * próxima detecção do sync-api.
    * Comentário não conta como atualização; só a nota pública.
-   * Mesmo corte de detectar_inconsistencias(): 16 dias ou mais continua ativa.
-   * Não marca arquivado_manualmente: se o chamado parar de novo, a detecção o reativa.
+   * Mesmo corte de detectar_inconsistencias(): 16 dias ou mais continua ativa, e Resolved
+   * não entra no tipo (migration 20261104000002).
+   * Não marca arquivado_manualmente: se o chamado parar de novo ou for reaberto, a detecção o reativa.
    * Retorna quantas foram resolvidas; em erro, retorna 0 para não impedir a tela de carregar.
    */
   resolverSemAtualizacaoComComentarioRecente(): Promise<number> {
     if (!this.resolucaoSemAtualizacaoEmAndamento) {
-      this.resolucaoSemAtualizacaoEmAndamento = this.executarResolucaoSemAtualizacao().finally(() => {
-        this.resolucaoSemAtualizacaoEmAndamento = null;
-      });
+      this.resolucaoSemAtualizacaoEmAndamento = this.executarResolucaoSemAtualizacao().finally(
+        () => {
+          this.resolucaoSemAtualizacaoEmAndamento = null;
+        }
+      );
     }
     return this.resolucaoSemAtualizacaoEmAndamento;
   }
@@ -160,32 +162,44 @@ export class InconsistenciasChamadosService {
       if (ativas.length === 0) return 0;
 
       const nroLimpo = (nro: string) => (nro || '').replace(/^(RF|IM|PM)\s*/, '').trim();
-      const nros = Array.from(new Set(ativas.map(inc => nroLimpo(inc.nro_chamado)).filter(Boolean)));
+      const nros = Array.from(
+        new Set(ativas.map((inc) => nroLimpo(inc.nro_chamado)).filter(Boolean))
+      );
 
-      // Última nota pública do chamado (em ms)
+      // Última nota pública do chamado (em ms) e chamados com status Resolved
       const ultimaNotaPublica = new Map<string, number>();
+      const chamadosResolved = new Set<string>();
       const batchSize = 200;
       for (let i = 0; i < nros.length; i += batchSize) {
         const batch = nros.slice(i, i + batchSize);
         const { data, error } = await supabase
           .from('apontamentos_tickets_aranda' as any)
-          .select('nro_solicitacao, data_ultima_nota_publica')
+          .select('nro_solicitacao, status, data_ultima_nota_publica')
           .in('nro_solicitacao', batch);
         if (error) throw error;
         for (const ticket of (data as any[]) || []) {
-          if (ticket.nro_solicitacao && ticket.data_ultima_nota_publica) {
-            ultimaNotaPublica.set(ticket.nro_solicitacao, new Date(ticket.data_ultima_nota_publica).getTime());
+          if (!ticket.nro_solicitacao) continue;
+          if (ticket.data_ultima_nota_publica) {
+            ultimaNotaPublica.set(
+              ticket.nro_solicitacao,
+              new Date(ticket.data_ultima_nota_publica).getTime()
+            );
+          }
+          if ((ticket.status || '').trim().toLowerCase() === 'resolved') {
+            chamadosResolved.add(ticket.nro_solicitacao);
           }
         }
       }
 
       const limite = Date.now() - 16 * 24 * 60 * 60 * 1000;
       const ids = ativas
-        .filter(inc => {
-          const notaPublica = ultimaNotaPublica.get(nroLimpo(inc.nro_chamado));
+        .filter((inc) => {
+          const nro = nroLimpo(inc.nro_chamado);
+          if (chamadosResolved.has(nro)) return true;
+          const notaPublica = ultimaNotaPublica.get(nro);
           return notaPublica !== undefined && notaPublica > limite;
         })
-        .map(inc => inc.id);
+        .map((inc) => inc.id);
       if (ids.length === 0) return 0;
 
       const dataResolucao = new Date().toISOString();
@@ -200,7 +214,10 @@ export class InconsistenciasChamadosService {
 
       return ids.length;
     } catch (error) {
-      console.error('❌ Erro ao resolver inconsistências sem atualização:', error instanceof Error ? error.message : (error as any)?.message);
+      console.error(
+        '❌ Erro ao resolver inconsistências sem atualização:',
+        error instanceof Error ? error.message : (error as any)?.message
+      );
       return 0;
     }
   }
@@ -283,7 +300,7 @@ export class InconsistenciasChamadosService {
       const data = await this.buscarTodosPaginado(buildQuery);
 
       console.log('✅ Inconsistências ativas encontradas:', data.length);
-      let inconsistencias = (data as any[]) as InconsistenciaChamado[];
+      let inconsistencias = data as any[] as InconsistenciaChamado[];
 
       // Filtro client-side para evitar duplicatas entre anos:
       // Para "mes_diferente", o registro pertence ao período da data MAIS RECENTE
@@ -296,9 +313,13 @@ export class InconsistenciasChamadosService {
         const fim = new Date(filtros.data_fim);
         fim.setHours(23, 59, 59, 999);
 
-        inconsistencias = inconsistencias.filter(inc => {
+        inconsistencias = inconsistencias.filter((inc) => {
           // Para "mes_diferente": usar a data MAIS RECENTE como referência do período
-          if (inc.tipo_inconsistencia === 'mes_diferente' && inc.data_sistema && inc.data_atividade) {
+          if (
+            inc.tipo_inconsistencia === 'mes_diferente' &&
+            inc.data_sistema &&
+            inc.data_atividade
+          ) {
             const dataSistema = new Date(inc.data_sistema);
             const dataAtividade = new Date(inc.data_atividade);
             const dataReferencia = dataSistema > dataAtividade ? dataSistema : dataAtividade;
@@ -312,7 +333,7 @@ export class InconsistenciasChamadosService {
           return true;
         });
       }
-      
+
       // Enriquecer com status atual do ticket (sempre busca da tabela de tickets)
       return await this.enriquecerComStatusTicket(inconsistencias);
     } catch (error) {
@@ -395,7 +416,7 @@ export class InconsistenciasChamadosService {
       const data = await this.buscarTodosPaginado(buildQuery);
 
       console.log('✅ Inconsistências resolvidas encontradas:', data.length);
-      let resolvidas = (data as any[]) as InconsistenciaChamado[];
+      let resolvidas = data as any[] as InconsistenciaChamado[];
 
       // Filtro client-side para evitar duplicatas entre anos:
       // Para "mes_diferente", usa a data MAIS RECENTE (GREATEST) entre data_atividade e data_sistema.
@@ -405,8 +426,12 @@ export class InconsistenciasChamadosService {
         const fim = new Date(filtros.data_fim);
         fim.setHours(23, 59, 59, 999);
 
-        resolvidas = resolvidas.filter(inc => {
-          if (inc.tipo_inconsistencia === 'mes_diferente' && inc.data_sistema && inc.data_atividade) {
+        resolvidas = resolvidas.filter((inc) => {
+          if (
+            inc.tipo_inconsistencia === 'mes_diferente' &&
+            inc.data_sistema &&
+            inc.data_atividade
+          ) {
             const dataSistema = new Date(inc.data_sistema);
             const dataAtividade = new Date(inc.data_atividade);
             const dataReferencia = dataSistema > dataAtividade ? dataSistema : dataAtividade;
@@ -419,7 +444,7 @@ export class InconsistenciasChamadosService {
           return true;
         });
       }
-      
+
       // Enriquecer com status atual do ticket
       return await this.enriquecerComStatusTicket(resolvidas);
     } catch (error) {
@@ -446,12 +471,12 @@ export class InconsistenciasChamadosService {
           ic_999999: 0,
           sem_atualizacao: 0,
           troca_codigo_resolucao: 0,
-          validacao_solucao: 0
+          validacao_solucao: 0,
         },
         por_origem: {
           apontamentos: 0,
-          tickets: 0
-        }
+          tickets: 0,
+        },
       };
 
       for (const inc of inconsistencias) {
@@ -509,7 +534,9 @@ export class InconsistenciasChamadosService {
    * usadas na soma da coluna Tempo. Mesmo critério do TIPO 5 de detectar_inconsistencias().
    * Na troca, data_atividade guarda a data/hora da troca e nro_chamado vem com prefixo ("RF 123").
    */
-  async buscarTarefasAntesDaTroca(inconsistencia: InconsistenciaChamado): Promise<TarefasAntesDaTroca> {
+  async buscarTarefasAntesDaTroca(
+    inconsistencia: InconsistenciaChamado
+  ): Promise<TarefasAntesDaTroca> {
     if (!inconsistencia.data_atividade) {
       return { tarefas: [], total_minutos: 0, total_horas: formatarMinutosHHMM(0) };
     }
@@ -528,7 +555,7 @@ export class InconsistenciasChamadosService {
       throw error;
     }
 
-    const tarefas = ((data as any[]) || []).map(row => {
+    const tarefas = ((data as any[]) || []).map((row) => {
       const minutos = Math.round(Number(row.tempo_gasto_minutos) || 0);
       return {
         nro_tarefa: row.nro_tarefa ?? null,
@@ -557,7 +584,7 @@ export class InconsistenciasChamadosService {
         .update({
           status: 'resolvida',
           data_resolucao: new Date().toISOString(),
-          arquivado_manualmente: true
+          arquivado_manualmente: true,
         })
         .eq('id', id);
 
@@ -586,7 +613,7 @@ export class InconsistenciasChamadosService {
         .update({
           status: 'resolvida',
           data_resolucao: new Date().toISOString(),
-          arquivado_manualmente: true
+          arquivado_manualmente: true,
         })
         .in('id', ids);
 
@@ -616,7 +643,7 @@ export class InconsistenciasChamadosService {
       .update({
         status: 'descartada',
         data_resolucao: new Date().toISOString(),
-        arquivado_manualmente: true
+        arquivado_manualmente: true,
       })
       .in('id', ids)
       .eq('status', 'ativa');
@@ -634,12 +661,14 @@ export class InconsistenciasChamadosService {
     try {
       console.log('📧 Enviando notificações:', {
         quantidade: request.inconsistencias.length,
-        ano: request.ano_referencia
+        ano: request.ano_referencia,
       });
 
       // Obter usuário atual
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         throw new Error('Usuário não autenticado');
       }
@@ -657,7 +686,7 @@ export class InconsistenciasChamadosService {
       const mesReferencia = request.mes_referencia ?? new Date().getMonth() + 1;
 
       // Salvar todas as inconsistências do envio no histórico de emails
-      const registros = request.inconsistencias.map(inc => ({
+      const registros = request.inconsistencias.map((inc) => ({
         inconsistencia_id: inc.id,
         origem: inc.origem,
         nro_chamado: inc.nro_chamado,
@@ -675,7 +704,7 @@ export class InconsistenciasChamadosService {
         enviado_por: user.id,
         enviado_por_nome: enviadoPorNome,
         mes_referencia: mesReferencia,
-        ano_referencia: request.ano_referencia
+        ano_referencia: request.ano_referencia,
       }));
 
       const { error: insertError } = await supabase

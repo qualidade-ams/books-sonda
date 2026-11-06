@@ -6,6 +6,7 @@ import {
   conferirMapeamentos,
   empresasAfetadas,
   exportacaoMapeamentos,
+  faltaProduto,
   filtrarMapeamentos,
   grupoJaMapeado,
   gruposDoBook,
@@ -66,7 +67,7 @@ const LISTA = [
     'modulo'
   ),
   mapeamento('g2', 'AMS APL - CE - N2', 'COMEX', { solucaoId: 's1', produtoId: 'ce' }, 'produto'),
-  mapeamento('g3', 'AMS DBA', 'DBA', { solucaoId: 's1' }, 'solucao'),
+  mapeamento('g3', 'AMS DBA', 'DBA', { solucaoId: 's1', produtoId: 'fci' }, 'produto'),
   mapeamento('g4', 'DEDICADOS', 'Dedicados', {}, 'nao_se_aplica'),
 ];
 
@@ -98,7 +99,7 @@ describe('filtrarMapeamentos', () => {
       filtrarMapeamentos(LISTA, {
         ...SEM_FILTRO,
         solucoes: ['s1'],
-        situacao: ['produto', 'solucao'],
+        situacao: ['produto'],
       }).map((m) => m.id)
     ).toEqual(['g2', 'g3']);
   });
@@ -114,7 +115,7 @@ describe('filtrarMapeamentos', () => {
     // Situação pelo nível de cada lugar: o produto inteiro do COMPLY
     expect(
       filtrarMapeamentos(lista, { ...SEM_FILTRO, situacao: ['produto'] }).map((m) => m.id)
-    ).toEqual(['g2', 'g5']);
+    ).toEqual(['g2', 'g3', 'g5']);
     // Os filtros valem para o mesmo lugar: s2 não tem o módulo Câmbio
     expect(
       filtrarMapeamentos(lista, { ...SEM_FILTRO, solucoes: ['s2'], modulos: ['cambio'] })
@@ -163,6 +164,14 @@ describe('grupoJaMapeado', () => {
   it('compara sem espaços nas pontas e sem diferenciar maiúsculas', () => {
     expect(grupoJaMapeado(' ams dba ', LISTA)).toBe(true);
     expect(grupoJaMapeado('AMS NOVO', LISTA)).toBe(false);
+  });
+});
+
+describe('faltaProduto', () => {
+  it('a solução sem produto não é destino: o grupo de serviço deixou de existir', () => {
+    expect(faltaProduto({ solucaoId: 's1', produtoId: null, moduloId: null })).toBe(true);
+    expect(faltaProduto({ solucaoId: 's1', produtoId: 'ce', moduloId: null })).toBe(false);
+    expect(faltaProduto({ solucaoId: null, produtoId: null, moduloId: null })).toBe(false);
   });
 });
 
@@ -263,6 +272,7 @@ describe('importação de mapeamentos', () => {
     linha(8, 'AMS W', 'B', 'COMEX', 'CE PLUS', 'SVA'),
     linha(9, 'ams novo', 'B'),
     linha(10, '', 'B'),
+    linha(11, 'AMS SERVICO', 'B', 'COMEX'),
   ];
 
   it('confere: o destino pelo nome no catálogo; o grupo sem diferenciar maiúsculas', () => {
@@ -284,6 +294,8 @@ describe('importação de mapeamentos', () => {
       ['erro', ['deParaGrupos.importar.erros.moduloNaoExiste {"nome":"SVA","produto":"CE PLUS"}']],
       ['erro', ['deParaGrupos.importar.erros.repetido {"linha":2}']],
       ['erro', ['deParaGrupos.importar.erros.grupoVazio']],
+      // Grupo de serviço da solução não existe mais (03/11/2026): a solução pede o produto
+      ['erro', ['deParaGrupos.importar.erros.produtoVazio']],
     ]);
   });
 

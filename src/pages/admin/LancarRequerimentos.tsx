@@ -621,6 +621,8 @@ const LancarRequerimentos = () => {
             valor_hora_tecnico: undefined,
             tipo_hora_extra: undefined,
             quantidade_tickets: data.quantidade_tickets,
+            // Banco escolhido na edição (empresa liberada)
+            destino_banco: data.destino_banco,
           };
 
           await createRequerimento.mutateAsync(requerimentoAnaliseEF);

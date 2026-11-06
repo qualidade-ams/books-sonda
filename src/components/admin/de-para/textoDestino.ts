@@ -16,8 +16,6 @@ export function useTextoDestino(catalogo: Catalogo) {
       : d.produtoId
         ? t('deParaGrupos.destino.textoProduto', { produto: nome(catalogo.produtos, d.produtoId) })
         : d.solucaoId
-          ? t('deParaGrupos.destino.textoSolucao', {
-              solucao: nome(catalogo.solucoes, d.solucaoId),
-            })
+          ? t('deParaGrupos.destino.textoSemProduto')
           : t('deParaGrupos.destino.textoNenhum');
 }

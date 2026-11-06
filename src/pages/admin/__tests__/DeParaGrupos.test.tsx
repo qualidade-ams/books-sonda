@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import DeParaGrupos from '../DeParaGrupos';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { MapeamentoGrupo } from '@/types/dePara';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { lerPlanilha } from '@/utils/importarPlanilha';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -277,5 +279,13 @@ describe('DeParaGrupos', () => {
     permissoes = ['de_para_grupos:view'];
     renderizar();
     expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
+  });
+});
+
+describe('DeParaGrupos: ao abrir', () => {
+  it('recarrega os grupos do Aranda e o catálogo', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('grupos-aranda', 'catalogo');
   });
 });

@@ -19,10 +19,10 @@ import { useUltimaAlteracao } from '@/hooks/useUltimaAlteracao';
 import { cn } from '@/lib/utils';
 import { plural } from '@/utils/plural';
 import {
-  gruposDaSolucao,
   gruposDoModulo,
   gruposSoDoProduto,
   mudancasDeGrupos,
+  produtoMudaDeSolucao,
   usosDoModulo,
   usosQueAlcancamProduto,
 } from '@/utils/catalogoTela';
@@ -45,6 +45,8 @@ export interface MudancasGrupos {
   desvincular: string[];
 }
 
+const SEM_MUDANCAS: MudancasGrupos = { vincular: [], desvincular: [] };
+
 interface Comuns {
   catalogo: Catalogo;
   mapeamentos: MapeamentoGrupo[];
@@ -54,13 +56,21 @@ interface Comuns {
   onFechar: () => void;
 }
 
-/** Salva e fecha; sem tratar o erro aqui: o aviso vem do hook e a tela continua aberta */
-function useSalvar<T>(onSalvar: (dados: T, grupos: MudancasGrupos) => Promise<void>) {
+/**
+ * Salva e volta para a tela anterior. Aberta depois de gravar, a edição de um item novo
+ * acusaria o próprio nome como repetido. Sem tratar o erro aqui: o aviso vem do hook e a
+ * tela continua aberta
+ */
+function useSalvar<T>(
+  onSalvar: (dados: T, grupos: MudancasGrupos) => Promise<void>,
+  onFechar: () => void
+) {
   const [salvando, setSalvando] = useState(false);
   const salvar = async (dados: T, grupos: MudancasGrupos) => {
     setSalvando(true);
     try {
       await onSalvar(dados, grupos);
+      onFechar();
     } catch {
       // O hook já avisou; a edição continua aberta para corrigir
     } finally {
@@ -119,14 +129,12 @@ function SecaoGrupos({ titulo, children }: { titulo: string; children: ReactNode
 export function EdicaoSolucao({
   solucao,
   catalogo,
-  mapeamentos,
-  podeEditarGrupos,
   onFechar,
   onSalvar,
   onExcluir,
 }: Comuns & {
   solucao: Solucao | null;
-  onSalvar: (dados: SolucaoInput, grupos: MudancasGrupos) => Promise<void>;
+  onSalvar: (dados: SolucaoInput) => Promise<void>;
   /** Só para a solução que nunca foi usada */
   onExcluir?: () => void;
 }) {
@@ -136,9 +144,8 @@ export function EdicaoSolucao({
   const [codigo, setCodigo] = useState(solucao?.codigo ?? '');
   const [nome, setNome] = useState(solucao?.nome ?? '');
   const [ativo, setAtivo] = useState(solucao?.ativo ?? true);
-  const inicial = solucao ? gruposDaSolucao(mapeamentos, solucao.id) : [];
-  const [grupos, setGrupos] = useState(inicial);
-  const { salvando, salvar } = useSalvar(onSalvar);
+  // A solução não tem grupos: eles ficam nos produtos e módulos (03/11/2026)
+  const { salvando, salvar } = useSalvar<SolucaoInput>((dados) => onSalvar(dados), onFechar);
 
   const outras = catalogo.solucoes.filter((s) => s.id !== solucao?.id);
   const erroCodigo = !codigo.trim()
@@ -171,7 +178,7 @@ export function EdicaoSolucao({
             nome: nome.trim(),
             ativo,
           },
-          mudancasDeGrupos(inicial, grupos, mapeamentos)
+          SEM_MUDANCAS
         )
       }
     >
@@ -212,21 +219,6 @@ export function EdicaoSolucao({
           />
         )}
       </Secao>
-      {!novo && (
-        <SecaoGrupos titulo={t('produtosModulos.solucao.gruposServico')}>
-          <EditorGrupos
-            alvo={{ tipo: 'solucao', id: solucao.id }}
-            catalogo={catalogo}
-            mapeamentos={mapeamentos}
-            inicial={inicial}
-            grupos={grupos}
-            onChange={setGrupos}
-            vazioTexto={t('produtosModulos.solucao.nenhumGrupoServico')}
-            ajuda={t('produtosModulos.edicao.solucao.ajudaServico')}
-            somenteLeitura={!podeEditarGrupos}
-          />
-        </SecaoGrupos>
-      )}
       {!novo && onExcluir && (
         <Secao titulo={t('produtosModulos.edicao.solucao.excluirTitulo')}>
           <Ajuda>{t('produtosModulos.edicao.solucao.excluirAjuda')}</Ajuda>
@@ -269,7 +261,8 @@ export function EdicaoProduto({
   const [confirmar, setConfirmar] = useState(false);
   const inicial = produto ? gruposSoDoProduto(mapeamentos, produto.id) : [];
   const [grupos, setGrupos] = useState(inicial);
-  const { salvando, salvar } = useSalvar(onSalvar);
+  const { salvando, salvar } = useSalvar(onSalvar, onFechar);
+  const mudaDeSolucao = novo || produtoMudaDeSolucao(produto, usos);
 
   const nomeSolucao = catalogo.solucoes.find((s) => s.id === solucao)?.nome ?? '';
   const erroNome = !nome.trim()
@@ -319,7 +312,7 @@ export function EdicaoProduto({
             <Select
               id="solucao-produto"
               value={solucao}
-              disabled={!novo}
+              disabled={!mudaDeSolucao}
               onChange={(e) => setSolucao(e.target.value)}
               className="w-full"
             >
@@ -331,7 +324,15 @@ export function EdicaoProduto({
                   </option>
                 ))}
             </Select>
-            {!novo && <Ajuda>{t('produtosModulos.edicao.produto.solucaoNaoMuda')}</Ajuda>}
+            {!novo && (
+              <Ajuda>
+                {t(
+                  mudaDeSolucao
+                    ? 'produtosModulos.edicao.produto.solucaoMuda'
+                    : 'produtosModulos.edicao.produto.solucaoNaoMuda'
+                )}
+              </Ajuda>
+            )}
           </div>
           <CampoTexto
             id="nome-produto"
@@ -433,7 +434,7 @@ export function EdicaoModulo({
   const [confirmar, setConfirmar] = useState(false);
   const inicial = modulo ? gruposDoModulo(mapeamentos, modulo.id) : [];
   const [grupos, setGrupos] = useState(inicial);
-  const { salvando, salvar } = useSalvar(onSalvar);
+  const { salvando, salvar } = useSalvar(onSalvar, onFechar);
 
   const nomeProduto = catalogo.produtos.find((p) => p.id === produto)?.nome ?? '';
   const repetido = catalogo.modulos.some(

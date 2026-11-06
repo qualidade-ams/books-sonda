@@ -3880,7 +3880,6 @@ export type Database = {
       grupos_aranda: {
         Row: {
           ativo: boolean
-          classificacao: string
           created_at: string
           created_by: string | null
           grupo_aranda: string
@@ -3888,15 +3887,11 @@ export type Database = {
           id: string
           inativado_em: string | null
           inativado_por: string | null
-          modulo_id: string | null
-          produto_id: string | null
-          solucao_id: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           ativo?: boolean
-          classificacao: string
           created_at?: string
           created_by?: string | null
           grupo_aranda: string
@@ -3904,15 +3899,11 @@ export type Database = {
           id?: string
           inativado_em?: string | null
           inativado_por?: string | null
-          modulo_id?: string | null
-          produto_id?: string | null
-          solucao_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           ativo?: boolean
-          classificacao?: string
           created_at?: string
           created_by?: string | null
           grupo_aranda?: string
@@ -3920,42 +3911,10 @@ export type Database = {
           id?: string
           inativado_em?: string | null
           inativado_por?: string | null
-          modulo_id?: string | null
-          produto_id?: string | null
-          solucao_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "grupos_aranda_modulo_fk"
-            columns: ["modulo_id", "produto_id"]
-            isOneToOne: false
-            referencedRelation: "produto_modulos"
-            referencedColumns: ["id", "produto_id"]
-          },
-          {
-            foreignKeyName: "grupos_aranda_produto_id_fkey"
-            columns: ["produto_id"]
-            isOneToOne: false
-            referencedRelation: "produtos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grupos_aranda_solucao_id_fkey"
-            columns: ["solucao_id"]
-            isOneToOne: false
-            referencedRelation: "solucoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grupos_aranda_solucao_produto_fk"
-            columns: ["produto_id", "solucao_id"]
-            isOneToOne: false
-            referencedRelation: "produtos"
-            referencedColumns: ["id", "solucao_id"]
-          },
-        ]
+        Relationships: []
       }
       grupos_aranda_vinculos: {
         Row: {
@@ -5709,6 +5668,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           motivo: string
+          modulo_id: string | null
+          produto_id: string | null
           requerimento_id: string
           updated_at: string
           updated_by: string | null
@@ -5718,6 +5679,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           motivo: string
+          modulo_id?: string | null
+          produto_id?: string | null
           requerimento_id: string
           updated_at?: string
           updated_by?: string | null
@@ -5727,11 +5690,27 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           motivo?: string
+          modulo_id?: string | null
+          produto_id?: string | null
           requerimento_id?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "requerimentos_bancos_modulo_fk"
+            columns: ["modulo_id", "produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto_modulos"
+            referencedColumns: ["id", "produto_id"]
+          },
+          {
+            foreignKeyName: "requerimentos_bancos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "requerimentos_bancos_banco_id_fkey"
             columns: ["banco_id"]
@@ -6567,6 +6546,17 @@ export type Database = {
         Args: { p_texto: string }
         Returns: number
       }
+      bancos_horas_editar_vigencia: {
+        Args: {
+          p_ate: string
+          p_inicio: string
+          p_motivo: string
+          p_tipo: string
+          p_valores: Json
+          p_vigencia_id: string
+        }
+        Returns: undefined
+      }
       bancos_horas_nova_vigencia: {
         Args: {
           p_banco_id: string
@@ -7153,6 +7143,34 @@ export type Database = {
           p_tipo_sincronizacao: string
         }
         Returns: undefined
+      }
+      requerimento_bancos_disponiveis: {
+        Args: { p_empresa_id: string; p_requerimento_id?: string }
+        Returns: {
+          banco_id: string
+          escolhido: boolean
+          fim_vigencia: string
+          inicio_vigencia: string
+          nome: string
+          ordem: number
+          padrao: boolean
+        }[]
+      }
+      requerimento_definir_banco: {
+        Args: { p_banco_id: string; p_requerimento_id: string }
+        Returns: undefined
+      }
+      requerimento_definir_destino: {
+        Args: {
+          p_modulo_id: string
+          p_produto_id: string
+          p_requerimento_id: string
+        }
+        Returns: string
+      }
+      requerimento_destinos: {
+        Args: { p_empresa_id: string; p_requerimento_id?: string }
+        Returns: Json
       }
       salvar_menu: {
         Args: { p_aparencia?: Json; p_itens: Json }

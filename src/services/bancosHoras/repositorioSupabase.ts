@@ -140,8 +140,7 @@ export function criarRepositorioSupabase(cliente: ClienteSupabase): RepositorioF
     },
 
     async dePara() {
-      // Os lugares do grupo vêm dos vínculos; as colunas de destino de grupos_aranda são
-      // só o espelho do primeiro, até a migration de limpeza
+      // Os lugares do grupo vêm dos vínculos (o grupo pode estar em vários)
       const grupos = await consultar(
         cliente
           .from('grupos_aranda')

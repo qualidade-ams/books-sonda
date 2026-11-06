@@ -44,6 +44,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useUltimasSincronizacoesPorTabela } from '@/hooks/usePesquisasSqlServer';
 import { formatarDataHora } from '@/hooks/useUltimaAlteracao';
 import { useEmailsClientesPorFinalidade } from '@/hooks/useClientes';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { FINALIDADES_SALDO_PARCIAL } from '@/types/clientBooksTypes';
 import { EnviarSaldoParcial } from '@/components/admin/controle/EnviarSaldoParcial';
 import { botaoVidro, faixaDasAbas } from '@/components/ds/estilos';
@@ -71,6 +72,7 @@ const DICAS: [string, string][] = [
 ];
 
 export default function ControleBancosHoras() {
+  useAtualizarAoAbrir('controle-bh', 'clientes', 'sql-server-ultimas-sincronizacoes-por-tabela');
   const { t, i18n } = useTranslation();
   const c = (chave: string, valores?: Record<string, unknown>) =>
     t(`controleBancoHoras.${chave}`, valores);
@@ -351,6 +353,7 @@ export default function ControleBancosHoras() {
                   rotuloPeriodo={rotuloPeriodo}
                   podeEditar={podeEditar}
                   onReajuste={(mes) => setLancando({ mes })}
+                  hoje={hoje}
                 />
               )}
             </div>

@@ -10,9 +10,10 @@ import {
   ClienteRequerimento,
   EstatisticasRequerimentos,
   FiltrosRequerimentos,
-  StatusRequerimento
+  StatusRequerimento,
 } from '@/types/requerimentos';
 import { getRequerimentoErrorMessage } from '@/errors/requerimentosErrors';
+import { DESTINOS_DO_REQUERIMENTO_KEY } from '@/hooks/useDestinosDoRequerimento';
 
 // Chaves de cache para React Query
 export const REQUERIMENTOS_QUERY_KEYS = {
@@ -22,11 +23,15 @@ export const REQUERIMENTOS_QUERY_KEYS = {
   details: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'detail'] as const,
   detail: (id: string) => [...REQUERIMENTOS_QUERY_KEYS.details(), id] as const,
   naoEnviados: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'nao-enviados'] as const,
-  enviados: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'enviados', filtros] as const,
-  faturamento: (mes?: number, ano?: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento', mes, ano] as const,
-  pendentesAnteriores: (mes: number, ano: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'pendentes-anteriores', mes, ano] as const,
+  enviados: (filtros?: FiltrosRequerimentos) =>
+    [...REQUERIMENTOS_QUERY_KEYS.all, 'enviados', filtros] as const,
+  faturamento: (mes?: number, ano?: number) =>
+    [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento', mes, ano] as const,
+  pendentesAnteriores: (mes: number, ano: number) =>
+    [...REQUERIMENTOS_QUERY_KEYS.all, 'pendentes-anteriores', mes, ano] as const,
   clientes: () => ['clientes-requerimentos'] as const,
-  estatisticas: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'estatisticas', filtros] as const
+  estatisticas: (filtros?: FiltrosRequerimentos) =>
+    [...REQUERIMENTOS_QUERY_KEYS.all, 'estatisticas', filtros] as const,
 };
 
 /**
@@ -81,9 +86,9 @@ export function useRequerimentosEnviados(filtros?: FiltrosRequerimentos) {
 export function useRequerimentosFaturamento(mes?: number, ano?: number) {
   // Converter mês e ano para formato MM/YYYY se fornecidos
   const mesCobranca = mes && ano ? `${String(mes).padStart(2, '0')}/${ano}` : undefined;
-  
+
   console.log('useRequerimentosFaturamento - Parâmetros:', { mes, ano, mesCobranca });
-  
+
   return useQuery({
     queryKey: REQUERIMENTOS_QUERY_KEYS.faturamento(mes, ano),
     queryFn: () => requerimentosService.gerarDadosFaturamento(mesCobranca),
@@ -152,31 +157,32 @@ export function useCreateRequerimento() {
       console.log('🎣 HOOK - Dados recebidos:', data);
       console.log('🎣 HOOK - Tipo de cobrança:', data.tipo_cobranca);
       console.log('🎣 HOOK - Horas análise EF:', data.horas_analise_ef);
-      
+
       // Obter dados do usuário autenticado do Supabase
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       // Adicionar dados do autor se usuário estiver autenticado
       const dataComAutor: RequerimentoFormData = {
         ...data,
         autor_id: user?.id || undefined,
-        autor_nome: user?.user_metadata?.full_name || user?.email || 'Usuário não identificado'
+        autor_nome: user?.user_metadata?.full_name || user?.email || 'Usuário não identificado',
       };
-      
+
       console.log('🎣 HOOK - Dados com autor:', dataComAutor);
       console.log('🎣 HOOK - Tipo de cobrança (com autor):', dataComAutor.tipo_cobranca);
       console.log('🎣 HOOK - Horas análise EF (com autor):', dataComAutor.horas_analise_ef);
-      
+
       return requerimentosService.criarRequerimento(dataComAutor);
     },
     onSuccess: (novoRequerimento) => {
       // Invalidar todas as queries relacionadas
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
-      
+
       // Adicionar o novo requerimento ao cache de não enviados
-      queryClient.setQueryData<Requerimento[]>(
-        REQUERIMENTOS_QUERY_KEYS.naoEnviados(),
-        (old) => old ? [novoRequerimento, ...old] : [novoRequerimento]
+      queryClient.setQueryData<Requerimento[]>(REQUERIMENTOS_QUERY_KEYS.naoEnviados(), (old) =>
+        old ? [novoRequerimento, ...old] : [novoRequerimento]
       );
 
       toast.success('Requerimento criado com sucesso!');
@@ -185,7 +191,7 @@ export function useCreateRequerimento() {
       console.error('Erro ao criar requerimento:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(`Erro ao criar requerimento: ${message}`);
-    }
+    },
   });
 }
 
@@ -202,14 +208,17 @@ export function useUpdateRequerimento() {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.detail(id) });
+      queryClient.invalidateQueries({ queryKey: [...DESTINOS_DO_REQUERIMENTO_KEY] });
 
       toast.success('Requerimento atualizado com sucesso!');
     },
     onError: (error: unknown) => {
+      // O requerimento pode ter sido salvo e só o banco recusado
+      queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
       console.error('Erro ao atualizar requerimento:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(`Erro ao atualizar requerimento: ${message}`);
-    }
+    },
   });
 }
 
@@ -229,9 +238,8 @@ export function useDeleteRequerimento() {
       queryClient.removeQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.detail(id) });
 
       // Atualizar cache de não enviados removendo o item
-      queryClient.setQueryData<Requerimento[]>(
-        REQUERIMENTOS_QUERY_KEYS.naoEnviados(),
-        (old) => old ? old.filter(req => req.id !== id) : []
+      queryClient.setQueryData<Requerimento[]>(REQUERIMENTOS_QUERY_KEYS.naoEnviados(), (old) =>
+        old ? old.filter((req) => req.id !== id) : []
       );
 
       toast.success('Requerimento deletado com sucesso!');
@@ -240,7 +248,7 @@ export function useDeleteRequerimento() {
       console.error('Erro ao deletar requerimento:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(`Erro ao deletar requerimento: ${message}`);
-    }
+    },
   });
 }
 
@@ -257,19 +265,18 @@ export function useEnviarParaFaturamento() {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
 
       // Remover do cache de não enviados
-      queryClient.setQueryData<Requerimento[]>(
-        REQUERIMENTOS_QUERY_KEYS.naoEnviados(),
-        (old) => old ? old.filter(req => req.id !== id) : []
+      queryClient.setQueryData<Requerimento[]>(REQUERIMENTOS_QUERY_KEYS.naoEnviados(), (old) =>
+        old ? old.filter((req) => req.id !== id) : []
       );
 
       // Invalidar cache de faturamento para atualizar
-      queryClient.invalidateQueries({ 
-        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      queryClient.invalidateQueries({
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'],
       });
 
       // Invalidar cache de faturados para atualizar a aba "Histórico de Enviados"
-      queryClient.invalidateQueries({ 
-        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados'] 
+      queryClient.invalidateQueries({
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados'],
       });
 
       toast.success('Requerimento enviado para faturamento com sucesso!');
@@ -278,7 +285,7 @@ export function useEnviarParaFaturamento() {
       console.error('Erro ao enviar requerimento para faturamento:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(`Erro ao enviar para faturamento: ${message}`);
-    }
+    },
   });
 }
 
@@ -290,7 +297,7 @@ export function useEnviarMultiplosParaFaturamento() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const promises = ids.map(id => requerimentosService.enviarParaFaturamento(id));
+      const promises = ids.map((id) => requerimentosService.enviarParaFaturamento(id));
       await Promise.all(promises);
       return ids;
     },
@@ -299,19 +306,18 @@ export function useEnviarMultiplosParaFaturamento() {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
 
       // Remover do cache de não enviados
-      queryClient.setQueryData<Requerimento[]>(
-        REQUERIMENTOS_QUERY_KEYS.naoEnviados(),
-        (old) => old ? old.filter(req => !ids.includes(req.id)) : []
+      queryClient.setQueryData<Requerimento[]>(REQUERIMENTOS_QUERY_KEYS.naoEnviados(), (old) =>
+        old ? old.filter((req) => !ids.includes(req.id)) : []
       );
 
       // Invalidar cache de faturamento
-      queryClient.invalidateQueries({ 
-        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      queryClient.invalidateQueries({
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'],
       });
 
       // Invalidar cache de faturados para atualizar a aba "Histórico de Enviados"
-      queryClient.invalidateQueries({ 
-        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados'] 
+      queryClient.invalidateQueries({
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados'],
       });
 
       toast.success(`${ids.length} requerimento(s) enviado(s) para faturamento com sucesso!`);
@@ -320,7 +326,7 @@ export function useEnviarMultiplosParaFaturamento() {
       console.error('Erro ao enviar requerimentos para faturamento:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(`Erro ao enviar requerimentos para faturamento: ${message}`);
-    }
+    },
   });
 }
 
@@ -340,8 +346,8 @@ export function useRejeitarRequerimento() {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.naoEnviados() });
 
       // Invalidar cache de faturamento
-      queryClient.invalidateQueries({ 
-        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      queryClient.invalidateQueries({
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'],
       });
 
       toast.success('Requerimento rejeitado com sucesso!');
@@ -350,7 +356,7 @@ export function useRejeitarRequerimento() {
       console.error('Erro ao rejeitar requerimento:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(`Erro ao rejeitar requerimento: ${message}`);
-    }
+    },
   });
 }
 
@@ -368,8 +374,8 @@ export function useMarcarComoFaturados() {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
 
       // Invalidar cache de faturamento
-      queryClient.invalidateQueries({ 
-        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      queryClient.invalidateQueries({
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'],
       });
 
       toast.success(t('billing.markedAsBilledSuccess', { count: ids.length }));
@@ -378,7 +384,7 @@ export function useMarcarComoFaturados() {
       console.error('Erro ao marcar requerimentos como faturados:', error);
       const message = getRequerimentoErrorMessage(error);
       toast.error(t('billing.markedAsBilledError', { message }));
-    }
+    },
   });
 }
 
@@ -421,7 +427,7 @@ export function useInvalidateRequerimentos() {
     },
     invalidateEstatisticas: (filtros?: FiltrosRequerimentos) => {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.estatisticas(filtros) });
-    }
+    },
   };
 }
 
@@ -430,7 +436,7 @@ export function useInvalidateRequerimentos() {
  */
 export function useRequerimentosManager() {
   const invalidate = useInvalidateRequerimentos();
-  
+
   return {
     // Queries
     useRequerimentos,
@@ -440,7 +446,7 @@ export function useRequerimentosManager() {
     useRequerimento,
     useClientesRequerimentos,
     useEstatisticasRequerimentos,
-    
+
     // Mutations
     createRequerimento: useCreateRequerimento(),
     updateRequerimento: useUpdateRequerimento(),
@@ -449,9 +455,9 @@ export function useRequerimentosManager() {
     enviarMultiplosParaFaturamento: useEnviarMultiplosParaFaturamento(),
     rejeitarRequerimento: useRejeitarRequerimento(),
     marcarComoFaturados: useMarcarComoFaturados(),
-    
+
     // Cache management
-    invalidate
+    invalidate,
   };
 }
 

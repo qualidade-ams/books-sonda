@@ -259,6 +259,24 @@ describe('CatalogoService.salvarProduto', () => {
     });
   });
 
+  it('produto que muda de solução vai para o fim da nova; na mesma solução, a ordem fica', async () => {
+    const fake = cenario();
+    const s = new CatalogoService(fake as any);
+    await s.salvarProduto({ id: 'p2', solucaoId: 's2', nome: 'FCI', descricao: null, ativo: true });
+    expect(fake.tabelas.produtos.find((p) => p.id === 'p2')).toMatchObject({
+      solucao_id: 's2',
+      ordem: 1,
+    });
+    await s.salvarProduto({
+      id: 'p1',
+      solucaoId: 's1',
+      nome: 'CE PLUS',
+      descricao: null,
+      ativo: true,
+    });
+    expect(fake.tabelas.produtos.find((p) => p.id === 'p1')).toMatchObject({ ordem: 1 });
+  });
+
   it('repassa a mensagem das regras do banco', async () => {
     const s = new CatalogoService(
       comErro(cenario(), 'produtos', {
@@ -366,6 +384,37 @@ describe('CatalogoService.excluir', () => {
       { nome: 'catalogo_excluir', args: { p_tipo: 'produto', p_id: 'p2' } },
       { nome: 'catalogo_excluir', args: { p_tipo: 'solucao', p_id: 's2' } },
     ]);
+  });
+
+  it('solução: exclui antes os produtos dela (todos sem uso), depois a solução', async () => {
+    const fake = cenario();
+    const chamadas: unknown[] = [];
+    fake.rpc = async (nome: string, args: Record<string, unknown>) => {
+      chamadas.push(args);
+      return { data: null, error: null };
+    };
+    await new CatalogoService(fake as any).excluir('solucao', 's1');
+    expect(chamadas).toEqual([
+      { p_tipo: 'produto', p_id: 'p1' },
+      { p_tipo: 'produto', p_id: 'p2' },
+      { p_tipo: 'produto', p_id: 'pa' },
+      { p_tipo: 'solucao', p_id: 's1' },
+    ]);
+  });
+
+  it('solução: produto em uso para tudo antes de tocar na solução', async () => {
+    const fake = cenario();
+    const chamadas: unknown[] = [];
+    fake.rpc = async (_nome: string, args: Record<string, unknown>) => {
+      chamadas.push(args);
+      return args.p_tipo === 'produto'
+        ? { data: null, error: { message: 'Este item já foi usado: inative-o.' } }
+        : { data: null, error: null };
+    };
+    await expect(new CatalogoService(fake as any).excluir('solucao', 's1')).rejects.toThrow(
+      'inative-o'
+    );
+    expect(chamadas).toHaveLength(1);
   });
 
   it('item em uso: o banco recusa e o erro é traduzível, com o motivo', async () => {

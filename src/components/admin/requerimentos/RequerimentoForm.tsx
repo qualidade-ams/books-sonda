@@ -1,7 +1,18 @@
 import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Calculator, HelpCircle, AlertCircle, Upload, Trash2, Download, Paperclip, Loader2, FileText, X } from 'lucide-react';
+import {
+  Calculator,
+  HelpCircle,
+  AlertCircle,
+  Upload,
+  Trash2,
+  Download,
+  Paperclip,
+  Loader2,
+  FileText,
+  X,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
@@ -10,8 +21,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
@@ -26,11 +51,14 @@ import {
   TipoHoraExtraType,
   ModuloType,
   LinguagemType,
-  TipoCobrancaType
+  TipoCobrancaType,
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
-import { useTranslatedTipoCobranca, useTranslatedTipoHoraExtra } from '@/hooks/useTranslatedOptions';
+import {
+  useTranslatedTipoCobranca,
+  useTranslatedTipoHoraExtra,
+} from '@/hooks/useTranslatedOptions';
 import { cn } from '@/lib/utils';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAccessibility } from '@/hooks/useAccessibility';
@@ -38,13 +66,20 @@ import { FormFieldHelp, OptimizedTooltip, ValidationFeedback } from './HelpSyste
 import { LoadingSpinner } from '@/components/admin/requerimentos/LoadingStates';
 import { InputHoras } from '@/components/ui/input-horas';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
-import { somarHoras, formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
+import {
+  somarHoras,
+  formatarHorasParaExibicao,
+  converterParaHorasDecimal,
+} from '@/utils/horasUtils';
 import { buscarTaxaVigente } from '@/services/taxasClientesService';
 import { useRequerimentoAnexos } from '@/hooks/useRequerimentoAnexos';
 import { requerimentoAnexosService } from '@/services/requerimentoAnexosService';
 import type { TaxaClienteCompleta, TipoFuncao } from '@/types/taxasClientes';
 import { calcularValores } from '@/types/taxasClientes';
 import { useState } from 'react';
+import { CampoBancoRequerimento } from './CampoBancoRequerimento';
+import { useDestinosDoRequerimento } from '@/hooks/useDestinosDoRequerimento';
+import { faltaBanco } from '@/utils/bancoDoRequerimento';
 
 interface RequerimentoFormProps {
   requerimento?: Requerimento;
@@ -57,17 +92,17 @@ export function RequerimentoForm({
   requerimento,
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
 }: RequerimentoFormProps) {
   console.log('🎨🎨🎨 RequerimentoForm RENDERIZADO 🎨🎨🎨', { requerimento: !!requerimento });
-  
+
   const { t } = useTranslation();
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
   const translatedTipoCobranca = useTranslatedTipoCobranca();
   const translatedTipoHoraExtra = useTranslatedTipoHoraExtra();
   const { form: responsiveForm, modal: responsiveModal } = useResponsive();
   const { screenReader, focusManagement } = useAccessibility();
-  
+
   // Hook para gerenciamento de anexos
   const {
     anexosSalvos,
@@ -83,28 +118,28 @@ export function RequerimentoForm({
     isUploading,
     isExcluindo,
   } = useRequerimentoAnexos(requerimento?.id);
-  
+
   // Estado para taxa vigente do cliente
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
   const [carregandoTaxa, setCarregandoTaxa] = useState(false);
-  
+
   // Ref para controlar se valores foram editados manualmente (não causa re-render)
   const valoresEditadosManualmenteRef = useRef({
     funcional: false,
     tecnico: false,
-    gestor: false
+    gestor: false,
   });
-  
+
   // Estado para controlar indicadores visuais de edição manual
   const [valoresEditadosManualmente, setValoresEditadosManualmente] = useState({
     funcional: false,
     tecnico: false,
-    gestor: false
+    gestor: false,
   });
-  
+
   // Estado para controlar se houve tentativa de submissão (para mostrar erros visuais)
   const [tentouSubmeter, setTentouSubmeter] = useState(false);
-  
+
   // Função helper para obter classes de erro para campos obrigatórios
   const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
     if (!tentouSubmeter || !isRequired) return '';
@@ -114,15 +149,17 @@ export function RequerimentoForm({
 
   // Função helper específica para o campo Chamado (valida espaços e underscore em tempo real)
   const getChamadoErrorClasses = (fieldValue: string) => {
-    if (!fieldValue) return tentouSubmeter ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
-    if (/[\s_]/.test(fieldValue) || !/^[A-Za-z0-9\-]+$/.test(fieldValue)) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
+    if (!fieldValue)
+      return tentouSubmeter ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+    if (/[\s_]/.test(fieldValue) || !/^[A-Za-z0-9\-]+$/.test(fieldValue))
+      return 'border-red-500 focus:ring-red-500 focus:border-red-500';
     return '';
   };
-  
+
   console.log('📊 Estados iniciais:', {
     taxaVigente: !!taxaVigente,
     carregandoTaxa,
-    totalClientes: clientes.length
+    totalClientes: clientes.length,
   });
 
   const form = useForm<RequerimentoFormData>({
@@ -147,22 +184,24 @@ export function RequerimentoForm({
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
       valor_hora_gestor: requerimento?.valor_hora_gestor || undefined,
       // Campo de tipo de hora extra - mantém o valor existente ao editar (converter null para undefined)
-      tipo_hora_extra: (requerimento?.tipo_hora_extra || undefined) as TipoHoraExtraType | undefined,
+      tipo_hora_extra: (requerimento?.tipo_hora_extra || undefined) as
+        TipoHoraExtraType | undefined,
       // Campos de ticket
       quantidade_tickets: requerimento?.quantidade_tickets || undefined,
       // Campo de horas de análise EF (para tipo Reprovado)
       horas_analise_ef: 0,
       // Campo de atendimento presencial (usa valores locais)
-      atendimento_presencial: requerimento?.atendimento_presencial || false
-    }
+      atendimento_presencial: requerimento?.atendimento_presencial || false,
+    },
   });
 
   // Watch clienteId APÓS inicialização do form
   const clienteIdWatch = form.watch('cliente_id');
-  
+
   // Buscar empresas de segmentação (baseline) do cliente selecionado
-  const { data: empresasSegmentacao = [], isLoading: isLoadingEmpresasSegmentacao } = useEmpresasSegmentacao(clienteIdWatch);
-  
+  const { data: empresasSegmentacao = [], isLoading: isLoadingEmpresasSegmentacao } =
+    useEmpresasSegmentacao(clienteIdWatch);
+
   // Verificar se deve mostrar campo de empresa_segmentacao_id
   const mostrarCampoEmpresaSegmentacao = useMemo(() => {
     const mostrar = empresasSegmentacao.length > 0;
@@ -170,15 +209,15 @@ export function RequerimentoForm({
       mostrar,
       empresasSegmentacao: empresasSegmentacao.length,
       clienteId: clienteIdWatch,
-      valorAtual: form.getValues('empresa_segmentacao_nome')
+      valorAtual: form.getValues('empresa_segmentacao_nome'),
     });
     return mostrar;
   }, [empresasSegmentacao, clienteIdWatch, form]);
-  
+
   console.log('📊 Empresas de segmentação:', {
     clienteId: clienteIdWatch,
     empresas: empresasSegmentacao,
-    mostrarCampo: mostrarCampoEmpresaSegmentacao
+    mostrarCampo: mostrarCampoEmpresaSegmentacao,
   });
 
   // Watch para calcular horas total e valores automaticamente
@@ -193,7 +232,17 @@ export function RequerimentoForm({
   const tipoHoraExtra = form.watch('tipo_hora_extra');
   const horasAnaliseEF = form.watch('horas_analise_ef');
   const atendimentoPresencial = form.watch('atendimento_presencial');
-  
+
+  // Banco escolhido (empresa liberada)
+  const mesCobrancaWatch = form.watch('mes_cobranca');
+  const bancoHorasId = form.watch('destino_banco');
+  const { liberada: empresaLiberada } = useDestinosDoRequerimento(clienteId, requerimento?.id);
+  const [mostrarErroBanco, setMostrarErroBanco] = useState(false);
+  const atualizarBanco = useCallback(
+    (bancoId: string | undefined) => form.setValue('destino_banco', bancoId),
+    [form]
+  );
+
   // Watch para campos obrigatórios
   const chamado = form.watch('chamado');
   const descricao = form.watch('descricao');
@@ -201,20 +250,20 @@ export function RequerimentoForm({
   const modulo = form.watch('modulo');
   const linguagem = form.watch('linguagem');
   const quantidadeTickets = form.watch('quantidade_tickets');
-  
+
   console.log('👀 Watch values:', {
     clienteId,
     tipoCobranca,
     linguagem,
     tipoHoraExtra,
     valorHoraFuncional,
-    valorHoraTecnico
+    valorHoraTecnico,
   });
 
   // Buscar dados do cliente selecionado para verificar tipo de cobrança da empresa
   const clienteSelecionado = useMemo(() => {
     if (!clienteId || !clientes.length) return null;
-    return clientes.find(cliente => cliente.id === clienteId);
+    return clientes.find((cliente) => cliente.id === clienteId);
   }, [clienteId, clientes]);
 
   // Filtrar opções de tipo de cobrança baseado no tipo de cobrança da empresa
@@ -226,12 +275,12 @@ export function RequerimentoForm({
 
     // Se a empresa tem tipo de cobrança "outros", remover "Banco de Horas"
     if (clienteSelecionado.tipo_cobranca === 'outros') {
-      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter((option) => option.value !== 'Banco de Horas');
     }
 
     // Se a empresa tem "Tem AMS" = false, remover "Banco de Horas"
     if (clienteSelecionado.tem_ams === false) {
-      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter((option) => option.value !== 'Banco de Horas');
     }
 
     // Para outros casos, mostrar todas as opções
@@ -241,8 +290,7 @@ export function RequerimentoForm({
   // Verificar se deve mostrar campo de tickets automaticamente
   const mostrarCampoTickets = useMemo(() => {
     // Só mostra se tipo de cobrança for "Banco de Horas" E a empresa for do tipo "ticket"
-    return tipoCobranca === 'Banco de Horas' &&
-      clienteSelecionado?.tipo_cobranca === 'ticket';
+    return tipoCobranca === 'Banco de Horas' && clienteSelecionado?.tipo_cobranca === 'ticket';
   }, [tipoCobranca, clienteSelecionado]);
 
   // Verificar se o tipo de cobrança requer campos de valor/hora
@@ -269,18 +317,18 @@ export function RequerimentoForm({
   // useEffect para buscar taxa vigente quando cliente mudar
   useEffect(() => {
     console.log('🚀🚀🚀 useEffect de busca de taxa EXECUTADO 🚀🚀🚀');
-    
+
     // Só buscar taxa se o tipo de cobrança requer valores
     const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
     const precisaTaxa = tipoCobranca && tiposComValorHora.includes(tipoCobranca);
-    
+
     console.log('🔍 Verificando necessidade de buscar taxa:', {
       clienteId,
       tipoCobranca,
       precisaTaxa,
-      tiposComValorHora
+      tiposComValorHora,
     });
-    
+
     if (!clienteId || !precisaTaxa) {
       console.log('❌ Não precisa buscar taxa - limpando estado');
       setTaxaVigente(null);
@@ -310,21 +358,29 @@ export function RequerimentoForm({
   // useEffect para limpar campos quando tipo de cobrança não requer
   useEffect(() => {
     const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
-    
+
     // Se o tipo de cobrança NÃO requer valor/hora, zerar os campos
     if (tipoCobranca && !tiposComValorHora.includes(tipoCobranca)) {
       const valorAtualFuncional = form.getValues('valor_hora_funcional');
       const valorAtualTecnico = form.getValues('valor_hora_tecnico');
-      
+
       // Zerar valores se estiverem preenchidos
-      if (valorAtualFuncional !== undefined && valorAtualFuncional !== null && valorAtualFuncional !== 0) {
+      if (
+        valorAtualFuncional !== undefined &&
+        valorAtualFuncional !== null &&
+        valorAtualFuncional !== 0
+      ) {
         form.setValue('valor_hora_funcional', 0, { shouldValidate: true, shouldDirty: true });
       }
-      if (valorAtualTecnico !== undefined && valorAtualTecnico !== null && valorAtualTecnico !== 0) {
+      if (
+        valorAtualTecnico !== undefined &&
+        valorAtualTecnico !== null &&
+        valorAtualTecnico !== 0
+      ) {
         form.setValue('valor_hora_tecnico', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
-    
+
     // Se o tipo de cobrança NÃO é Hora Extra, limpar tipo_hora_extra
     if (tipoCobranca && tipoCobranca !== 'Hora Extra') {
       const tipoHoraExtraAtual = form.getValues('tipo_hora_extra');
@@ -332,20 +388,31 @@ export function RequerimentoForm({
         form.setValue('tipo_hora_extra', undefined, { shouldValidate: true, shouldDirty: true });
       }
     }
-    
+
     // Se o tipo de cobrança NÃO é Reprovado, limpar horas_analise_ef
     if (tipoCobranca && tipoCobranca !== 'Reprovado') {
       const horasAnaliseAtual = form.getValues('horas_analise_ef');
-      if (horasAnaliseAtual !== undefined && horasAnaliseAtual !== null && horasAnaliseAtual !== 0) {
+      if (
+        horasAnaliseAtual !== undefined &&
+        horasAnaliseAtual !== null &&
+        horasAnaliseAtual !== 0
+      ) {
         form.setValue('horas_analise_ef', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
-    
+
     // Se o tipo de cobrança NÃO é Banco de Horas, zerar quantidade_tickets
     if (tipoCobranca && tipoCobranca !== 'Banco de Horas') {
       const quantidadeTicketsAtual = form.getValues('quantidade_tickets');
-      if (quantidadeTicketsAtual !== undefined && quantidadeTicketsAtual !== null && quantidadeTicketsAtual !== 0) {
-        console.log('🎫 Zerando quantidade_tickets automaticamente - tipo mudou para:', tipoCobranca);
+      if (
+        quantidadeTicketsAtual !== undefined &&
+        quantidadeTicketsAtual !== null &&
+        quantidadeTicketsAtual !== 0
+      ) {
+        console.log(
+          '🎫 Zerando quantidade_tickets automaticamente - tipo mudou para:',
+          tipoCobranca
+        );
         form.setValue('quantidade_tickets', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
@@ -356,9 +423,11 @@ export function RequerimentoForm({
     const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
     if (!tipoCobranca || !tiposComValorHora.includes(tipoCobranca)) return;
 
-    const hFuncStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
-    const hTecStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
-    const hGestStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
+    const hFuncStr =
+      typeof horasFuncional === 'string' ? horasFuncional : horasFuncional?.toString() || '0';
+    const hTecStr =
+      typeof horasTecnico === 'string' ? horasTecnico : horasTecnico?.toString() || '0';
+    const hGestStr = typeof horasGestor === 'string' ? horasGestor : horasGestor?.toString() || '0';
 
     const hFuncDec = converterParaHorasDecimal(hFuncStr);
     const hTecDec = converterParaHorasDecimal(hTecStr);
@@ -368,19 +437,19 @@ export function RequerimentoForm({
     if (hFuncDec === 0 && form.getValues('valor_hora_funcional')) {
       form.setValue('valor_hora_funcional', 0, { shouldValidate: true, shouldDirty: true });
       valoresEditadosManualmenteRef.current.funcional = false;
-      setValoresEditadosManualmente(prev => ({ ...prev, funcional: false }));
+      setValoresEditadosManualmente((prev) => ({ ...prev, funcional: false }));
     }
     // Zerar valor/hora técnico se horas técnicas são 0
     if (hTecDec === 0 && form.getValues('valor_hora_tecnico')) {
       form.setValue('valor_hora_tecnico', 0, { shouldValidate: true, shouldDirty: true });
       valoresEditadosManualmenteRef.current.tecnico = false;
-      setValoresEditadosManualmente(prev => ({ ...prev, tecnico: false }));
+      setValoresEditadosManualmente((prev) => ({ ...prev, tecnico: false }));
     }
     // Zerar valor/hora gestor se horas gestor são 0
     if (hGestDec === 0 && form.getValues('valor_hora_gestor')) {
       form.setValue('valor_hora_gestor', 0, { shouldValidate: true, shouldDirty: true });
       valoresEditadosManualmenteRef.current.gestor = false;
-      setValoresEditadosManualmente(prev => ({ ...prev, gestor: false }));
+      setValoresEditadosManualmente((prev) => ({ ...prev, gestor: false }));
     }
   }, [horasFuncional, horasTecnico, horasGestor, tipoCobranca, form]);
 
@@ -394,14 +463,16 @@ export function RequerimentoForm({
       linguagem,
       tipoCobranca,
       tipoHoraExtra,
-      editandoRequerimento: !!requerimento
+      editandoRequerimento: !!requerimento,
     });
-    
+
     if (!taxaVigente || !tipoCobranca) {
-      console.log('❌ Faltam dados para preencher valores automaticamente (taxa ou tipo de cobrança)');
+      console.log(
+        '❌ Faltam dados para preencher valores automaticamente (taxa ou tipo de cobrança)'
+      );
       return;
     }
-    
+
     if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(tipoCobranca)) {
       console.log('❌ Tipo de cobrança não requer preenchimento automático:', tipoCobranca);
       return;
@@ -409,47 +480,56 @@ export function RequerimentoForm({
 
     // Se há horas técnicas, linguagem é obrigatória para calcular valor técnico
     // Mas NÃO deve bloquear o preenchimento do valor funcional
-    const hTecCheckStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+    const hTecCheckStr =
+      typeof horasTecnico === 'string' ? horasTecnico : horasTecnico?.toString() || '0';
     const hTecCheckDec = converterParaHorasDecimal(hTecCheckStr);
     if (hTecCheckDec > 0 && !linguagem) {
-      console.log('⚠️ Há horas técnicas mas linguagem não foi selecionada - valor técnico não será preenchido');
+      console.log(
+        '⚠️ Há horas técnicas mas linguagem não foi selecionada - valor técnico não será preenchido'
+      );
     }
 
     // CORREÇÃO CRÍTICA: Não preencher automaticamente quando editando requerimento existente
     // EXCETO quando as flags de edição manual foram resetadas (mudança intencional do usuário)
-    if (requerimento && valoresEditadosManualmenteRef.current.funcional && valoresEditadosManualmenteRef.current.tecnico) {
-      console.log('⏭️ PULANDO PREENCHIMENTO - Editando requerimento existente com valores preservados');
+    if (
+      requerimento &&
+      valoresEditadosManualmenteRef.current.funcional &&
+      valoresEditadosManualmenteRef.current.tecnico
+    ) {
+      console.log(
+        '⏭️ PULANDO PREENCHIMENTO - Editando requerimento existente com valores preservados'
+      );
       console.log('📊 Flags de edição manual:', valoresEditadosManualmenteRef.current);
       return;
     }
 
     console.log('✅ Iniciando preenchimento automático de valores');
     console.log('📋 Taxa vigente completa:', taxaVigente);
-    
+
     const tipoProduto = taxaVigente.tipo_produto;
     console.log('📦 Tipo de produto:', tipoProduto);
-    
+
     // Valor/Hora Funcional SEMPRE usa a linha "Funcional"
     const funcaoFuncional: TipoFuncao = 'Funcional';
-    
+
     // Valor/Hora Técnico usa a linha correspondente à LINGUAGEM selecionada
     const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
       if (ling === 'Técnico') {
         return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
       }
-      
+
       if (ling === 'ABAP' || ling === 'PL/SQL') {
         return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'ABAP - PL/SQL';
       }
-      
+
       if (ling === 'DBA') {
         return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
       }
-      
+
       if (ling === 'Gestor') {
         return 'Gestor';
       }
-      
+
       return null;
     };
 
@@ -457,27 +537,34 @@ export function RequerimentoForm({
     console.log('🎯 Funções mapeadas:', {
       funcaoFuncional,
       funcaoTecnico,
-      linguagem
+      linguagem,
     });
 
     // Determinar se deve usar valores locais ou remotos
     const usarValoresLocais = atendimentoPresencial || false;
-    const valoresParaUsar = usarValoresLocais ? taxaVigente.valores_local : taxaVigente.valores_remota;
+    const valoresParaUsar = usarValoresLocais
+      ? taxaVigente.valores_local
+      : taxaVigente.valores_remota;
     const tipoValor = usarValoresLocais ? 'locais' : 'remotos';
-    
+
     console.log('🔍 Buscando valores na taxa...');
-    console.log('📊 Tipo de atendimento:', usarValoresLocais ? 'PRESENCIAL (valores locais)' : 'REMOTO (valores remotos)');
+    console.log(
+      '📊 Tipo de atendimento:',
+      usarValoresLocais ? 'PRESENCIAL (valores locais)' : 'REMOTO (valores remotos)'
+    );
     console.log('📊 Valores disponíveis:', valoresParaUsar);
     console.log('📊 Estrutura completa da taxa:', JSON.stringify(taxaVigente, null, 2));
-    
-    const valorFuncaoFuncional = valoresParaUsar?.find(v => v.funcao === funcaoFuncional);
-    const valorFuncaoTecnico = funcaoTecnico ? valoresParaUsar?.find(v => v.funcao === funcaoTecnico) : null;
+
+    const valorFuncaoFuncional = valoresParaUsar?.find((v) => v.funcao === funcaoFuncional);
+    const valorFuncaoTecnico = funcaoTecnico
+      ? valoresParaUsar?.find((v) => v.funcao === funcaoTecnico)
+      : null;
 
     console.log('💰 Valores encontrados:', {
       valorFuncaoFuncional,
-      valorFuncaoTecnico
+      valorFuncaoTecnico,
     });
-    
+
     console.log('💰 Detalhes do valor funcional:', JSON.stringify(valorFuncaoFuncional, null, 2));
     console.log('💰 Detalhes do valor técnico:', JSON.stringify(valorFuncaoTecnico, null, 2));
 
@@ -485,10 +572,13 @@ export function RequerimentoForm({
       console.log('❌ ERRO: Valor funcional não encontrado na taxa!');
       console.log('❌ Tipo de valor:', tipoValor);
       console.log('❌ Função procurada:', funcaoFuncional);
-      console.log('❌ Funções disponíveis:', valoresParaUsar?.map(v => v.funcao));
+      console.log(
+        '❌ Funções disponíveis:',
+        valoresParaUsar?.map((v) => v.funcao)
+      );
       return;
     }
-    
+
     console.log('✅ SUCESSO: Valor funcional encontrado!');
     console.log('✅ Valor Funcional completo:', valorFuncaoFuncional);
     if (valorFuncaoTecnico) {
@@ -496,18 +586,24 @@ export function RequerimentoForm({
     }
 
     // Preparar array com todas as funções para cálculos
-    const todasFuncoes = taxaVigente.valores_remota?.map(v => ({
-      funcao: v.funcao,
-      valor_base: v.valor_base
-    })) || [];
+    const todasFuncoes =
+      taxaVigente.valores_remota?.map((v) => ({
+        funcao: v.funcao,
+        valor_base: v.valor_base,
+      })) || [];
 
     // Calcular valores para Funcional
-    const valoresCalculadosFuncional = calcularValores(valorFuncaoFuncional.valor_base, funcaoFuncional, todasFuncoes);
-    
+    const valoresCalculadosFuncional = calcularValores(
+      valorFuncaoFuncional.valor_base,
+      funcaoFuncional,
+      todasFuncoes
+    );
+
     // Calcular valores para Técnico (baseado na linguagem) - só se tiver linguagem e valor
-    const valoresCalculadosTecnico = (funcaoTecnico && valorFuncaoTecnico) 
-      ? calcularValores(valorFuncaoTecnico.valor_base, funcaoTecnico, todasFuncoes) 
-      : null;
+    const valoresCalculadosTecnico =
+      funcaoTecnico && valorFuncaoTecnico
+        ? calcularValores(valorFuncaoTecnico.valor_base, funcaoTecnico, todasFuncoes)
+        : null;
 
     let valorHoraFuncional = 0;
     let valorHoraTecnico = 0;
@@ -555,43 +651,50 @@ export function RequerimentoForm({
       tipoCobranca,
       tipoHoraExtra: tipoCobranca === 'Hora Extra' ? tipoHoraExtra : 'N/A',
       valorHoraFuncional: valorHoraFuncionalArredondado,
-      valorHoraTecnico: valorHoraTecnicoArredondado
+      valorHoraTecnico: valorHoraTecnicoArredondado,
     });
 
     // Preencher os campos com os valores correspondentes apenas se estiverem vazios ou zerados
     const valorAtualFuncional = form.getValues('valor_hora_funcional');
     const valorAtualTecnico = form.getValues('valor_hora_tecnico');
-    
+
     console.log('📝 Valores atuais no formulário:', {
       valorAtualFuncional,
-      valorAtualTecnico
+      valorAtualTecnico,
     });
-    
+
     // Preencher os campos apenas se não foram editados manualmente
     console.log('📝 Valores atuais no formulário:', {
       valorAtualFuncional,
       valorAtualTecnico,
       editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
-      editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
+      editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico,
     });
-    
+
     // Preencher valor funcional se não foi editado manualmente E tem horas funcionais
-    const hFuncAutoStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
-    const hTecAutoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+    const hFuncAutoStr =
+      typeof horasFuncional === 'string' ? horasFuncional : horasFuncional?.toString() || '0';
+    const hTecAutoStr =
+      typeof horasTecnico === 'string' ? horasTecnico : horasTecnico?.toString() || '0';
     const hFuncAutoDec = converterParaHorasDecimal(hFuncAutoStr);
     const hTecAutoDec = converterParaHorasDecimal(hTecAutoStr);
 
     if (!valoresEditadosManualmenteRef.current.funcional) {
       if (hFuncAutoDec > 0) {
-        console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
-        form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, { shouldValidate: false });
+        console.log(
+          '✅ PREENCHENDO valor_hora_funcional (automático):',
+          valorHoraFuncionalArredondado
+        );
+        form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, {
+          shouldValidate: false,
+        });
       } else {
         form.setValue('valor_hora_funcional', 0, { shouldValidate: false });
       }
     } else {
       console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
     }
-    
+
     // Preencher valor técnico se não foi editado manualmente E tem horas técnicas E linguagem selecionada
     if (!valoresEditadosManualmenteRef.current.tecnico) {
       if (hTecAutoDec > 0 && linguagem && valorHoraTecnicoArredondado > 0) {
@@ -606,35 +709,54 @@ export function RequerimentoForm({
 
     // Preencher valor gestor automaticamente usando linha 'Gestor' da taxa
     if (!valoresEditadosManualmenteRef.current.gestor) {
-      const horasGestorStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
+      const horasGestorStr =
+        typeof horasGestor === 'string' ? horasGestor : horasGestor?.toString() || '0';
       const horasGestorDec = converterParaHorasDecimal(horasGestorStr);
       if (horasGestorDec > 0 && valoresParaUsar) {
         const funcaoGestor: TipoFuncao = 'Gestor';
-        const valorFuncaoGestor = valoresParaUsar.find(v => v.funcao === funcaoGestor);
+        const valorFuncaoGestor = valoresParaUsar.find((v) => v.funcao === funcaoGestor);
         if (valorFuncaoGestor) {
           let valorHoraGestor = 0;
           if (tipoCobranca === 'Faturado') {
             valorHoraGestor = valorFuncaoGestor.valor_base;
           } else if (tipoCobranca === 'Hora Extra') {
-            if (tipoHoraExtra === '17h30-19h30') valorHoraGestor = valorFuncaoGestor.valor_17h30_19h30;
-            else if (tipoHoraExtra === 'apos_19h30') valorHoraGestor = valorFuncaoGestor.valor_apos_19h30;
-            else if (tipoHoraExtra === 'fim_semana') valorHoraGestor = valorFuncaoGestor.valor_fim_semana;
+            if (tipoHoraExtra === '17h30-19h30')
+              valorHoraGestor = valorFuncaoGestor.valor_17h30_19h30;
+            else if (tipoHoraExtra === 'apos_19h30')
+              valorHoraGestor = valorFuncaoGestor.valor_apos_19h30;
+            else if (tipoHoraExtra === 'fim_semana')
+              valorHoraGestor = valorFuncaoGestor.valor_fim_semana;
           } else if (tipoCobranca === 'Sobreaviso') {
             valorHoraGestor = valorFuncaoGestor.valor_standby;
           }
           const valorHoraGestorArredondado = Math.round(valorHoraGestor * 100) / 100;
           if (valorHoraGestorArredondado > 0) {
-            console.log('✅ PREENCHENDO valor_hora_gestor (automático):', valorHoraGestorArredondado);
-            form.setValue('valor_hora_gestor', valorHoraGestorArredondado, { shouldValidate: false });
+            console.log(
+              '✅ PREENCHENDO valor_hora_gestor (automático):',
+              valorHoraGestorArredondado
+            );
+            form.setValue('valor_hora_gestor', valorHoraGestorArredondado, {
+              shouldValidate: false,
+            });
           }
         }
       }
     }
-    
+
     console.log('='.repeat(80));
     console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO');
     console.log('='.repeat(80));
-  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, atendimentoPresencial, horasGestor, horasFuncional, horasTecnico, form]); // Removido valoresEditadosManualmente das dependências
+  }, [
+    taxaVigente,
+    linguagem,
+    tipoCobranca,
+    tipoHoraExtra,
+    atendimentoPresencial,
+    horasGestor,
+    horasFuncional,
+    horasTecnico,
+    form,
+  ]); // Removido valoresEditadosManualmente das dependências
 
   // Função para marcar valor como editado manualmente
   const handleValorEditadoManualmente = useCallback((campo: 'funcional' | 'tecnico' | 'gestor') => {
@@ -642,28 +764,30 @@ export function RequerimentoForm({
     // Atualizar ref (não causa re-render)
     valoresEditadosManualmenteRef.current = {
       ...valoresEditadosManualmenteRef.current,
-      [campo]: true
+      [campo]: true,
     };
     // Atualizar estado para indicadores visuais
-    setValoresEditadosManualmente(prev => ({
+    setValoresEditadosManualmente((prev) => ({
       ...prev,
-      [campo]: true
+      [campo]: true,
     }));
   }, []);
 
   // Resetar flags de edição manual quando contexto principal mudar
   useEffect(() => {
     if (!requerimento) {
-      console.log('🔄 Resetando flags de edição manual devido a mudança de contexto (novo requerimento)');
+      console.log(
+        '🔄 Resetando flags de edição manual devido a mudança de contexto (novo requerimento)'
+      );
       valoresEditadosManualmenteRef.current = {
         funcional: false,
         tecnico: false,
-        gestor: false
+        gestor: false,
       };
       setValoresEditadosManualmente({
         funcional: false,
         tecnico: false,
-        gestor: false
+        gestor: false,
       });
     } else {
       // Na edição, resetar flags quando linguagem ou cliente mudar para permitir recalcular
@@ -671,12 +795,12 @@ export function RequerimentoForm({
       valoresEditadosManualmenteRef.current = {
         funcional: false,
         tecnico: false,
-        gestor: false
+        gestor: false,
       };
       setValoresEditadosManualmente({
         funcional: false,
         tecnico: false,
-        gestor: false
+        gestor: false,
       });
     }
   }, [clienteId, linguagem, tipoCobranca, requerimento]);
@@ -689,35 +813,42 @@ export function RequerimentoForm({
       valoresEditadosManualmenteRef.current = {
         funcional: false,
         tecnico: false,
-        gestor: false
+        gestor: false,
       };
       // Resetar estado visual
       setValoresEditadosManualmente({
         funcional: false,
-        tecnico: false
+        tecnico: false,
       });
     }
   }, [tipoHoraExtra]); // Só dispara quando tipoHoraExtra mudar
 
   // CORREÇÃO: Marcar valores como editados manualmente APENAS se forem diferentes da taxa vigente
   useEffect(() => {
-    if (requerimento && taxaVigente && linguagem && (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)) {
+    if (
+      requerimento &&
+      taxaVigente &&
+      linguagem &&
+      (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)
+    ) {
       console.log('� ANALISVANDO VALORES SALVOS vs TAXA VIGENTE');
       console.log('💰 Valores do requerimento:', {
         valor_hora_funcional: requerimento.valor_hora_funcional,
         valor_hora_tecnico: requerimento.valor_hora_tecnico,
         tipo_cobranca: requerimento.tipo_cobranca,
         tipo_hora_extra: requerimento.tipo_hora_extra,
-        atendimento_presencial: requerimento.atendimento_presencial
+        atendimento_presencial: requerimento.atendimento_presencial,
       });
-      
+
       // Calcular valores esperados da taxa vigente
       const tipoProduto = taxaVigente.tipo_produto;
       const funcaoFuncional: TipoFuncao = 'Funcional';
-      
+
       const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
         if (ling === 'Técnico') {
-          return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
+          return tipoProduto === 'GALLERY'
+            ? 'Técnico / ABAP'
+            : 'Técnico (Instalação / Atualização)';
         }
         if (ling === 'ABAP' || ling === 'PL/SQL') {
           return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'ABAP - PL/SQL';
@@ -732,13 +863,18 @@ export function RequerimentoForm({
       };
 
       const funcaoTecnico = mapearLinguagemParaFuncao(linguagem);
-      
-      if (funcaoTecnico && ['Faturado', 'Hora Extra', 'Sobreaviso'].includes(requerimento.tipo_cobranca)) {
+
+      if (
+        funcaoTecnico &&
+        ['Faturado', 'Hora Extra', 'Sobreaviso'].includes(requerimento.tipo_cobranca)
+      ) {
         const usarValoresLocais = requerimento.atendimento_presencial || false;
-        const valoresParaUsar = usarValoresLocais ? taxaVigente.valores_local : taxaVigente.valores_remota;
-        
-        const valorFuncaoFuncional = valoresParaUsar?.find(v => v.funcao === funcaoFuncional);
-        const valorFuncaoTecnico = valoresParaUsar?.find(v => v.funcao === funcaoTecnico);
+        const valoresParaUsar = usarValoresLocais
+          ? taxaVigente.valores_local
+          : taxaVigente.valores_remota;
+
+        const valorFuncaoFuncional = valoresParaUsar?.find((v) => v.funcao === funcaoFuncional);
+        const valorFuncaoTecnico = valoresParaUsar?.find((v) => v.funcao === funcaoTecnico);
 
         if (valorFuncaoFuncional && valorFuncaoTecnico) {
           let valorEsperadoFuncional = 0;
@@ -768,24 +904,27 @@ export function RequerimentoForm({
           valorEsperadoTecnico = Math.round(valorEsperadoTecnico * 100) / 100;
 
           // Comparar valores salvos com valores esperados da taxa
-          const valorSalvoFuncional = Math.round((requerimento.valor_hora_funcional || 0) * 100) / 100;
+          const valorSalvoFuncional =
+            Math.round((requerimento.valor_hora_funcional || 0) * 100) / 100;
           const valorSalvoTecnico = Math.round((requerimento.valor_hora_tecnico || 0) * 100) / 100;
 
           // ANÁLISE APRIMORADA: Tolerância adequada para cálculos de ponto flutuante e validação de valores significativos
           const tolerancia = 0.01; // Tolerância de 1 centavo para evitar problemas de precisão de ponto flutuante
           const valorMinimoSignificativo = 1.0; // Valores abaixo de R$ 1,00 são considerados não significativos
-          
+
           // Só considera como editado manualmente se:
           // 1. O valor salvo é significativo (> R$ 1,00)
           // 2. A diferença é maior que a tolerância
           // 3. O valor esperado também é significativo (evita comparações com valores zerados)
-          const funcionalEditado = valorSalvoFuncional >= valorMinimoSignificativo && 
-                                   valorEsperadoFuncional >= valorMinimoSignificativo &&
-                                   Math.abs(valorSalvoFuncional - valorEsperadoFuncional) > tolerancia;
-                                   
-          const tecnicoEditado = valorSalvoTecnico >= valorMinimoSignificativo && 
-                                 valorEsperadoTecnico >= valorMinimoSignificativo &&
-                                 Math.abs(valorSalvoTecnico - valorEsperadoTecnico) > tolerancia;
+          const funcionalEditado =
+            valorSalvoFuncional >= valorMinimoSignificativo &&
+            valorEsperadoFuncional >= valorMinimoSignificativo &&
+            Math.abs(valorSalvoFuncional - valorEsperadoFuncional) > tolerancia;
+
+          const tecnicoEditado =
+            valorSalvoTecnico >= valorMinimoSignificativo &&
+            valorEsperadoTecnico >= valorMinimoSignificativo &&
+            Math.abs(valorSalvoTecnico - valorEsperadoTecnico) > tolerancia;
 
           console.log('� COMPAcRAÇÃO INDIVIDUAL DE VALORES:');
           console.log('📊 Funcional:');
@@ -803,52 +942,78 @@ export function RequerimentoForm({
           valoresEditadosManualmenteRef.current = {
             funcional: funcionalEditado,
             tecnico: tecnicoEditado,
-            gestor: false
+            gestor: false,
           };
-          
+
           // Atualizar estado visual
           setValoresEditadosManualmente({
             funcional: funcionalEditado,
             tecnico: tecnicoEditado,
-            gestor: false
+            gestor: false,
           });
-          
-          console.log('✅ FLAGS INTELIGENTES DEFINIDAS (ANÁLISE APRIMORADA):', valoresEditadosManualmenteRef.current);
+
+          console.log(
+            '✅ FLAGS INTELIGENTES DEFINIDAS (ANÁLISE APRIMORADA):',
+            valoresEditadosManualmenteRef.current
+          );
         }
       }
-    } else if (requerimento && (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)) {
+    } else if (
+      requerimento &&
+      (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)
+    ) {
       // Fallback aprimorado: análise mais criteriosa mesmo sem taxa vigente
       console.log('⚠️ Sem taxa vigente - usando fallback aprimorado');
       const valorMinimoSignificativo = 1.0;
-      
+
       const funcionalEditado = (requerimento.valor_hora_funcional || 0) >= valorMinimoSignificativo;
       const tecnicoEditado = (requerimento.valor_hora_tecnico || 0) >= valorMinimoSignificativo;
-      
+
       console.log('📊 Fallback - Valores significativos:');
-      console.log('   - Funcional:', requerimento.valor_hora_funcional, '≥', valorMinimoSignificativo, '=', funcionalEditado);
-      console.log('   - Técnico:', requerimento.valor_hora_tecnico, '≥', valorMinimoSignificativo, '=', tecnicoEditado);
-      
+      console.log(
+        '   - Funcional:',
+        requerimento.valor_hora_funcional,
+        '≥',
+        valorMinimoSignificativo,
+        '=',
+        funcionalEditado
+      );
+      console.log(
+        '   - Técnico:',
+        requerimento.valor_hora_tecnico,
+        '≥',
+        valorMinimoSignificativo,
+        '=',
+        tecnicoEditado
+      );
+
       valoresEditadosManualmenteRef.current = {
         funcional: funcionalEditado,
         tecnico: tecnicoEditado,
-        gestor: false
+        gestor: false,
       };
       setValoresEditadosManualmente({
         funcional: funcionalEditado,
         tecnico: tecnicoEditado,
-        gestor: false
+        gestor: false,
       });
-      
-      console.log('✅ FLAGS FALLBACK DEFINIDAS (APRIMORADO):', valoresEditadosManualmenteRef.current);
+
+      console.log(
+        '✅ FLAGS FALLBACK DEFINIDAS (APRIMORADO):',
+        valoresEditadosManualmenteRef.current
+      );
     }
   }, [requerimento, taxaVigente]); // Só roda quando requerimento ou taxa carregam (não quando linguagem muda)
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
     try {
-      const funcionalStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
-      const tecnicoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
-      const gestorStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
+      const funcionalStr =
+        typeof horasFuncional === 'string' ? horasFuncional : horasFuncional?.toString() || '0';
+      const tecnicoStr =
+        typeof horasTecnico === 'string' ? horasTecnico : horasTecnico?.toString() || '0';
+      const gestorStr =
+        typeof horasGestor === 'string' ? horasGestor : horasGestor?.toString() || '0';
 
       const totalFormatado = somarHoras(somarHoras(funcionalStr, tecnicoStr), gestorStr);
       return totalFormatado;
@@ -864,15 +1029,18 @@ export function RequerimentoForm({
         valorTotalFuncional: 0,
         valorTotalTecnico: 0,
         valorTotalGestor: 0,
-        valorTotalGeral: 0
+        valorTotalGeral: 0,
       };
     }
 
     try {
       // Converter horas para decimal para cálculos monetários
-      const funcionalStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
-      const tecnicoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
-      const gestorStr = typeof horasGestor === 'string' ? horasGestor : (horasGestor?.toString() || '0');
+      const funcionalStr =
+        typeof horasFuncional === 'string' ? horasFuncional : horasFuncional?.toString() || '0';
+      const tecnicoStr =
+        typeof horasTecnico === 'string' ? horasTecnico : horasTecnico?.toString() || '0';
+      const gestorStr =
+        typeof horasGestor === 'string' ? horasGestor : horasGestor?.toString() || '0';
 
       const hFunc = converterParaHorasDecimal(funcionalStr);
       const hTec = converterParaHorasDecimal(tecnicoStr);
@@ -890,23 +1058,31 @@ export function RequerimentoForm({
         valorTotalFuncional,
         valorTotalTecnico,
         valorTotalGestor,
-        valorTotalGeral
+        valorTotalGeral,
       };
     } catch (error) {
       return {
         valorTotalFuncional: 0,
         valorTotalTecnico: 0,
         valorTotalGestor: 0,
-        valorTotalGeral: 0
+        valorTotalGeral: 0,
       };
     }
-  }, [horasFuncional, horasTecnico, horasGestor, valorHoraFuncional, valorHoraTecnico, valorHoraGestor, mostrarCamposValor]);
+  }, [
+    horasFuncional,
+    horasTecnico,
+    horasGestor,
+    valorHoraFuncional,
+    valorHoraTecnico,
+    valorHoraGestor,
+    mostrarCamposValor,
+  ]);
 
   // Validação customizada para habilitar/desabilitar botão
   const validationStatus = useMemo(() => {
     const status = {
       isValid: true,
-      camposFaltando: [] as string[]
+      camposFaltando: [] as string[],
     };
 
     // Campos obrigatórios básicos
@@ -915,34 +1091,38 @@ export function RequerimentoForm({
     if (!descricao || descricao.trim() === '') status.camposFaltando.push('Descrição');
     if (!dataEnvio || dataEnvio.trim() === '') status.camposFaltando.push('Data de Envio');
     if (!modulo || modulo.trim() === '') status.camposFaltando.push('Módulo');
-    
+
     // Validar linguagem técnica apenas se houver horas técnicas
-    const horasTecnicoValidacao = typeof horasTecnico === 'string' 
-      ? converterParaHorasDecimal(horasTecnico) 
-      : horasTecnico || 0;
+    const horasTecnicoValidacao =
+      typeof horasTecnico === 'string'
+        ? converterParaHorasDecimal(horasTecnico)
+        : horasTecnico || 0;
     if (horasTecnicoValidacao > 0 && (!linguagem || linguagem.trim() === '')) {
       status.camposFaltando.push('Linguagem Técnica');
     }
-    
+
     if (!tipoCobranca || tipoCobranca.trim() === '') status.camposFaltando.push('Tipo de Cobrança');
 
     // Validação de horas - pelo menos uma deve ser maior que zero
-    const horasFuncionalNum = typeof horasFuncional === 'string' 
-      ? converterParaHorasDecimal(horasFuncional) 
-      : horasFuncional || 0;
-    const horasTecnicoNum = typeof horasTecnico === 'string' 
-      ? converterParaHorasDecimal(horasTecnico) 
-      : horasTecnico || 0;
+    const horasFuncionalNum =
+      typeof horasFuncional === 'string'
+        ? converterParaHorasDecimal(horasFuncional)
+        : horasFuncional || 0;
+    const horasTecnicoNum =
+      typeof horasTecnico === 'string'
+        ? converterParaHorasDecimal(horasTecnico)
+        : horasTecnico || 0;
 
     if (horasFuncionalNum === 0 && horasTecnicoNum === 0) {
-      status.camposFaltando.push('Horas Funcionais ou Horas Técnicas (pelo menos uma deve ser maior que zero)');
+      status.camposFaltando.push(
+        'Horas Funcionais ou Horas Técnicas (pelo menos uma deve ser maior que zero)'
+      );
     }
 
     // Validação condicional de tickets
     if (mostrarCampoTickets) {
-      const ticketsValidos = quantidadeTickets !== undefined && 
-                            quantidadeTickets !== null && 
-                            quantidadeTickets > 0;
+      const ticketsValidos =
+        quantidadeTickets !== undefined && quantidadeTickets !== null && quantidadeTickets > 0;
       if (!ticketsValidos) {
         status.camposFaltando.push('Quantidade de Tickets');
       }
@@ -950,12 +1130,10 @@ export function RequerimentoForm({
 
     // Validação condicional de valores/hora
     if (mostrarCamposValor) {
-      const horasFuncionalNum = typeof horasFuncional === 'string' 
-        ? parseFloat(horasFuncional) || 0 
-        : horasFuncional || 0;
-      const horasTecnicoNum = typeof horasTecnico === 'string' 
-        ? parseFloat(horasTecnico) || 0 
-        : horasTecnico || 0;
+      const horasFuncionalNum =
+        typeof horasFuncional === 'string' ? parseFloat(horasFuncional) || 0 : horasFuncional || 0;
+      const horasTecnicoNum =
+        typeof horasTecnico === 'string' ? parseFloat(horasTecnico) || 0 : horasTecnico || 0;
 
       // Se tem horas funcionais, deve ter valor/hora funcional
       if (horasFuncionalNum > 0 && (!valorHoraFuncional || valorHoraFuncional <= 0)) {
@@ -970,9 +1148,20 @@ export function RequerimentoForm({
     status.isValid = status.camposFaltando.length === 0;
     return status;
   }, [
-    chamado, clienteId, descricao, dataEnvio, modulo, linguagem, tipoCobranca,
-    mostrarCampoTickets, quantidadeTickets,
-    mostrarCamposValor, horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico
+    chamado,
+    clienteId,
+    descricao,
+    dataEnvio,
+    modulo,
+    linguagem,
+    tipoCobranca,
+    mostrarCampoTickets,
+    quantidadeTickets,
+    mostrarCamposValor,
+    horasFuncional,
+    horasTecnico,
+    valorHoraFuncional,
+    valorHoraTecnico,
   ]);
 
   // Não é necessário armazenar empresa_tipo_cobranca no formulário
@@ -981,24 +1170,24 @@ export function RequerimentoForm({
   // Limpar tipo de cobrança se a opção atual não estiver mais disponível
   useEffect(() => {
     const tipoCobrancaAtual = form.getValues('tipo_cobranca');
-    const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
-    
+    const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map((option) => option.value);
+
     if (tipoCobrancaAtual && !opcoesDisponiveis.includes(tipoCobrancaAtual)) {
       console.log('Limpando tipo de cobrança não disponível:', tipoCobrancaAtual);
-      
+
       // Definir valor padrão baseado no cliente
       let valorPadrao: TipoCobrancaType = 'Banco de Horas'; // Padrão geral
-      
+
       // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
       if (clienteSelecionado?.tem_ams === false || clienteSelecionado?.tipo_cobranca === 'outros') {
         valorPadrao = 'Faturado';
       }
-      
+
       // Se o valor padrão não estiver disponível, usar o primeiro disponível
       if (!opcoesDisponiveis.includes(valorPadrao)) {
         valorPadrao = (opcoesDisponiveis[0] as TipoCobrancaType) || 'Faturado';
       }
-      
+
       console.log('Definindo tipo de cobrança padrão:', valorPadrao);
       form.setValue('tipo_cobranca', valorPadrao);
     }
@@ -1007,22 +1196,22 @@ export function RequerimentoForm({
   // Definir tipo de cobrança padrão quando cliente é selecionado
   useEffect(() => {
     const tipoCobrancaAtual = form.getValues('tipo_cobranca');
-    
+
     // Se não há tipo de cobrança definido e há cliente selecionado
     if (!tipoCobrancaAtual && clienteSelecionado) {
       let valorPadrao: TipoCobrancaType = 'Banco de Horas'; // Padrão geral
-      
+
       // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
       if (clienteSelecionado.tem_ams === false || clienteSelecionado.tipo_cobranca === 'outros') {
         valorPadrao = 'Faturado';
       }
-      
+
       // Verificar se o valor padrão está disponível nas opções filtradas
-      const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
+      const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map((option) => option.value);
       if (!opcoesDisponiveis.includes(valorPadrao)) {
         valorPadrao = (opcoesDisponiveis[0] as TipoCobrancaType) || 'Faturado';
       }
-      
+
       console.log('Definindo tipo de cobrança padrão para novo cliente:', valorPadrao);
       form.setValue('tipo_cobranca', valorPadrao);
     }
@@ -1037,12 +1226,12 @@ export function RequerimentoForm({
     const cores = {
       'Banco de Horas': 'bg-blue-500',
       'Cobro Interno': 'bg-green-500',
-      'Contrato': 'bg-gray-500',
-      'Faturado': 'bg-orange-500',
+      Contrato: 'bg-gray-500',
+      Faturado: 'bg-orange-500',
       'Hora Extra': 'bg-red-500',
-      'Sobreaviso': 'bg-purple-500',
-      'Reprovado': 'bg-slate-500',
-      'Bolsão Enel': 'bg-yellow-500'
+      Sobreaviso: 'bg-purple-500',
+      Reprovado: 'bg-slate-500',
+      'Bolsão Enel': 'bg-yellow-500',
     };
     return cores[tipo as keyof typeof cores] || 'bg-gray-500';
   };
@@ -1052,114 +1241,151 @@ export function RequerimentoForm({
     const cores = {
       'Banco de Horas': 'bg-blue-100 text-blue-800 border-blue-300',
       'Cobro Interno': 'bg-green-100 text-green-800 border-green-300',
-      'Contrato': 'bg-gray-100 text-gray-800 border-gray-300',
-      'Faturado': 'bg-orange-100 text-orange-800 border-orange-300',
+      Contrato: 'bg-gray-100 text-gray-800 border-gray-300',
+      Faturado: 'bg-orange-100 text-orange-800 border-orange-300',
       'Hora Extra': 'bg-red-100 text-red-800 border-red-300',
-      'Sobreaviso': 'bg-purple-100 text-purple-800 border-purple-300',
-      'Reprovado': 'bg-slate-100 text-slate-800 border-slate-300',
-      'Bolsão Enel': 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      Sobreaviso: 'bg-purple-100 text-purple-800 border-purple-300',
+      Reprovado: 'bg-slate-100 text-slate-800 border-slate-300',
+      'Bolsão Enel': 'bg-yellow-100 text-yellow-800 border-yellow-300',
     };
     return cores[tipo as keyof typeof cores] || 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
-  const handleSubmit = useCallback(async (data: RequerimentoFormData) => {
-    console.log('✅ FORMULÁRIO SUBMETIDO - Dados completos recebidos:', data);
-    console.log('🏢 [FORMULÁRIO] empresa_segmentacao_nome:', data.empresa_segmentacao_nome);
-    console.log('📋 Tipo de cobrança:', data.tipo_cobranca);
-    console.log('💰 Valor/Hora Funcional:', data.valor_hora_funcional);
-    console.log('💰 Valor/Hora Técnico:', data.valor_hora_tecnico);
-    console.log('⏰ Horas análise EF:', data.horas_analise_ef);
-    console.log('🏢 Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
-    console.log('🎫 Quantidade tickets:', data.quantidade_tickets);
+  const handleSubmit = useCallback(
+    async (data: RequerimentoFormData) => {
+      console.log('✅ FORMULÁRIO SUBMETIDO - Dados completos recebidos:', data);
+      console.log('🏢 [FORMULÁRIO] empresa_segmentacao_nome:', data.empresa_segmentacao_nome);
+      console.log('📋 Tipo de cobrança:', data.tipo_cobranca);
+      console.log('💰 Valor/Hora Funcional:', data.valor_hora_funcional);
+      console.log('💰 Valor/Hora Técnico:', data.valor_hora_tecnico);
+      console.log('⏰ Horas análise EF:', data.horas_analise_ef);
+      console.log('🏢 Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
+      console.log('🎫 Quantidade tickets:', data.quantidade_tickets);
 
-    // Inferir linguagem automaticamente quando só há horas funcionais
-    const horasFuncionalNum = typeof data.horas_funcional === 'string'
-      ? converterParaHorasDecimal(data.horas_funcional)
-      : data.horas_funcional || 0;
-    const horasTecnicoNum = typeof data.horas_tecnico === 'string'
-      ? converterParaHorasDecimal(data.horas_tecnico)
-      : data.horas_tecnico || 0;
+      // Inferir linguagem automaticamente quando só há horas funcionais
+      const horasFuncionalNum =
+        typeof data.horas_funcional === 'string'
+          ? converterParaHorasDecimal(data.horas_funcional)
+          : data.horas_funcional || 0;
+      const horasTecnicoNum =
+        typeof data.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(data.horas_tecnico)
+          : data.horas_tecnico || 0;
 
-    if (horasFuncionalNum > 0 && horasTecnicoNum === 0 && !data.linguagem) {
-      data.linguagem = 'Funcional';
-      console.log('🔧 Linguagem inferida automaticamente: Funcional');
-    }
-    
-    screenReader.announceLoading('Salvando requerimento...');
-    
-    try {
-      // Criar o requerimento (o serviço já gerencia a criação do segundo requerimento se necessário)
-      const resultId = await onSubmit(data);
-      
-      // Upload de anexos pendentes
-      const targetId = requerimento?.id || (typeof resultId === 'string' ? resultId : undefined);
-      if (targetId && anexosPendentes.length > 0) {
-        try {
-          await uploadTodosPendentes(targetId);
-        } catch (anexoError) {
-          console.error('Erro ao fazer upload dos anexos:', anexoError);
+      if (horasFuncionalNum > 0 && horasTecnicoNum === 0 && !data.linguagem) {
+        data.linguagem = 'Funcional';
+        console.log('🔧 Linguagem inferida automaticamente: Funcional');
+      }
+
+      if (
+        faltaBanco({
+          liberada: empresaLiberada,
+          tipoCobranca: data.tipo_cobranca,
+          horasAnaliseEF: data.horas_analise_ef,
+          destino: data.destino_banco,
+        })
+      ) {
+        setMostrarErroBanco(true);
+        screenReader.announceError(t('reqForm.bankRequired'));
+        return;
+      }
+
+      screenReader.announceLoading('Salvando requerimento...');
+
+      try {
+        // Criar o requerimento (o serviço já gerencia a criação do segundo requerimento se necessário)
+        const resultId = await onSubmit(data);
+
+        // Upload de anexos pendentes
+        const targetId = requerimento?.id || (typeof resultId === 'string' ? resultId : undefined);
+        if (targetId && anexosPendentes.length > 0) {
+          try {
+            await uploadTodosPendentes(targetId);
+          } catch (anexoError) {
+            console.error('Erro ao fazer upload dos anexos:', anexoError);
+          }
         }
+
+        // ✅ Só reseta o formulário se for criação E teve sucesso
+        if (!requerimento) {
+          form.reset();
+          const mensagemSucesso =
+            data.tipo_cobranca === 'Reprovado' &&
+            data.horas_analise_ef &&
+            (typeof data.horas_analise_ef === 'string'
+              ? converterParaHorasDecimal(data.horas_analise_ef)
+              : data.horas_analise_ef) > 0
+              ? 'Requerimentos criados com sucesso (principal + análise EF)'
+              : 'Requerimento criado com sucesso';
+          screenReader.announceSuccess(mensagemSucesso);
+        } else {
+          screenReader.announceSuccess('Requerimento atualizado com sucesso');
+        }
+      } catch (error) {
+        // ❌ NÃO reseta o formulário em caso de erro - mantém os dados preenchidos
+        console.error('Erro ao submeter formulário:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar requerimento';
+        screenReader.announceError(errorMessage);
+
+        // Propagar o erro para que o React Hook Form saiba que houve falha
+        throw error;
       }
-      
-      // ✅ Só reseta o formulário se for criação E teve sucesso
-      if (!requerimento) {
-        form.reset();
-        const mensagemSucesso = data.tipo_cobranca === 'Reprovado' && data.horas_analise_ef && 
-          (typeof data.horas_analise_ef === 'string' ? converterParaHorasDecimal(data.horas_analise_ef) : data.horas_analise_ef) > 0
-          ? 'Requerimentos criados com sucesso (principal + análise EF)'
-          : 'Requerimento criado com sucesso';
-        screenReader.announceSuccess(mensagemSucesso);
-      } else {
-        screenReader.announceSuccess('Requerimento atualizado com sucesso');
-      }
-    } catch (error) {
-      // ❌ NÃO reseta o formulário em caso de erro - mantém os dados preenchidos
-      console.error('Erro ao submeter formulário:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar requerimento';
-      screenReader.announceError(errorMessage);
-      
-      // Propagar o erro para que o React Hook Form saiba que houve falha
-      throw error;
-    }
-  }, [onSubmit, requerimento, form, screenReader, mostrarCampoTickets, clienteSelecionado, anexosPendentes, uploadTodosPendentes]);
+    },
+    [
+      onSubmit,
+      requerimento,
+      form,
+      screenReader,
+      mostrarCampoTickets,
+      clienteSelecionado,
+      anexosPendentes,
+      uploadTodosPendentes,
+      empresaLiberada,
+      t,
+    ]
+  );
 
   // Validações em tempo real
-  const chamadoValidation = useMemo(() => [
-    {
-      test: (value: string) => value.length > 0,
-      message: t('reqForm.validation.ticketRequired'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || !/\s/.test(value),
-      message: t('reqForm.validation.ticketNoSpaces'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || !value.includes('_'),
-      message: t('reqForm.validation.ticketNoUnderscore'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
-      message: t('reqForm.validation.ticketOnlyAlphanumeric'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length >= 3,
-      message: t('reqForm.validation.ticketMinLength'),
-      type: 'warning' as const
-    }
-  ], []);
+  const chamadoValidation = useMemo(
+    () => [
+      {
+        test: (value: string) => value.length > 0,
+        message: t('reqForm.validation.ticketRequired'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || !/\s/.test(value),
+        message: t('reqForm.validation.ticketNoSpaces'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || !value.includes('_'),
+        message: t('reqForm.validation.ticketNoUnderscore'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
+        message: t('reqForm.validation.ticketOnlyAlphanumeric'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length >= 3,
+        message: t('reqForm.validation.ticketMinLength'),
+        type: 'warning' as const,
+      },
+    ],
+    []
+  );
 
   return (
-    <Card className={cn("w-full mx-auto", responsiveModal.maxWidth)}>
+    <Card className={cn('w-full mx-auto', responsiveModal.maxWidth)}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           {requerimento ? t('reqForm.editTitle') : t('reqForm.newTitle')}
           {tipoCobranca && (
             <Badge className={cn('ml-2', getCorBadgeTipoCobranca(tipoCobranca))}>
-              {translatedTipoCobranca.find(opt => opt.value === tipoCobranca)?.label || tipoCobranca}
+              {translatedTipoCobranca.find((opt) => opt.value === tipoCobranca)?.label ||
+                tipoCobranca}
             </Badge>
           )}
           <OptimizedTooltip content={t('reqForm.fillRequiredFields')}>
@@ -1167,17 +1393,17 @@ export function RequerimentoForm({
           </OptimizedTooltip>
         </CardTitle>
       </CardHeader>
-      <CardContent className={cn(responsiveModal.padding, "pt-0 space-y-6")}>
+      <CardContent className={cn(responsiveModal.padding, 'pt-0 space-y-6')}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(
-            handleSubmit,
-            (errors) => {
+          <form
+            onSubmit={form.handleSubmit(handleSubmit, (errors) => {
               console.error('❌ ERROS DE VALIDAÇÃO:');
               console.error(JSON.stringify(errors, null, 2));
               console.log('📋 Valores atuais do formulário:');
               console.log(JSON.stringify(form.getValues(), null, 2));
-            }
-          )} className={responsiveForm.spacing}>
+            })}
+            className={responsiveForm.spacing}
+          >
             {/* Seção: Informações Básicas */}
             <div className={responsiveForm.spacing}>
               <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -1187,7 +1413,9 @@ export function RequerimentoForm({
                 </OptimizedTooltip>
               </h4>
 
-              <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", responsiveForm.fieldLayout)}>
+              <div
+                className={cn('grid grid-cols-1 md:grid-cols-2 gap-4', responsiveForm.fieldLayout)}
+              >
                 {/* Chamado */}
                 <FormField
                   control={form.control}
@@ -1202,7 +1430,7 @@ export function RequerimentoForm({
                       <Input
                         {...field}
                         placeholder="Ex: RF-6017993, Projeto, Treinamento, entre outros"
-                        className={cn("uppercase", getChamadoErrorClasses(field.value))}
+                        className={cn('uppercase', getChamadoErrorClasses(field.value))}
                         aria-describedby="chamado-help"
                         disabled={isLoading}
                       />
@@ -1231,7 +1459,7 @@ export function RequerimentoForm({
                         value={field.value}
                         disabled={isLoading || isLoadingClientes}
                       >
-                        <SelectTrigger 
+                        <SelectTrigger
                           aria-describedby="cliente-help"
                           className={cn(getErrorClasses(field.value))}
                         >
@@ -1270,16 +1498,20 @@ export function RequerimentoForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          {t('reqForm.companySegmentation')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                          {t('reqForm.companySegmentation')}{' '}
+                          <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
                         <Select
                           onValueChange={(value) => {
                             console.log('🔄 [empresa_segmentacao_nome] onChange:', {
                               valorAntigo: field.value,
-                              valorNovo: value
+                              valorNovo: value,
                             });
                             field.onChange(value);
-                            console.log('✅ [empresa_segmentacao_nome] Valor atualizado no form:', form.getValues('empresa_segmentacao_nome'));
+                            console.log(
+                              '✅ [empresa_segmentacao_nome] Valor atualizado no form:',
+                              form.getValues('empresa_segmentacao_nome')
+                            );
                           }}
                           value={field.value}
                           disabled={isLoading || isLoadingEmpresasSegmentacao}
@@ -1309,7 +1541,7 @@ export function RequerimentoForm({
                         </Select>
                         <FormMessage />
                       </FormItem>
-                    )} 
+                    )}
                   />
                 )}
 
@@ -1320,7 +1552,8 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {t('requirements.module')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('requirements.module')}{' '}
+                        <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
@@ -1349,12 +1582,13 @@ export function RequerimentoForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t('requirements.description')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                      {t('requirements.description')}{' '}
+                      <span className="text-gray-700 dark:text-gray-300">*</span>
                     </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder={t('reqForm.descriptionPlaceholder')}
-                        className={cn("min-h-[100px]", getErrorClasses(field.value))}
+                        className={cn('min-h-[100px]', getErrorClasses(field.value))}
                         {...field}
                       />
                     </FormControl>
@@ -1381,7 +1615,8 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {t('reqForm.sendDate')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.sendDate')}{' '}
+                        <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -1409,12 +1644,10 @@ export function RequerimentoForm({
                           type="date"
                           {...field}
                           disabled={isLoading}
-                          min={form.getValues('data_envio') || "1900-01-01"} // Não permite data anterior à data de envio
+                          min={form.getValues('data_envio') || '1900-01-01'} // Não permite data anterior à data de envio
                         />
                       </FormControl>
-                      <FormDescription>
-                        {t('reqForm.approvalDateHelp')}
-                      </FormDescription>
+                      <FormDescription>{t('reqForm.approvalDateHelp')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1439,7 +1672,8 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {t('reqForm.functionalHours')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.functionalHours')}{' '}
+                        <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <FormControl>
                         <InputHoras
@@ -1463,7 +1697,8 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {t('reqForm.technicalHours')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.technicalHours')}{' '}
+                        <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <FormControl>
                         <InputHoras
@@ -1486,9 +1721,7 @@ export function RequerimentoForm({
                   name="horas_gestor"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Horas Gestor
-                      </FormLabel>
+                      <FormLabel>Horas Gestor</FormLabel>
                       <FormControl>
                         <InputHoras
                           value={field.value || 0}
@@ -1512,9 +1745,7 @@ export function RequerimentoForm({
                       {formatarHorasParaExibicao(horasTotal, 'completo')}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t('reqForm.calculatedAuto')}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t('reqForm.calculatedAuto')}</p>
                 </div>
               </div>
             </div>
@@ -1523,68 +1754,76 @@ export function RequerimentoForm({
             <div className="space-y-4">
               <h4 className="text-sm font-semibold mb-3">{t('reqForm.billingInfo')}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {/* Tipo de Cobrança */}
-                <FormField
-                  control={form.control}
-                  name="tipo_cobranca"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {t('reqForm.billingType')} <span className="text-gray-700 dark:text-gray-300">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className={cn(getErrorClasses(field.value))}>
-                            <SelectValue placeholder={t('reqForm.selectBillingType')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {tipoCobrancaOptionsFiltradas.map((tipo) => (
-                            <SelectItem key={tipo.value} value={tipo.value}>
-                              <div className="flex items-center gap-2">
-                                <div className={cn("h-3 w-3 rounded-full", getCorTipoCobranca(tipo.value))} />
-                                <span>{tipo.label}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                      {(clienteSelecionado?.tipo_cobranca === 'outros' || clienteSelecionado?.tem_ams === false) && (
-                        <FormDescription className="text-amber-600 dark:text-amber-400">
-                          ⚠️ {t('reqForm.bankHoursNotAvailable')}
-                          {clienteSelecionado?.tipo_cobranca === 'outros' && ` ${t('reqForm.billingTypeOthers')}`}
-                          {clienteSelecionado?.tem_ams === false && ` ${t('reqForm.noAMS')}`}
-                        </FormDescription>
-                      )}
-                    </FormItem>
-                  )}
-                />
-
-                {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores, exceto Sobreaviso) */}
-                {mostrarAtendimentoPresencial && (
+                <div className="space-y-2">
+                  {/* Tipo de Cobrança */}
                   <FormField
                     control={form.control}
-                    name="atendimento_presencial"
+                    name="tipo_cobranca"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value || false}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-normal cursor-pointer">
-                            {t('reqForm.onSiteService')}
-                          </FormLabel>
-                        </div>
+                      <FormItem>
+                        <FormLabel>
+                          {t('reqForm.billingType')}{' '}
+                          <span className="text-gray-700 dark:text-gray-300">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className={cn(getErrorClasses(field.value))}>
+                              <SelectValue placeholder={t('reqForm.selectBillingType')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {tipoCobrancaOptionsFiltradas.map((tipo) => (
+                              <SelectItem key={tipo.value} value={tipo.value}>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className={cn(
+                                      'h-3 w-3 rounded-full',
+                                      getCorTipoCobranca(tipo.value)
+                                    )}
+                                  />
+                                  <span>{tipo.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        {(clienteSelecionado?.tipo_cobranca === 'outros' ||
+                          clienteSelecionado?.tem_ams === false) && (
+                          <FormDescription className="text-amber-600 dark:text-amber-400">
+                            ⚠️ {t('reqForm.bankHoursNotAvailable')}
+                            {clienteSelecionado?.tipo_cobranca === 'outros' &&
+                              ` ${t('reqForm.billingTypeOthers')}`}
+                            {clienteSelecionado?.tem_ams === false && ` ${t('reqForm.noAMS')}`}
+                          </FormDescription>
+                        )}
                       </FormItem>
                     )}
                   />
-                )}
-              </div>
+
+                  {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores, exceto Sobreaviso) */}
+                  {mostrarAtendimentoPresencial && (
+                    <FormField
+                      control={form.control}
+                      name="atendimento_presencial"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value || false}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm font-normal cursor-pointer">
+                              {t('reqForm.onSiteService')}
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
                 {/* Tipo de Hora Extra - Aparece apenas quando tipo_cobranca === 'Hora Extra' */}
                 {mostrarTipoHoraExtra && (
                   <FormField
@@ -1593,12 +1832,10 @@ export function RequerimentoForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          {t('reqForm.overtimeType')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                          {t('reqForm.overtimeType')}{' '}
+                          <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value || ''}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder={t('reqForm.selectOvertimeType')} />
@@ -1630,9 +1867,7 @@ export function RequerimentoForm({
                     name="horas_analise_ef"
                     render={({ field }) => (
                       <FormItem>
-                      <FormLabel>
-                          {t('reqForm.analysisHoursEF')}
-                        </FormLabel>
+                        <FormLabel>{t('reqForm.analysisHoursEF')}</FormLabel>
                         <FormControl>
                           <InputHoras
                             value={field.value}
@@ -1671,11 +1906,25 @@ export function RequerimentoForm({
                   )}
                 />
 
+                {/* Banco (só empresa liberada, tipo que desconta do banco) */}
+                <CampoBancoRequerimento
+                  empresaId={clienteId}
+                  requerimentoId={requerimento?.id}
+                  tipoCobranca={tipoCobranca}
+                  horasAnaliseEF={horasAnaliseEF}
+                  mesCobranca={mesCobrancaWatch}
+                  moduloLegado={modulo}
+                  valor={bancoHorasId}
+                  onChange={atualizarBanco}
+                  mostrarErro={mostrarErroBanco}
+                />
+
                 {/* Linguagem Técnica - Só aparece quando há Horas Técnicas */}
                 {(() => {
-                  const horasTecnicoCondicional = typeof horasTecnico === 'string' 
-                    ? converterParaHorasDecimal(horasTecnico) 
-                    : horasTecnico || 0;
+                  const horasTecnicoCondicional =
+                    typeof horasTecnico === 'string'
+                      ? converterParaHorasDecimal(horasTecnico)
+                      : horasTecnico || 0;
                   return horasTecnicoCondicional > 0;
                 })() && (
                   <FormField
@@ -1684,7 +1933,8 @@ export function RequerimentoForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          {t('reqForm.technicalLanguage')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                          {t('reqForm.technicalLanguage')}{' '}
+                          <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
@@ -1704,161 +1954,184 @@ export function RequerimentoForm({
                     )}
                   />
                 )}
-
-
               </div>
             </div>
 
             <Separator />
 
             {/* Seção: Valores (condicional) */}
-            {tipoCobranca && ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipoCobranca) && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    💰 {t('reqForm.hourlyValues')}
-                    <OptimizedTooltip content={t('reqForm.hourlyValuesTooltip')}>
-                      <HelpCircle className="h-4 w-4 text-blue-500" />
-                    </OptimizedTooltip>
-                  </h4>
+            {tipoCobranca &&
+              ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipoCobranca) && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      💰 {t('reqForm.hourlyValues')}
+                      <OptimizedTooltip content={t('reqForm.hourlyValuesTooltip')}>
+                        <HelpCircle className="h-4 w-4 text-blue-500" />
+                      </OptimizedTooltip>
+                    </h4>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* Valor Hora Funcional */}
-                    <FormField
-                      control={form.control}
-                      name="valor_hora_funcional"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            {t('reqForm.functionalHourlyRate')} <span className="text-gray-700 dark:text-gray-300">*</span>
-                            {valoresEditadosManualmente.funcional && (
-                              <span className="ml-1 text-xs text-blue-600" title={t('reqForm.editedManually')}>✏️</span>
-                            )}
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                R$
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99999.99"
-                                placeholder="0,00"
-                                className="pl-8"
-                                {...field}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  field.onChange(value === '' ? undefined : parseFloat(value) || 0);
-                                  // Marcar como editado manualmente
-                                  handleValorEditadoManualmente('funcional');
-                                }}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Valor Hora Funcional */}
+                      <FormField
+                        control={form.control}
+                        name="valor_hora_funcional"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t('reqForm.functionalHourlyRate')}{' '}
+                              <span className="text-gray-700 dark:text-gray-300">*</span>
+                              {valoresEditadosManualmente.funcional && (
+                                <span
+                                  className="ml-1 text-xs text-blue-600"
+                                  title={t('reqForm.editedManually')}
+                                >
+                                  ✏️
+                                </span>
+                              )}
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                  R$
+                                </span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="99999.99"
+                                  placeholder="0,00"
+                                  className="pl-8"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    field.onChange(
+                                      value === '' ? undefined : parseFloat(value) || 0
+                                    );
+                                    // Marcar como editado manualmente
+                                    handleValorEditadoManualmente('funcional');
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    {/* Valor Hora Técnico */}
-                    <FormField
-                      control={form.control}
-                      name="valor_hora_tecnico"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            {t('reqForm.technicalHourlyRate')} <span className="text-gray-700 dark:text-gray-300">*</span>
-                            {valoresEditadosManualmente.tecnico && (
-                              <span className="ml-1 text-xs text-blue-600" title={t('reqForm.editedManually')}>✏️</span>
-                            )}
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                R$
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99999.99"
-                                placeholder="0,00"
-                                className="pl-8"
-                                {...field}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  field.onChange(value === '' ? undefined : parseFloat(value) || 0);
-                                  // Marcar como editado manualmente
-                                  handleValorEditadoManualmente('tecnico');
-                                }}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      {/* Valor Hora Técnico */}
+                      <FormField
+                        control={form.control}
+                        name="valor_hora_tecnico"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t('reqForm.technicalHourlyRate')}{' '}
+                              <span className="text-gray-700 dark:text-gray-300">*</span>
+                              {valoresEditadosManualmente.tecnico && (
+                                <span
+                                  className="ml-1 text-xs text-blue-600"
+                                  title={t('reqForm.editedManually')}
+                                >
+                                  ✏️
+                                </span>
+                              )}
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                  R$
+                                </span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="99999.99"
+                                  placeholder="0,00"
+                                  className="pl-8"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    field.onChange(
+                                      value === '' ? undefined : parseFloat(value) || 0
+                                    );
+                                    // Marcar como editado manualmente
+                                    handleValorEditadoManualmente('tecnico');
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    {/* Valor Hora Gestor */}
-                    <FormField
-                      control={form.control}
-                      name="valor_hora_gestor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Valor/Hora Gestor
-                            {valoresEditadosManualmente.gestor && (
-                              <span className="ml-1 text-xs text-blue-600" title={t('reqForm.editedManually')}>✏️</span>
-                            )}
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                R$
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99999.99"
-                                placeholder="0,00"
-                                className="pl-8"
-                                {...field}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  field.onChange(value === '' ? undefined : parseFloat(value) || 0);
-                                  handleValorEditadoManualmente('gestor');
-                                }}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      {/* Valor Hora Gestor */}
+                      <FormField
+                        control={form.control}
+                        name="valor_hora_gestor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Valor/Hora Gestor
+                              {valoresEditadosManualmente.gestor && (
+                                <span
+                                  className="ml-1 text-xs text-blue-600"
+                                  title={t('reqForm.editedManually')}
+                                >
+                                  ✏️
+                                </span>
+                              )}
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                  R$
+                                </span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="99999.99"
+                                  placeholder="0,00"
+                                  className="pl-8"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    field.onChange(
+                                      value === '' ? undefined : parseFloat(value) || 0
+                                    );
+                                    handleValorEditadoManualmente('gestor');
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    {/* Valor Total Estimado */}
-                    <div className="space-y-2">
-                      <Label>{t('reqForm.estimatedTotalValue')}</Label>
-                      <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
-                        <span className="font-semibold text-lg text-green-600">
-                          R$ {valoresCalculados.valorTotalGeral.toLocaleString('pt-BR', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </span>
+                      {/* Valor Total Estimado */}
+                      <div className="space-y-2">
+                        <Label>{t('reqForm.estimatedTotalValue')}</Label>
+                        <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
+                          <span className="font-semibold text-lg text-green-600">
+                            R${' '}
+                            {valoresCalculados.valorTotalGeral.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {t('reqForm.calculatedAuto')}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {t('reqForm.calculatedAuto')}
-                      </p>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
 
             {/* Seção: Tickets (automática baseada no tipo de cobrança da empresa) */}
             {mostrarCampoTickets && (
@@ -1880,7 +2153,8 @@ export function RequerimentoForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            {t('reqForm.ticketQuantity')} <span className="text-gray-700 dark:text-gray-300">*</span>
+                            {t('reqForm.ticketQuantity')}{' '}
+                            <span className="text-gray-700 dark:text-gray-300">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -1921,7 +2195,6 @@ export function RequerimentoForm({
                 name="observacao"
                 render={({ field }) => (
                   <FormItem>
-                    
                     <FormControl>
                       <Textarea
                         placeholder={t('reqForm.observationPlaceholder')}
@@ -1972,7 +2245,8 @@ export function RequerimentoForm({
               </div>
 
               <p className="text-xs text-gray-500">
-                Máx. {requerimentoAnexosService.getMaxAnexos()} arquivos, 10MB cada. PDF, Word, Excel, imagens, CSV, ZIP, RAR, MSG (Outlook).
+                Máx. {requerimentoAnexosService.getMaxAnexos()} arquivos, 10MB cada. PDF, Word,
+                Excel, imagens, CSV, ZIP, RAR, MSG (Outlook).
               </p>
 
               {/* Lista de anexos salvos */}
@@ -2039,10 +2313,10 @@ export function RequerimentoForm({
                             pendente.status === 'erro'
                               ? 'bg-red-50 border-red-200'
                               : pendente.status === 'uploading'
-                              ? 'bg-blue-50 border-blue-200'
-                              : pendente.status === 'concluido'
-                              ? 'bg-green-50 border-green-200'
-                              : 'bg-yellow-50 border-yellow-200'
+                                ? 'bg-blue-50 border-blue-200'
+                                : pendente.status === 'concluido'
+                                  ? 'bg-green-50 border-green-200'
+                                  : 'bg-yellow-50 border-yellow-200'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -2094,10 +2368,12 @@ export function RequerimentoForm({
             </div>
 
             {/* Botões de Ação */}
-            <div className={cn(
-              "flex gap-4 pt-6",
-              responsiveForm.buttonSize === 'sm' ? 'flex-col' : 'justify-end'
-            )}>
+            <div
+              className={cn(
+                'flex gap-4 pt-6',
+                responsiveForm.buttonSize === 'sm' ? 'flex-col' : 'justify-end'
+              )}
+            >
               <Button
                 type="button"
                 variant="outline"
@@ -2114,15 +2390,18 @@ export function RequerimentoForm({
                 className="min-w-[120px]"
                 size={responsiveForm.buttonSize as any}
                 aria-label={requerimento ? t('reqForm.updateBtn') : t('reqForm.createBtn')}
-                title={!validationStatus.isValid ? `${t('form.required')}: ${validationStatus.camposFaltando.join(', ')}` : undefined}
+                title={
+                  !validationStatus.isValid
+                    ? `${t('form.required')}: ${validationStatus.camposFaltando.join(', ')}`
+                    : undefined
+                }
               >
                 {isLoading ? (
-                  <LoadingSpinner
-                    size="sm"
-                    text={t('common.loading')}
-                  />
+                  <LoadingSpinner size="sm" text={t('common.loading')} />
+                ) : requerimento ? (
+                  t('reqForm.updateBtn')
                 ) : (
-                  requerimento ? t('reqForm.updateBtn') : t('reqForm.createBtn')
+                  t('reqForm.createBtn')
                 )}
               </Button>
             </div>

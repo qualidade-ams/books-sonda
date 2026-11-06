@@ -22,6 +22,7 @@ const controleBancoHoras = {
     titulo: 'Company banks',
     padrao: 'default',
     consumoDe: 'Usage in {{mes}} · {{banco}}',
+    baseline: 'baseline',
   },
   tipoBanco: {
     horas: 'Hour bank',

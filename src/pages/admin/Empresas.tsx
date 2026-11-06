@@ -15,6 +15,7 @@ import { MenuExportar } from '@/components/ds/MenuExportar';
 import { ListaEmpresas } from '@/components/admin/empresas/ListaEmpresas';
 import { useEmpresasCadastro } from '@/hooks/useEmpresasCadastro';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { plural } from '@/utils/plural';
 import {
@@ -26,6 +27,7 @@ import {
 } from '@/utils/empresasTela';
 
 export default function Empresas() {
+  useAtualizarAoAbrir('empresas-cadastro');
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();

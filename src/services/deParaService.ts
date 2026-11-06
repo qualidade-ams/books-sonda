@@ -4,9 +4,10 @@
  * (de_para_categoria), lida por Book, Elogios, Pesquisas e Dashboard.
  *
  * Os lugares do grupo no catálogo ficam em `grupos_aranda_vinculos` (migration
- * 20261030000001): o grupo pode estar em vários, um por produto e um serviço por
- * solução. A gravação é pelas funções do banco, que guardam essa regra; as colunas de
- * destino de `grupos_aranda` são só o espelho do primeiro vínculo.
+ * 20261030000001): o grupo pode estar em vários produtos e módulos, inclusive do mesmo
+ * produto (migration 20261103000001), sem repetir o lugar. A gravação é pelas funções
+ * do banco, que guardam essa regra. As colunas de
+ * destino que `grupos_aranda` tinha saíram na migration 20261030000003.
  *
  * "Excluir" grava ativo = false: o grupo volta para os não mapeados. Mapear de
  * novo reativa a mesma linha, porque o grupo do Aranda é único e não muda.
@@ -44,11 +45,10 @@ function falha(contexto: string, error: ErroBanco): Error {
   return falhaDoBanco(contexto, error);
 }
 
-/** A classificação vem do nível mais fundo do destino */
+/** A classificação vem do nível mais fundo do destino; sem produto, não há lugar */
 export function classificar(destino: DestinoGrupo): ClassificacaoGrupo {
   if (destino.moduloId) return 'modulo';
   if (destino.produtoId) return 'produto';
-  if (destino.solucaoId) return 'solucao';
   return 'nao_se_aplica';
 }
 
@@ -168,7 +168,7 @@ export class DeParaService {
     // O grupo nasce sem lugar; os vínculos vêm logo depois, pela função do banco
     const { data, error } = await this.cliente
       .from('grupos_aranda')
-      .insert({ grupo_aranda: grupo, grupo_book: grupoBook, classificacao: 'nao_se_aplica' })
+      .insert({ grupo_aranda: grupo, grupo_book: grupoBook })
       .select('id')
       .single();
     if (error) throw falha('salvar o mapeamento', error);
@@ -203,7 +203,10 @@ export class DeParaService {
     if (error) throw falha('atribuir o destino', error);
   }
 
-  /** Produtos e Módulos: acrescenta o lugar; outro módulo do mesmo produto move o grupo */
+  /**
+   * Produtos e Módulos: acrescenta o lugar; o grupo continua onde já estava, salvo o
+   * "A classificar" da mesma solução, de onde sai (migration 20261103000004)
+   */
   async vincular(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente.rpc('grupos_aranda_vincular', {
       p_grupos: ids,
@@ -213,7 +216,10 @@ export class DeParaService {
     if (error) throw falha('vincular os grupos', error);
   }
 
-  /** Tira só este lugar; do módulo, o grupo fica no produto inteiro */
+  /**
+   * Tira só este lugar; do último módulo do produto, o grupo fica no produto inteiro. Sem
+   * lugar na solução, o grupo volta ao "A classificar" dela (migration 20261103000003)
+   */
   async desvincular(ids: string[], destino: DestinoGrupo): Promise<void> {
     const { error } = await this.cliente.rpc('grupos_aranda_desvincular', {
       p_grupos: ids,

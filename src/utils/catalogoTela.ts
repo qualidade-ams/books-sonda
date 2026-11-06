@@ -17,9 +17,9 @@ import type { DestinoGrupo, MapeamentoGrupo } from '@/types/dePara';
 import type { Exportacao, Traduzir } from '@/utils/exportarTabela';
 import type { LinhaImportacao, LinhaPlanilha } from '@/utils/importarPlanilha';
 
-/** Onde se vincula um grupo na tela */
+/** Onde se vincula um grupo na tela; a solução não tem grupos (03/11/2026) */
 export interface AlvoGrupo {
-  tipo: 'solucao' | 'produto' | 'modulo';
+  tipo: 'produto' | 'modulo';
   id: string;
 }
 
@@ -37,9 +37,9 @@ export const gruposDoModulo = (mapeamentos: MapeamentoGrupo[], moduloId: string)
 export const gruposSoDoProduto = (mapeamentos: MapeamentoGrupo[], produtoId: string) =>
   comVinculo(mapeamentos, (v) => v.produtoId === produtoId && v.moduloId === null);
 
-/** Grupos de serviço da solução (DBA, Técnico…) */
-export const gruposDaSolucao = (mapeamentos: MapeamentoGrupo[], solucaoId: string) =>
-  comVinculo(mapeamentos, (v) => v.solucaoId === solucaoId && v.produtoId === null);
+/** Grupos ligados a algum módulo do produto; o que está em vários módulos conta uma vez */
+export const gruposNosModulos = (mapeamentos: MapeamentoGrupo[], produtoId: string) =>
+  comVinculo(mapeamentos, (v) => v.produtoId === produtoId && v.moduloId !== null);
 
 export const usosDoProdutoInteiro = (usos: UsoEmBanco[], produtoId: string) =>
   usos.filter((u) => u.produtoId === produtoId && u.moduloId === null);
@@ -96,10 +96,19 @@ export const produtoSemUso = (p: Produto, catalogo: Catalogo, uso: UsoDoCatalogo
   !uso.usos.some((u) => u.produtoId === p.id) &&
   !uso.requerimentos.some((r) => r.produtoId === p.id);
 
-/** Solução sem produto (nem inativo) e sem grupo de serviço */
+/** Solução sem grupo de serviço cujos produtos (se houver) estão todos sem uso: saem junto */
 export const solucaoSemUso = (s: Solucao, catalogo: Catalogo, uso: UsoDoCatalogo) =>
-  !catalogo.produtos.some((p) => p.solucaoId === s.id) &&
+  catalogo.produtos
+    .filter((p) => p.solucaoId === s.id)
+    .every((p) => produtoSemUso(p, catalogo, uso)) &&
   !uso.mapeamentos.some((g) => g.vinculos.some((v) => v.solucaoId === s.id));
+
+/**
+ * O produto muda de solução quando nenhum banco ativo o usa (o escopo do banco ficaria fora
+ * das soluções da empresa). Módulos e grupos do Aranda vão junto; o "A classificar" nunca muda
+ */
+export const produtoMudaDeSolucao = (p: Produto, usos: UsoEmBanco[]) =>
+  !p.aClassificar && !usosQueAlcancamProduto(usos, p.id).length;
 
 /** Módulos ativos que ainda estão no produto provisório "A classificar" da solução (P8) */
 export function modulosAClassificar(catalogo: Catalogo, solucaoId: string): number {
@@ -130,7 +139,6 @@ const NENHUM: DestinoGrupo = { solucaoId: null, produtoId: null, moduloId: null 
  * (do módulo, a função do banco deixa o grupo no produto inteiro)
  */
 export function destinoDoAlvo(alvo: AlvoGrupo, catalogo: Catalogo): DestinoGrupo {
-  if (alvo.tipo === 'solucao') return { solucaoId: alvo.id, produtoId: null, moduloId: null };
   const produtoId =
     alvo.tipo === 'produto' ? alvo.id : catalogo.modulos.find((m) => m.id === alvo.id)?.produtoId;
   const produto = catalogo.produtos.find((p) => p.id === produtoId);

@@ -2,11 +2,13 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import RegrasContagem from '../RegrasContagem';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import type { RegrasContagem as Regras } from '@/types/regrasContagem';
 import userEvent from '@testing-library/user-event';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { lerPlanilha } from '@/utils/importarPlanilha';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -220,5 +222,13 @@ describe('RegrasContagem', () => {
     permissoes = ['regras_contagem:view'];
     renderizar();
     expect(screen.queryByRole('button', { name: 'ds.importar.botao' })).not.toBeInTheDocument();
+  });
+});
+
+describe('RegrasContagem: ao abrir', () => {
+  it('recarrega as regras', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('regras-contagem');
   });
 });

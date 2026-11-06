@@ -92,6 +92,20 @@ describe('EscolhaDestino', () => {
     });
   });
 
+  it('com a solução escolhida, o produto é pedido (não há grupo de serviço)', () => {
+    render(
+      <EscolhaDestino
+        idBase="t"
+        catalogo={CATALOGO}
+        destino={{ solucaoId: 's1', produtoId: null, moduloId: null }}
+        onChange={vi.fn()}
+      />
+    );
+    const produto = screen.getByRole('combobox', { name: 'deParaGrupos.destino.produto' });
+    expect(produto).toHaveTextContent('deParaGrupos.destino.escolhaProduto');
+    expect(produto).toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('produto sem módulos diz isso e não deixa escolher módulo', () => {
     render(
       <EscolhaDestino
@@ -131,7 +145,7 @@ describe('useTextoDestino', () => {
       'deParaGrupos.destino.textoProduto {"produto":"CE PLUS"}'
     );
     expect(result.current({ solucaoId: 's1', produtoId: null, moduloId: null })).toBe(
-      'deParaGrupos.destino.textoSolucao {"solucao":"COMEX"}'
+      'deParaGrupos.destino.textoSemProduto'
     );
     expect(result.current(VAZIO)).toBe('deParaGrupos.destino.textoNenhum');
   });
@@ -146,7 +160,7 @@ describe('DestinoNaLista', () => {
       vinculos: destino.solucaoId ? [{ ...VAZIO, ...destino }] : [],
     }) as MapeamentoGrupo;
 
-  it('solução › produto › módulo, serviço ou não se aplica', () => {
+  it('solução › produto › módulo ou não se aplica', () => {
     const { rerender, container } = render(
       <DestinoNaLista
         catalogo={CATALOGO}
@@ -154,8 +168,6 @@ describe('DestinoNaLista', () => {
       />
     );
     expect(container).toHaveTextContent('COMEX › CE PLUS › Câmbio');
-    rerender(<DestinoNaLista catalogo={CATALOGO} m={m({ solucaoId: 's1' }, 'solucao')} />);
-    expect(container).toHaveTextContent('COMEX · deParaGrupos.destino.servico');
     rerender(<DestinoNaLista catalogo={CATALOGO} m={m({}, 'nao_se_aplica')} />);
     expect(container).toHaveTextContent('deParaGrupos.classificacao.nao_se_aplica');
   });

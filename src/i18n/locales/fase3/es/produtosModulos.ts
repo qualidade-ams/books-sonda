@@ -42,11 +42,9 @@ const produtosModulos = {
     colunaUso: 'Usado en los bancos',
     semModulos: 'Sin módulos',
     nenhumProduto: 'Ningún producto en esta solución',
-    gruposServico: 'Grupos de servicio',
-    nenhumGrupoServico: 'Ningún grupo de servicio en esta solución.',
-    horasServico:
-      'Las horas de los grupos de servicio van siempre al Banco predeterminado de la empresa.',
     gruposLigadosA: 'Grupos vinculados a {{produto}} entero',
+    gruposNosModulos: { um: '{{n}} grupo en los módulos', varios: '{{n}} grupos en los módulos' },
+    gruposNosModulosDe: 'Grupos en los módulos de {{produto}}',
   },
   produto: {
     editar: 'Editar producto',
@@ -86,10 +84,8 @@ const produtosModulos = {
     desvincularGrupo: 'Desvincular {{grupo}}',
     emModulo: 'En {{produto}} › {{modulo}}',
     emProduto: 'En {{produto}}, sin módulo',
-    servicoDe: 'Servicio de {{solucao}}',
     semSolucao: 'Sin solución (no se aplica)',
     ficaTambem: 'sigue allí y pasa a estar aquí también',
-    saiParaCa: 'sale de allí y viene aquí',
     podeMoverTitulo: 'Puede mover horas entre bancos',
     podeMoverTexto:
       'En las empresas con varios bancos, las horas de estos grupos pasan a otro banco a partir del próximo recálculo. Los meses cerrados no cambian.',
@@ -129,11 +125,10 @@ const produtosModulos = {
       codigoNaoMuda: 'El código no cambia después de creado.',
       excluirTitulo: 'Eliminar la solución',
       excluirAjuda:
-        'Esta solución nunca se usó (sin producto y sin grupo de servicio). Eliminada, sale del catálogo para siempre.',
+        'Esta solución nunca se usó (sin grupo de Aranda, y sus productos, si los hay, tampoco se usaron). Eliminada, ella y sus productos salen del catálogo para siempre.',
       excluir: 'Eliminar solución',
       codigoRepetido: 'Ya existe una solución con este código.',
       nomeRepetido: 'Ya existe una solución con este nombre.',
-      ajudaServico: 'Las horas de los grupos de servicio van siempre al Banco predeterminado.',
     },
     produto: {
       novo: 'Nuevo producto',
@@ -142,7 +137,10 @@ const produtosModulos = {
       nome: 'Nombre del producto',
       descricao: 'Descripción del producto',
       ativo: 'Producto activo',
-      solucaoNaoMuda: 'La solución del producto no cambia después de creado.',
+      solucaoNaoMuda:
+        'Un producto usado en un banco activo (o "Por clasificar") no cambia de solución.',
+      solucaoMuda:
+        'Al cambiar la solución, los módulos y los grupos de Aranda van con el producto.',
       nomeRepetido: 'Ya existe el producto {{nome}} en {{solucao}}.',
       grupos: 'Grupos del producto',
       semGrupo:
@@ -161,7 +159,7 @@ const produtosModulos = {
       grupos: 'Grupos de Aranda',
       semGrupo: 'Sin grupo de Aranda, ninguna hora registrada llega a este módulo.',
       ajudaGrupos:
-        'Un grupo puede estar en varios productos, un lugar por producto. Desvinculado, queda en el producto, sin módulo.',
+        'Un grupo puede estar en varios productos y módulos. Desvinculado del último módulo del producto, queda en el producto entero.',
     },
   },
   mover: {
@@ -178,8 +176,6 @@ const produtosModulos = {
     nomeSolucao: 'Nombre mostrado en las pantallas y en el contrato de la empresa. Único.',
     solucaoAtiva:
       'Una solución inactiva no aparece para empresas nuevas. Las empresas que ya la contratan no cambian.',
-    gruposServico:
-      'Grupos de Aranda que atienden toda la solución (DBA, Técnico…), sin ser de un producto. Sus horas van siempre al Banco predeterminado.',
     solucao:
       'La empresa contrata soluciones. El producto pertenece a una solución y no cambia de solución después de creado.',
     nomeProduto: 'Nombre mostrado en el alcance de los bancos y en el Book. Único en la solución.',
@@ -194,7 +190,7 @@ const produtosModulos = {
     moduloAtivo:
       'Un módulo inactivo no aparece para alcances nuevos. Los bancos que ya lo usan no cambian.',
     gruposAranda:
-      'Grupos de atención de Aranda que pertenecen a este módulo. Por ellos cada hora registrada llega al módulo y, de ahí, al banco. Un grupo puede estar en varios productos, pero en un solo módulo de cada producto.',
+      'Grupos de atención de Aranda que pertenecen a este módulo. Por ellos cada hora registrada llega al módulo y, de ahí, al banco. Un grupo puede estar en varios módulos, incluso del mismo producto.',
     usadoNosBancos:
       'Bancos activos que tienen esto en el alcance, directamente o por haber marcado el producto entero. El alcance marca productos y módulos; la solución solo agrupa.',
     moduloRequerimento:
@@ -231,6 +227,7 @@ const produtosModulos = {
   excluir: {
     titulo: '¿Eliminar {{nome}}?',
     descricao: 'El ítem nunca se usó: sale del catálogo para siempre, en lugar de quedar inactivo.',
+    produtosJuntos: 'Los productos sin uso de la solución también se eliminan: {{produtos}}',
     semVolta: 'No se puede deshacer; la auditoría guarda una copia',
     emUso:
       'Si algo ya usa el ítem (empresa, banco, requerimiento), la eliminación se rechaza: entonces, desactívelo',

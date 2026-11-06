@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { RequerimentoEmDesenvolvimentoData } from '@/types/books';
+import type { RequerimentoDescontadoData, RequerimentoEmDesenvolvimentoData } from '@/types/books';
 
 /** Status que contam como requerimento faturado no mês (mesma regra dos Requerimentos Descontados do Consumo) */
 const STATUS_FATURADOS = ['enviado_faturamento', 'faturado', 'concluido'];
@@ -43,14 +43,21 @@ function formatarData(data: string | null | undefined): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+/** Contrato cujo consumo é contado em tickets (mesma regra do BookConsumo e do histórico do book) */
+export function contratoEmTickets(tipoContrato: string | null | undefined): boolean {
+  const tipo = (tipoContrato || '').toLowerCase();
+  return tipo === 'tickets' || tipo === 'ticket' || tipo === 'ambos';
+}
+
 export function formatarRequerimentoParaBook(
   req: Record<string, any>,
-  opcoes: { nomeCliente: string; ticketExterno: string; status: string }
+  opcoes: { nomeCliente: string; ticketExterno: string; status: string; emTickets?: boolean }
 ): RequerimentoEmDesenvolvimentoData {
   const minutosFuncional = paraMinutos(req.horas_funcional);
   const minutosTecnico = paraMinutos(req.horas_tecnico);
 
   return {
+    ...(opcoes.emTickets ? { tickets: Number(req.quantidade_tickets) || 0 } : {}),
     id: req.id,
     numero_chamado: req.chamado || '--',
     ticket_externo: opcoes.ticketExterno,
@@ -67,6 +74,38 @@ export function formatarRequerimentoParaBook(
       (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0) ||
       undefined,
     periodo_cobranca: req.mes_cobranca || undefined,
+  };
+}
+
+/**
+ * Requerimento do modal "Requerimentos de <mês>" do Consumo (clique num mês do gráfico).
+ * As horas seguem como o modal sempre exibiu; tickets é a quantidade lançada no requerimento.
+ */
+export function formatarRequerimentoDoMesConsumo(
+  req: Record<string, any>,
+  mesCobranca: string
+): RequerimentoDescontadoData {
+  const temAsDuasHoras = Boolean(req.horas_funcional && req.horas_tecnico);
+  const temOsDoisValores = Boolean(req.valor_total_funcional && req.valor_total_tecnico);
+
+  return {
+    id: req.id,
+    numero_chamado: req.chamado || '--',
+    cliente: req.cliente_id || '--',
+    modulo: req.modulo || '--',
+    tipo_cobranca: req.tipo_cobranca || '--',
+    horas_funcional: req.horas_funcional?.toString() || '--',
+    horas_tecnica: req.horas_tecnico?.toString() || '--',
+    total_horas: temAsDuasHoras
+      ? ((Number(req.horas_funcional) || 0) + (Number(req.horas_tecnico) || 0)).toString()
+      : '--',
+    tickets: Number(req.quantidade_tickets) || 0,
+    data_envio: req.data_envio_faturamento || null,
+    data_aprovacao: req.data_aprovacao || null,
+    valor_total: temOsDoisValores
+      ? (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0)
+      : 0,
+    periodo_cobranca: req.mes_cobranca || mesCobranca,
   };
 }
 
@@ -208,16 +247,18 @@ async function formatarLinhas(
 
   const { data: empresa } = await supabase
     .from('empresas_clientes')
-    .select('nome_abreviado')
+    .select('nome_abreviado, tipo_contrato')
     .eq('id', empresaId)
     .single();
   const nomeCliente = empresa?.nome_abreviado || '--';
+  const emTickets = contratoEmTickets(empresa?.tipo_contrato);
 
   return requerimentos.map((req) =>
     formatarRequerimentoParaBook(req, {
       nomeCliente,
       ticketExterno: ticketsExternos[(req.chamado || '').replace('RF-', '')] || '',
       status,
+      emTickets,
     })
   );
 }

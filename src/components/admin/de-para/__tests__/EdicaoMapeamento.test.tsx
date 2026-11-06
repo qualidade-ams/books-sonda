@@ -37,6 +37,17 @@ const CATALOGO: Catalogo = {
       aClassificar: false,
       ...autoria,
     },
+    {
+      id: 'fci',
+      solucaoId: 's1',
+      codigo: 'FCI',
+      nome: 'FCI',
+      descricao: null,
+      ordem: 2,
+      ativo: true,
+      aClassificar: false,
+      ...autoria,
+    },
   ],
   modulos: [],
 };
@@ -45,21 +56,21 @@ const EXISTENTE: MapeamentoGrupo = {
   grupoAranda: 'AMS DBA',
   grupoBook: 'DBA',
   solucaoId: 's1',
-  produtoId: null,
+  produtoId: 'ce',
   moduloId: null,
-  classificacao: 'solucao',
-  vinculos: [{ solucaoId: 's1', produtoId: null, moduloId: null }],
+  classificacao: 'produto',
+  vinculos: [{ solucaoId: 's1', produtoId: 'ce', moduloId: null }],
   ...autoria,
 };
-// Em dois lugares: o serviço da COMEX e o produto CE PLUS
+// Em dois lugares: os produtos CE PLUS e FCI inteiros
 const EM_DOIS: MapeamentoGrupo = {
   ...EXISTENTE,
   id: 'g2',
   grupoAranda: 'AMS INTEGRACAO',
   grupoBook: 'Integração',
   vinculos: [
-    { solucaoId: 's1', produtoId: null, moduloId: null },
     { solucaoId: 's1', produtoId: 'ce', moduloId: null },
+    { solucaoId: 's1', produtoId: 'fci', moduloId: null },
   ],
 };
 const USO: Record<string, UsoGrupo> = {
@@ -95,12 +106,17 @@ describe('EdicaoMapeamento', () => {
     fireEvent.change(campo(/deParaGrupos.edicao.grupoBook/), { target: { value: ' Novo ' } });
     await userEvent.click(screen.getByRole('combobox', { name: 'deParaGrupos.destino.solucao' }));
     await userEvent.click(screen.getByRole('option', { name: 'COMEX' }));
+    // Só a solução não basta: o grupo de serviço deixou de existir (03/11/2026)
+    expect(mapear).toBeDisabled();
+    expect(screen.getByText('deParaGrupos.destino.textoSemProduto')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('combobox', { name: 'deParaGrupos.destino.produto' }));
+    await userEvent.click(screen.getByRole('option', { name: 'CE PLUS' }));
     fireEvent.click(mapear);
     await waitFor(() =>
       expect(onSalvar).toHaveBeenCalledWith({
         grupoAranda: 'AMS NOVO',
         grupoBook: 'Novo',
-        destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+        destino: { solucaoId: 's1', produtoId: 'ce', moduloId: null },
       })
     );
     await waitFor(() => expect(onFechar).toHaveBeenCalled());
@@ -157,7 +173,7 @@ describe('EdicaoMapeamento', () => {
       screen.queryByRole('combobox', { name: 'deParaGrupos.destino.solucao' })
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText('deParaGrupos.destino.textoSolucao {"solucao":"COMEX"}')
+      screen.getByText('deParaGrupos.destino.textoProduto {"produto":"FCI"}')
     ).toBeInTheDocument();
     expect(
       screen.getByText('deParaGrupos.destino.textoProduto {"produto":"CE PLUS"}')

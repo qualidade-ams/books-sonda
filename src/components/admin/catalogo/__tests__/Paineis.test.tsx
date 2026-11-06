@@ -86,7 +86,6 @@ const CATALOGO: Catalogo = {
 const MAPEAMENTOS = [
   grupo('g1', 'AMS APL - CAMBIO - N2', { produtoId: 'ce', moduloId: 'cambio' }, 'modulo'),
   grupo('g2', 'AMS APL - CE - N2', { produtoId: 'ce' }, 'produto'),
-  grupo('g3', 'AMS DBA', {}, 'solucao'),
 ];
 const USOS: UsoEmBanco[] = [
   { produtoId: 'ce', moduloId: null, bancoId: 'b1', banco: 'Banco COMEX', empresa: 'ALFA' },
@@ -119,10 +118,25 @@ describe('PainelSolucao', () => {
     expect(onAbrirProduto).toHaveBeenCalledWith('fci');
   });
 
-  it('mostra os grupos de serviço e, para quem edita, editar e novo produto', () => {
+  it('produto sem grupo próprio mas com grupos nos módulos não aparece como "Nenhum"', () => {
+    renderizar(<PainelSolucao {...props} mapeamentos={MAPEAMENTOS.filter((g) => g.id !== 'g2')} />);
+    const lista = screen.getByRole('list', {
+      name: 'produtosModulos.arvore.produtosDe {"solucao":"COMEX"}',
+    });
+    const linhaCe = within(lista).getByText('CE PLUS').closest('li') as HTMLElement;
+    expect(
+      within(linhaCe).getByText('produtosModulos.solucao.gruposNosModulos.um {"n":1}')
+    ).toBeInTheDocument();
+    expect(within(linhaCe).queryByText('fase3Comum.nenhum')).not.toBeInTheDocument();
+    // FCI não tem grupo em lugar nenhum: o aviso continua
+    const linhaFci = within(lista).getByText('FCI').closest('li') as HTMLElement;
+    expect(within(linhaFci).getByText('fase3Comum.nenhum')).toBeInTheDocument();
+  });
+
+  it('sem seção de grupos de serviço; para quem edita, editar e novo produto', () => {
     const onEditarProduto = vi.fn();
     renderizar(<PainelSolucao {...props} onEditarProduto={onEditarProduto} />);
-    expect(screen.getByText('AMS DBA')).toBeInTheDocument();
+    expect(screen.queryByText('produtosModulos.solucao.gruposServico')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'produtosModulos.novoProduto' }));
     expect(onEditarProduto).toHaveBeenCalledWith(null);
     expect(

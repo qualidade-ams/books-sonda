@@ -17,7 +17,10 @@ import type {
 } from '@/types/books';
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
 import type { Requerimento } from '@/types/requerimentos';
-import { buscarRequerimentosFaturadosParaBook } from './requerimentosBookService';
+import {
+  buscarRequerimentosFaturadosParaBook,
+  contratoEmTickets,
+} from './requerimentosBookService';
 
 /**
  * Calcula o período de apuração (mês) de uma empresa, respeitando a periodicidade
@@ -2454,7 +2457,7 @@ class BooksDataCollectorService {
           horas_funcional: req.horas_funcional?.toString() || '00:00',
           horas_tecnica: req.horas_tecnico?.toString() || '00:00',
           total_horas: totalHorasFormatado,
-          tickets: 0,
+          tickets: Number(req.quantidade_tickets) || 0,
           data_envio: req.data_envio_faturamento || null,
           data_aprovacao: req.data_aprovacao || null,
           valor_total:
@@ -2549,11 +2552,12 @@ class BooksDataCollectorService {
       // Buscar nome da empresa para exibir
       const { data: empresaData } = await supabase
         .from('empresas_clientes')
-        .select('nome_abreviado')
+        .select('nome_abreviado, tipo_contrato')
         .eq('id', empresaId)
         .single();
 
       const nomeCliente = empresaData?.nome_abreviado || '--';
+      const emTickets = contratoEmTickets(empresaData?.tipo_contrato);
 
       return requerimentosFiltrados.map((req) => {
         // Converter horas para formato HH:MM
@@ -2589,6 +2593,7 @@ class BooksDataCollectorService {
         const horasTecM = Math.round((horasTecnico - horasTecH) * 60);
 
         return {
+          ...(emTickets ? { tickets: Number(req.quantidade_tickets) || 0 } : {}),
           id: req.id,
           numero_chamado: req.chamado || '--',
           ticket_externo: ticketExternoMap[(req.chamado || '').replace('RF-', '')] || '',

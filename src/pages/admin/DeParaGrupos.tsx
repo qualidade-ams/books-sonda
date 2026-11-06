@@ -21,6 +21,7 @@ import { EdicaoMapeamento } from '@/components/admin/de-para/EdicaoMapeamento';
 import { useDePara } from '@/hooks/useDePara';
 import { useCatalogo } from '@/hooks/useCatalogo';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { exportarTabela } from '@/utils/exportarTabela';
 import { plural } from '@/utils/plural';
 import {
@@ -38,7 +39,7 @@ import type { ClassificacaoGrupo, GrupoNaoMapeado, MapeamentoGrupo } from '@/typ
 type Edicao = { mapeamento: MapeamentoGrupo | null; grupoNovo?: GrupoNaoMapeado } | null;
 
 /** O indicador "Sem módulo" filtra por todas as situações menos "com módulo" */
-const SEM_MODULO: ClassificacaoGrupo[] = ['produto', 'solucao', 'nao_se_aplica'];
+const SEM_MODULO: ClassificacaoGrupo[] = ['produto', 'nao_se_aplica'];
 
 /** Rótulo do campo (traduzido) → chave do texto do "i" */
 const DICAS: [string, string][] = [
@@ -52,6 +53,7 @@ const DICAS: [string, string][] = [
 ];
 
 export default function DeParaGrupos() {
+  useAtualizarAoAbrir('grupos-aranda', 'catalogo');
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const podeEditar = hasPermission('de_para_grupos', 'edit');

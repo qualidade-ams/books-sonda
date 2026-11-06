@@ -19,6 +19,7 @@ import { PreviaMenu } from '@/components/admin/organizarMenu/PreviaMenu';
 import { useMenuOrganizado } from '@/hooks/useMenuOrganizado';
 import { mudarTemaDaPagina, useTemaDoDocumento } from '@/hooks/useTemaDoDocumento';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { MENU_PADRAO } from '@/config/menuPadrao';
 import { APARENCIA_PADRAO } from '@/config/aparenciaPadrao';
 import { aplicarOrdemSalva, diferencaAparencia } from '@/services/menuOrganizadoService';
@@ -37,6 +38,7 @@ import type { AparenciaMenu, NoMenu, TemaMenu } from '@/types/menuOrganizado';
 type Aba = 'ordem' | 'cores';
 
 export default function OrganizarMenu() {
+  useAtualizarAoAbrir('menu-organizado');
   const { t } = useTranslation();
   const o = (chave: string, valores?: Record<string, unknown>) =>
     t(`organizarMenu.${chave}`, valores);

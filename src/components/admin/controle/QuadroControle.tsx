@@ -77,12 +77,15 @@ export function QuadroControle({
   rotuloPeriodo,
   podeEditar,
   onReajuste,
+  hoje,
 }: {
   banco: Pick<BancoCadastro, 'bancoId' | 'nome' | 'tipoContrato'>;
   meses: MesDoQuadro[];
   rotuloPeriodo: string;
   podeEditar: boolean;
   onReajuste: (mes: MesAno) => void;
+  /** Mês corrente: só ele fica em destaque no cabeçalho */
+  hoje: MesAno;
 }) {
   const { t, i18n } = useTranslation();
   const q = (chave: string, valores?: Record<string, unknown>) =>
@@ -226,7 +229,7 @@ export function QuadroControle({
           colunas={meses.map((m) => ({
             id: m.chave,
             rotulo: rotuloMes(m.mes),
-            atual: m.situacao === 'aberto',
+            atual: m.mes.ano === hoje.ano && m.mes.mes === hoje.mes,
           }))}
           linhas={linhas}
           modoMobile="mes-a-mes"

@@ -13,6 +13,8 @@ const avisos = {
     erroReativar: 'Erro ao reativar o banco',
     vigenciaRegistrada: 'Vigência registrada',
     erroVigencia: 'Erro ao registrar a vigência',
+    vigenciaEditada: 'Vigência corrigida',
+    erroEditarVigencia: 'Erro ao corrigir a vigência',
   },
   catalogo: {
     solucaoSalva: 'Solução salva',

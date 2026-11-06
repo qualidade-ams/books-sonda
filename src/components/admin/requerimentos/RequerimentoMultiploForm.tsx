@@ -6,12 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { TipoCobrancaBloco, TipoCobrancaBlocoData } from './TipoCobrancaBloco';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
 import { useTranslatedTipoCobranca } from '@/hooks/useTranslatedOptions';
+import { useDestinosDoRequerimento } from '@/hooks/useDestinosDoRequerimento';
+import { faltaBanco } from '@/utils/bancoDoRequerimento';
 import { MODULO_OPTIONS, TIPO_COBRANCA_OPTIONS } from '@/types/requerimentos';
 import { formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { LoadingSpinner } from './LoadingStates';
@@ -28,7 +36,7 @@ interface RequerimentoMultiploFormProps {
 export function RequerimentoMultiploForm({
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
 }: RequerimentoMultiploFormProps) {
   const { t } = useTranslation();
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
@@ -36,7 +44,7 @@ export function RequerimentoMultiploForm({
 
   // Estado para controlar se houve tentativa de submissão (para mostrar erros visuais)
   const [tentouSubmeter, setTentouSubmeter] = useState(false);
-  
+
   // Função helper para obter classes de erro para campos obrigatórios
   const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
     if (!tentouSubmeter || !isRequired) return '';
@@ -46,39 +54,44 @@ export function RequerimentoMultiploForm({
 
   // Função helper específica para o campo Chamado (valida espaços e underscore em tempo real)
   const getChamadoErrorClasses = (fieldValue: string) => {
-    if (!fieldValue) return tentouSubmeter ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
-    if (/[\s_]/.test(fieldValue) || !/^[A-Za-z0-9\-]+$/.test(fieldValue)) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
+    if (!fieldValue)
+      return tentouSubmeter ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+    if (/[\s_]/.test(fieldValue) || !/^[A-Za-z0-9\-]+$/.test(fieldValue))
+      return 'border-red-500 focus:ring-red-500 focus:border-red-500';
     return '';
   };
 
   // Validações em tempo real para o campo Chamado
-  const chamadoValidation = useMemo(() => [
-    {
-      test: (value: string) => value.length > 0,
-      message: t('reqForm.validation.ticketRequired'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || !/\s/.test(value),
-      message: t('reqForm.validation.ticketNoSpaces'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || !value.includes('_'),
-      message: t('reqForm.validation.ticketNoUnderscore'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
-      message: t('reqForm.validation.ticketOnlyAlphanumeric'),
-      type: 'error' as const
-    },
-    {
-      test: (value: string) => value.length === 0 || value.length >= 3,
-      message: t('reqForm.validation.ticketMinLength'),
-      type: 'warning' as const
-    }
-  ], [t]);
+  const chamadoValidation = useMemo(
+    () => [
+      {
+        test: (value: string) => value.length > 0,
+        message: t('reqForm.validation.ticketRequired'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || !/\s/.test(value),
+        message: t('reqForm.validation.ticketNoSpaces'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || !value.includes('_'),
+        message: t('reqForm.validation.ticketNoUnderscore'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
+        message: t('reqForm.validation.ticketOnlyAlphanumeric'),
+        type: 'error' as const,
+      },
+      {
+        test: (value: string) => value.length === 0 || value.length >= 3,
+        message: t('reqForm.validation.ticketMinLength'),
+        type: 'warning' as const,
+      },
+    ],
+    [t]
+  );
 
   // Estados para dados compartilhados
   const [chamado, setChamado] = useState('');
@@ -89,19 +102,20 @@ export function RequerimentoMultiploForm({
   const [dataEnvio, setDataEnvio] = useState('');
   const [dataAprovacao, setDataAprovacao] = useState('');
   const [observacao, setObservacao] = useState('');
-  
+
   // Buscar empresas de segmentação (baseline) do cliente selecionado
-  const { data: empresasSegmentacao = [], isLoading: isLoadingEmpresasSegmentacao } = useEmpresasSegmentacao(clienteId);
-  
+  const { data: empresasSegmentacao = [], isLoading: isLoadingEmpresasSegmentacao } =
+    useEmpresasSegmentacao(clienteId);
+
   // Verificar se deve mostrar campo de empresa_segmentacao_id
   const mostrarCampoEmpresaSegmentacao = useMemo(() => {
     return empresasSegmentacao.length > 0;
   }, [empresasSegmentacao]);
-  
+
   console.log('📊 Empresas de segmentação (Múltiplo):', {
     clienteId,
     empresas: empresasSegmentacao,
-    mostrarCampo: mostrarCampoEmpresaSegmentacao
+    mostrarCampo: mostrarCampoEmpresaSegmentacao,
   });
 
   // Estado para blocos de tipos de cobrança
@@ -112,27 +126,30 @@ export function RequerimentoMultiploForm({
       horas_funcional: 0,
       horas_tecnico: 0,
       horas_gestor: 0,
-      linguagem: ''
-    }
+      linguagem: '',
+    },
   ]);
 
   // Buscar dados do cliente selecionado
   const clienteSelecionado = useMemo(() => {
     if (!clienteId || !clientes.length) return null;
-    return clientes.find(cliente => cliente.id === clienteId);
+    return clientes.find((cliente) => cliente.id === clienteId);
   }, [clienteId, clientes]);
+
+  // Empresa liberada: o requerimento de Banco de Horas escolhe o banco
+  const { liberada: empresaLiberada } = useDestinosDoRequerimento(clienteId);
 
   // Função para determinar o tipo de cobrança padrão baseado no cliente
   const getTipoCobrancaPadrao = () => {
     if (!clienteSelecionado) {
       return 'Banco de Horas'; // Padrão quando não há cliente
     }
-    
+
     // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
     if (clienteSelecionado.tem_ams === false || clienteSelecionado.tipo_cobranca === 'outros') {
       return 'Faturado';
     }
-    
+
     return 'Banco de Horas'; // Padrão para clientes com AMS
   };
 
@@ -144,12 +161,12 @@ export function RequerimentoMultiploForm({
 
     // Se a empresa tem tipo de cobrança "outros", remover "Banco de Horas"
     if (clienteSelecionado.tipo_cobranca === 'outros') {
-      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter((option) => option.value !== 'Banco de Horas');
     }
 
     // Se a empresa tem "Tem AMS" = false, remover "Banco de Horas"
     if (clienteSelecionado.tem_ams === false) {
-      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter((option) => option.value !== 'Banco de Horas');
     }
 
     return translatedTipoCobranca;
@@ -160,13 +177,17 @@ export function RequerimentoMultiploForm({
     if (blocos.length > 0 && clienteSelecionado) {
       const primeiroBloco = blocos[0];
       const tipoPadrao = getTipoCobrancaPadrao();
-      
+
       // Sempre atualizar para o tipo padrão do cliente selecionado
       // Isso garante que ao trocar de cliente SEM AMS para COM AMS (ou vice-versa),
       // o tipo de cobrança seja atualizado corretamente
       if (primeiroBloco.tipo_cobranca !== tipoPadrao) {
-        console.log('🔄 Cliente alterado. Atualizando tipo de cobrança do primeiro bloco de', 
-                    primeiroBloco.tipo_cobranca, 'para:', tipoPadrao);
+        console.log(
+          '🔄 Cliente alterado. Atualizando tipo de cobrança do primeiro bloco de',
+          primeiroBloco.tipo_cobranca,
+          'para:',
+          tipoPadrao
+        );
         handleAtualizarBloco(primeiroBloco.id, 'tipo_cobranca', tipoPadrao);
       }
     }
@@ -180,7 +201,7 @@ export function RequerimentoMultiploForm({
       horas_funcional: 0,
       horas_tecnico: 0,
       horas_gestor: 0,
-      linguagem: ''
+      linguagem: '',
     };
     setBlocos([...blocos, novoBloco]);
   };
@@ -191,51 +212,51 @@ export function RequerimentoMultiploForm({
       toast.error('Deve haver pelo menos um tipo de cobrança');
       return;
     }
-    setBlocos(blocos.filter(b => b.id !== id));
+    setBlocos(blocos.filter((b) => b.id !== id));
   };
 
   // Atualizar campo de um bloco
   const handleAtualizarBloco = (id: string, campo: string, valor: any) => {
     console.log('🔄 Atualizando bloco:', { id, campo, valor });
-    setBlocos(prevBlocos => {
-      const novosBlocos = prevBlocos.map(b => {
-      if (b.id === id) {
-        const blocoAtualizado = { ...b, [campo]: valor };
-        
-        // Limpar campos condicionais quando tipo de cobrança mudar
-        if (campo === 'tipo_cobranca') {
-          const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
-          
-          // Limpar valores se tipo não requer valores/hora
-          if (!tiposComValorHora.includes(valor)) {
-            blocoAtualizado.valor_hora_funcional = undefined;
-            blocoAtualizado.valor_hora_tecnico = undefined;
+    setBlocos((prevBlocos) => {
+      const novosBlocos = prevBlocos.map((b) => {
+        if (b.id === id) {
+          const blocoAtualizado = { ...b, [campo]: valor };
+
+          // Limpar campos condicionais quando tipo de cobrança mudar
+          if (campo === 'tipo_cobranca') {
+            const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+
+            // Limpar valores se tipo não requer valores/hora
+            if (!tiposComValorHora.includes(valor)) {
+              blocoAtualizado.valor_hora_funcional = undefined;
+              blocoAtualizado.valor_hora_tecnico = undefined;
+            }
+
+            // Se mudou PARA "Hora Extra", apenas limpar tipo_hora_extra para forçar seleção
+            if (valor === 'Hora Extra') {
+              blocoAtualizado.tipo_hora_extra = undefined;
+              // Não limpar valores/hora - deixar o TipoCobrancaBloco gerenciar isso
+            }
+
+            // Se mudou DE "Hora Extra" para outro tipo, limpar tipo_hora_extra
+            if (valor !== 'Hora Extra') {
+              blocoAtualizado.tipo_hora_extra = undefined;
+            }
+
+            if (valor !== 'Banco de Horas') {
+              blocoAtualizado.quantidade_tickets = undefined;
+            }
+
+            if (valor !== 'Reprovado') {
+              blocoAtualizado.horas_analise_ef = undefined;
+            }
           }
-          
-          // Se mudou PARA "Hora Extra", apenas limpar tipo_hora_extra para forçar seleção
-          if (valor === 'Hora Extra') {
-            blocoAtualizado.tipo_hora_extra = undefined;
-            // Não limpar valores/hora - deixar o TipoCobrancaBloco gerenciar isso
-          }
-          
-          // Se mudou DE "Hora Extra" para outro tipo, limpar tipo_hora_extra
-          if (valor !== 'Hora Extra') {
-            blocoAtualizado.tipo_hora_extra = undefined;
-          }
-          
-          if (valor !== 'Banco de Horas') {
-            blocoAtualizado.quantidade_tickets = undefined;
-          }
-          
-          if (valor !== 'Reprovado') {
-            blocoAtualizado.horas_analise_ef = undefined;
-          }
+
+          console.log('📊 Bloco atualizado:', blocoAtualizado);
+          return blocoAtualizado;
         }
-        
-        console.log('📊 Bloco atualizado:', blocoAtualizado);
-        return blocoAtualizado;
-      }
-      return b;
+        return b;
       });
       console.log('📋 Todos os blocos após atualização:', novosBlocos);
       return novosBlocos;
@@ -247,22 +268,25 @@ export function RequerimentoMultiploForm({
     let totalMinutos = 0;
     let totalValor = 0;
 
-    blocos.forEach(bloco => {
-      const horasFuncional = typeof bloco.horas_funcional === 'string'
-        ? converterParaHorasDecimal(bloco.horas_funcional)
-        : bloco.horas_funcional || 0;
-      
-      const horasTecnico = typeof bloco.horas_tecnico === 'string'
-        ? converterParaHorasDecimal(bloco.horas_tecnico)
-        : bloco.horas_tecnico || 0;
+    blocos.forEach((bloco) => {
+      const horasFuncional =
+        typeof bloco.horas_funcional === 'string'
+          ? converterParaHorasDecimal(bloco.horas_funcional)
+          : bloco.horas_funcional || 0;
+
+      const horasTecnico =
+        typeof bloco.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(bloco.horas_tecnico)
+          : bloco.horas_tecnico || 0;
 
       // Converter horas decimais para minutos e somar
       totalMinutos += Math.round((horasFuncional + horasTecnico) * 60);
 
       // Calcular valor apenas para tipos com valor/hora
       if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(bloco.tipo_cobranca)) {
-        totalValor += (horasFuncional * (bloco.valor_hora_funcional || 0)) +
-                      (horasTecnico * (bloco.valor_hora_tecnico || 0));
+        totalValor +=
+          horasFuncional * (bloco.valor_hora_funcional || 0) +
+          horasTecnico * (bloco.valor_hora_tecnico || 0);
       }
     });
 
@@ -281,8 +305,10 @@ export function RequerimentoMultiploForm({
     // Validar campos compartilhados
     if (!chamado.trim()) erros.push('Chamado é obrigatório');
     if (chamado.trim() && /\s/.test(chamado)) erros.push('Chamado não pode conter espaços');
-    if (chamado.trim() && chamado.includes('_')) erros.push('Chamado não pode conter underscore (_)');
-    if (chamado.trim() && !/^[A-Za-z0-9\-]+$/.test(chamado.trim())) erros.push('Chamado: use apenas letras, números e hífen (-)');
+    if (chamado.trim() && chamado.includes('_'))
+      erros.push('Chamado não pode conter underscore (_)');
+    if (chamado.trim() && !/^[A-Za-z0-9\-]+$/.test(chamado.trim()))
+      erros.push('Chamado: use apenas letras, números e hífen (-)');
     if (!clienteId) erros.push('Cliente é obrigatório');
     if (mostrarCampoEmpresaSegmentacao && !empresaSegmentacaoNome) {
       erros.push('Empresa (Baseline) é obrigatória para este cliente');
@@ -298,21 +324,24 @@ export function RequerimentoMultiploForm({
       }
 
       // Validar linguagem técnica apenas se houver horas técnicas
-      const horasTecnicoValidacao = typeof bloco.horas_tecnico === 'string'
-        ? converterParaHorasDecimal(bloco.horas_tecnico)
-        : bloco.horas_tecnico || 0;
+      const horasTecnicoValidacao =
+        typeof bloco.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(bloco.horas_tecnico)
+          : bloco.horas_tecnico || 0;
 
       if (horasTecnicoValidacao > 0 && !bloco.linguagem) {
         erros.push(`Bloco ${index + 1}: Linguagem Técnica é obrigatória quando há Horas Técnicas`);
       }
 
-      const horasFuncional = typeof bloco.horas_funcional === 'string'
-        ? converterParaHorasDecimal(bloco.horas_funcional)
-        : bloco.horas_funcional || 0;
-      
-      const horasTecnico = typeof bloco.horas_tecnico === 'string'
-        ? converterParaHorasDecimal(bloco.horas_tecnico)
-        : bloco.horas_tecnico || 0;
+      const horasFuncional =
+        typeof bloco.horas_funcional === 'string'
+          ? converterParaHorasDecimal(bloco.horas_funcional)
+          : bloco.horas_funcional || 0;
+
+      const horasTecnico =
+        typeof bloco.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(bloco.horas_tecnico)
+          : bloco.horas_tecnico || 0;
 
       if (horasFuncional === 0 && horasTecnico === 0) {
         erros.push(`Bloco ${index + 1}: Deve haver pelo menos uma hora`);
@@ -320,7 +349,10 @@ export function RequerimentoMultiploForm({
 
       // Validar campos condicionais
       if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(bloco.tipo_cobranca)) {
-        if (horasFuncional > 0 && (!bloco.valor_hora_funcional || bloco.valor_hora_funcional <= 0)) {
+        if (
+          horasFuncional > 0 &&
+          (!bloco.valor_hora_funcional || bloco.valor_hora_funcional <= 0)
+        ) {
           erros.push(`Bloco ${index + 1}: Valor/hora funcional é obrigatório`);
         }
         if (horasTecnico > 0 && (!bloco.valor_hora_tecnico || bloco.valor_hora_tecnico <= 0)) {
@@ -332,10 +364,23 @@ export function RequerimentoMultiploForm({
         erros.push(`Bloco ${index + 1}: Tipo de hora extra é obrigatório`);
       }
 
-      if (bloco.tipo_cobranca === 'Banco de Horas' && 
-          clienteSelecionado?.tipo_cobranca === 'ticket' && 
-          (!bloco.quantidade_tickets || bloco.quantidade_tickets <= 0)) {
+      if (
+        bloco.tipo_cobranca === 'Banco de Horas' &&
+        clienteSelecionado?.tipo_cobranca === 'ticket' &&
+        (!bloco.quantidade_tickets || bloco.quantidade_tickets <= 0)
+      ) {
         erros.push(`Bloco ${index + 1}: Quantidade de tickets é obrigatória`);
+      }
+
+      if (
+        faltaBanco({
+          liberada: empresaLiberada,
+          tipoCobranca: bloco.tipo_cobranca,
+          horasAnaliseEF: bloco.horas_analise_ef,
+          destino: bloco.destino_banco,
+        })
+      ) {
+        erros.push(`Bloco ${index + 1}: ${t('reqForm.bankRequired')}`);
       }
     });
 
@@ -346,14 +391,15 @@ export function RequerimentoMultiploForm({
     //   (permite mesmo tipo desde que a linguagem técnica seja diferente)
     // - Demais tipos sem horas técnicas: apenas tipo_cobranca
     const combinacoesUsadas = new Map<string, number>();
-    
+
     blocos.forEach((bloco, index) => {
-      const horasTecnico = typeof bloco.horas_tecnico === 'string'
-        ? converterParaHorasDecimal(bloco.horas_tecnico)
-        : bloco.horas_tecnico || 0;
+      const horasTecnico =
+        typeof bloco.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(bloco.horas_tecnico)
+          : bloco.horas_tecnico || 0;
 
       let chave: string;
-      
+
       if (bloco.tipo_cobranca === 'Hora Extra') {
         // Para Hora Extra, a chave única é: tipo_cobranca + tipo_hora_extra + linguagem
         chave = `${bloco.tipo_cobranca}|${bloco.tipo_hora_extra || ''}|${bloco.linguagem || ''}`;
@@ -364,22 +410,24 @@ export function RequerimentoMultiploForm({
         // Para os demais tipos sem horas técnicas, apenas tipo_cobranca
         chave = bloco.tipo_cobranca;
       }
-      
+
       if (combinacoesUsadas.has(chave)) {
         const primeiroIndex = combinacoesUsadas.get(chave)!;
-        
+
         if (bloco.tipo_cobranca === 'Hora Extra') {
           erros.push(
             `Blocos ${primeiroIndex + 1} e ${index + 1}: Combinação duplicada de Hora Extra ` +
-            `(${bloco.tipo_hora_extra || 'não definido'} + ${bloco.linguagem || 'sem linguagem'})`
+              `(${bloco.tipo_hora_extra || 'não definido'} + ${bloco.linguagem || 'sem linguagem'})`
           );
         } else if (horasTecnico > 0) {
           erros.push(
             `Blocos ${primeiroIndex + 1} e ${index + 1}: Tipo de cobrança "${bloco.tipo_cobranca}" duplicado ` +
-            `(mesma Linguagem Técnica: ${bloco.linguagem || 'sem linguagem'})`
+              `(mesma Linguagem Técnica: ${bloco.linguagem || 'sem linguagem'})`
           );
         } else {
-          erros.push(`Blocos ${primeiroIndex + 1} e ${index + 1}: Tipo de cobrança "${bloco.tipo_cobranca}" duplicado`);
+          erros.push(
+            `Blocos ${primeiroIndex + 1} e ${index + 1}: Tipo de cobrança "${bloco.tipo_cobranca}" duplicado`
+          );
         }
       } else {
         combinacoesUsadas.set(chave, index);
@@ -399,7 +447,7 @@ export function RequerimentoMultiploForm({
     const { valido, erros } = validarFormulario();
 
     if (!valido) {
-      erros.forEach(erro => toast.error(erro));
+      erros.forEach((erro) => toast.error(erro));
       return;
     }
 
@@ -412,11 +460,11 @@ export function RequerimentoMultiploForm({
       descricao: descricao.trim(),
       data_envio: dataEnvio,
       data_aprovacao: dataAprovacao || undefined,
-      observacao: observacao.trim() || undefined
+      observacao: observacao.trim() || undefined,
     };
 
     // Criar array de requerimentos
-    const requerimentos = blocos.map(bloco => ({
+    const requerimentos = blocos.map((bloco) => ({
       ...dadosCompartilhados,
       linguagem: bloco.linguagem,
       tipo_cobranca: bloco.tipo_cobranca,
@@ -429,7 +477,8 @@ export function RequerimentoMultiploForm({
       tipo_hora_extra: bloco.tipo_hora_extra,
       quantidade_tickets: bloco.quantidade_tickets,
       horas_analise_ef: bloco.horas_analise_ef,
-      mes_cobranca: bloco.mes_cobranca || undefined
+      mes_cobranca: bloco.mes_cobranca || undefined,
+      destino_banco: bloco.destino_banco || undefined,
     }));
 
     try {
@@ -463,14 +512,10 @@ export function RequerimentoMultiploForm({
                 value={chamado}
                 onChange={(e) => setChamado(e.target.value)}
                 placeholder="Ex: RF-6017993"
-                className={cn("uppercase", getChamadoErrorClasses(chamado))}
+                className={cn('uppercase', getChamadoErrorClasses(chamado))}
                 disabled={isLoading}
               />
-              <ValidationFeedback
-                value={chamado}
-                rules={chamadoValidation}
-                showOnlyErrors
-              />
+              <ValidationFeedback value={chamado} rules={chamadoValidation} showOnlyErrors />
             </div>
 
             <div className="space-y-2">
@@ -509,40 +554,39 @@ export function RequerimentoMultiploForm({
           {/* Módulo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Empresa de Segmentação (Segmentação) - Condicional */}
-          {mostrarCampoEmpresaSegmentacao && (
-            <div className="space-y-2">
-              <Label>
-                Empresa (Segmentação) <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={empresaSegmentacaoNome}
-                onValueChange={setEmpresaSegmentacaoNome}
-                disabled={isLoading || isLoadingEmpresasSegmentacao}
-              >
-                <SelectTrigger className={cn(getErrorClasses(empresaSegmentacaoNome))}>
-                  <SelectValue placeholder="Selecione uma empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {isLoadingEmpresasSegmentacao ? (
-                    <SelectItem value="__loading__" disabled>
-                      <LoadingSpinner size="sm" text="Carregando..." />
-                    </SelectItem>
-                  ) : empresasSegmentacao.length === 0 ? (
-                    <SelectItem value="__no_empresas__" disabled>
-                      Nenhuma empresa encontrada
-                    </SelectItem>
-                  ) : (
-                    empresasSegmentacao.map((empresa) => (
-                      <SelectItem key={empresa.nome} value={empresa.nome}>
-                        {empresa.nome} ({empresa.percentual}%)
+            {mostrarCampoEmpresaSegmentacao && (
+              <div className="space-y-2">
+                <Label>
+                  Empresa (Segmentação) <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={empresaSegmentacaoNome}
+                  onValueChange={setEmpresaSegmentacaoNome}
+                  disabled={isLoading || isLoadingEmpresasSegmentacao}
+                >
+                  <SelectTrigger className={cn(getErrorClasses(empresaSegmentacaoNome))}>
+                    <SelectValue placeholder="Selecione uma empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingEmpresasSegmentacao ? (
+                      <SelectItem value="__loading__" disabled>
+                        <LoadingSpinner size="sm" text="Carregando..." />
                       </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
+                    ) : empresasSegmentacao.length === 0 ? (
+                      <SelectItem value="__no_empresas__" disabled>
+                        Nenhuma empresa encontrada
+                      </SelectItem>
+                    ) : (
+                      empresasSegmentacao.map((empresa) => (
+                        <SelectItem key={empresa.nome} value={empresa.nome}>
+                          {empresa.nome} ({empresa.percentual}%)
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>
@@ -572,7 +616,7 @@ export function RequerimentoMultiploForm({
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder={t('reqForm.descriptionPlaceholder')}
-              className={cn("min-h-[100px]", getErrorClasses(descricao))}
+              className={cn('min-h-[100px]', getErrorClasses(descricao))}
               disabled={isLoading}
             />
             <p className="text-sm text-muted-foreground">
@@ -606,19 +650,17 @@ export function RequerimentoMultiploForm({
                   min={dataEnvio}
                   disabled={isLoading}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t('reqForm.approvalDateHelp')}
-                </p>
+                <p className="text-xs text-muted-foreground">{t('reqForm.approvalDateHelp')}</p>
               </div>
             </div>
           </div>
 
           {/* Seção: Tipos de Cobrança */}
           <Separator className="my-6" />
-          
+
           <div className="space-y-6">
             <h3 className="text-lg font-semibold">{t('reqForm.billingTypes')}</h3>
-            
+
             {blocos.map((bloco, index) => (
               <React.Fragment key={bloco.id}>
                 {index > 0 && <Separator className="my-4" />}
@@ -632,6 +674,7 @@ export function RequerimentoMultiploForm({
                   empresaTipoCobranca={clienteSelecionado?.tipo_cobranca}
                   clienteId={clienteId}
                   tentouSubmeter={tentouSubmeter}
+                  moduloLegado={modulo}
                 />
               </React.Fragment>
             ))}
@@ -650,11 +693,10 @@ export function RequerimentoMultiploForm({
 
           {/* Observações */}
           <Separator className="my-6" />
-          
+
           <div>
             <h4 className="text-sm font-semibold mb-3">{t('requirements.observation')}</h4>
             <div className="space-y-2">
-              
               <Textarea
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
@@ -691,17 +733,18 @@ export function RequerimentoMultiploForm({
             <div>
               <p className="text-xs text-muted-foreground mb-1">{t('reqForm.totalValues')}</p>
               <p className="text-lg font-semibold text-green-600">
-                R$ {totalizadores.totalValor.toLocaleString('pt-BR', {
+                R${' '}
+                {totalizadores.totalValor.toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
+                  maximumFractionDigits: 2,
                 })}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-1">{t('reqForm.requirementsToCreate')}</p>
-              <p className="text-lg font-semibold">
-                {blocos.length}
+              <p className="text-xs text-muted-foreground mb-1">
+                {t('reqForm.requirementsToCreate')}
               </p>
+              <p className="text-lg font-semibold">{blocos.length}</p>
             </div>
           </div>
         </CardContent>
@@ -709,12 +752,7 @@ export function RequerimentoMultiploForm({
 
       {/* Botões de Ação */}
       <div className="flex gap-4 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           {t('common.cancel')}
         </Button>
         <Button

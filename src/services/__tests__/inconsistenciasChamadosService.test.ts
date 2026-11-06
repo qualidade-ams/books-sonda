@@ -11,7 +11,9 @@ vi.mock('@/integrations/supabase/client', () => ({
 import { supabase } from '@/integrations/supabase/client';
 import { inconsistenciasChamadosService } from '../inconsistenciasChamadosService';
 
-function criarInconsistencia(overrides: Partial<InconsistenciaChamado> = {}): InconsistenciaChamado {
+function criarInconsistencia(
+  overrides: Partial<InconsistenciaChamado> = {}
+): InconsistenciaChamado {
   return {
     id: 'inc-1',
     origem: 'tickets',
@@ -48,16 +50,34 @@ describe('inconsistenciasChamadosService.buscarEnviosPorInconsistencia', () => {
   it('agrupa os envios por inconsistência, do mais recente para o mais antigo', async () => {
     const inMock = vi.fn().mockResolvedValue({
       data: [
-        { inconsistencia_id: 'inc-1', email_analista: 'a@x.com', email_cc: null, data_envio: '2026-09-10T12:00:00Z' },
-        { inconsistencia_id: 'inc-2', email_analista: 'b@x.com', email_cc: 'c@x.com', data_envio: '2026-09-11T12:00:00Z' },
-        { inconsistencia_id: 'inc-1', email_analista: 'a@x.com, d@x.com', email_cc: null, data_envio: '2026-09-15T12:00:00Z' },
+        {
+          inconsistencia_id: 'inc-1',
+          email_analista: 'a@x.com',
+          email_cc: null,
+          data_envio: '2026-09-10T12:00:00Z',
+        },
+        {
+          inconsistencia_id: 'inc-2',
+          email_analista: 'b@x.com',
+          email_cc: 'c@x.com',
+          data_envio: '2026-09-11T12:00:00Z',
+        },
+        {
+          inconsistencia_id: 'inc-1',
+          email_analista: 'a@x.com, d@x.com',
+          email_cc: null,
+          data_envio: '2026-09-15T12:00:00Z',
+        },
       ],
       error: null,
     });
     const selectMock = vi.fn().mockReturnValue({ in: inMock });
     (supabase.from as any).mockReturnValue({ select: selectMock });
 
-    const resultado = await inconsistenciasChamadosService.buscarEnviosPorInconsistencia(['inc-1', 'inc-2']);
+    const resultado = await inconsistenciasChamadosService.buscarEnviosPorInconsistencia([
+      'inc-1',
+      'inc-2',
+    ]);
 
     expect(supabase.from).toHaveBeenCalledWith('historico_inconsistencias_chamados');
     expect(inMock).toHaveBeenCalledWith('inconsistencia_id', ['inc-1', 'inc-2']);
@@ -86,7 +106,9 @@ describe('inconsistenciasChamadosService.enviarNotificacao', () => {
   });
 
   function prepararMocks() {
-    (supabase.auth.getUser as any).mockResolvedValue({ data: { user: { id: 'user-1', email: 'user@x.com' } } });
+    (supabase.auth.getUser as any).mockResolvedValue({
+      data: { user: { id: 'user-1', email: 'user@x.com' } },
+    });
     const insertMock = vi.fn().mockResolvedValue({ error: null });
     (supabase.from as any).mockImplementation((tabela: string) => {
       if (tabela === 'profiles') {
@@ -107,7 +129,10 @@ describe('inconsistenciasChamadosService.enviarNotificacao', () => {
     const insertMock = prepararMocks();
 
     await inconsistenciasChamadosService.enviarNotificacao({
-      inconsistencias: [criarInconsistencia({ id: 'inc-1' }), criarInconsistencia({ id: 'inc-2', nro_chamado: 'RF 456' })],
+      inconsistencias: [
+        criarInconsistencia({ id: 'inc-1' }),
+        criarInconsistencia({ id: 'inc-2', nro_chamado: 'RF 456' }),
+      ],
       mes_referencia: 9,
       ano_referencia: 2026,
       email_analista: 'a@x.com, b@x.com',
@@ -226,9 +251,24 @@ describe('inconsistenciasChamadosService.buscarTarefasAntesDaTroca', () => {
   it('retorna cada tarefa com tempo em HH:MM e o total somado', async () => {
     mockConsulta({
       data: [
-        { nro_tarefa: '111', data_sistema: '2026-09-10T12:00:00Z', analista_tarefa: 'Ana', tempo_gasto_minutos: 90 },
-        { nro_tarefa: '222', data_sistema: '2026-09-15T12:00:00Z', analista_tarefa: 'Bia', tempo_gasto_minutos: 6000 },
-        { nro_tarefa: '333', data_sistema: '2026-09-20T12:00:00Z', analista_tarefa: null, tempo_gasto_minutos: null },
+        {
+          nro_tarefa: '111',
+          data_sistema: '2026-09-10T12:00:00Z',
+          analista_tarefa: 'Ana',
+          tempo_gasto_minutos: 90,
+        },
+        {
+          nro_tarefa: '222',
+          data_sistema: '2026-09-15T12:00:00Z',
+          analista_tarefa: 'Bia',
+          tempo_gasto_minutos: 6000,
+        },
+        {
+          nro_tarefa: '333',
+          data_sistema: '2026-09-20T12:00:00Z',
+          analista_tarefa: null,
+          tempo_gasto_minutos: null,
+        },
       ],
       error: null,
     });
@@ -236,16 +276,37 @@ describe('inconsistenciasChamadosService.buscarTarefasAntesDaTroca', () => {
     const resultado = await inconsistenciasChamadosService.buscarTarefasAntesDaTroca(troca);
 
     expect(resultado.tarefas).toEqual([
-      { nro_tarefa: '111', data_sistema: '2026-09-10T12:00:00Z', analista: 'Ana', tempo_gasto_minutos: 90, tempo_gasto_horas: '01:30' },
-      { nro_tarefa: '222', data_sistema: '2026-09-15T12:00:00Z', analista: 'Bia', tempo_gasto_minutos: 6000, tempo_gasto_horas: '100:00' },
-      { nro_tarefa: '333', data_sistema: '2026-09-20T12:00:00Z', analista: null, tempo_gasto_minutos: 0, tempo_gasto_horas: '00:00' },
+      {
+        nro_tarefa: '111',
+        data_sistema: '2026-09-10T12:00:00Z',
+        analista: 'Ana',
+        tempo_gasto_minutos: 90,
+        tempo_gasto_horas: '01:30',
+      },
+      {
+        nro_tarefa: '222',
+        data_sistema: '2026-09-15T12:00:00Z',
+        analista: 'Bia',
+        tempo_gasto_minutos: 6000,
+        tempo_gasto_horas: '100:00',
+      },
+      {
+        nro_tarefa: '333',
+        data_sistema: '2026-09-20T12:00:00Z',
+        analista: null,
+        tempo_gasto_minutos: 0,
+        tempo_gasto_horas: '00:00',
+      },
     ]);
     expect(resultado.total_minutos).toBe(6090);
     expect(resultado.total_horas).toBe('101:30');
   });
 
   it('não consulta o banco quando a inconsistência não tem data da troca', async () => {
-    const resultado = await inconsistenciasChamadosService.buscarTarefasAntesDaTroca({ ...troca, data_atividade: null });
+    const resultado = await inconsistenciasChamadosService.buscarTarefasAntesDaTroca({
+      ...troca,
+      data_atividade: null,
+    });
 
     expect(supabase.from).not.toHaveBeenCalled();
     expect(resultado).toEqual({ tarefas: [], total_minutos: 0, total_horas: '00:00' });
@@ -254,7 +315,9 @@ describe('inconsistenciasChamadosService.buscarTarefasAntesDaTroca', () => {
   it('propaga o erro do banco', async () => {
     mockConsulta({ data: null, error: { message: 'falhou' } });
 
-    await expect(inconsistenciasChamadosService.buscarTarefasAntesDaTroca(troca)).rejects.toEqual({ message: 'falhou' });
+    await expect(inconsistenciasChamadosService.buscarTarefasAntesDaTroca(troca)).rejects.toEqual({
+      message: 'falhou',
+    });
   });
 });
 
@@ -280,7 +343,9 @@ describe('inconsistenciasChamadosService - filtro por tipos da tela', () => {
   it('buscarInconsistencias restringe aos tipos informados', async () => {
     const builder = mockBuilder();
 
-    await inconsistenciasChamadosService.buscarInconsistencias({ tipos: ['troca_codigo_resolucao'] });
+    await inconsistenciasChamadosService.buscarInconsistencias({
+      tipos: ['troca_codigo_resolucao'],
+    });
 
     expect(builder.in).toHaveBeenCalledWith('tipo_inconsistencia', ['troca_codigo_resolucao']);
   });
@@ -288,7 +353,9 @@ describe('inconsistenciasChamadosService - filtro por tipos da tela', () => {
   it('buscarResolvidas restringe aos tipos informados', async () => {
     const builder = mockBuilder();
 
-    await inconsistenciasChamadosService.buscarResolvidas({ tipos: ['mes_diferente', 'ic_999999'] });
+    await inconsistenciasChamadosService.buscarResolvidas({
+      tipos: ['mes_diferente', 'ic_999999'],
+    });
 
     expect(builder.in).toHaveBeenCalledWith('tipo_inconsistencia', ['mes_diferente', 'ic_999999']);
   });
@@ -376,28 +443,48 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
       ],
     });
 
-    const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
+    const resolvidas =
+      await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
 
     expect(resolvidas).toBe(1);
     expect(buscasAtivas[0]).toEqual(
-      expect.arrayContaining([['eq', 'status', 'ativa'], ['eq', 'tipo_inconsistencia', 'sem_atualizacao']])
+      expect.arrayContaining([
+        ['eq', 'status', 'ativa'],
+        ['eq', 'tipo_inconsistencia', 'sem_atualizacao'],
+      ])
     );
-    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('data_ultima_nota_publica')]);
-    expect(buscasTickets[0]).toContainEqual(['in', 'nro_solicitacao', ['9366968', '9365559', '111']]);
+    expect(buscasTickets[0]).toContainEqual([
+      'select',
+      expect.stringContaining('data_ultima_nota_publica'),
+    ]);
+    expect(buscasTickets[0]).toContainEqual([
+      'in',
+      'nro_solicitacao',
+      ['9366968', '9365559', '111'],
+    ]);
     expect(updates).toHaveLength(1);
-    expect(updates[0].payload).toEqual({ status: 'resolvida', data_resolucao: AGORA.toISOString() });
+    expect(updates[0].payload).toEqual({
+      status: 'resolvida',
+      data_resolucao: AGORA.toISOString(),
+    });
     expect(updates[0].filtros).toEqual(
-      expect.arrayContaining([['in', 'id', ['inc-1']], ['eq', 'status', 'ativa']])
+      expect.arrayContaining([
+        ['in', 'id', ['inc-1']],
+        ['eq', 'status', 'ativa'],
+      ])
     );
   });
 
   it('mantém ativa quando a última nota pública tem exatamente 16 dias', async () => {
     const { updates } = mockBanco({
       ativas: [{ id: 'inc-1', nro_chamado: 'IM 9366968' }],
-      tickets: [{ nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-12T12:00:00+00:00' }],
+      tickets: [
+        { nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-12T12:00:00+00:00' },
+      ],
     });
 
-    const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
+    const resolvidas =
+      await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
 
     expect(resolvidas).toBe(0);
     expect(updates).toHaveLength(0);
@@ -411,22 +498,75 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
       ],
       tickets: [
         // comentário de 2 dias, nota pública de 27 dias
-        { nro_solicitacao: '9366968', data_ultimo_comentario: '2026-09-26T09:00:00+00:00', data_ultima_nota_publica: '2026-09-01T09:00:00+00:00' },
+        {
+          nro_solicitacao: '9366968',
+          data_ultimo_comentario: '2026-09-26T09:00:00+00:00',
+          data_ultima_nota_publica: '2026-09-01T09:00:00+00:00',
+        },
         // comentário de 1 dia, sem nota pública
-        { nro_solicitacao: '111', data_ultimo_comentario: '2026-09-27T09:00:00+00:00', data_ultima_nota_publica: null },
+        {
+          nro_solicitacao: '111',
+          data_ultimo_comentario: '2026-09-27T09:00:00+00:00',
+          data_ultima_nota_publica: null,
+        },
       ],
     });
 
-    const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
+    const resolvidas =
+      await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
 
     expect(resolvidas).toBe(0);
     expect(updates).toHaveLength(0);
   });
 
+  it('arquiva as sem_atualizacao cujo chamado está Resolved, mesmo sem nota pública recente', async () => {
+    const { updates, buscasTickets } = mockBanco({
+      ativas: [
+        { id: 'inc-1', nro_chamado: 'IM 9366968' },
+        { id: 'inc-2', nro_chamado: 'RF 111' },
+        { id: 'inc-3', nro_chamado: 'IM 222' },
+      ],
+      tickets: [
+        // Resolved, nota pública de 27 dias
+        {
+          nro_solicitacao: '9366968',
+          status: 'Resolved',
+          data_ultima_nota_publica: '2026-09-01T09:00:00+00:00',
+        },
+        // Resolved, sem nota pública
+        { nro_solicitacao: '111', status: 'Resolved', data_ultima_nota_publica: null },
+        // Open, nota pública de 27 dias: continua ativa
+        {
+          nro_solicitacao: '222',
+          status: 'Open',
+          data_ultima_nota_publica: '2026-09-01T09:00:00+00:00',
+        },
+      ],
+    });
+
+    const resolvidas =
+      await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
+
+    expect(resolvidas).toBe(2);
+    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('status')]);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].payload).toEqual({
+      status: 'resolvida',
+      data_resolucao: AGORA.toISOString(),
+    });
+    expect(updates[0].filtros).toEqual(
+      expect.arrayContaining([
+        ['in', 'id', ['inc-1', 'inc-2']],
+        ['eq', 'status', 'ativa'],
+      ])
+    );
+  });
+
   it('não consulta tickets nem atualiza quando não há sem_atualizacao ativa', async () => {
     const { updates, buscasTickets } = mockBanco({ ativas: [] });
 
-    const resolvidas = await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
+    const resolvidas =
+      await inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente();
 
     expect(resolvidas).toBe(0);
     expect(buscasTickets).toHaveLength(0);
@@ -437,17 +577,23 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
     vi.spyOn(console, 'error').mockImplementation(() => {});
     mockBanco({
       ativas: [{ id: 'inc-1', nro_chamado: 'IM 9366968' }],
-      tickets: [{ nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' }],
+      tickets: [
+        { nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' },
+      ],
       erroUpdate: { message: 'sem permissão' },
     });
 
-    await expect(inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente()).resolves.toBe(0);
+    await expect(
+      inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRecente()
+    ).resolves.toBe(0);
   });
 
   it('chamadas simultâneas compartilham a mesma verificação', async () => {
     const { buscasAtivas } = mockBanco({
       ativas: [{ id: 'inc-1', nro_chamado: 'IM 9366968' }],
-      tickets: [{ nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' }],
+      tickets: [
+        { nro_solicitacao: '9366968', data_ultima_nota_publica: '2026-09-20T09:00:00+00:00' },
+      ],
     });
 
     await Promise.all([
@@ -479,16 +625,28 @@ describe('inconsistenciasChamadosService.resolverSemAtualizacaoComComentarioRece
         criarInconsistencia({ id: 'inc-2', nro_chamado: 'RF 111' }),
       ],
       tickets: [
-        { nro_solicitacao: '9366968', status: 'Hold', data_ultima_nota_publica: '2026-09-01T09:00:00+00:00' },
+        {
+          nro_solicitacao: '9366968',
+          status: 'Hold',
+          data_ultima_nota_publica: '2026-09-01T09:00:00+00:00',
+        },
         { nro_solicitacao: '111', status: 'Open', data_ultima_nota_publica: null },
       ],
     });
-    vi.spyOn(inconsistenciasChamadosService, 'resolverSemAtualizacaoComComentarioRecente').mockResolvedValue(0);
+    vi.spyOn(
+      inconsistenciasChamadosService,
+      'resolverSemAtualizacaoComComentarioRecente'
+    ).mockResolvedValue(0);
 
     const resultado = await inconsistenciasChamadosService.buscarInconsistencias({});
 
-    expect(buscasTickets[0]).toContainEqual(['select', expect.stringContaining('data_ultima_nota_publica')]);
-    expect(resultado.map(inc => [inc.id, inc.status_chamado, inc.data_ultima_nota_publica])).toEqual([
+    expect(buscasTickets[0]).toContainEqual([
+      'select',
+      expect.stringContaining('data_ultima_nota_publica'),
+    ]);
+    expect(
+      resultado.map((inc) => [inc.id, inc.status_chamado, inc.data_ultima_nota_publica])
+    ).toEqual([
       ['inc-1', 'Hold', '2026-09-01T09:00:00+00:00'],
       ['inc-2', 'Open', null],
     ]);
@@ -543,7 +701,9 @@ describe('inconsistenciasChamadosService.descartarInconsistencias', () => {
   it('propaga o erro do banco', async () => {
     mockUpdate({ error: { message: 'violates check constraint', code: '23514' } });
 
-    await expect(inconsistenciasChamadosService.descartarInconsistencias(['inc-1'])).rejects.toMatchObject({
+    await expect(
+      inconsistenciasChamadosService.descartarInconsistencias(['inc-1'])
+    ).rejects.toMatchObject({
       code: '23514',
     });
   });

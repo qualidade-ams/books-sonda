@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useConsultoresCoordenadores } from '@/hooks/useConsultoresCoordenadores';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import {
   filtrarConsultoresCoordenadores,
   FILTROS_CONSULTORES_PADRAO,
@@ -50,6 +51,7 @@ const ITENS_POR_PAGINA = 25;
 const SEM_COORDENADOR = '__sem__';
 
 function ConsultoresCoordenadores() {
+  useAtualizarAoAbrir('consultores-coordenadores');
   const { consultores, responsaveis, isLoading, error, definirCoordenador, isSalvando } =
     useConsultoresCoordenadores();
   const { hasPermission } = usePermissions();

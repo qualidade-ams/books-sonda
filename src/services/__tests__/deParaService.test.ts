@@ -12,10 +12,6 @@ function cenario() {
           id: 'g2',
           grupo_aranda: 'AMS APL - TECNICO - N2',
           grupo_book: 'COMEX - Técnico',
-          solucao_id: 's1',
-          produto_id: null,
-          modulo_id: null,
-          classificacao: 'solucao',
           ativo: true,
           ...autoria,
           grupos_aranda_vinculos: [
@@ -31,13 +27,9 @@ function cenario() {
           id: 'g1',
           grupo_aranda: 'AMS APL - CAMBIO - N2',
           grupo_book: 'COMEX - Câmbio',
-          solucao_id: 's1',
-          produto_id: 'p1',
-          modulo_id: 'm1',
-          classificacao: 'modulo',
           ativo: true,
           ...autoria,
-          // O primeiro vínculo (o mais antigo) é o principal, espelhado nas colunas
+          // O primeiro vínculo (o mais antigo) é o principal
           grupos_aranda_vinculos: [
             {
               solucao_id: 's2',
@@ -57,10 +49,6 @@ function cenario() {
           id: 'g3',
           grupo_aranda: 'AMS APL - ANTIGO - N2',
           grupo_book: 'COMEX - Antigo',
-          solucao_id: null,
-          produto_id: null,
-          modulo_id: null,
-          classificacao: 'nao_se_aplica',
           ativo: false,
           ...autoria,
           grupos_aranda_vinculos: [],
@@ -127,7 +115,8 @@ describe('classificar', () => {
   it('a classificação vem do nível mais fundo do destino', () => {
     expect(classificar({ solucaoId: 's', produtoId: 'p', moduloId: 'm' })).toBe('modulo');
     expect(classificar({ solucaoId: 's', produtoId: 'p', moduloId: null })).toBe('produto');
-    expect(classificar({ solucaoId: 's', produtoId: null, moduloId: null })).toBe('solucao');
+    // Sem produto não há lugar: o grupo de serviço da solução deixou de existir (03/11/2026)
+    expect(classificar({ solucaoId: 's', produtoId: null, moduloId: null })).toBe('nao_se_aplica');
     expect(classificar({ solucaoId: null, produtoId: null, moduloId: null })).toBe('nao_se_aplica');
   });
 });
@@ -211,13 +200,10 @@ describe('DeParaService.salvar', () => {
       grupoBook: ' COMEX - Novo ',
       destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
     });
-    const novo = fake.tabelas.grupos_aranda.at(-1)!;
-    expect(novo).toMatchObject({
-      grupo_aranda: 'AMS APL - NOVO - N2',
-      grupo_book: 'COMEX - Novo',
-      classificacao: 'nao_se_aplica',
-    });
-    expect(fake.chamadasRpc).toEqual([vincular([novo.id], destinoRpc('s1', 'p1', null), true)]);
+    // Só o grupo: o destino fica nos vínculos (as colunas antigas saíram, migration 20261030000003)
+    const { id, ...novo } = fake.tabelas.grupos_aranda.at(-1)!;
+    expect(novo).toEqual({ grupo_aranda: 'AMS APL - NOVO - N2', grupo_book: 'COMEX - Novo' });
+    expect(fake.chamadasRpc).toEqual([vincular([id], destinoRpc('s1', 'p1', null), true)]);
   });
 
   it('grupo excluído antes é reativado, e não duplicado', async () => {
@@ -225,7 +211,7 @@ describe('DeParaService.salvar', () => {
     await new DeParaService(fake as any).salvar({
       grupoAranda: 'ams apl - antigo - n2',
       grupoBook: 'COMEX - Antigo 2',
-      destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+      destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
     });
     expect(fake.tabelas.grupos_aranda).toHaveLength(3);
     expect(fake.tabelas.grupos_aranda.find((g) => g.id === 'g3')).toMatchObject({
@@ -233,7 +219,7 @@ describe('DeParaService.salvar', () => {
       grupo_book: 'COMEX - Antigo 2',
       ativo: true,
     });
-    expect(fake.chamadasRpc).toEqual([vincular(['g3'], destinoRpc('s1', null, null), true)]);
+    expect(fake.chamadasRpc).toEqual([vincular(['g3'], destinoRpc('s1', 'p1', null), true)]);
   });
 
   it('edição muda Grupo do Book e troca os vínculos; nunca o grupo do Aranda', async () => {
@@ -249,8 +235,6 @@ describe('DeParaService.salvar', () => {
       grupo_aranda: 'AMS APL - CAMBIO - N2',
       grupo_book: 'COMEX - Câmbio 2',
     });
-    // As colunas de destino são o espelho mantido pelo banco: o service não grava nelas
-    expect(g1.produto_id).toBe('p1');
     expect(fake.chamadasRpc).toEqual([vincular(['g1'], destinoRpc(null, null, null), true)]);
   });
 
@@ -381,7 +365,7 @@ describe('DeParaService.importar', () => {
       {
         grupoAranda: 'AMS APL - NOVO - N2',
         grupoBook: 'COMEX - Novo',
-        destino: { solucaoId: 's1', produtoId: null, moduloId: null },
+        destino: { solucaoId: 's1', produtoId: 'p1', moduloId: null },
       },
     ]);
     const grupos = fake.tabelas.grupos_aranda;

@@ -3,9 +3,10 @@
  * - variante "desenvolvimento" (padrão): status 'lancado', ainda não enviados para faturamento
  * - variante "faturado" (aba Requerimentos Compensados): faturados com mês de cobrança
  *   igual ao mês do book; sem coluna Status e com badges no azul padrão
+ * Cliente com contrato de tickets (linhas com `tickets`): total e coluna em tickets, sem as horas.
  */
 
-import { FileText, Clock, Eye } from 'lucide-react';
+import { FileText, Clock, Eye, Ticket } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -79,6 +80,11 @@ export default function BookRequerimentos({
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   })();
 
+  // Contrato de tickets: o snapshot só traz `tickets` nesse caso
+  const emTickets = dadosGerais.some((req) => typeof req.tickets === 'number');
+  const totalTickets = dadosGerais.reduce((soma, req) => soma + (req.tickets || 0), 0);
+  const total = emTickets ? String(totalTickets) : totalHoras;
+
   return (
     <div className="w-full h-full bg-white p-8 flex flex-col relative">
       <div className="space-y-6 flex-1">
@@ -111,11 +117,19 @@ export default function BookRequerimentos({
             <CardContent className="flex items-center justify-center py-6">
               <div className="text-center">
                 <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
+                  {emTickets ? (
+                    <Ticket className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <Clock className="h-5 w-5 text-blue-600" />
+                  )}
                 </div>
-                <div className="text-3xl font-bold text-blue-600">{totalHoras}</div>
+                <div className="text-3xl font-bold text-blue-600">{total}</div>
                 <div className="text-xs font-medium text-gray-600 mt-1">
-                  {t('books.bookContent.requirementsInDevelopmentHours')}
+                  {t(
+                    emTickets
+                      ? 'books.bookContent.requirementsTicketsTotal'
+                      : 'books.bookContent.requirementsInDevelopmentHours'
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -142,7 +156,7 @@ export default function BookRequerimentos({
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <FileText className="h-5 w-5" />
               <span>{t(textos.titulo)}</span>
-              <Badge className="bg-orange-100 text-orange-800 text-xs ml-2">{totalHoras}</Badge>
+              <Badge className="bg-orange-100 text-orange-800 text-xs ml-2">{total}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -182,24 +196,35 @@ export default function BookRequerimentos({
                     >
                       {t('books.bookContent.requirementsDescriptionColumn')}
                     </TableHead>
-                    <TableHead
-                      className="text-center font-semibold text-white"
-                      style={{ backgroundColor: '#666666' }}
-                    >
-                      {t('books.bookContent.requirementsFunctionalColumn')}
-                    </TableHead>
-                    <TableHead
-                      className="text-center font-semibold text-white"
-                      style={{ backgroundColor: '#666666' }}
-                    >
-                      {t('books.bookContent.requirementsTechnicalColumn')}
-                    </TableHead>
-                    <TableHead
-                      className="text-center font-semibold text-white"
-                      style={{ backgroundColor: '#666666' }}
-                    >
-                      {t('books.bookContent.requirementsTotalColumn')}
-                    </TableHead>
+                    {emTickets ? (
+                      <TableHead
+                        className="text-center font-semibold text-white"
+                        style={{ backgroundColor: '#666666' }}
+                      >
+                        {t('books.bookContent.requirementsTicketsColumn')}
+                      </TableHead>
+                    ) : (
+                      <>
+                        <TableHead
+                          className="text-center font-semibold text-white"
+                          style={{ backgroundColor: '#666666' }}
+                        >
+                          {t('books.bookContent.requirementsFunctionalColumn')}
+                        </TableHead>
+                        <TableHead
+                          className="text-center font-semibold text-white"
+                          style={{ backgroundColor: '#666666' }}
+                        >
+                          {t('books.bookContent.requirementsTechnicalColumn')}
+                        </TableHead>
+                        <TableHead
+                          className="text-center font-semibold text-white"
+                          style={{ backgroundColor: '#666666' }}
+                        >
+                          {t('books.bookContent.requirementsTotalColumn')}
+                        </TableHead>
+                      </>
+                    )}
                     <TableHead
                       className="text-center font-semibold text-white"
                       style={{ backgroundColor: '#666666' }}
@@ -243,11 +268,23 @@ export default function BookRequerimentos({
                       <TableCell className="text-left whitespace-normal min-w-[320px] max-w-[640px]">
                         {req.descricao || '-'}
                       </TableCell>
-                      <TableCell className="text-center font-mono">{req.horas_funcional}</TableCell>
-                      <TableCell className="text-center font-mono">{req.horas_tecnica}</TableCell>
-                      <TableCell className="text-center font-mono font-semibold text-blue-600">
-                        {req.total_horas}
-                      </TableCell>
+                      {emTickets ? (
+                        <TableCell className="text-center font-mono font-semibold text-blue-600">
+                          {req.tickets || 0}
+                        </TableCell>
+                      ) : (
+                        <>
+                          <TableCell className="text-center font-mono">
+                            {req.horas_funcional}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">
+                            {req.horas_tecnica}
+                          </TableCell>
+                          <TableCell className="text-center font-mono font-semibold text-blue-600">
+                            {req.total_horas}
+                          </TableCell>
+                        </>
+                      )}
                       <TableCell className="text-center">{req.data_envio || '-'}</TableCell>
                       {!ehFaturado && (
                         <TableCell className="text-center">

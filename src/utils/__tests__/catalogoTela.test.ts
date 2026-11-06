@@ -6,12 +6,13 @@ import {
   conferirCatalogo,
   destinoDoAlvo,
   exportacaoCatalogo,
-  gruposDaSolucao,
   gruposDoModulo,
+  gruposNosModulos,
   gruposSoDoProduto,
   moduloSemUso,
   modulosAClassificar,
   mudancasDeGrupos,
+  produtoMudaDeSolucao,
   produtoSemUso,
   solucaoSemUso,
   totaisCatalogo,
@@ -109,9 +110,9 @@ const MAPEAMENTOS: MapeamentoGrupo[] = [
   }),
   mapa('g4', 'AMS APL - DBA COMEX', {
     solucaoId: 's1',
-    produtoId: null,
+    produtoId: 'fci',
     moduloId: null,
-    classificacao: 'solucao',
+    classificacao: 'produto',
   }),
   mapa('g5', 'AMS T&M', {
     solucaoId: null,
@@ -119,7 +120,7 @@ const MAPEAMENTOS: MapeamentoGrupo[] = [
     moduloId: null,
     classificacao: 'nao_se_aplica',
   }),
-  // Em três lugares: Câmbio (principal), COMPLY inteiro e o serviço da solução s2
+  // Em dois lugares: Câmbio (principal) e COMPLY inteiro
   {
     ...mapa('g6', 'AMS APL - INTEGRACAO', {
       solucaoId: 's1',
@@ -130,7 +131,6 @@ const MAPEAMENTOS: MapeamentoGrupo[] = [
     vinculos: [
       { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
       { solucaoId: 's2', produtoId: 'comply', moduloId: null },
-      { solucaoId: 's2', produtoId: null, moduloId: null },
     ],
   },
 ];
@@ -149,20 +149,35 @@ const USOS = [
 ];
 
 describe('grupos de cada nível', () => {
-  it('módulo, produto inteiro e solução, em ordem alfabética', () => {
+  it('módulo e produto inteiro, em ordem alfabética', () => {
     expect(gruposDoModulo(MAPEAMENTOS, 'cambio')).toEqual([
       'AMS APL - CAMBIO - N2',
       'AMS APL - CAMBIO - N3',
       'AMS APL - INTEGRACAO',
     ]);
     expect(gruposSoDoProduto(MAPEAMENTOS, 'ce')).toEqual(['AMS APL - CE PLUS - N2']);
-    expect(gruposDaSolucao(MAPEAMENTOS, 's1')).toEqual(['AMS APL - DBA COMEX']);
     expect(gruposDoModulo(MAPEAMENTOS, 'drawback')).toEqual([]);
+  });
+
+  it('grupos nos módulos do produto, sem repetir o que está em mais de um módulo', () => {
+    expect(gruposNosModulos(MAPEAMENTOS, 'ce')).toEqual([
+      'AMS APL - CAMBIO - N2',
+      'AMS APL - CAMBIO - N3',
+      'AMS APL - INTEGRACAO',
+    ]);
+    expect(gruposNosModulos(MAPEAMENTOS, 'comply')).toEqual([]);
+    const emDois: MapeamentoGrupo = {
+      ...MAPEAMENTOS[0],
+      vinculos: [
+        { solucaoId: 's1', produtoId: 'ce', moduloId: 'cambio' },
+        { solucaoId: 's1', produtoId: 'ce', moduloId: 'drawback' },
+      ],
+    };
+    expect(gruposNosModulos([emDois], 'ce')).toEqual(['AMS APL - CAMBIO - N2']);
   });
 
   it('o grupo em vários lugares aparece em cada um deles', () => {
     expect(gruposSoDoProduto(MAPEAMENTOS, 'comply')).toEqual(['AMS APL - INTEGRACAO']);
-    expect(gruposDaSolucao(MAPEAMENTOS, 's2')).toEqual(['AMS APL - INTEGRACAO']);
   });
 });
 
@@ -229,23 +244,45 @@ describe('item sem uso (pode ser excluído)', () => {
     expect(produtoSemUso(CATALOGO.produtos[2], { ...catalogo, modulos: [] }, usoDe)).toBe(false); // "A classificar"
   });
 
-  it('solução: sem produto e sem grupo de serviço', () => {
+  it('solução: sem produto e sem grupo vinculado', () => {
     const nova = { ...CATALOGO.solucoes[0], id: 's9', codigo: 'NOVA', nome: 'NOVA' };
     const catalogo = { ...CATALOGO, solucoes: [...CATALOGO.solucoes, nova] };
     expect(solucaoSemUso(nova, catalogo, usoDe)).toBe(true);
     expect(solucaoSemUso(CATALOGO.solucoes[0], catalogo, usoDe)).toBe(false);
-    const comServico = {
+    const comGrupo = {
       ...usoDe,
       mapeamentos: [
         ...MAPEAMENTOS,
         {
           ...MAPEAMENTOS[4],
           id: 'g9',
-          vinculos: [{ solucaoId: 's9', produtoId: null, moduloId: null }],
+          vinculos: [{ solucaoId: 's9', produtoId: 'p9', moduloId: null }],
         },
       ],
     };
-    expect(solucaoSemUso(nova, catalogo, comServico)).toBe(false);
+    expect(solucaoSemUso(nova, catalogo, comGrupo)).toBe(false);
+  });
+
+  it('solução só com produtos sem uso também pode ser excluída (os produtos saem junto)', () => {
+    const nova = { ...CATALOGO.solucoes[0], id: 's9', codigo: 'FIN', nome: 'FINANCEIRAS' };
+    const fc = produto('fc', 's9', { ativo: false });
+    const sapc = produto('sapc', 's9', { ativo: false });
+    const catalogo = {
+      ...CATALOGO,
+      solucoes: [...CATALOGO.solucoes, nova],
+      produtos: [...CATALOGO.produtos, fc, sapc],
+    };
+    expect(solucaoSemUso(nova, catalogo, usoDe)).toBe(true);
+    const sapcEmBanco = { ...usoDe, usos: [...USOS, uso('sapc', null, 'Banco FIN')] };
+    expect(solucaoSemUso(nova, catalogo, sapcEmBanco)).toBe(false);
+  });
+});
+
+describe('produtoMudaDeSolucao', () => {
+  it('muda o produto que nenhum banco ativo usa; nunca o "A classificar"', () => {
+    expect(produtoMudaDeSolucao(produto('novo', 's1'), USOS)).toBe(true);
+    expect(produtoMudaDeSolucao(CATALOGO.produtos[0], USOS)).toBe(false); // ce: bancos
+    expect(produtoMudaDeSolucao(produto('pa', 's1', { aClassificar: true }), [])).toBe(false);
   });
 });
 
@@ -275,11 +312,6 @@ describe('destino dos grupos', () => {
     expect(destinoDoAlvo({ tipo: 'produto', id: 'comply' }, CATALOGO)).toEqual({
       solucaoId: 's2',
       produtoId: 'comply',
-      moduloId: null,
-    });
-    expect(destinoDoAlvo({ tipo: 'solucao', id: 's2' }, CATALOGO)).toEqual({
-      solucaoId: 's2',
-      produtoId: null,
       moduloId: null,
     });
   });

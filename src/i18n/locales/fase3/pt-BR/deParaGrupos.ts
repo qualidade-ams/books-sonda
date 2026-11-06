@@ -18,7 +18,6 @@ const deParaGrupos = {
   classificacao: {
     modulo: 'Com módulo',
     produto: 'Todos os módulos',
-    solucao: 'Grupo de serviço',
     nao_se_aplica: 'Não se aplica',
   },
   destino: {
@@ -26,14 +25,14 @@ const deParaGrupos = {
     produto: 'Produto',
     modulo: 'Módulo',
     nenhumaSolucao: 'Nenhuma (não se aplica)',
-    nenhumProduto: 'Nenhum (grupo de serviço)',
+    escolhaProduto: 'Escolha o produto',
     todosModulos: 'Todos os módulos',
     produtoSemModulos: 'Produto sem módulos',
-    servico: 'serviço',
     textoModulo:
       'Banco que cobre {{produto}} › {{modulo}} ou o produto inteiro; sem banco, o Banco padrão.',
     textoProduto: 'Banco que cobre {{produto}} inteiro; sem banco, o Banco padrão.',
-    textoSolucao: 'Grupo de serviço de {{solucao}}: sempre o Banco padrão.',
+    textoSemProduto:
+      'Escolha o produto. Grupo que atende a solução toda (DBA, Técnico…) fica em cada produto dela.',
     textoNenhum: 'Sempre o Banco padrão.',
   },
   lista: {
@@ -120,7 +119,7 @@ const deParaGrupos = {
     solucao:
       'Solução do grupo. Sem solução, o grupo "não se aplica" (DEDICADOS, T&M…) e as horas vão sempre para o Banco padrão.',
     produto:
-      'Produto do grupo. Só com a solução, sem produto, é um grupo de serviço (DBA, Técnico…): as horas vão sempre para o Banco padrão.',
+      'Produto do grupo, obrigatório com a solução. Grupo que atende a solução toda (DBA, Técnico…) é vinculado a cada produto dela, em Produtos e Módulos.',
     modulo:
       'Módulo do grupo. Sem módulo, as horas vão para o banco que cobre o produto inteiro ou, se não houver, para o Banco padrão.',
     paraOnde:
@@ -143,7 +142,7 @@ const deParaGrupos = {
       grupo:
         'O grupo é encontrado pelo nome do Aranda (sem diferenciar maiúsculas); se já estiver mapeado, a linha atualiza o mapeamento.',
       destino:
-        'Sem produto, o grupo é de serviço da solução; sem solução, "não se aplica". Os dois vão para o Banco padrão.',
+        'Com solução, o produto é obrigatório. Sem solução, o grupo "não se aplica" e as horas vão para o Banco padrão.',
       catalogo: 'Solução, produto e módulo precisam existir e estar ativos em Produtos e Módulos.',
     },
     aviso: {
@@ -156,6 +155,7 @@ const deParaGrupos = {
       bookVazio: 'Grupo do Book vazio.',
       solucaoNaoExiste: 'Solução "{{nome}}" não existe ou está inativa.',
       produtoSemSolucao: 'Informe a solução do produto.',
+      produtoVazio: 'Informe o produto da solução.',
       produtoNaoExiste: 'Produto "{{nome}}" não existe em {{solucao}} ou está inativo.',
       moduloSemProduto: 'Informe o produto do módulo.',
       moduloNaoExiste: 'Módulo "{{nome}}" não existe em {{produto}} ou está inativo.',

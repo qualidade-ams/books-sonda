@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ComparacaoBancosHoras from '../ComparacaoBancosHoras';
+import { useAtualizarAoAbrir } from '@/hooks/useAtualizarAoAbrir';
 import { exportarTabela } from '@/utils/exportarTabela';
 import type { ComparacaoEmpresa, MesComparacao } from '@/types/comparacao';
 
+vi.mock('@/hooks/useAtualizarAoAbrir', () => ({ useAtualizarAoAbrir: vi.fn() }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (chave: string, valores?: Record<string, unknown>) =>
@@ -303,6 +305,37 @@ describe('ComparacaoBancosHoras: detalhe', () => {
     expect(screen.getByRole('list', { name: 'comparacaoBancosHoras.lista' })).toBeInTheDocument();
   });
 
+  it('mês com bancos só de horas: tickets do legado com "—" no novo e a nota', () => {
+    const comTickets = (m: number, unidades?: ('horas' | 'tickets')[]) =>
+      mes(m, {
+        legado: {
+          ...medidas({ consumo: 600, saldo: 120 }),
+          tickets: { ...zero, consumo: 2 },
+        },
+        novo: {
+          ...medidas({ consumo: 600, saldo: 120 }),
+          porBanco: [{ bancoId: 'b1', nome: 'Banco padrão', minutos: 600, tickets: 0 }],
+          ...(unidades ? { unidades } : {}),
+        },
+      });
+    // Setembro: banco só de horas; agosto: gravado antes, sem as unidades (fica como era)
+    meses.meses = [comTickets(8), comTickets(9, ['horas'])];
+    renderizar();
+    abrir('EMPRESA ALFA');
+    const linhas = within(
+      screen.getByRole('list', { name: 'comparacaoBancosHoras.detalhe.mesAMes' })
+    );
+    expect(linhas.getByText('—')).toHaveAttribute(
+      'title',
+      'comparacaoBancosHoras.detalhe.ticketsNaoContam'
+    );
+    expect(linhas.getAllByText('2')).toHaveLength(2);
+    expect(linhas.getAllByText('0')).toHaveLength(1);
+    expect(
+      screen.getByText('comparacaoBancosHoras.detalhe.ticketsNaoContamNota')
+    ).toBeInTheDocument();
+  });
+
   it('divergente não pode ser validada', () => {
     comDiferenca();
     renderizar();
@@ -468,5 +501,13 @@ describe('ComparacaoBancosHoras: detalhe', () => {
     expect(
       screen.queryByRole('button', { name: 'comparacaoBancosHoras.acoes.liberar' })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ComparacaoBancosHoras: ao abrir', () => {
+  it('recarrega a comparação', () => {
+    vi.mocked(useAtualizarAoAbrir).mockClear();
+    renderizar();
+    expect(useAtualizarAoAbrir).toHaveBeenCalledWith('comparacao-bh');
   });
 });

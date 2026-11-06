@@ -5,82 +5,97 @@ const chamadoSchema = z
   .string()
   .min(1, 'Chamado é obrigatório')
   .max(50, 'Chamado deve ter no máximo 50 caracteres')
-  .regex(/^[A-Za-z0-9\-]+$/, 'Chamado deve conter apenas letras, números e hífen (-) (ex: RF-6017993)');
+  .regex(
+    /^[A-Za-z0-9\-]+$/,
+    'Chamado deve conter apenas letras, números e hífen (-) (ex: RF-6017993)'
+  );
 
 // Schema para validação de módulo
-const moduloSchema = z
-  .enum(['Comex', 'Comply', 'Comply e-DOCS', 'Gallery', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
-    errorMap: () => ({ message: 'Selecione um módulo válido' })
-  });
+const moduloSchema = z.enum(
+  ['Comex', 'Comply', 'Comply e-DOCS', 'Gallery', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const,
+  {
+    errorMap: () => ({ message: 'Selecione um módulo válido' }),
+  }
+);
 
 // Schema para validação de linguagem (opcional - apenas quando há horas técnicas)
 const linguagemSchema = z
   .union([
     z.enum(['ABAP', 'DBA', 'PL/SQL', 'Técnico', 'Funcional'] as const, {
-      errorMap: () => ({ message: 'Selecione uma linguagem técnica válida' })
+      errorMap: () => ({ message: 'Selecione uma linguagem técnica válida' }),
     }),
     z.literal(''),
     z.null(),
-    z.undefined()
+    z.undefined(),
   ])
   .optional();
 
 // Schema para validação de tipo de cobrança
-const tipoCobrancaSchema = z
-  .enum([
-    'Banco de Horas', 
-    'Cobro Interno', 
-    'Contrato', 
-    'Faturado', 
-    'Hora Extra', 
-    'Sobreaviso', 
-    'Reprovado', 
-    'Bolsão Enel'
-  ] as const, {
-    errorMap: () => ({ message: 'Selecione um tipo de cobrança válido' })
-  });
+const tipoCobrancaSchema = z.enum(
+  [
+    'Banco de Horas',
+    'Cobro Interno',
+    'Contrato',
+    'Faturado',
+    'Hora Extra',
+    'Sobreaviso',
+    'Reprovado',
+    'Bolsão Enel',
+  ] as const,
+  {
+    errorMap: () => ({ message: 'Selecione um tipo de cobrança válido' }),
+  }
+);
 
 // Schema para validação de horas (suporta formato HH:MM e números decimais)
-const horasSchema = z
-  .union([
+const horasSchema = z.union(
+  [
     // Aceita números (compatibilidade com formato antigo)
-    z.number({
-      invalid_type_error: 'Horas devem ser um número ou formato HH:MM'
-    }).min(0, 'Horas não podem ser negativas').max(9999.99, 'Horas não podem exceder 9999.99'),
-    
+    z
+      .number({
+        invalid_type_error: 'Horas devem ser um número ou formato HH:MM',
+      })
+      .min(0, 'Horas não podem ser negativas')
+      .max(9999.99, 'Horas não podem exceder 9999.99'),
+
     // Aceita strings no formato HH:MM
-    z.string().refine((val) => {
-      if (!val || val.trim() === '') return true; // Vazio é válido (será 0)
-      
-      const valor = val.trim();
-      
-      // Formato HH:MM
-      if (valor.includes(':')) {
-        const regex = /^\d{1,4}:[0-5]?\d$/;
-        if (!regex.test(valor)) return false;
-        
-        const [horasStr, minutosStr] = valor.split(':');
-        const horas = parseInt(horasStr);
-        const minutos = parseInt(minutosStr);
-        
-        return horas >= 0 && horas <= 9999 && minutos >= 0 && minutos < 60;
+    z.string().refine(
+      (val) => {
+        if (!val || val.trim() === '') return true; // Vazio é válido (será 0)
+
+        const valor = val.trim();
+
+        // Formato HH:MM
+        if (valor.includes(':')) {
+          const regex = /^\d{1,4}:[0-5]?\d$/;
+          if (!regex.test(valor)) return false;
+
+          const [horasStr, minutosStr] = valor.split(':');
+          const horas = parseInt(horasStr);
+          const minutos = parseInt(minutosStr);
+
+          return horas >= 0 && horas <= 9999 && minutos >= 0 && minutos < 60;
+        }
+
+        // Formato número (inteiro ou decimal)
+        const numero = parseFloat(valor);
+        return !isNaN(numero) && numero >= 0 && numero <= 9999.99;
+      },
+      {
+        message: 'Formato inválido. Use HH:MM (ex: 111:30) ou número (ex: 120 ou 120.5)',
       }
-      
-      // Formato número (inteiro ou decimal)
-      const numero = parseFloat(valor);
-      return !isNaN(numero) && numero >= 0 && numero <= 9999.99;
-    }, {
-      message: 'Formato inválido. Use HH:MM (ex: 111:30) ou número (ex: 120 ou 120.5)'
-    })
-  ], {
-    invalid_type_error: 'Horas devem ser um número ou formato HH:MM'
-  });
+    ),
+  ],
+  {
+    invalid_type_error: 'Horas devem ser um número ou formato HH:MM',
+  }
+);
 
 // Schema para validação de mês/ano (formato MM/YYYY)
 const mesCobrancaSchema = z
   .string({
     required_error: 'Mês de cobrança é obrigatório',
-    invalid_type_error: 'Mês/ano deve ser uma string no formato MM/YYYY'
+    invalid_type_error: 'Mês/ano deve ser uma string no formato MM/YYYY',
   })
   .regex(/^(0[1-9]|1[0-2])\/\d{4}$/, 'Formato deve ser MM/YYYY (ex: 09/2025)')
   .refine((val) => {
@@ -92,13 +107,17 @@ const mesCobrancaSchema = z
 // Schema opcional para mês/ano (usado no formulário de criação)
 const mesCobrancaOpcionalSchema = z
   .union([
-    z.string().min(1).regex(/^(0[1-9]|1[0-2])\/\d{4}$/, 'Formato deve ser MM/YYYY (ex: 09/2025)').refine((val) => {
-      const [mes, ano] = val.split('/').map(Number);
-      const anoAtual = new Date().getFullYear();
-      return ano >= anoAtual - 5 && ano <= anoAtual + 10;
-    }, 'Ano deve estar entre 5 anos atrás e 10 anos à frente'),
+    z
+      .string()
+      .min(1)
+      .regex(/^(0[1-9]|1[0-2])\/\d{4}$/, 'Formato deve ser MM/YYYY (ex: 09/2025)')
+      .refine((val) => {
+        const [mes, ano] = val.split('/').map(Number);
+        const anoAtual = new Date().getFullYear();
+        return ano >= anoAtual - 5 && ano <= anoAtual + 10;
+      }, 'Ano deve estar entre 5 anos atrás e 10 anos à frente'),
     z.literal(''),
-    z.undefined()
+    z.undefined(),
   ])
   .optional();
 
@@ -130,260 +149,305 @@ const observacaoSchema = z
 // Schema para validação de valor/hora (valores monetários)
 const valorHoraSchema = z
   .number({
-    invalid_type_error: 'Valor deve ser um número'
+    invalid_type_error: 'Valor deve ser um número',
   })
   .min(0, 'Valor não pode ser negativo')
   .max(99999.99, 'Valor não pode exceder R$ 99.999,99')
   .optional();
 
 // Schema principal para formulário de requerimento
-export const requerimentoFormSchema = z.object({
-  chamado: chamadoSchema,
-  cliente_id: z
-    .string()
-    .min(1, 'Cliente é obrigatório')
-    .uuid('ID do cliente deve ser um UUID válido'),
-  empresa_segmentacao_nome: z
-    .union([
-      z.string().min(1), // String não vazia
-      z.literal(''),     // String vazia explícita
-      z.null(),          // Null explícito
-      z.undefined()      // Undefined explícito
-    ])
-    .optional()
-    .transform(val => {
-      // Converter null ou string vazia para undefined
-      if (val === null || val === '') return undefined;
-      // Manter strings não vazias
-      return val;
-    }),
-  modulo: moduloSchema,
-  linguagem: linguagemSchema, // ✅ CORRIGIDO: Schema já é opcional internamente
-  descricao: descricaoSchema,
-  data_envio: dataSchema,
-  data_aprovacao: dataOpcionalSchema,
-  horas_funcional: horasSchema,
-  horas_tecnico: horasSchema,
-  tipo_cobranca: tipoCobrancaSchema,
-  mes_cobranca: mesCobrancaOpcionalSchema,
-  observacao: observacaoSchema,
-  // Campos de valor/hora (condicionais)
-  valor_hora_funcional: valorHoraSchema,
-  valor_hora_tecnico: valorHoraSchema,
-  // Campo de tipo de hora extra (para tipo Hora Extra - opcional)
-  // Aceita null do banco e converte para undefined
-  tipo_hora_extra: z.union([
-    z.enum(['17h30-19h30', 'apos_19h30', 'fim_semana'] as const),
-    z.null(),
-    z.undefined()
-  ]).optional().transform(val => val === null ? undefined : val),
-  // Campos de ticket (para Banco de Horas - automático baseado na empresa)
-  quantidade_tickets: z
-    .union([
-      z.string().transform((val) => {
-        if (!val || val.trim() === '') return undefined;
-        const num = parseInt(val, 10);
-        if (isNaN(num)) throw new Error('Quantidade deve ser um número inteiro');
-        return num;
+export const requerimentoFormSchema = z
+  .object({
+    chamado: chamadoSchema,
+    cliente_id: z
+      .string()
+      .min(1, 'Cliente é obrigatório')
+      .uuid('ID do cliente deve ser um UUID válido'),
+    empresa_segmentacao_nome: z
+      .union([
+        z.string().min(1), // String não vazia
+        z.literal(''), // String vazia explícita
+        z.null(), // Null explícito
+        z.undefined(), // Undefined explícito
+      ])
+      .optional()
+      .transform((val) => {
+        // Converter null ou string vazia para undefined
+        if (val === null || val === '') return undefined;
+        // Manter strings não vazias
+        return val;
       }),
-      z.number().int('Quantidade deve ser um número inteiro'),
-      z.undefined(),
-      z.null()
-    ])
-    .optional()
-    .refine((val) => val === undefined || val === null || (val >= 0 && val <= 9999), {
-      message: 'Quantidade deve ser entre 0 e 9999'
-    }),
-  // Campo de horas de análise EF (para tipo Reprovado - opcional)
-  horas_analise_ef: horasSchema.optional(),
-  // Campo de atendimento presencial (usa valores locais ao invés de remotos)
-  atendimento_presencial: z.boolean().optional(),
-  // Campo auxiliar para validação condicional de tickets (não será salvo no banco)
-  empresa_tipo_cobranca: z.string().optional()
-}).refine((data) => {
-  // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
-  if (data.data_aprovacao && data.data_aprovacao !== '') {
-    const dataEnvio = new Date(data.data_envio);
-    const dataAprovacao = new Date(data.data_aprovacao);
-    return dataAprovacao >= dataEnvio;
-  }
-  return true;
-}, {
-  message: 'Data de aprovação deve ser igual ou posterior à data de envio',
-  path: ['data_aprovacao']
-}).refine((data) => {
-  // Validação customizada: campos de valor/hora obrigatórios para tipos específicos
-  const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
-  
-  if (tiposComValorHora.includes(data.tipo_cobranca)) {
-    // Converter horas para número para comparação
-    const horasFuncionalNum = typeof data.horas_funcional === 'string' 
-      ? parseFloat(data.horas_funcional) || 0 
-      : data.horas_funcional || 0;
-    const horasTecnicoNum = typeof data.horas_tecnico === 'string' 
-      ? parseFloat(data.horas_tecnico) || 0 
-      : data.horas_tecnico || 0;
-    
-    // Se tem horas funcionais, deve ter valor/hora funcional
-    if (horasFuncionalNum > 0 && (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)) {
-      return false;
+    modulo: moduloSchema,
+    linguagem: linguagemSchema, // ✅ CORRIGIDO: Schema já é opcional internamente
+    descricao: descricaoSchema,
+    data_envio: dataSchema,
+    data_aprovacao: dataOpcionalSchema,
+    horas_funcional: horasSchema,
+    horas_tecnico: horasSchema,
+    tipo_cobranca: tipoCobrancaSchema,
+    mes_cobranca: mesCobrancaOpcionalSchema,
+    observacao: observacaoSchema,
+    // Campos de valor/hora (condicionais)
+    valor_hora_funcional: valorHoraSchema,
+    valor_hora_tecnico: valorHoraSchema,
+    // Campo de tipo de hora extra (para tipo Hora Extra - opcional)
+    // Aceita null do banco e converte para undefined
+    tipo_hora_extra: z
+      .union([
+        z.enum(['17h30-19h30', 'apos_19h30', 'fim_semana'] as const),
+        z.null(),
+        z.undefined(),
+      ])
+      .optional()
+      .transform((val) => (val === null ? undefined : val)),
+    // Campos de ticket (para Banco de Horas - automático baseado na empresa)
+    quantidade_tickets: z
+      .union([
+        z.string().transform((val) => {
+          if (!val || val.trim() === '') return undefined;
+          const num = parseInt(val, 10);
+          if (isNaN(num)) throw new Error('Quantidade deve ser um número inteiro');
+          return num;
+        }),
+        z.number().int('Quantidade deve ser um número inteiro'),
+        z.undefined(),
+        z.null(),
+      ])
+      .optional()
+      .refine((val) => val === undefined || val === null || (val >= 0 && val <= 9999), {
+        message: 'Quantidade deve ser entre 0 e 9999',
+      }),
+    // Campo de horas de análise EF (para tipo Reprovado - opcional)
+    horas_analise_ef: horasSchema.optional(),
+    // Campo de atendimento presencial (usa valores locais ao invés de remotos)
+    atendimento_presencial: z.boolean().optional(),
+    // Produto/módulo do banco (empresa liberada); a obrigatoriedade é conferida no formulário
+    destino_banco: z.string().optional(),
+    // Campo auxiliar para validação condicional de tickets (não será salvo no banco)
+    empresa_tipo_cobranca: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
+      if (data.data_aprovacao && data.data_aprovacao !== '') {
+        const dataEnvio = new Date(data.data_envio);
+        const dataAprovacao = new Date(data.data_aprovacao);
+        return dataAprovacao >= dataEnvio;
+      }
+      return true;
+    },
+    {
+      message: 'Data de aprovação deve ser igual ou posterior à data de envio',
+      path: ['data_aprovacao'],
     }
-    // Se tem horas técnicas, deve ter valor/hora técnico
-    if (horasTecnicoNum > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
-      return false;
+  )
+  .refine(
+    (data) => {
+      // Validação customizada: campos de valor/hora obrigatórios para tipos específicos
+      const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+
+      if (tiposComValorHora.includes(data.tipo_cobranca)) {
+        // Converter horas para número para comparação
+        const horasFuncionalNum =
+          typeof data.horas_funcional === 'string'
+            ? parseFloat(data.horas_funcional) || 0
+            : data.horas_funcional || 0;
+        const horasTecnicoNum =
+          typeof data.horas_tecnico === 'string'
+            ? parseFloat(data.horas_tecnico) || 0
+            : data.horas_tecnico || 0;
+
+        // Se tem horas funcionais, deve ter valor/hora funcional
+        if (
+          horasFuncionalNum > 0 &&
+          (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)
+        ) {
+          return false;
+        }
+        // Se tem horas técnicas, deve ter valor/hora técnico
+        if (horasTecnicoNum > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message:
+        'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
+      path: ['valor_hora_funcional'],
     }
-  }
-  return true;
-}, {
-  message: 'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
-  path: ['valor_hora_funcional']
-}).refine((data) => {
-  // Validação customizada: quantidade_tickets obrigatória quando tipo_cobranca é "Banco de Horas" e empresa é do tipo "ticket"
-  const tipoCobrancaBancoHoras = data.tipo_cobranca === 'Banco de Horas';
-  const empresaTipoTicket = data.empresa_tipo_cobranca === 'ticket';
-  const precisaTickets = tipoCobrancaBancoHoras && empresaTipoTicket;
-  
-  console.log('Validação de tickets:', {
-    tipo_cobranca: data.tipo_cobranca,
-    empresa_tipo_cobranca: data.empresa_tipo_cobranca,
-    quantidade_tickets: data.quantidade_tickets,
-    tipoCobrancaBancoHoras,
-    empresaTipoTicket,
-    precisaTickets
-  });
-  
-  if (precisaTickets) {
-    // Se precisa de tickets, o campo deve estar preenchido e ser maior que 0
-    const temTicketsValidos = data.quantidade_tickets !== undefined && 
-                             data.quantidade_tickets !== null && 
-                             data.quantidade_tickets > 0;
-    
-    if (!temTicketsValidos) {
-      console.log('Validação falhou: quantidade_tickets é obrigatória mas não foi preenchida');
-      return false;
+  )
+  .refine(
+    (data) => {
+      // Validação customizada: quantidade_tickets obrigatória quando tipo_cobranca é "Banco de Horas" e empresa é do tipo "ticket"
+      const tipoCobrancaBancoHoras = data.tipo_cobranca === 'Banco de Horas';
+      const empresaTipoTicket = data.empresa_tipo_cobranca === 'ticket';
+      const precisaTickets = tipoCobrancaBancoHoras && empresaTipoTicket;
+
+      console.log('Validação de tickets:', {
+        tipo_cobranca: data.tipo_cobranca,
+        empresa_tipo_cobranca: data.empresa_tipo_cobranca,
+        quantidade_tickets: data.quantidade_tickets,
+        tipoCobrancaBancoHoras,
+        empresaTipoTicket,
+        precisaTickets,
+      });
+
+      if (precisaTickets) {
+        // Se precisa de tickets, o campo deve estar preenchido e ser maior que 0
+        const temTicketsValidos =
+          data.quantidade_tickets !== undefined &&
+          data.quantidade_tickets !== null &&
+          data.quantidade_tickets > 0;
+
+        if (!temTicketsValidos) {
+          console.log('Validação falhou: quantidade_tickets é obrigatória mas não foi preenchida');
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message:
+        'Quantidade de tickets é obrigatória para empresas com cobrança por ticket quando o tipo é "Banco de Horas"',
+      path: ['quantidade_tickets'],
     }
-  }
-  return true;
-}, {
-  message: 'Quantidade de tickets é obrigatória para empresas com cobrança por ticket quando o tipo é "Banco de Horas"',
-  path: ['quantidade_tickets']
-}).refine((data) => {
-  // Validação customizada: linguagem técnica obrigatória quando há horas técnicas
-  const horasTecnicoNum = typeof data.horas_tecnico === 'string' 
-    ? parseFloat(data.horas_tecnico) || 0 
-    : data.horas_tecnico || 0;
-  
-  if (horasTecnicoNum > 0 && !data.linguagem) {
-    return false;
-  }
-  return true;
-}, {
-  message: 'Linguagem Técnica é obrigatória quando há Horas Técnicas',
-  path: ['linguagem']
-});
+  )
+  .refine(
+    (data) => {
+      // Validação customizada: linguagem técnica obrigatória quando há horas técnicas
+      const horasTecnicoNum =
+        typeof data.horas_tecnico === 'string'
+          ? parseFloat(data.horas_tecnico) || 0
+          : data.horas_tecnico || 0;
+
+      if (horasTecnicoNum > 0 && !data.linguagem) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Linguagem Técnica é obrigatória quando há Horas Técnicas',
+      path: ['linguagem'],
+    }
+  );
 
 // Schema para validação de filtros
-export const filtrosRequerimentosSchema = z.object({
-  busca: z.string().optional(),
-  modulo: z.union([
-    moduloSchema,
-    z.array(moduloSchema)
-  ]).optional(),
-  status: z.enum(['lancado', 'enviado_faturamento', 'faturado']).optional(),
-  tipo_cobranca: z.union([
-    tipoCobrancaSchema,
-    z.array(tipoCobrancaSchema)
-  ]).optional(),
-  mes_cobranca: mesCobrancaSchema.optional(),
-  cliente_id: z.string().uuid().optional(),
-  data_inicio: dataSchema.optional(),
-  data_fim: dataSchema.optional()
-}).refine((data) => {
-  // Validação customizada: data_fim deve ser >= data_inicio
-  if (data.data_inicio && data.data_fim) {
-    const dataInicio = new Date(data.data_inicio);
-    const dataFim = new Date(data.data_fim);
-    return dataFim >= dataInicio;
-  }
-  return true;
-}, {
-  message: 'Data fim deve ser igual ou posterior à data início',
-  path: ['data_fim']
-});
+export const filtrosRequerimentosSchema = z
+  .object({
+    busca: z.string().optional(),
+    modulo: z.union([moduloSchema, z.array(moduloSchema)]).optional(),
+    status: z.enum(['lancado', 'enviado_faturamento', 'faturado']).optional(),
+    tipo_cobranca: z.union([tipoCobrancaSchema, z.array(tipoCobrancaSchema)]).optional(),
+    mes_cobranca: mesCobrancaSchema.optional(),
+    cliente_id: z.string().uuid().optional(),
+    data_inicio: dataSchema.optional(),
+    data_fim: dataSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // Validação customizada: data_fim deve ser >= data_inicio
+      if (data.data_inicio && data.data_fim) {
+        const dataInicio = new Date(data.data_inicio);
+        const dataFim = new Date(data.data_fim);
+        return dataFim >= dataInicio;
+      }
+      return true;
+    },
+    {
+      message: 'Data fim deve ser igual ou posterior à data início',
+      path: ['data_fim'],
+    }
+  );
 
 // Schema para validação no envio para faturamento (mes_cobranca obrigatório)
-export const requerimentoFaturamentoSchema = z.object({
-  chamado: chamadoSchema,
-  cliente_id: z
-    .string()
-    .min(1, 'Cliente é obrigatório')
-    .uuid('ID do cliente deve ser um UUID válido'),
-  modulo: moduloSchema,
-  descricao: descricaoSchema,
-  data_envio: dataSchema,
-  data_aprovacao: dataSchema, // Obrigatório para faturamento
-  horas_funcional: horasSchema,
-  horas_tecnico: horasSchema,
-  tipo_cobranca: tipoCobrancaSchema,
-  mes_cobranca: mesCobrancaSchema, // Obrigatório para faturamento
-  observacao: observacaoSchema,
-  // Campos de valor/hora (condicionais)
-  valor_hora_funcional: valorHoraSchema,
-  valor_hora_tecnico: valorHoraSchema,
-  // Campos de ticket (para Banco de Horas - automático baseado na empresa)
-  quantidade_tickets: z
-    .union([
-      z.string().transform((val) => {
-        if (!val || val.trim() === '') return undefined;
-        const num = parseInt(val, 10);
-        if (isNaN(num)) throw new Error('Quantidade deve ser um número inteiro');
-        return num;
+export const requerimentoFaturamentoSchema = z
+  .object({
+    chamado: chamadoSchema,
+    cliente_id: z
+      .string()
+      .min(1, 'Cliente é obrigatório')
+      .uuid('ID do cliente deve ser um UUID válido'),
+    modulo: moduloSchema,
+    descricao: descricaoSchema,
+    data_envio: dataSchema,
+    data_aprovacao: dataSchema, // Obrigatório para faturamento
+    horas_funcional: horasSchema,
+    horas_tecnico: horasSchema,
+    tipo_cobranca: tipoCobrancaSchema,
+    mes_cobranca: mesCobrancaSchema, // Obrigatório para faturamento
+    observacao: observacaoSchema,
+    // Campos de valor/hora (condicionais)
+    valor_hora_funcional: valorHoraSchema,
+    valor_hora_tecnico: valorHoraSchema,
+    // Campos de ticket (para Banco de Horas - automático baseado na empresa)
+    quantidade_tickets: z
+      .union([
+        z.string().transform((val) => {
+          if (!val || val.trim() === '') return undefined;
+          const num = parseInt(val, 10);
+          if (isNaN(num)) throw new Error('Quantidade deve ser um número inteiro');
+          return num;
+        }),
+        z.number().int('Quantidade deve ser um número inteiro'),
+        z.undefined(),
+      ])
+      .optional()
+      .refine((val) => val === undefined || (val >= 0 && val <= 9999), {
+        message: 'Quantidade deve ser entre 0 e 9999',
       }),
-      z.number().int('Quantidade deve ser um número inteiro'),
-      z.undefined()
-    ])
-    .optional()
-    .refine((val) => val === undefined || (val >= 0 && val <= 9999), {
-      message: 'Quantidade deve ser entre 0 e 9999'
-    })
-}).refine((data) => {
-  // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
-  if (data.data_aprovacao && data.data_aprovacao !== '') {
-    const dataEnvio = new Date(data.data_envio);
-    const dataAprovacao = new Date(data.data_aprovacao);
-    return dataAprovacao >= dataEnvio;
-  }
-  return true;
-}, {
-  message: 'Data de aprovação deve ser igual ou posterior à data de envio',
-  path: ['data_aprovacao']
-}).refine((data) => {
-  // Validação customizada: campos de valor/hora obrigatórios para tipos específicos
-  const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
-  
-  if (tiposComValorHora.includes(data.tipo_cobranca)) {
-    // Converter horas para número para comparação
-    const horasFuncionalNum = typeof data.horas_funcional === 'string' 
-      ? parseFloat(data.horas_funcional) || 0 
-      : data.horas_funcional || 0;
-    const horasTecnicoNum = typeof data.horas_tecnico === 'string' 
-      ? parseFloat(data.horas_tecnico) || 0 
-      : data.horas_tecnico || 0;
-    
-    // Se tem horas funcionais, deve ter valor/hora funcional
-    if (horasFuncionalNum > 0 && (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)) {
-      return false;
+  })
+  .refine(
+    (data) => {
+      // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
+      if (data.data_aprovacao && data.data_aprovacao !== '') {
+        const dataEnvio = new Date(data.data_envio);
+        const dataAprovacao = new Date(data.data_aprovacao);
+        return dataAprovacao >= dataEnvio;
+      }
+      return true;
+    },
+    {
+      message: 'Data de aprovação deve ser igual ou posterior à data de envio',
+      path: ['data_aprovacao'],
     }
-    // Se tem horas técnicas, deve ter valor/hora técnico
-    if (horasTecnicoNum > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
-      return false;
+  )
+  .refine(
+    (data) => {
+      // Validação customizada: campos de valor/hora obrigatórios para tipos específicos
+      const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+
+      if (tiposComValorHora.includes(data.tipo_cobranca)) {
+        // Converter horas para número para comparação
+        const horasFuncionalNum =
+          typeof data.horas_funcional === 'string'
+            ? parseFloat(data.horas_funcional) || 0
+            : data.horas_funcional || 0;
+        const horasTecnicoNum =
+          typeof data.horas_tecnico === 'string'
+            ? parseFloat(data.horas_tecnico) || 0
+            : data.horas_tecnico || 0;
+
+        // Se tem horas funcionais, deve ter valor/hora funcional
+        if (
+          horasFuncionalNum > 0 &&
+          (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)
+        ) {
+          return false;
+        }
+        // Se tem horas técnicas, deve ter valor/hora técnico
+        if (horasTecnicoNum > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message:
+        'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
+      path: ['valor_hora_funcional'],
     }
-  }
-  return true;
-}, {
-  message: 'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
-  path: ['valor_hora_funcional']
-});
+  );
 
 // Schema para validação de email de faturamento
 export const emailFaturamentoSchema = z.object({
@@ -399,7 +463,7 @@ export const emailFaturamentoSchema = z.object({
     .string()
     .min(1, 'Corpo do email é obrigatório')
     .max(5000, 'Corpo do email deve ter no máximo 5000 caracteres'),
-  anexos: z.array(z.any()).optional()
+  anexos: z.array(z.any()).optional(),
 });
 
 // Schema para validação de busca
@@ -412,7 +476,7 @@ export const buscaRequerimentosSchema = z.object({
     .array(z.enum(['chamado', 'descricao', 'observacao', 'cliente_nome']))
     .min(1, 'Selecione pelo menos um campo para busca')
     .optional()
-    .default(['chamado', 'descricao'])
+    .default(['chamado', 'descricao']),
 });
 
 // Tipos inferidos dos schemas
