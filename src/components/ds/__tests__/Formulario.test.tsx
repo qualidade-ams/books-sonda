@@ -6,6 +6,7 @@ import {
   BarraRodape,
   CampoHoras,
   CampoNumero,
+  Escolha,
   Rotulo,
   TelaEdicao,
   TituloFaixa,
@@ -54,6 +55,26 @@ describe('CampoHoras', () => {
     fireEvent.blur(campo);
     expect(screen.getByText('ds.formulario.horasInvalidas')).toBeInTheDocument();
     expect(campo).toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
+describe('Escolha', () => {
+  it('com umaLinha, quebra a linha quando o espaço não cabe (não estoura o card)', () => {
+    render(
+      <Escolha
+        rotulo="DBA"
+        umaLinha
+        opcoes={[
+          { valor: 'a', rotulo: 'Não contratado' },
+          { valor: 'b', rotulo: 'Atendimento + Monitoramento' },
+        ]}
+        valor="a"
+        onChange={() => {}}
+      />
+    );
+    const grupo = screen.getByRole('radiogroup', { name: 'DBA' });
+    expect(grupo.className).toContain('flex-wrap');
+    expect(grupo.className).not.toMatch(/flex-nowrap/);
   });
 });
 
