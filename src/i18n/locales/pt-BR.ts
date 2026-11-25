@@ -2458,7 +2458,7 @@ const ptBR = {
     icInativos: {
       titulo: 'Agendamentos de IC Inativos ({{count}})',
       descricao:
-        'Envia aos Customer Success de todas as empresas ativas os chamados na fila AMS APL - FISCAL - ICS INATIVOS. Cada chamado vai no máximo uma vez por dia: as execuções seguintes do dia levam só os que entraram depois, e sem chamado novo nada é enviado. O que não for ajustado volta no dia seguinte.',
+        'Envia aos Customer Success de todas as empresas ativas os chamados nas filas de IC inativos (FISCAL, COMEX e GALLERY). Cada chamado vai no máximo uma vez por dia: as execuções seguintes do dia levam só os que entraram depois, e sem chamado novo nada é enviado. O que não for ajustado volta no dia seguinte.',
       vazio: 'Nenhum agendamento de IC Inativos',
       novoAgendamento: 'Novo agendamento de IC Inativos',
     },
