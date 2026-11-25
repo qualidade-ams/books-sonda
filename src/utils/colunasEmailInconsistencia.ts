@@ -5,8 +5,17 @@ import type { InconsistenciaChamado, TipoInconsistencia } from '@/types/inconsis
  * Usado tanto no HTML do email quanto na prévia do modal, para os dois ficarem iguais.
  */
 export type ChaveColunaEmail =
-  | 'empresa' | 'chamado' | 'tarefa' | 'tempo' | 'data_atividade' | 'data_sistema' | 'analista'
-  | 'cod_anterior' | 'cod_atual' | 'data_troca' | 'palavras_faltantes';
+  | 'empresa'
+  | 'chamado'
+  | 'tarefa'
+  | 'tempo'
+  | 'data_atividade'
+  | 'data_sistema'
+  | 'analista'
+  | 'cod_anterior'
+  | 'cod_atual'
+  | 'data_troca'
+  | 'palavras_faltantes';
 
 export interface ColunaEmail {
   chave: ChaveColunaEmail;
@@ -25,7 +34,10 @@ const ANALISTA: ColunaEmail = { chave: 'analista', titulo: 'Analista' };
 const COD_ANTERIOR: ColunaEmail = { chave: 'cod_anterior', titulo: 'Código Anterior' };
 const COD_ATUAL: ColunaEmail = { chave: 'cod_atual', titulo: 'Código Atual' };
 const DATA_TROCA: ColunaEmail = { chave: 'data_troca', titulo: 'Data da Troca' };
-const PALAVRAS_FALTANTES: ColunaEmail = { chave: 'palavras_faltantes', titulo: 'Palavras Faltantes' };
+const PALAVRAS_FALTANTES: ColunaEmail = {
+  chave: 'palavras_faltantes',
+  titulo: 'Palavras Faltantes',
+};
 
 const COLUNAS_POR_TIPO: Record<TipoInconsistencia, ColunaEmail[]> = {
   sem_atualizacao: [EMPRESA, CHAMADO, ANALISTA],
@@ -34,6 +46,7 @@ const COLUNAS_POR_TIPO: Record<TipoInconsistencia, ColunaEmail[]> = {
   mes_diferente: [EMPRESA, CHAMADO, TAREFA, DATA_ATIVIDADE, DATA_SISTEMA, ANALISTA],
   troca_codigo_resolucao: [EMPRESA, CHAMADO, COD_ANTERIOR, COD_ATUAL, DATA_TROCA, TEMPO, ANALISTA],
   validacao_solucao: [EMPRESA, CHAMADO, PALAVRAS_FALTANTES, ANALISTA],
+  ic_inativo: [EMPRESA, CHAMADO, ANALISTA],
 };
 
 export function colunasEmailPorTipo(tipo: TipoInconsistencia): ColunaEmail[] {
@@ -60,18 +73,29 @@ export function valorColunaEmail(
   contexto: { empresa: string; analista: string }
 ): string {
   switch (chave) {
-    case 'empresa': return contexto.empresa;
-    case 'chamado': return item.nro_chamado;
-    case 'tarefa': return item.nro_tarefa || '-';
-    case 'tempo': return item.tempo_gasto_horas || '-';
-    case 'data_atividade': return formatarData(item.data_atividade);
-    case 'data_sistema': return formatarData(item.data_sistema);
-    case 'analista': return contexto.analista;
-    case 'cod_anterior': return item.cod_resolucao_anterior || '-';
-    case 'cod_atual': return item.cod_resolucao || '-';
+    case 'empresa':
+      return contexto.empresa;
+    case 'chamado':
+      return item.nro_chamado;
+    case 'tarefa':
+      return item.nro_tarefa || '-';
+    case 'tempo':
+      return item.tempo_gasto_horas || '-';
+    case 'data_atividade':
+      return formatarData(item.data_atividade);
+    case 'data_sistema':
+      return formatarData(item.data_sistema);
+    case 'analista':
+      return contexto.analista;
+    case 'cod_anterior':
+      return item.cod_resolucao_anterior || '-';
+    case 'cod_atual':
+      return item.cod_resolucao || '-';
     // Na troca de código de resolução, data_atividade guarda a data da troca
-    case 'data_troca': return formatarData(item.data_atividade);
+    case 'data_troca':
+      return formatarData(item.data_atividade);
     // A detecção grava "Palavras faltando no campo Solução: CAUSA, PREVENÇÃO"
-    case 'palavras_faltantes': return item.descricao_inconsistencia?.split(': ').slice(1).join(': ') || '-';
+    case 'palavras_faltantes':
+      return item.descricao_inconsistencia?.split(': ').slice(1).join(': ') || '-';
   }
 }

@@ -472,6 +472,7 @@ export class InconsistenciasChamadosService {
           sem_atualizacao: 0,
           troca_codigo_resolucao: 0,
           validacao_solucao: 0,
+          ic_inativo: 0,
         },
         por_origem: {
           apontamentos: 0,

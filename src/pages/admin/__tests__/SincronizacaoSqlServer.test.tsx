@@ -303,6 +303,80 @@ describe('SincronizacaoSqlServer', () => {
     expect(screen.getByText('modal-agendamento')).toBeInTheDocument();
   });
 
+  describe('IC inativos', () => {
+    const agendamentoIc = {
+      ...agendamento,
+      id: 'i1',
+      tipo: 'ic_inativos',
+      nome: 'IC Inativos 2h',
+      tabelas: {},
+      emails_cc: ['aline.baboim@sonda.com'],
+    };
+    const abrirAba = () =>
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'sincronizacaoSql.tabs.icInativos' }));
+
+    it('agendamentos de IC inativos ficam só na aba própria, com o CC', () => {
+      estado.agendamentos = [{ ...agendamento, tipo: 'sincronizacao' }, agendamentoIc];
+      renderTela();
+
+      expect(screen.getByText('Pesquisas 2h')).toBeInTheDocument();
+      expect(screen.queryByText('IC Inativos 2h')).not.toBeInTheDocument();
+
+      abrirAba();
+
+      expect(screen.getByText('IC Inativos 2h')).toBeInTheDocument();
+      expect(screen.queryByText('Pesquisas 2h')).not.toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.icInativos.descricao')).toBeInTheDocument();
+      expect(screen.getByText('sincronizacaoSql.agendamentos.copia')).toBeInTheDocument();
+      expect(screen.getByText('aline.baboim@sonda.com')).toBeInTheDocument();
+    });
+
+    it('só a aba de IC inativos tem o botão de novo agendamento dela, que abre o modal', () => {
+      renderTela();
+      const botao = () =>
+        screen.queryByRole('button', { name: /sincronizacaoSql.icInativos.novoAgendamento/ });
+      expect(botao()).not.toBeInTheDocument();
+
+      abrirAba();
+      expect(
+        screen.queryByRole('button', { name: /sincronizacaoSql.executarAgora/ })
+      ).not.toBeInTheDocument();
+      fireEvent.click(botao()!);
+      expect(screen.getByText('modal-agendamento')).toBeInTheDocument();
+    });
+
+    it('estado vazio da aba', () => {
+      estado.agendamentos = [agendamento];
+      renderTela();
+      abrirAba();
+      expect(screen.getByText('sincronizacaoSql.icInativos.vazio')).toBeInTheDocument();
+    });
+
+    it('histórico mostra a etapa de IC inativos com o resumo', () => {
+      estado.execucoes = [
+        {
+          id: 'x9',
+          tipo: 'ic_inativos',
+          agendamento_id: 'i1',
+          origem: 'agendado',
+          disparado_por: null,
+          tabelas: {},
+          status: 'sucesso',
+          iniciado_em: '2026-11-25T12:00:00Z',
+          finalizado_em: '2026-11-25T12:00:05Z',
+          resultado: {
+            icInativos: { sucesso: true, pendentes: 3, novos: 2, enviado: true, destinatarios: 5 },
+          },
+          logs: [],
+        },
+      ];
+      renderTela('/admin/rotinas-automaticas?aba=historico');
+      const etapa = screen.getAllByText('sincronizacaoSql.tabelas.icInativos')[0];
+      expect(etapa).toHaveAttribute('title', 'sincronizacaoSql.historico.icInativosResumo');
+      estado.execucoes = [];
+    });
+  });
+
   describe('geração de books', () => {
     const agendamentoBooks = {
       ...agendamento,

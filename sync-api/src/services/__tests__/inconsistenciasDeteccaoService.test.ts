@@ -193,6 +193,36 @@ describe('executarDeteccaoInconsistencias — validação do campo Solução', (
     vi.restoreAllMocks();
   });
 
+  it('persiste e contabiliza os chamados de IC inativo devolvidos pela RPC', async () => {
+    const icInativo = detectada({
+      origem: 'tickets',
+      nro_chamado: 'IM 9600001',
+      nro_tarefa: null,
+      tipo_chamado: 'IM',
+      tipo_inconsistencia: 'ic_inativo',
+      descricao_inconsistencia: 'Item de Configuração inativo: 999999 - X',
+      chave_unica: 'tickets-IM 9600001-ic_inativo',
+    });
+
+    const fake = criarSupabaseFake((tabela, chamadas: Chamada[]) => {
+      if (tabela !== 'inconsistencias_chamados') return null;
+      return { data: chamadas.some(([m]) => m === 'upsert') ? null : [], error: null };
+    });
+    const rpc = vi.fn().mockResolvedValue({
+      data: { ic_inativo: [icInativo], totais: { ic_inativo: 1, total: 1 } },
+      error: null,
+    });
+
+    const resultado = await executarDeteccaoInconsistencias({ ...fake.cliente, rpc } as any);
+
+    expect(resultado.por_tipo.ic_inativo).toBe(1);
+    expect(resultado.novas).toBe(1);
+    const upsert = fake.consultas.flatMap((c) => c.chamadas).find(([m]) => m === 'upsert');
+    expect(upsert![1][0]).toEqual([
+      expect.objectContaining({ chave_unica: 'tickets-IM 9600001-ic_inativo', status: 'ativa' }),
+    ]);
+  });
+
   it('persiste e contabiliza as inconsistências de validação do campo Solução devolvidas pela RPC', async () => {
     const validacao = detectada({
       origem: 'tickets',

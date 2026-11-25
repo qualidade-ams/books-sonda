@@ -215,6 +215,17 @@ describe('inconsistenciasChamadosService.buscarEstatisticas', () => {
     const vazias = await inconsistenciasChamadosService.buscarEstatisticas();
     expect(vazias.por_tipo.validacao_solucao).toBe(0);
   });
+
+  it('conta o IC inativo por tipo, começando em zero', async () => {
+    vi.spyOn(inconsistenciasChamadosService, 'buscarInconsistencias').mockResolvedValue([
+      criarInconsistencia({ id: '1', tipo_inconsistencia: 'ic_inativo' }),
+      criarInconsistencia({ id: '2', tipo_inconsistencia: 'ic_inativo' }),
+    ]);
+    expect((await inconsistenciasChamadosService.buscarEstatisticas()).por_tipo.ic_inativo).toBe(2);
+
+    vi.spyOn(inconsistenciasChamadosService, 'buscarInconsistencias').mockResolvedValue([]);
+    expect((await inconsistenciasChamadosService.buscarEstatisticas()).por_tipo.ic_inativo).toBe(0);
+  });
 });
 
 describe('inconsistenciasChamadosService.buscarTarefasAntesDaTroca', () => {

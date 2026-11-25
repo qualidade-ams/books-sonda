@@ -6,10 +6,11 @@
 
 /**
  * sincronizacao = sync SQL Server → Supabase;
- * books = gera e envia para a Qualidade os books liberados e ainda não enviados.
- * As duas dividem a trava do sync-api: uma espera a outra terminar.
+ * books = gera e envia para a Qualidade os books liberados e ainda não enviados;
+ * ic_inativos = e-mail aos Customer Success com os chamados de IC inativo ainda não enviados no dia.
+ * Todas dividem a trava do sync-api: uma espera a outra terminar.
  */
-export type TipoAgendamentoSync = 'sincronizacao' | 'books';
+export type TipoAgendamentoSync = 'sincronizacao' | 'books' | 'ic_inativos';
 
 export type FrequenciaAgendamento = 'diario' | 'semanal' | 'mensal';
 export type ModoHorarioAgendamento = 'horarios' | 'intervalo';
@@ -56,6 +57,8 @@ export interface SyncAgendamento extends RegraRecorrencia {
   tabelas: TabelasSync;
   /** Só para books: empresas a gerar (vazio = todas as liberadas e ainda não enviadas) */
   empresa_ids: string[];
+  /** Só para ic_inativos: cópia do e-mail */
+  emails_cc: string[];
   proxima_execucao: string | null;
   ultima_execucao: string | null;
   ultimo_status: StatusExecucaoSync | null;
@@ -70,6 +73,7 @@ export type SyncAgendamentoInput = RegraRecorrencia & {
   ativo: boolean;
   tabelas: TabelasSync;
   empresa_ids: string[];
+  emails_cc: string[];
 };
 
 export interface LogExecucaoSync {

@@ -60,8 +60,24 @@ export interface ResumoModoSombra {
   erros: number;
 }
 
-/** sincronizacao = sync SQL Server; books = geração e envio automático de books para a Qualidade */
-export type TipoExecucao = 'sincronizacao' | 'books';
+/**
+ * sincronizacao = sync SQL Server; books = geração e envio automático de books para a Qualidade;
+ * ic_inativos = e-mail aos Customer Success com os chamados de IC inativo ainda não enviados no dia
+ */
+export type TipoExecucao = 'sincronizacao' | 'books' | 'ic_inativos';
+
+/** Resultado do envio de IC inativos (services/envioIcInativosService.ts) */
+export interface ResumoIcInativos {
+  pendentes: number;
+  novos: number;
+  enviado: boolean;
+  destinatarios: number;
+}
+
+export interface ContextoIcInativos {
+  emailsCc: string[];
+  log(mensagem: string, nivel?: 'info' | 'erro'): void;
+}
 
 /** Resultado da geração automática de books (devolvido pelo pacote vendor/geracaoBooks.cjs) */
 export interface ResumoGeracaoBooks {
@@ -92,6 +108,8 @@ export interface DependenciasOrquestrador {
   etapas: EtapasSync;
   /** Geração automática de books; ausente quando o servidor não tem o pacote configurado */
   gerarBooks?: (contexto: ContextoGeracaoBooks) => Promise<ResumoGeracaoBooks>;
+  /** Envio de IC inativos aos Customer Success */
+  enviarIcInativos?: (contexto: ContextoIcInativos) => Promise<ResumoIcInativos>;
   /** Confere se o banco réplica foi atualizado (abre/resolve a notificação no sino); só na sincronização */
   verificarReplica?: (pool: sql.ConnectionPool) => Promise<{ atrasada: boolean; mensagem: string | null; tabelas: any[] }>;
   /** Intervalo de gravação parcial dos logs; 0 desliga (só grava no fim) */
@@ -109,6 +127,8 @@ export interface ParametrosExecucao {
   responsavelId?: string | null;
   /** Só para books: restringe a estas empresas (vazio = todas) */
   empresaIds?: string[];
+  /** Só para ic_inativos: cópia do e-mail (CC da rotina) */
+  emailsCc?: string[];
 }
 
 export type InicioExecucao =
@@ -141,6 +161,7 @@ const ROTULOS: Record<string, string> = {
   ajustesRetroativos: 'Ajustes retroativos do banco de horas',
   modoSombra: 'Modo sombra (Comparação Legado x Novo)',
   gerarBooks: 'Geração de books',
+  icInativos: 'Envio de IC inativos',
 };
 
 // Tabelas com linha em sync_metadata (usada em "última sincronização")
@@ -250,7 +271,9 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       const execucao =
         tipo === 'books'
           ? executarBooks(execucaoId, params.usuarioId ?? params.responsavelId ?? null, params.empresaIds ?? [])
-          : executar(execucaoId, params.tabelas);
+          : tipo === 'ic_inativos'
+            ? executarIcInativos(execucaoId, params.emailsCc ?? [])
+            : executar(execucaoId, params.tabelas);
       const conclusao = execucao.finally(() => {
         ocupado = false;
       });
@@ -310,6 +333,32 @@ export function criarOrquestradorSync(deps: DependenciasOrquestrador) {
       status = 'erro';
       resultado.gerarBooks = { sucesso: false, erro: mensagemDeErro(e), duracao_ms: Date.now() - inicio };
       log(`${ROTULOS.gerarBooks}: falhou — ${mensagemDeErro(e)}`, 'erro');
+    } finally {
+      if (timerLogs) clearInterval(timerLogs);
+      await finalizar(execucaoId, status, resultado, logs);
+    }
+
+    return status;
+  }
+
+  async function executarIcInativos(execucaoId: string, emailsCc: string[]): Promise<StatusExecucao> {
+    const { logs, log, gravarLogs } = criarRegistroLogs(execucaoId);
+    const resultado: Record<string, any> = {};
+    const timerLogs = intervaloLogs > 0 ? setInterval(gravarLogs, intervaloLogs) : null;
+    const inicio = Date.now();
+    let status: StatusExecucao = 'erro';
+
+    try {
+      log(`${ROTULOS.icInativos}: iniciando`);
+      if (!deps.enviarIcInativos) throw new Error('Envio de IC inativos não configurado neste servidor');
+
+      const r = await deps.enviarIcInativos({ emailsCc, log });
+      status = 'sucesso';
+      resultado.icInativos = { ...r, sucesso: true, duracao_ms: Date.now() - inicio };
+    } catch (e) {
+      status = 'erro';
+      resultado.icInativos = { sucesso: false, erro: mensagemDeErro(e), duracao_ms: Date.now() - inicio };
+      log(`${ROTULOS.icInativos}: falhou — ${mensagemDeErro(e)}`, 'erro');
     } finally {
       if (timerLogs) clearInterval(timerLogs);
       await finalizar(execucaoId, status, resultado, logs);

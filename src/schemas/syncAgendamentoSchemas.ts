@@ -17,6 +17,17 @@ import type {
 
 const V = 'sincronizacaoSql.validacao';
 const REGEX_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+const REGEX_EMAIL_CC = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** E-mails do CC digitados com ; ou , — sem vazios nem repetição */
+const extrairEmailsCc = (texto: string) => [
+  ...new Set(
+    (texto || '')
+      .split(/[;,]/)
+      .map((e) => e.trim())
+      .filter(Boolean)
+  ),
+];
 
 export const TABELAS_SYNC = [
   'pesquisas',
@@ -80,13 +91,15 @@ export function validarRegraRecorrenciaForm(v: RegraRecorrenciaFormValues, ctx: 
 
 export const agendamentoFormSchema = z
   .object({
-    tipo: z.enum(['sincronizacao', 'books']),
+    tipo: z.enum(['sincronizacao', 'books', 'ic_inativos']),
     nome: z.string().trim().min(1, `${V}.nomeObrigatorio`).max(120),
     ativo: z.boolean(),
     tabelas: tabelasSchema,
     // Só para books: todas as empresas liberadas ou somente as selecionadas
     empresas_modo: z.enum(['todas', 'selecionadas']),
     empresa_ids: z.array(z.string()),
+    // Só para IC inativos: cópia do e-mail, separada por ; ou ,
+    emails_cc_texto: z.string(),
     ...camposRegraRecorrenciaSchema,
   })
   .superRefine((v, ctx) => {
@@ -103,6 +116,16 @@ export const agendamentoFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ['empresa_ids'],
         message: `${V}.empresaObrigatoria`,
+      });
+    }
+    if (
+      v.tipo === 'ic_inativos' &&
+      extrairEmailsCc(v.emails_cc_texto).some((e) => !REGEX_EMAIL_CC.test(e))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['emails_cc_texto'],
+        message: `${V}.emailCcInvalido`,
       });
     }
     validarRegraRecorrenciaForm(v, ctx);
@@ -128,10 +151,22 @@ export function valoresIniciaisRegraRecorrencia(): RegraRecorrenciaFormValues {
 export function valoresIniciaisAgendamento(
   tipo: TipoAgendamentoSync = 'sincronizacao'
 ): AgendamentoFormValues {
+  // IC inativos: de 2 em 2 horas, das 09:00 às 17:00 (janela de envio aos Customer Success)
+  const regraInicial: RegraRecorrenciaFormValues =
+    tipo === 'ic_inativos'
+      ? {
+          ...valoresIniciaisRegraRecorrencia(),
+          modo_horario: 'intervalo',
+          intervalo_horas: 2,
+          hora_inicio: '09:00',
+          hora_fim: '17:00',
+        }
+      : valoresIniciaisRegraRecorrencia();
   return {
     tipo,
     empresas_modo: 'todas',
     empresa_ids: [],
+    emails_cc_texto: '',
     nome: '',
     ativo: true,
     tabelas: {
@@ -144,7 +179,7 @@ export function valoresIniciaisAgendamento(
       ajustesRetroativos: true,
       modoSombra: true,
     },
-    ...valoresIniciaisRegraRecorrencia(),
+    ...regraInicial,
   };
 }
 
@@ -189,9 +224,10 @@ export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendame
     tipo: v.tipo,
     nome: v.nome.trim(),
     ativo: v.ativo,
-    tabelas: v.tipo === 'books' ? {} : { ...v.tabelas },
+    tabelas: v.tipo === 'sincronizacao' ? { ...v.tabelas } : {},
     empresa_ids:
       v.tipo === 'books' && v.empresas_modo === 'selecionadas' ? [...new Set(v.empresa_ids)] : [],
+    emails_cc: v.tipo === 'ic_inativos' ? extrairEmailsCc(v.emails_cc_texto) : [],
     ...regraFormParaRegra(v),
   };
 }
@@ -200,9 +236,10 @@ export function formParaAgendamentoInput(v: AgendamentoFormValues): SyncAgendame
 export function agendamentoParaForm(ag: SyncAgendamento): AgendamentoFormValues {
   const t = ag.tabelas || {};
   return {
-    tipo: ag.tipo === 'books' ? 'books' : 'sincronizacao',
+    tipo: ag.tipo === 'books' || ag.tipo === 'ic_inativos' ? ag.tipo : 'sincronizacao',
     empresas_modo: ag.empresa_ids?.length ? 'selecionadas' : 'todas',
     empresa_ids: ag.empresa_ids ?? [],
+    emails_cc_texto: (ag.emails_cc ?? []).join('; '),
     nome: ag.nome,
     ativo: ag.ativo,
     tabelas: {

@@ -2064,6 +2064,9 @@ const es = {
     noUpdate16Days: 'Sin Actualización 16+ días',
     resolutionCodeChange: 'Cambio de código de resolución',
     solutionFieldValidation: 'Validación campo Solución',
+    icInactive: 'IC Inactivos',
+    monitoringSubtitle:
+      'Cambios de código de resolución que modificaron el cobro del banco de horas y tickets con IC inactivo',
     resolutionCodeChangeSubtitle:
       'Cambios de código de resolución que modificaron el cobro del banco de horas',
     // Pestañas
@@ -2371,6 +2374,7 @@ const es = {
     tabs: {
       agendamentos: 'Sincronización Aranda',
       books: 'Generación de Books',
+      icInativos: 'IC Inactivos',
       saldoParcial: 'Saldo Parcial',
       historico: 'Historial de ejecuciones',
     },
@@ -2381,6 +2385,7 @@ const es = {
       recorrencia: 'Recurrencia',
       tabelas: 'Tablas',
       empresas: 'Empresas',
+      copia: 'Con copia',
       proxima: 'Próxima ejecución',
       ultima: 'Última ejecución',
       status: 'Estado',
@@ -2418,6 +2423,7 @@ const es = {
       booksResumo:
         'Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados · {{erros}} con error · {{pulados}} omitidos',
       booksSelecionadas: 'Solo {{count}} empresa(s) seleccionada(s)',
+      icInativosResumo: '{{pendentes}} ticket(s) pendiente(s) · {{novos}} enviado(s) ahora',
       comparacao: {
         titulo: 'Comparación SQL Server x Supabase',
         sqlServer: 'SQL Server',
@@ -2448,6 +2454,13 @@ const es = {
         'Los books liberados y aún no enviados del período de referencia se generarán y enviarán a Calidad. El progreso aparece en el historial de ejecuciones.',
       confirmarGerar: 'Generar y enviar',
     },
+    icInativos: {
+      titulo: 'Programaciones de IC Inactivos ({{count}})',
+      descricao:
+        'Envía a los Customer Success de todas las empresas activas los tickets con IC 999999 o en la cola AMS APL - FISCAL - ICS INATIVOS. Cada ticket se envía como máximo una vez al día: las ejecuciones siguientes del día llevan solo los que entraron después y, sin tickets nuevos, no se envía nada. Lo que no se corrija vuelve al día siguiente.',
+      vazio: 'Ninguna programación de IC Inactivos',
+      novoAgendamento: 'Nueva programación de IC Inactivos',
+    },
     empresas: {
       titulo: 'Empresas',
       todas: 'Todas las empresas liberadas y aún no enviadas',
@@ -2470,6 +2483,7 @@ const es = {
       ajustesRetroativos: 'Ajustes retroactivos',
       modoSombra: 'Modo sombra (Comparación Legado x Nuevo)',
       gerarBooks: 'Generación de books',
+      icInativos: 'IC Inactivos',
     },
     form: {
       tituloNovo: 'Nueva programación',
@@ -2481,6 +2495,14 @@ const es = {
       descricao: 'Los horarios siguen la zona horaria de São Paulo.',
       nome: 'Nombre',
       nomePlaceholder: 'Ej.: Encuestas cada 2 horas',
+      tituloNovoIc: 'Nueva programación de IC Inactivos',
+      tituloEditarIc: 'Editar programación de IC Inactivos',
+      descricaoIc:
+        'Envía a los Customer Success los tickets de IC inactivo aún no enviados en el día. Los horarios siguen el huso de São Paulo.',
+      copia: 'Con copia',
+      copiaPlaceholder: 'correos separados por ;',
+      copiaAjuda:
+        'Además de todos los Customer Success de las empresas activas, que siempre lo reciben.',
       tabelas: 'Tablas',
       posProcessamento: 'Posprocesamiento',
       ajustesRetroativosAjuda: 'Se ejecuta junto con Registros de horas',
@@ -2512,6 +2534,7 @@ const es = {
     },
     validacao: {
       empresaObrigatoria: 'Seleccione al menos una empresa',
+      emailCcInvalido: 'Hay un correo inválido en la copia',
       nomeObrigatorio: 'Ingrese el nombre',
       tabelaObrigatoria: 'Seleccione al menos una tabla',
       diaSemanaObrigatorio: 'Seleccione al menos un día de la semana',

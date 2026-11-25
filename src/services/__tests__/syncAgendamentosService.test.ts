@@ -18,7 +18,8 @@ function mockBuilder(resultado: { data: any; error: any }) {
     {},
     {
       get(_a, prop: string) {
-        if (prop === 'then') return (ok: any, falha: any) => Promise.resolve(resultado).then(ok, falha);
+        if (prop === 'then')
+          return (ok: any, falha: any) => Promise.resolve(resultado).then(ok, falha);
         return (...args: any[]) => {
           chamadas.push([prop, args]);
           if (prop === 'single' || prop === 'maybeSingle') return Promise.resolve(resultado);
@@ -34,6 +35,7 @@ function mockBuilder(resultado: { data: any; error: any }) {
 const input: SyncAgendamentoInput = {
   tipo: 'sincronizacao',
   empresa_ids: [],
+  emails_cc: [],
   nome: 'Diário',
   ativo: true,
   tabelas: { pesquisas: true },
@@ -120,7 +122,9 @@ describe('syncAgendamentosService — sync-api', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('fetch', fetchMock);
-    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: { access_token: 'tok' } } });
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: { access_token: 'tok' } },
+    });
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -145,7 +149,9 @@ describe('syncAgendamentosService — sync-api', () => {
   });
 
   it('executarAgora explica quando já há sincronização em andamento', async () => {
-    fetchMock.mockResolvedValue(resposta(409, { erro: 'Já existe uma sincronização em andamento' }));
+    fetchMock.mockResolvedValue(
+      resposta(409, { erro: 'Já existe uma sincronização em andamento' })
+    );
     await expect(syncAgendamentosService.executarAgora({ pesquisas: true })).rejects.toThrow(
       'Já existe uma sincronização em andamento'
     );
@@ -174,13 +180,17 @@ describe('syncAgendamentosService — sync-api', () => {
   });
 
   it('gerarBooksAgora explica quando há execução em andamento', async () => {
-    fetchMock.mockResolvedValue(resposta(409, { erro: 'Já existe uma sincronização ou geração de books em andamento' }));
+    fetchMock.mockResolvedValue(
+      resposta(409, { erro: 'Já existe uma sincronização ou geração de books em andamento' })
+    );
     await expect(syncAgendamentosService.gerarBooksAgora()).rejects.toThrow(/em andamento/);
   });
 
   it('executarAgora falha sem sessão', async () => {
     (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
-    await expect(syncAgendamentosService.executarAgora({ pesquisas: true })).rejects.toThrow(/sessão/i);
+    await expect(syncAgendamentosService.executarAgora({ pesquisas: true })).rejects.toThrow(
+      /sessão/i
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -210,6 +220,8 @@ describe('syncAgendamentosService — sync-api', () => {
 
   it('preverExecucoes repassa os erros de validação', async () => {
     fetchMock.mockResolvedValue(resposta(400, { erros: ['Informe ao menos um horário'] }));
-    await expect(syncAgendamentosService.preverExecucoes(input)).rejects.toThrow('Informe ao menos um horário');
+    await expect(syncAgendamentosService.preverExecucoes(input)).rejects.toThrow(
+      'Informe ao menos um horário'
+    );
   });
 });
