@@ -21582,8 +21582,9 @@ function fiscalIncompleto(f) {
   if (f.modalidade === null || f.edocs24x7 === null || f.atualizacaoContratada === null)
     return true;
   if (f.atualizacaoContratada && f.atualizacoesPorAno === null) return true;
+  if (f.bancoDados === null) return true;
   if (f.modalidade !== "on_premise") return false;
-  if (f.dba === null || f.bancoDados === null) return true;
+  if (f.dba === null) return true;
   const atendimento = f.dba === "atendimento" || f.dba === "atendimento_monitoramento";
   const monitoramento = f.dba === "monitoramento" || f.dba === "atendimento_monitoramento";
   return atendimento && f.minutosAtendimento === null || monitoramento && f.minutosMonitoramento === null;
