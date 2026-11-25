@@ -89,9 +89,9 @@ describe('calcularPendencias (RN-35)', () => {
     expect(com({ atualizacoesPorAno: null })).toEqual(['contrato_fiscal']);
     expect(com({ atualizacaoContratada: false, atualizacoesPorAno: null })).toEqual([]);
     expect(com({ bancoDados: null })).toEqual(['contrato_fiscal']);
-    expect(
-      com({ modalidade: 'saas', dba: null, bancoDados: null, minutosAtendimento: null })
-    ).toEqual([]);
+    // SaaS: sem DBA, mas o banco de dados também é obrigatório
+    expect(com({ modalidade: 'saas', dba: null, minutosAtendimento: null })).toEqual([]);
+    expect(com({ modalidade: 'saas', dba: null, bancoDados: null })).toEqual(['contrato_fiscal']);
     expect(com({ minutosAtendimento: null })).toEqual(['contrato_fiscal']);
     expect(com({ dba: 'atendimento_monitoramento' })).toEqual(['contrato_fiscal']);
     expect(com({ dba: 'nao_contratado', minutosAtendimento: null })).toEqual([]);
@@ -142,7 +142,7 @@ const contratoCompleto = {
   fiscal_dba: null,
   fiscal_dba_minutos_atendimento: null,
   fiscal_dba_minutos_monitoramento: null,
-  fiscal_banco_dados: null,
+  fiscal_banco_dados: 'oracle',
 };
 
 function cenario(rpcs: Record<string, (args: any) => any> = {}) {
@@ -396,7 +396,7 @@ describe('EmpresasService.carregar', () => {
         dba: null,
         minutosAtendimento: null,
         minutosMonitoramento: null,
-        bancoDados: null,
+        bancoDados: 'oracle',
       },
     });
   });

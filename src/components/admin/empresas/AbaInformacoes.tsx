@@ -139,14 +139,16 @@ function Leitura({ empresa, ramos }: { empresa: EmpresaDetalhe; ramos: RamoAtivi
                 {temMonitoramento(f.dba) && (
                   <Valor rotulo={r('horasMonitoramento')}>{horas(f.minutosMonitoramento)}</Valor>
                 )}
-                <Valor rotulo={r('bancoDados')}>
-                  {f.bancoDados === 'sql_server'
-                    ? r('sqlServer')
-                    : f.bancoDados === 'oracle'
-                      ? r('oracle')
-                      : vazio}
-                </Valor>
               </>
+            )}
+            {f.modalidade && (
+              <Valor rotulo={r('bancoDados')}>
+                {f.bancoDados === 'sql_server'
+                  ? r('sqlServer')
+                  : f.bancoDados === 'oracle'
+                    ? r('oracle')
+                    : vazio}
+              </Valor>
             )}
           </dl>
         </Card>
@@ -390,63 +392,66 @@ export function AbaInformacoes({
                   />
                 </div>
               )}
-              {fiscal.modalidade === 'on_premise' && (
-                <div className="space-y-5 border-t border-ds-border pt-5">
-                  <div>
-                    <Rotulo obrigatorio>{r('dba')}</Rotulo>
-                    <Escolha
-                      rotulo={r('dba')}
-                      umaLinha
-                      opcoes={DBAS.map((d) => ({
-                        valor: d,
-                        rotulo: t(`empresasCadastro.informacoes.dbaOpcoes.${d}`),
-                      }))}
-                      valor={fiscal.dba}
-                      onChange={(v) => alterarFiscal('dba', v)}
-                    />
-                  </div>
-                  {(temAtendimento(fiscal.dba) || temMonitoramento(fiscal.dba)) && (
-                    <div className="grid items-end gap-4 sm:grid-cols-2">
-                      {temAtendimento(fiscal.dba) && (
-                        <div>
-                          <Rotulo obrigatorio htmlFor="horas-atendimento">
-                            {r('horasAtendimento')}
-                          </Rotulo>
-                          <CampoHoras
-                            id="horas-atendimento"
-                            valor={rascunho.horasAtendimento}
-                            onChange={(v) => alterar({ horasAtendimento: v })}
-                          />
-                        </div>
-                      )}
-                      {temMonitoramento(fiscal.dba) && (
-                        <div>
-                          <Rotulo obrigatorio htmlFor="horas-monitoramento">
-                            {r('horasMonitoramento')}
-                          </Rotulo>
-                          <CampoHoras
-                            id="horas-monitoramento"
-                            valor={rascunho.horasMonitoramento}
-                            onChange={(v) => alterar({ horasMonitoramento: v })}
-                          />
-                        </div>
-                      )}
+              {/* DBA só em On Premise; o banco de dados vale para as duas modalidades */}
+              <div className="space-y-5 border-t border-ds-border pt-5">
+                {fiscal.modalidade === 'on_premise' && (
+                  <>
+                    <div>
+                      <Rotulo obrigatorio>{r('dba')}</Rotulo>
+                      <Escolha
+                        rotulo={r('dba')}
+                        umaLinha
+                        opcoes={DBAS.map((d) => ({
+                          valor: d,
+                          rotulo: t(`empresasCadastro.informacoes.dbaOpcoes.${d}`),
+                        }))}
+                        valor={fiscal.dba}
+                        onChange={(v) => alterarFiscal('dba', v)}
+                      />
                     </div>
-                  )}
-                  <div>
-                    <Rotulo obrigatorio>{r('bancoDados')}</Rotulo>
-                    <Escolha
-                      rotulo={r('bancoDados')}
-                      opcoes={[
-                        { valor: 'sql_server', rotulo: r('sqlServer') },
-                        { valor: 'oracle', rotulo: r('oracle') },
-                      ]}
-                      valor={fiscal.bancoDados}
-                      onChange={(v) => alterarFiscal('bancoDados', v)}
-                    />
-                  </div>
+                    {(temAtendimento(fiscal.dba) || temMonitoramento(fiscal.dba)) && (
+                      <div className="grid items-end gap-4 sm:grid-cols-2">
+                        {temAtendimento(fiscal.dba) && (
+                          <div>
+                            <Rotulo obrigatorio htmlFor="horas-atendimento">
+                              {r('horasAtendimento')}
+                            </Rotulo>
+                            <CampoHoras
+                              id="horas-atendimento"
+                              valor={rascunho.horasAtendimento}
+                              onChange={(v) => alterar({ horasAtendimento: v })}
+                            />
+                          </div>
+                        )}
+                        {temMonitoramento(fiscal.dba) && (
+                          <div>
+                            <Rotulo obrigatorio htmlFor="horas-monitoramento">
+                              {r('horasMonitoramento')}
+                            </Rotulo>
+                            <CampoHoras
+                              id="horas-monitoramento"
+                              valor={rascunho.horasMonitoramento}
+                              onChange={(v) => alterar({ horasMonitoramento: v })}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+                <div>
+                  <Rotulo obrigatorio>{r('bancoDados')}</Rotulo>
+                  <Escolha
+                    rotulo={r('bancoDados')}
+                    opcoes={[
+                      { valor: 'sql_server', rotulo: r('sqlServer') },
+                      { valor: 'oracle', rotulo: r('oracle') },
+                    ]}
+                    valor={fiscal.bancoDados}
+                    onChange={(v) => alterarFiscal('bancoDados', v)}
+                  />
                 </div>
-              )}
+              </div>
             </div>
           </Card>
         )}
