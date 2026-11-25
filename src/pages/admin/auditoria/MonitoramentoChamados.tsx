@@ -4,7 +4,7 @@ import { TIPOS_TELA_MONITORAMENTO } from '@/types/inconsistenciasChamados';
 
 /**
  * Monitoramento de Chamados: mesma tela de inconsistências, restrita à troca
- * de código de resolução e ao IC inativo (IC 999999 ou fila ICS INATIVOS).
+ * de código de resolução e ao IC inativo (fila AMS APL - FISCAL - ICS INATIVOS).
  */
 export default function MonitoramentoChamados() {
   const { t } = useTranslation();

@@ -2451,7 +2451,7 @@ const en = {
     icInativos: {
       titulo: 'Inactive CI schedules ({{count}})',
       descricao:
-        'Sends the Customer Success of every active company the tickets with CI 999999 or in the AMS APL - FISCAL - ICS INATIVOS queue. Each ticket is sent at most once a day: later runs that day carry only the ones that came in afterwards, and nothing is sent when there is nothing new. Whatever is not fixed comes back the next day.',
+        'Sends the Customer Success of every active company the tickets in the AMS APL - FISCAL - ICS INATIVOS queue. Each ticket is sent at most once a day: later runs that day carry only the ones that came in afterwards, and nothing is sent when there is nothing new. Whatever is not fixed comes back the next day.',
       vazio: 'No Inactive CI schedule',
       novoAgendamento: 'New Inactive CI schedule',
     },
