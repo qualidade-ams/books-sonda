@@ -34713,6 +34713,7 @@ var rotinasSaldoParcial = {
     secaoEmpresas: "Empresas",
     buscarEmpresa: "Buscar empresa",
     emOutro: "em {{nome}}",
+    cs: "Customer Success: {{email}}",
     marcadas: {
       um: "{{n}} empresa marcada",
       varios: "{{n}} empresas marcadas"
@@ -34720,7 +34721,7 @@ var rotinasSaldoParcial = {
     secaoEmail: "E-mail",
     copia: "Com c\xF3pia",
     copiaPlaceholder: "e-mail e Enter",
-    copiaAjuda: "O gestor de cada empresa marcada entra na c\xF3pia.",
+    copiaAjuda: "O Customer Success de cada empresa vai em c\xF3pia automaticamente, conforme o cadastro da empresa. Inclua aqui s\xF3 as c\xF3pias extras.",
     emailInvalido: "E-mail inv\xE1lido"
   },
   exportar: {
@@ -37146,6 +37147,7 @@ var rotinasSaldoParcial2 = {
     secaoEmpresas: "Companies",
     buscarEmpresa: "Search company",
     emOutro: "in {{nome}}",
+    cs: "Customer Success: {{email}}",
     marcadas: {
       um: "{{n}} company selected",
       varios: "{{n}} companies selected"
@@ -37153,7 +37155,7 @@ var rotinasSaldoParcial2 = {
     secaoEmail: "E-mail",
     copia: "Copy to",
     copiaPlaceholder: "e-mail and Enter",
-    copiaAjuda: "The manager of each selected company is copied.",
+    copiaAjuda: "Each company's Customer Success is copied automatically, as registered for the company. Add only extra copies here.",
     emailInvalido: "Invalid e-mail"
   },
   exportar: {
@@ -39576,6 +39578,7 @@ var rotinasSaldoParcial3 = {
     secaoEmpresas: "Empresas",
     buscarEmpresa: "Buscar empresa",
     emOutro: "en {{nome}}",
+    cs: "Customer Success: {{email}}",
     marcadas: {
       um: "{{n}} empresa marcada",
       varios: "{{n}} empresas marcadas"
@@ -39583,7 +39586,7 @@ var rotinasSaldoParcial3 = {
     secaoEmail: "Correo",
     copia: "Con copia",
     copiaPlaceholder: "correo y Enter",
-    copiaAjuda: "El gestor de cada empresa marcada va en copia.",
+    copiaAjuda: "El Customer Success de cada empresa va en copia autom\xE1ticamente, seg\xFAn el registro de la empresa. Incluya aqu\xED solo las copias adicionales.",
     emailInvalido: "Correo inv\xE1lido"
   },
   exportar: {
