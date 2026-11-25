@@ -34714,6 +34714,9 @@ var rotinasSaldoParcial = {
     buscarEmpresa: "Buscar empresa",
     emOutro: "em {{nome}}",
     cs: "Customer Success: {{email}}",
+    copiaCs: "Customer Success das empresas marcadas",
+    copiaCsChip: "{{email}} (Customer Success)",
+    copiaCsDica: "Vem do cadastro da empresa. Para trocar, altere o Customer Success no cadastro.",
     marcadas: {
       um: "{{n}} empresa marcada",
       varios: "{{n}} empresas marcadas"
@@ -34721,7 +34724,6 @@ var rotinasSaldoParcial = {
     secaoEmail: "E-mail",
     copia: "Com c\xF3pia",
     copiaPlaceholder: "e-mail e Enter",
-    copiaAjuda: "O Customer Success de cada empresa vai em c\xF3pia automaticamente, conforme o cadastro da empresa. Inclua aqui s\xF3 as c\xF3pias extras.",
     emailInvalido: "E-mail inv\xE1lido"
   },
   exportar: {
@@ -37148,6 +37150,9 @@ var rotinasSaldoParcial2 = {
     buscarEmpresa: "Search company",
     emOutro: "in {{nome}}",
     cs: "Customer Success: {{email}}",
+    copiaCs: "Customer Success of the selected companies",
+    copiaCsChip: "{{email}} (Customer Success)",
+    copiaCsDica: "Comes from the company's record. To change it, update the Customer Success there.",
     marcadas: {
       um: "{{n}} company selected",
       varios: "{{n}} companies selected"
@@ -37155,7 +37160,6 @@ var rotinasSaldoParcial2 = {
     secaoEmail: "E-mail",
     copia: "Copy to",
     copiaPlaceholder: "e-mail and Enter",
-    copiaAjuda: "Each company's Customer Success is copied automatically, as registered for the company. Add only extra copies here.",
     emailInvalido: "Invalid e-mail"
   },
   exportar: {
@@ -39579,6 +39583,9 @@ var rotinasSaldoParcial3 = {
     buscarEmpresa: "Buscar empresa",
     emOutro: "en {{nome}}",
     cs: "Customer Success: {{email}}",
+    copiaCs: "Customer Success de las empresas marcadas",
+    copiaCsChip: "{{email}} (Customer Success)",
+    copiaCsDica: "Viene del registro de la empresa. Para cambiarlo, modifique el Customer Success en el registro.",
     marcadas: {
       um: "{{n}} empresa marcada",
       varios: "{{n}} empresas marcadas"
@@ -39586,7 +39593,6 @@ var rotinasSaldoParcial3 = {
     secaoEmail: "Correo",
     copia: "Con copia",
     copiaPlaceholder: "correo y Enter",
-    copiaAjuda: "El Customer Success de cada empresa va en copia autom\xE1ticamente, seg\xFAn el registro de la empresa. Incluya aqu\xED solo las copias adicionales.",
     emailInvalido: "Correo inv\xE1lido"
   },
   exportar: {

@@ -165,6 +165,41 @@ describe('EdicaoAgendamento', () => {
     expect(chipsDoCc()).toEqual([]);
   });
 
+  it('o Customer Success das empresas marcadas aparece na cópia, sem remover e sem ser gravado', async () => {
+    const user = userEvent.setup();
+    renderizar();
+    const csNaCopia = () =>
+      within(screen.getByRole('list', { name: 'rotinasSaldoParcial.edicao.copiaCs' }))
+        .queryAllByRole('listitem')
+        .map((li) => li.textContent);
+
+    // A e B têm o mesmo CS: aparece uma vez só
+    await user.click(empresa('CLIENTE A'));
+    await user.click(empresa('CLIENTE B'));
+    await user.click(empresa('CLIENTE C'));
+    expect(csNaCopia()).toEqual([
+      expect.stringMatching(/edicao.copiaCsChip.*gestor.ab@sonda.com/),
+      expect.stringMatching(/edicao.copiaCsChip.*gestor.c@sonda.com/),
+    ]);
+    const lista = screen.getByRole('list', { name: 'rotinasSaldoParcial.edicao.copiaCs' });
+    expect(within(lista).queryByRole('button')).not.toBeInTheDocument();
+    // Os chips já mostram o CS: sem texto de ajuda embaixo do campo
+    expect(screen.queryByText('rotinasSaldoParcial.edicao.copiaAjuda')).not.toBeInTheDocument();
+
+    // Já digitado como cópia extra: não repete
+    await user.type(cc(), 'GESTOR.C@sonda.com{Enter}');
+    expect(csNaCopia()).toEqual([expect.stringMatching(/gestor.ab@sonda.com/)]);
+
+    await user.click(empresa('CLIENTE A'));
+    await user.click(empresa('CLIENTE B'));
+    expect(csNaCopia()).toEqual([]);
+
+    await user.type(screen.getByLabelText(/rotinasSaldoParcial.edicao.nome/), 'Parcial');
+    await user.click(screen.getByRole('button', { name: 'rotinasSaldoParcial.edicao.criar' }));
+    await waitFor(() => expect(salvar.mutateAsync).toHaveBeenCalled());
+    expect(salvar.mutateAsync.mock.calls[0][0].dados.emails_cc).toEqual(['GESTOR.C@sonda.com']);
+  });
+
   it('mostra o Customer Success atual ao lado de cada empresa', () => {
     renderizar();
     const c = empresa('CLIENTE C').closest('label')!;

@@ -149,6 +149,10 @@ const rotinasSaldoParcial = {
     buscarEmpresa: 'Buscar empresa',
     emOutro: 'en {{nome}}',
     cs: 'Customer Success: {{email}}',
+    copiaCs: 'Customer Success de las empresas marcadas',
+    copiaCsChip: '{{email}} (Customer Success)',
+    copiaCsDica:
+      'Viene del registro de la empresa. Para cambiarlo, modifique el Customer Success en el registro.',
     marcadas: {
       um: '{{n}} empresa marcada',
       varios: '{{n}} empresas marcadas',
@@ -156,8 +160,6 @@ const rotinasSaldoParcial = {
     secaoEmail: 'Correo',
     copia: 'Con copia',
     copiaPlaceholder: 'correo y Enter',
-    copiaAjuda:
-      'El Customer Success de cada empresa va en copia automáticamente, según el registro de la empresa. Incluya aquí solo las copias adicionales.',
     emailInvalido: 'Correo inválido',
   },
   exportar: {

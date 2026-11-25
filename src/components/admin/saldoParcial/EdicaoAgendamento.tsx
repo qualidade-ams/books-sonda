@@ -150,6 +150,15 @@ export function EdicaoAgendamento({
   const termo = busca.trim().toLowerCase();
   const visiveis = termo ? clientes.filter((c) => c.nome.toLowerCase().includes(termo)) : clientes;
   const copia = extrairEmailsCc(v.emailsCcTexto);
+  // CS das empresas marcadas, do cadastro: aparece na cópia, mas não é gravado nem removível
+  const vistosNaCopia = new Set(copia.map((x) => x.toLowerCase()));
+  const csNaCopia: string[] = [];
+  v.empresaIds.forEach((id) => {
+    const cs = clientes.find((c) => c.id === id)?.emailGestor?.trim();
+    if (!cs || vistosNaCopia.has(cs.toLowerCase())) return;
+    vistosNaCopia.add(cs.toLowerCase());
+    csNaCopia.push(cs);
+  });
 
   // O Customer Success não entra na cópia: o sync-api o lê do cadastro a cada envio
   const alternarEmpresa = (cliente: ClienteElegivelSaldoParcial, marcar: boolean) =>
@@ -465,6 +474,13 @@ export function EdicaoAgendamento({
         <div>
           <Rotulo htmlFor="saldo-copia">{e('copia')}</Rotulo>
           <div className="flex flex-wrap items-center gap-1.5">
+            <ul className="contents" aria-label={e('copiaCs')}>
+              {csNaCopia.map((email) => (
+                <li key={email} className="max-w-full" title={e('copiaCsDica')}>
+                  <Chip tracejado>{e('copiaCsChip', { email })}</Chip>
+                </li>
+              ))}
+            </ul>
             <ul className="contents" aria-label={e('copia')}>
               {copia.map((email) => (
                 <li key={email} className="max-w-full">
@@ -494,7 +510,6 @@ export function EdicaoAgendamento({
           </div>
           {ccInvalido && <p className="mt-1.5 text-xs text-ds-danger-fg">{e('emailInvalido')}</p>}
           {erro('emailsCcTexto')}
-          <Ajuda>{e('copiaAjuda')}</Ajuda>
         </div>
       </Secao>
     </TelaEdicao>
