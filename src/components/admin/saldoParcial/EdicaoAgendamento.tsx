@@ -151,24 +151,14 @@ export function EdicaoAgendamento({
   const visiveis = termo ? clientes.filter((c) => c.nome.toLowerCase().includes(termo)) : clientes;
   const copia = extrairEmailsCc(v.emailsCcTexto);
 
-  const alternarEmpresa = (cliente: ClienteElegivelSaldoParcial, marcar: boolean) => {
-    setV((atual) => {
-      const empresaIds = marcar
+  // O Customer Success não entra na cópia: o sync-api o lê do cadastro a cada envio
+  const alternarEmpresa = (cliente: ClienteElegivelSaldoParcial, marcar: boolean) =>
+    setV((atual) => ({
+      ...atual,
+      empresaIds: marcar
         ? [...atual.empresaIds, cliente.id]
-        : atual.empresaIds.filter((x) => x !== cliente.id);
-      // O gestor entra na cópia ao marcar; ao desmarcar sai, se outra marcada não tiver o mesmo
-      const gestor = cliente.emailGestor;
-      let emailsCcTexto = atual.emailsCcTexto;
-      if (gestor && marcar) emailsCcTexto = adicionarEmailsCc(emailsCcTexto, [gestor]);
-      if (gestor && !marcar) {
-        const emUso = clientes.some(
-          (c) => empresaIds.includes(c.id) && c.emailGestor?.toLowerCase() === gestor.toLowerCase()
-        );
-        if (!emUso) emailsCcTexto = removerEmailsCc(emailsCcTexto, [gestor]);
-      }
-      return { ...atual, empresaIds, emailsCcTexto };
-    });
-  };
+        : atual.empresaIds.filter((x) => x !== cliente.id),
+    }));
 
   const incluirCc = (emails: string[]) =>
     setV((atual) => ({ ...atual, emailsCcTexto: adicionarEmailsCc(atual.emailsCcTexto, emails) }));
@@ -454,6 +444,11 @@ export function EdicaoAgendamento({
                         </span>
                       )}
                     </span>
+                    {c.emailGestor && (
+                      <span className="block break-all text-xs text-ds-fg-muted">
+                        {e('cs', { email: c.emailGestor })}
+                      </span>
+                    )}
                   </span>
                   {outro && (
                     <span className="shrink-0 text-xs">{e('emOutro', { nome: outro })}</span>

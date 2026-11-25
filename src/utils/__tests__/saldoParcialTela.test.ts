@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { matrizDaAba } from '@/utils/exportarTabela';
 import { descreverRecorrencia } from '@/utils/descreverRecorrencia';
 import {
+  copiaDoAgendamento,
   exportacaoSaldoParcial,
   SEM_FILTRO_HISTORICO,
   filtrarHistorico,
@@ -136,10 +137,53 @@ describe('ordenarAgendamentos', () => {
   });
 });
 
+describe('copiaDoAgendamento', () => {
+  const cs: Record<string, string | null> = {
+    e1: 'cs.um@sonda.com',
+    e2: 'CS.UM@sonda.com',
+    e3: null,
+  };
+
+  it('junta a cópia extra do agendamento com o Customer Success atual de cada empresa', () => {
+    const ag = agendamento('a1', {
+      emails_cc: ['qualidade@sonda.com'],
+      empresas: [{ empresa_id: 'e1' }, { empresa_id: 'e3' }],
+    });
+    expect(copiaDoAgendamento(ag, (id) => cs[id])).toEqual([
+      'qualidade@sonda.com',
+      'cs.um@sonda.com',
+    ]);
+  });
+
+  it('não repete e-mail, sem diferenciar maiúsculas', () => {
+    const ag = agendamento('a1', {
+      emails_cc: ['Cs.Um@sonda.com'],
+      empresas: [{ empresa_id: 'e1' }, { empresa_id: 'e2' }],
+    });
+    expect(copiaDoAgendamento(ag, (id) => cs[id])).toEqual(['Cs.Um@sonda.com']);
+  });
+});
+
 describe('exportacaoSaldoParcial', () => {
   const t = (chave: string, valores?: Record<string, unknown>) =>
     valores ? `${chave} ${JSON.stringify(valores)}` : chave;
   const nomes: Record<string, string> = { e1: 'EMPRESA ALFA', e2: 'EMPRESA BETA' };
+
+  it('a coluna de cópia traz também o Customer Success atual das empresas', () => {
+    const ag = agendamento('a1', {
+      empresas: [{ empresa_id: 'e1' }, { empresa_id: 'e2' }],
+      emails_cc: ['qualidade@sonda.com'],
+    });
+    const exportacao = exportacaoSaldoParcial(
+      [{ agendamento: ag, proximoEnvio: null }],
+      [],
+      (id) => nomes[id] ?? id,
+      t,
+      (id) => ({ e1: 'cs.alfa@sonda.com', e2: 'cs.beta@sonda.com' })[id]
+    );
+    const [agendamentos] = exportacao.abas.map(matrizDaAba);
+    expect(agendamentos[1][4]).toBe('qualidade@sonda.com, cs.alfa@sonda.com, cs.beta@sonda.com');
+  });
 
   it('duas abas: agendamentos, na ordem da tela, e histórico de envios', () => {
     const ag = agendamento('a1', {

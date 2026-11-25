@@ -103,12 +103,35 @@ export function ordenarAgendamentos(
 
 type AgendamentoOrdenado = ReturnType<typeof ordenarAgendamentos>[number];
 
+/**
+ * Quem vai em cópia: a cópia extra do agendamento + o Customer Success atual de cada
+ * empresa (cadastro), sem repetir. O CS não fica gravado no agendamento: o sync-api
+ * o lê a cada envio, então a tela também o lê do cadastro.
+ */
+export function copiaDoAgendamento(
+  agendamento: AgendamentoSaldoParcial,
+  csDaEmpresa: (id: string) => string | null | undefined
+): string[] {
+  const copia: string[] = [];
+  const vistos = new Set<string>();
+  const incluir = (email: string | null | undefined) => {
+    const limpo = email?.trim();
+    if (!limpo || vistos.has(limpo.toLowerCase())) return;
+    vistos.add(limpo.toLowerCase());
+    copia.push(limpo);
+  };
+  (agendamento.emails_cc ?? []).forEach(incluir);
+  (agendamento.empresas ?? []).forEach((e) => incluir(csDaEmpresa(e.empresa_id)));
+  return copia;
+}
+
 /** Exportação da aba: os agendamentos na ordem da tela e o histórico de envios carregado */
 export function exportacaoSaldoParcial(
   agendamentos: AgendamentoOrdenado[],
   execucoes: ExecucaoSaldoParcial[],
   nomeDaEmpresa: (id: string) => string,
-  t: Traduzir
+  t: Traduzir,
+  csDaEmpresa: (id: string) => string | null | undefined = () => null
 ): Exportacao {
   const r = (chave: string, valores?: Record<string, unknown>) =>
     t(`rotinasSaldoParcial.${chave}`, valores);
@@ -148,7 +171,8 @@ export function exportacaoSaldoParcial(
           },
           {
             rotulo: r('exportar.colunas.copia'),
-            valor: (l: AgendamentoOrdenado) => l.agendamento.emails_cc.join(', '),
+            valor: (l: AgendamentoOrdenado) =>
+              copiaDoAgendamento(l.agendamento, csDaEmpresa).join(', '),
           },
           {
             rotulo: r('cartao.proximo'),

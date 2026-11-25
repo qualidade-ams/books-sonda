@@ -48,6 +48,11 @@ function criar(cenario: Cenario, executarEnvio = vi.fn(async () => ({ enviados: 
     if (tabela === 'banco_horas_envio_execucoes' && metodo('select')) {
       return { data: (cenario.jaRecebeuHoje ?? []).map(empresa_id => ({ empresa_id })), error: null };
     }
+    if (tabela === 'empresas_clientes') {
+      if (cenario.erroCs) return { data: null, error: { message: 'falha ao ler empresa' } };
+      const empresa = chamadas.find(([m, a]) => m === 'eq' && a[0] === 'id')?.[1][1];
+      return { data: { email_gestor: (cenario.csPorEmpresa ?? {})[empresa] ?? null }, error: null };
+    }
     if (tabela === 'clientes') {
       const empresa = chamadas.find(([m, a]) => m === 'eq' && a[0] === 'empresa_id')?.[1][1];
       const emails = (cenario.emailsPorEmpresa ?? { 'emp-1': ['a@cliente.com'], 'emp-2': ['b@cliente.com'] })[empresa] ?? [];
@@ -114,6 +119,39 @@ describe('agendadorSaldoParcial', () => {
     const consultaClientes = fake.consultas.find(c => c.tabela === 'clientes')!;
     expect(tem(consultaClientes.chamadas, 'eq', 'status', 'ativo')).toBe(true);
     expect(tem(consultaClientes.chamadas, 'in', 'finalidade_envio', ['saldo_parcial', 'ambos'])).toBe(true);
+  });
+
+  it('o Customer Success de cada empresa vai em cópia só no envio daquela empresa, lido do cadastro na hora', async () => {
+    const { fake, agendador, executarEnvio } = criar({
+      csPorEmpresa: { 'emp-1': 'cs.um@sonda.com', 'emp-2': 'cs.dois@sonda.com' }
+    });
+
+    await agendador.ciclo();
+
+    expect(executarEnvio).toHaveBeenCalledWith('emp-1', ['a@cliente.com'], ['qualidade@sonda.com', 'cs.um@sonda.com']);
+    expect(executarEnvio).toHaveBeenCalledWith('emp-2', ['b@cliente.com'], ['qualidade@sonda.com', 'cs.dois@sonda.com']);
+    const consulta = fake.consultas.find(c => c.tabela === 'empresas_clientes')!;
+    expect(tem(consulta.chamadas, 'select', 'email_gestor')).toBe(true);
+  });
+
+  it('não repete na cópia o Customer Success que já está no CC do agendamento', async () => {
+    const { agendador, executarEnvio } = criar({
+      agendamentos: [agendamento({ emails_cc: ['qualidade@sonda.com', 'CS.Um@sonda.com'], empresas: [{ empresa_id: 'emp-1' }] })],
+      csPorEmpresa: { 'emp-1': ' cs.um@sonda.com ' }
+    });
+
+    await agendador.ciclo();
+
+    expect(executarEnvio).toHaveBeenCalledWith('emp-1', ['a@cliente.com'], ['qualidade@sonda.com', 'CS.Um@sonda.com']);
+  });
+
+  it('falha ao ler o Customer Success deixa a empresa com erro, sem enviar sem ele', async () => {
+    const { fake, agendador, executarEnvio } = criar({ erroCs: true });
+
+    await agendador.ciclo();
+
+    expect(executarEnvio).not.toHaveBeenCalled();
+    expect(atualizacoesExecucao(fake).find(a => a.id === 'exec-emp-1')!.dados).toMatchObject({ status: 'erro' });
   });
 
   it('reserva a execução com o instante agendado e registra o sucesso só com a contagem de destinatários', async () => {

@@ -4,7 +4,8 @@
  *
  * O envio roda no sync-api (em background); esta aba só configura os agendamentos,
  * dispara execuções manuais e acompanha o histórico. Destinatários: contatos do cliente
- * marcados como "Saldo Parcial" ou "Ambos" em Gerenciamento de Clientes, mais o CC.
+ * marcados como "Saldo Parcial" ou "Ambos" em Gerenciamento de Clientes, mais o CC
+ * do agendamento e o Customer Success atual da empresa (lido do cadastro a cada envio).
  *
  * Criar e editar abrem a edição em nível a mais, no lugar da tela: a aba só pede (`onEditar`).
  * O botão "Novo agendamento" fica no cabeçalho da tela.
@@ -38,6 +39,7 @@ import {
 } from '@/hooks/useEnvioSaldoParcial';
 import { plural } from '@/utils/plural';
 import {
+  copiaDoAgendamento,
   exportacaoSaldoParcial,
   ordenarAgendamentos,
   receberamHoje,
@@ -100,6 +102,8 @@ export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
     [clientes]
   );
   const nomeDaEmpresa = (id: string) => clientes.find((c) => c.id === id)?.nome ?? id;
+  // CS atual do cadastro: vai em cópia no envio de cada empresa (não fica gravado no agendamento)
+  const csDaEmpresa = (id: string) => clientes.find((c) => c.id === id)?.emailGestor;
 
   const mensagemErro = (e: unknown) => (e instanceof Error ? e.message : undefined);
   const avisarErro = (titulo: string, e: unknown) =>
@@ -196,6 +200,7 @@ export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
             key={agendamento.id}
             agendamento={agendamento}
             proximoEnvio={proximoEnvio}
+            copia={copiaDoAgendamento(agendamento, csDaEmpresa)}
             semContato={
               (agendamento.empresas ?? []).filter((e) => semContato.has(e.empresa_id)).length
             }
@@ -285,7 +290,7 @@ export function AbaSaldoParcial({ onEditar }: AbaSaldoParcialProps) {
             descricao={s('exportar.descricao')}
             onExportar={(formato) =>
               exportarTabela(
-                exportacaoSaldoParcial(ordenados, execucoes, nomeDaEmpresa, t),
+                exportacaoSaldoParcial(ordenados, execucoes, nomeDaEmpresa, t, csDaEmpresa),
                 formato
               )
             }

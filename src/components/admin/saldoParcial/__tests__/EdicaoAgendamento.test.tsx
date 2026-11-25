@@ -122,7 +122,7 @@ describe('EdicaoAgendamento', () => {
       nome: 'Parcial semanal',
       ativo: true,
       empresaIds: ['e3'],
-      emails_cc: ['gestor.c@sonda.com', 'cc@sonda.com'],
+      emails_cc: ['cc@sonda.com'],
     });
     expect(onFechar).toHaveBeenCalled();
   });
@@ -154,21 +154,25 @@ describe('EdicaoAgendamento', () => {
     expect(within(b).getByText('rotinasSaldoParcial.sem.semContato')).toBeInTheDocument();
   });
 
-  it('ao marcar uma empresa o gestor entra na cópia; ao desmarcar sai, se nenhuma outra marcada tiver o mesmo', async () => {
+  it('marcar ou desmarcar empresa não mexe na cópia: o Customer Success vai em cópia automaticamente', async () => {
     const user = userEvent.setup();
     renderizar();
 
     await user.click(empresa('CLIENTE A'));
-    await user.click(empresa('CLIENTE B'));
     await user.click(empresa('CLIENTE C'));
-    expect(chipsDoCc()).toEqual(['gestor.ab@sonda.com', 'gestor.c@sonda.com']);
-
-    await user.click(empresa('CLIENTE C'));
-    await user.click(empresa('CLIENTE A'));
-    expect(chipsDoCc()).toEqual(['gestor.ab@sonda.com']);
-
-    await user.click(empresa('CLIENTE B'));
     expect(chipsDoCc()).toEqual([]);
+    await user.click(empresa('CLIENTE C'));
+    expect(chipsDoCc()).toEqual([]);
+  });
+
+  it('mostra o Customer Success atual ao lado de cada empresa', () => {
+    renderizar();
+    const c = empresa('CLIENTE C').closest('label')!;
+    expect(
+      within(c).getByText(/rotinasSaldoParcial.edicao.cs.*gestor.c@sonda.com/)
+    ).toBeInTheDocument();
+    const d = empresa('CLIENTE D').closest('label')!;
+    expect(within(d).queryByText(/rotinasSaldoParcial.edicao.cs/)).not.toBeInTheDocument();
   });
 
   it('colar do Outlook na cópia mantém só os endereços, sem repetir; e-mail inválido não entra', async () => {
