@@ -27664,7 +27664,7 @@ var ptBR = {
     },
     icInativos: {
       titulo: "Agendamentos de IC Inativos ({{count}})",
-      descricao: "Envia aos Customer Success de todas as empresas ativas os chamados na fila AMS APL - FISCAL - ICS INATIVOS. Cada chamado vai no m\xE1ximo uma vez por dia: as execu\xE7\xF5es seguintes do dia levam s\xF3 os que entraram depois, e sem chamado novo nada \xE9 enviado. O que n\xE3o for ajustado volta no dia seguinte.",
+      descricao: "Envia aos Customer Success de todas as empresas ativas os chamados nas filas de IC inativos (FISCAL, COMEX e GALLERY). Cada chamado vai no m\xE1ximo uma vez por dia: as execu\xE7\xF5es seguintes do dia levam s\xF3 os que entraram depois, e sem chamado novo nada \xE9 enviado. O que n\xE3o for ajustado volta no dia seguinte.",
       vazio: "Nenhum agendamento de IC Inativos",
       novoAgendamento: "Novo agendamento de IC Inativos"
     },
@@ -30160,7 +30160,7 @@ var en = {
     },
     icInativos: {
       titulo: "Inactive CI schedules ({{count}})",
-      descricao: "Sends the Customer Success of every active company the tickets in the AMS APL - FISCAL - ICS INATIVOS queue. Each ticket is sent at most once a day: later runs that day carry only the ones that came in afterwards, and nothing is sent when there is nothing new. Whatever is not fixed comes back the next day.",
+      descricao: "Sends the Customer Success of every active company the tickets in the inactive CI queues (FISCAL, COMEX and GALLERY). Each ticket is sent at most once a day: later runs that day carry only the ones that came in afterwards, and nothing is sent when there is nothing new. Whatever is not fixed comes back the next day.",
       vazio: "No Inactive CI schedule",
       novoAgendamento: "New Inactive CI schedule"
     },
@@ -32656,7 +32656,7 @@ var es = {
     },
     icInativos: {
       titulo: "Programaciones de IC Inactivos ({{count}})",
-      descricao: "Env\xEDa a los Customer Success de todas las empresas activas los tickets en la cola AMS APL - FISCAL - ICS INATIVOS. Cada ticket se env\xEDa como m\xE1ximo una vez al d\xEDa: las ejecuciones siguientes del d\xEDa llevan solo los que entraron despu\xE9s y, sin tickets nuevos, no se env\xEDa nada. Lo que no se corrija vuelve al d\xEDa siguiente.",
+      descricao: "Env\xEDa a los Customer Success de todas las empresas activas los tickets en las colas de IC inactivos (FISCAL, COMEX y GALLERY). Cada ticket se env\xEDa como m\xE1ximo una vez al d\xEDa: las ejecuciones siguientes del d\xEDa llevan solo los que entraron despu\xE9s y, sin tickets nuevos, no se env\xEDa nada. Lo que no se corrija vuelve al d\xEDa siguiente.",
       vazio: "Ninguna programaci\xF3n de IC Inactivos",
       novoAgendamento: "Nueva programaci\xF3n de IC Inactivos"
     },
