@@ -148,6 +148,7 @@ const rotinasSaldoParcial = {
     secaoEmpresas: 'Empresas',
     buscarEmpresa: 'Buscar empresa',
     emOutro: 'en {{nome}}',
+    cs: 'Customer Success: {{email}}',
     marcadas: {
       um: '{{n}} empresa marcada',
       varios: '{{n}} empresas marcadas',
@@ -155,7 +156,8 @@ const rotinasSaldoParcial = {
     secaoEmail: 'Correo',
     copia: 'Con copia',
     copiaPlaceholder: 'correo y Enter',
-    copiaAjuda: 'El gestor de cada empresa marcada va en copia.',
+    copiaAjuda:
+      'El Customer Success de cada empresa va en copia automáticamente, según el registro de la empresa. Incluya aquí solo las copias adicionales.',
     emailInvalido: 'Correo inválido',
   },
   exportar: {

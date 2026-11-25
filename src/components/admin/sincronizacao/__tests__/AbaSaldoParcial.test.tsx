@@ -162,6 +162,15 @@ describe('AbaSaldoParcial', () => {
     expect(within(c).getByText(/sincronizacaoSql.recorrencia/)).toBeInTheDocument();
   });
 
+  it('a cópia do cartão mostra o Customer Success atual das empresas, lido do cadastro, sem repetir', () => {
+    renderAba();
+
+    const c = cartao('Parcial dias 15 e 25');
+    expect(
+      within(c).getByText(/cartao.copia.*qualidade@sonda.com, gestor.ab@sonda.com"/)
+    ).toBeInTheDocument();
+  });
+
   it('ordena os agendamentos pelo próximo envio mais próximo, deixando os sem data por último', () => {
     (hooks.useAgendamentosSaldoParcial as any).mockReturnValue({
       agendamentos: [

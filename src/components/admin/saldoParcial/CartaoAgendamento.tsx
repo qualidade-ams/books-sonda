@@ -30,6 +30,7 @@ import { dataHoraBrasilia } from './formato';
 export function CartaoAgendamento({
   agendamento,
   proximoEnvio,
+  copia,
   semContato,
   agendadorDesligado,
   podeEditar,
@@ -42,6 +43,8 @@ export function CartaoAgendamento({
   agendamento: AgendamentoSaldoParcial;
   /** Gravado pelo servidor ou previsto pela regra; nulo se inativo ou sem cálculo */
   proximoEnvio: string | null;
+  /** Quem vai em cópia: CC do agendamento + Customer Success atual das empresas */
+  copia: string[];
   /** Empresas do agendamento sem contato de Saldo Parcial */
   semContato: number;
   agendadorDesligado: boolean;
@@ -92,8 +95,7 @@ export function CartaoAgendamento({
                 {plural(t, 'rotinasSaldoParcial.cartao.semContato', semContato)}
               </span>
             )}
-            {agendamento.emails_cc?.length > 0 &&
-              ` · ${c('copia', { emails: agendamento.emails_cc.join(', ') })}`}
+            {copia.length > 0 && ` · ${c('copia', { emails: copia.join(', ') })}`}
           </p>
         </div>
         <dl className="grid grid-cols-2 gap-x-6 text-sm">

@@ -4,7 +4,8 @@
  * A cada ciclo (60s) lê `banco_horas_envio_agendamentos` ativos, calcula
  * `proxima_execucao` quando está vazia (agendamento novo ou regra alterada — o trigger
  * do banco zera o campo) e executa os vencidos: para cada cliente vinculado, envia o
- * Saldo Parcial aos contatos com finalidade "saldo_parcial" ou "ambos" + CC do agendamento.
+ * Saldo Parcial aos contatos com finalidade "saldo_parcial" ou "ambos" + CC do agendamento
+ * + Customer Success atual da empresa (lido do cadastro a cada envio, nunca gravado no agendamento).
  *
  * - Sem duplicidade: antes de enviar, reserva a execução em `banco_horas_envio_execucoes`
  *   (chave única empresa + instante agendado). Se já existe, o cliente é pulado.
@@ -87,6 +88,19 @@ export function criarAgendadorSaldoParcial(deps: DependenciasAgendadorSaldoParci
     return (data || []).map((c: { email: string }) => c.email).filter(Boolean);
   }
 
+  /**
+   * Cópia do envio de uma empresa: o CC do agendamento + o Customer Success atual dela
+   * (empresas_clientes.email_gestor), lido na hora — trocar o CS no cadastro vale no
+   * próximo envio, e cada CS recebe só o saldo das suas empresas.
+   */
+  async function montarCopia(empresaId: string, emailsCc: string[]): Promise<string[]> {
+    const { data, error } = await db.from('empresas_clientes').select('email_gestor').eq('id', empresaId).maybeSingle();
+    if (error) throw new Error(`Erro ao buscar o Customer Success da empresa: ${error.message}`);
+    const cs = (data?.email_gestor || '').trim();
+    if (!cs || emailsCc.some(e => e.trim().toLowerCase() === cs.toLowerCase())) return emailsCc;
+    return [...emailsCc, cs];
+  }
+
   /** Empresas com envio de sucesso hoje (Brasília) */
   async function recebeuHoje(empresas: string[]): Promise<Set<string>> {
     if (empresas.length === 0) return new Set();
@@ -160,7 +174,8 @@ export function criarAgendadorSaldoParcial(deps: DependenciasAgendadorSaldoParci
           continue;
         }
 
-        const { enviados } = await deps.executarEnvio(empresaId, destinatarios, emailsCc);
+        const copia = await montarCopia(empresaId, emailsCc);
+        const { enviados } = await deps.executarEnvio(empresaId, destinatarios, copia);
         await atualizarExecucao(reserva.id, {
           status: 'sucesso',
           qtd_destinatarios: destinatarios.length,
