@@ -50,8 +50,10 @@ function fiscalIncompleto(f: ContratoFiscal): boolean {
   if (f.modalidade === null || f.edocs24x7 === null || f.atualizacaoContratada === null)
     return true;
   if (f.atualizacaoContratada && f.atualizacoesPorAno === null) return true;
+  // Banco de dados vale para SaaS e On Premise; DBA só para On Premise
+  if (f.bancoDados === null) return true;
   if (f.modalidade !== 'on_premise') return false;
-  if (f.dba === null || f.bancoDados === null) return true;
+  if (f.dba === null) return true;
   const atendimento = f.dba === 'atendimento' || f.dba === 'atendimento_monitoramento';
   const monitoramento = f.dba === 'monitoramento' || f.dba === 'atendimento_monitoramento';
   return (

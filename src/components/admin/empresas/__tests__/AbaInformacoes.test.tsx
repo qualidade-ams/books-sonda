@@ -121,7 +121,7 @@ describe('AbaInformacoes (edição)', () => {
     );
   });
 
-  it('Contrato FISCAL com o padrão; SaaS esconde DBA e banco; DBA pede as horas válidas', () => {
+  it('Contrato FISCAL com o padrão; SaaS esconde DBA e mantém o banco de dados; DBA pede as horas válidas', () => {
     renderizar();
     const fiscal = within(
       screen.getByRole('region', { name: 'empresasCadastro.informacoes.fiscal' })
@@ -145,6 +145,12 @@ describe('AbaInformacoes (edição)', () => {
     expect(
       fiscal.queryByRole('radiogroup', { name: 'empresasCadastro.informacoes.dba' })
     ).not.toBeInTheDocument();
+    const banco = fiscal.getByRole('radiogroup', {
+      name: 'empresasCadastro.informacoes.bancoDados',
+    });
+    expect(
+      within(banco).getByRole('radio', { name: 'empresasCadastro.informacoes.oracle' })
+    ).toBeInTheDocument();
     fireEvent.click(
       within(
         fiscal.getByRole('radiogroup', { name: 'empresasCadastro.informacoes.atualizacao' })
@@ -197,5 +203,22 @@ describe('AbaInformacoes (leitura)', () => {
       screen.getByText('empresasCadastro.informacoes.porMes {"horas":"10:00"}')
     ).toBeInTheDocument();
     expect(screen.getByText('ALFA SA')).toBeInTheDocument();
+  });
+
+  it('SaaS mostra o banco de dados e não mostra o DBA', () => {
+    renderizar({
+      podeEditar: false,
+      empresa: empresa({
+        informacoes: {
+          ramoId: null,
+          ramoSecundarioId: null,
+          descricaoAtividade: null,
+          fiscal: { ...FISCAL_VAZIO, modalidade: 'saas', bancoDados: 'oracle' },
+        },
+      } as Partial<EmpresaDetalhe>),
+    });
+    expect(screen.getByText('empresasCadastro.informacoes.bancoDados')).toBeInTheDocument();
+    expect(screen.getByText('empresasCadastro.informacoes.oracle')).toBeInTheDocument();
+    expect(screen.queryByText('empresasCadastro.informacoes.dba')).not.toBeInTheDocument();
   });
 });
