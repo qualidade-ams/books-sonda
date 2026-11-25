@@ -2,7 +2,7 @@
  * Rotina "IC Inativos" (Rotinas Automáticas → sync_agendamentos.tipo = ic_inativos).
  *
  * Envia aos Customer Success os chamados do Monitoramento de Chamados do tipo ic_inativo
- * (IC 999999 ou fila AMS APL - FISCAL - ICS INATIVOS) que ainda não saíram no dia:
+ * (chamados na fila AMS APL - FISCAL - ICS INATIVOS) que ainda não saíram no dia:
  *
  * - Cada chamado vai no máximo uma vez por dia (Brasília). A primeira execução do dia leva
  *   todos os pendentes; as seguintes, só os que entraram depois. Sem chamado novo, não envia.

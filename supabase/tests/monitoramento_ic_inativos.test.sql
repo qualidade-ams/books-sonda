@@ -6,9 +6,10 @@
 -- Qualquer outra mensagem de erro diz qual verificação falhou.
 --
 -- Regra (Monitoramento de Chamados): chamado não encerrado (fora de Closed e
--- Cancelled) com Item de Configuração começando por 999999 OU no grupo
--- "AMS APL - FISCAL - ICS INATIVOS" é a inconsistência 'ic_inativo', sem os
--- filtros de ticket elegível. O 'ic_999999' das Inconsistências não muda.
+-- Cancelled) no grupo "AMS APL - FISCAL - ICS INATIVOS" é a inconsistência
+-- 'ic_inativo', sem os filtros de ticket elegível. O 'ic_999999' das
+-- Inconsistências não muda. (O critério "IC 999999" saiu do ic_inativo em
+-- 20261125000003; ver ic_inativos_so_grupo.test.sql.)
 -- A rotina 'ic_inativos' de Rotinas Automáticas guarda o CC em emails_cc.
 -- =====================================================================
 DO $teste$
@@ -52,17 +53,13 @@ BEGIN
 
   v_resultado := public.detectar_inconsistencias();
 
-  -- 3. IC 999999 e grupo ICS INATIVOS entram, com os campos da tela
+  -- 3. Grupo ICS INATIVOS entra, com os campos da tela
   IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_resultado->'ic_inativo') e
-                  WHERE e->>'nro_chamado' = 'IM TESTE-ICI-IC'
-                    AND e->>'chave_unica' = 'tickets-IM TESTE-ICI-IC-ic_inativo'
+                  WHERE e->>'nro_chamado' = 'RF TESTE-ICI-GRUPO'
+                    AND e->>'chave_unica' = 'tickets-RF TESTE-ICI-GRUPO-ic_inativo'
                     AND e->>'tipo_inconsistencia' = 'ic_inativo'
                     AND e->>'empresa' = 'ORG TESTE'
                     AND e->>'origem' = 'tickets') THEN
-    RAISE EXCEPTION 'Chamado com IC 999999 (caso pai NÃO, grupo excluído) não virou ic_inativo';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_resultado->'ic_inativo') e
-                  WHERE e->>'nro_chamado' = 'RF TESTE-ICI-GRUPO') THEN
     RAISE EXCEPTION 'Chamado no grupo AMS APL - FISCAL - ICS INATIVOS não virou ic_inativo';
   END IF;
 

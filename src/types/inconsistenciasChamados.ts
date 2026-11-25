@@ -12,7 +12,7 @@ export type TipoInconsistencia =
   | 'sem_atualizacao' // chamado sem nota pública há 16+ dias (sem nota: aberto há 16+ dias) (status Open/Hold/In Progress/Acknowledged)
   | 'troca_codigo_resolucao' // última troca de código de resolução mudou o desconto do banco de horas (Banco=S ↔ Banco=N)
   | 'validacao_solucao' // campo solução sem CENÁRIO, CAUSA, SOLUÇÃO PALIATIVA, SOLUÇÃO DEFINITIVA ou PREVENÇÃO
-  | 'ic_inativo'; // chamado não encerrado com IC 999999 ou na fila AMS APL - FISCAL - ICS INATIVOS (Monitoramento)
+  | 'ic_inativo'; // chamado não encerrado na fila AMS APL - FISCAL - ICS INATIVOS (Monitoramento)
 
 export interface InconsistenciaChamado {
   // Identificação

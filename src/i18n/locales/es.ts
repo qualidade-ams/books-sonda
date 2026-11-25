@@ -2457,7 +2457,7 @@ const es = {
     icInativos: {
       titulo: 'Programaciones de IC Inactivos ({{count}})',
       descricao:
-        'Envía a los Customer Success de todas las empresas activas los tickets con IC 999999 o en la cola AMS APL - FISCAL - ICS INATIVOS. Cada ticket se envía como máximo una vez al día: las ejecuciones siguientes del día llevan solo los que entraron después y, sin tickets nuevos, no se envía nada. Lo que no se corrija vuelve al día siguiente.',
+        'Envía a los Customer Success de todas las empresas activas los tickets en la cola AMS APL - FISCAL - ICS INATIVOS. Cada ticket se envía como máximo una vez al día: las ejecuciones siguientes del día llevan solo los que entraron después y, sin tickets nuevos, no se envía nada. Lo que no se corrija vuelve al día siguiente.',
       vazio: 'Ninguna programación de IC Inactivos',
       novoAgendamento: 'Nueva programación de IC Inactivos',
     },
