@@ -1292,6 +1292,9 @@ Atenciosamente.`;
                     {t('inconsistencias.solutionFieldValidation')}
                   </SelectItem>
                 )}
+                {tipos.includes('ic_inativo') && (
+                  <SelectItem value="ic_inativo">{t('inconsistencias.icInactive')}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -1650,6 +1653,27 @@ Atenciosamente.`;
                 ) : (
                   <div className="text-xl lg:text-2xl font-bold text-teal-600">
                     {estatisticas?.por_tipo.validacao_solucao || 0}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {tipos.includes('ic_inativo') && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-amber-600">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    {t('inconsistencias.icInactive')}
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {isLoadingStats ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-xl lg:text-2xl font-bold text-amber-600">
+                    {estatisticas?.por_tipo.ic_inativo || 0}
                   </div>
                 )}
               </CardContent>

@@ -2065,6 +2065,9 @@ const ptBR = {
     noUpdate16Days: 'Sem Atualização 16+ dias',
     resolutionCodeChange: 'Troca de código de resolução',
     solutionFieldValidation: 'Validação campo Solução',
+    icInactive: 'IC Inativos',
+    monitoringSubtitle:
+      'Trocas de código de resolução que mudaram a cobrança do banco de horas e chamados com IC inativo',
     resolutionCodeChangeSubtitle:
       'Trocas de código de resolução que mudaram a cobrança do banco de horas',
     // Tabs
@@ -2372,6 +2375,7 @@ const ptBR = {
     tabs: {
       agendamentos: 'Sincronização Aranda',
       books: 'Geração de Books',
+      icInativos: 'IC Inativos',
       saldoParcial: 'Saldo Parcial',
       historico: 'Histórico de execuções',
     },
@@ -2382,6 +2386,7 @@ const ptBR = {
       recorrencia: 'Recorrência',
       tabelas: 'Tabelas',
       empresas: 'Empresas',
+      copia: 'Com cópia',
       proxima: 'Próxima execução',
       ultima: 'Última execução',
       status: 'Status',
@@ -2419,6 +2424,7 @@ const ptBR = {
       booksResumo:
         'Referência {{mes}}/{{ano}}: {{gerados}} gerados e enviados · {{erros}} com erro · {{pulados}} pulados',
       booksSelecionadas: 'Somente {{count}} empresa(s) selecionada(s)',
+      icInativosResumo: '{{pendentes}} chamado(s) pendente(s) · {{novos}} enviado(s) agora',
       comparacao: {
         titulo: 'Comparação SQL Server x Supabase',
         sqlServer: 'SQL Server',
@@ -2449,6 +2455,13 @@ const ptBR = {
         'Os books liberados e ainda não enviados do período de referência serão gerados e enviados para a Qualidade. O andamento aparece no histórico de execuções.',
       confirmarGerar: 'Gerar e enviar',
     },
+    icInativos: {
+      titulo: 'Agendamentos de IC Inativos ({{count}})',
+      descricao:
+        'Envia aos Customer Success de todas as empresas ativas os chamados com IC 999999 ou na fila AMS APL - FISCAL - ICS INATIVOS. Cada chamado vai no máximo uma vez por dia: as execuções seguintes do dia levam só os que entraram depois, e sem chamado novo nada é enviado. O que não for ajustado volta no dia seguinte.',
+      vazio: 'Nenhum agendamento de IC Inativos',
+      novoAgendamento: 'Novo agendamento de IC Inativos',
+    },
     empresas: {
       titulo: 'Empresas',
       todas: 'Todas as empresas liberadas e ainda não enviadas',
@@ -2471,6 +2484,7 @@ const ptBR = {
       ajustesRetroativos: 'Ajustes retroativos',
       modoSombra: 'Modo sombra (Comparação Legado x Novo)',
       gerarBooks: 'Geração de books',
+      icInativos: 'IC Inativos',
     },
     form: {
       tituloNovo: 'Novo agendamento',
@@ -2482,6 +2496,13 @@ const ptBR = {
       descricao: 'Os horários seguem o fuso de São Paulo.',
       nome: 'Nome',
       nomePlaceholder: 'Ex.: Pesquisas a cada 2 horas',
+      tituloNovoIc: 'Novo agendamento de IC Inativos',
+      tituloEditarIc: 'Editar agendamento de IC Inativos',
+      descricaoIc:
+        'Envia aos Customer Success os chamados de IC inativo ainda não enviados no dia. Os horários seguem o fuso de São Paulo.',
+      copia: 'Com cópia',
+      copiaPlaceholder: 'e-mails separados por ;',
+      copiaAjuda: 'Além de todos os Customer Success das empresas ativas, que sempre recebem.',
       tabelas: 'Tabelas',
       posProcessamento: 'Pós-processamento',
       ajustesRetroativosAjuda: 'Roda junto com Apontamentos',
@@ -2513,6 +2534,7 @@ const ptBR = {
     },
     validacao: {
       empresaObrigatoria: 'Selecione ao menos uma empresa',
+      emailCcInvalido: 'Há e-mail inválido na cópia',
       nomeObrigatorio: 'Informe o nome',
       tabelaObrigatoria: 'Selecione ao menos uma tabela',
       diaSemanaObrigatorio: 'Selecione ao menos um dia da semana',

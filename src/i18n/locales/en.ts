@@ -2061,6 +2061,9 @@ const en = {
     noUpdate16Days: 'No Update 16+ days',
     resolutionCodeChange: 'Resolution code change',
     solutionFieldValidation: 'Solution field validation',
+    icInactive: 'Inactive CIs',
+    monitoringSubtitle:
+      'Resolution code changes that changed the hours bank charge and tickets with an inactive CI',
     resolutionCodeChangeSubtitle: 'Resolution code changes that changed the hours bank charge',
     // Tabs
     tabDetected: 'Detected Inconsistencies',
@@ -2366,6 +2369,7 @@ const en = {
     tabs: {
       agendamentos: 'Aranda sync',
       books: 'Book generation',
+      icInativos: 'Inactive CIs',
       saldoParcial: 'Partial balance',
       historico: 'Run history',
     },
@@ -2376,6 +2380,7 @@ const en = {
       recorrencia: 'Recurrence',
       tabelas: 'Tables',
       empresas: 'Companies',
+      copia: 'CC',
       proxima: 'Next run',
       ultima: 'Last run',
       status: 'Status',
@@ -2412,6 +2417,7 @@ const en = {
       booksResumo:
         'Reference {{mes}}/{{ano}}: {{gerados}} generated and sent · {{erros}} with errors · {{pulados}} skipped',
       booksSelecionadas: 'Only {{count}} selected company(ies)',
+      icInativosResumo: '{{pendentes}} pending ticket(s) · {{novos}} sent now',
       comparacao: {
         titulo: 'SQL Server x Supabase comparison',
         sqlServer: 'SQL Server',
@@ -2442,6 +2448,13 @@ const en = {
         'The released books not yet sent for the reference period will be generated and sent to Quality. Progress is shown in the run history.',
       confirmarGerar: 'Generate and send',
     },
+    icInativos: {
+      titulo: 'Inactive CI schedules ({{count}})',
+      descricao:
+        'Sends the Customer Success of every active company the tickets with CI 999999 or in the AMS APL - FISCAL - ICS INATIVOS queue. Each ticket is sent at most once a day: later runs that day carry only the ones that came in afterwards, and nothing is sent when there is nothing new. Whatever is not fixed comes back the next day.',
+      vazio: 'No Inactive CI schedule',
+      novoAgendamento: 'New Inactive CI schedule',
+    },
     empresas: {
       titulo: 'Companies',
       todas: 'All released companies not yet sent',
@@ -2464,6 +2477,7 @@ const en = {
       ajustesRetroativos: 'Retroactive adjustments',
       modoSombra: 'Shadow mode (Legacy x New Comparison)',
       gerarBooks: 'Book generation',
+      icInativos: 'Inactive CIs',
     },
     form: {
       tituloNovo: 'New schedule',
@@ -2475,6 +2489,14 @@ const en = {
       descricao: 'Times use the São Paulo time zone.',
       nome: 'Name',
       nomePlaceholder: 'E.g.: Surveys every 2 hours',
+      tituloNovoIc: 'New Inactive CI schedule',
+      tituloEditarIc: 'Edit Inactive CI schedule',
+      descricaoIc:
+        'Sends the Customer Success the inactive CI tickets not yet sent today. Times follow the São Paulo time zone.',
+      copia: 'CC',
+      copiaPlaceholder: 'e-mails separated by ;',
+      copiaAjuda:
+        'In addition to every Customer Success of the active companies, who always receive it.',
       tabelas: 'Tables',
       posProcessamento: 'Post-processing',
       ajustesRetroativosAjuda: 'Runs together with Time entries',
@@ -2506,6 +2528,7 @@ const en = {
     },
     validacao: {
       empresaObrigatoria: 'Select at least one company',
+      emailCcInvalido: 'There is an invalid e-mail in the CC',
       nomeObrigatorio: 'Enter the name',
       tabelaObrigatoria: 'Select at least one table',
       diaSemanaObrigatorio: 'Select at least one day of the week',

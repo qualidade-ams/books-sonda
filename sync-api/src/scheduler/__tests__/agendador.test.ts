@@ -134,6 +134,26 @@ describe('agendador', () => {
     });
   });
 
+  it('agendamento de IC inativos dispara o envio com o CC da rotina', async () => {
+    const { agendador } = criar([
+      agendamento({
+        tipo: 'ic_inativos',
+        tabelas: {},
+        emails_cc: ['aline.baboim@sonda.com'],
+        proxima_execucao: '2026-09-24T10:00:00Z',
+      }),
+    ]);
+    await agendador.ciclo();
+
+    expect(orquestrador.iniciar).toHaveBeenCalledWith({
+      tipo: 'ic_inativos',
+      tabelas: {},
+      origem: 'agendado',
+      agendamentoId: 'ag-1',
+      emailsCc: ['aline.baboim@sonda.com'],
+    });
+  });
+
   it('agendamento de books restrito repassa as empresas escolhidas', async () => {
     const { agendador } = criar([
       agendamento({ tipo: 'books', tabelas: {}, empresa_ids: ['e1'], proxima_execucao: '2026-09-24T10:00:00Z' }),

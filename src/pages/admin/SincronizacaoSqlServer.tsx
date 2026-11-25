@@ -10,6 +10,9 @@
  * para a Qualidade os books liberados e ainda não enviados. Sincronização e
  * geração de books dividem a trava do sync-api: uma espera a outra terminar.
  *
+ * Aba "IC Inativos": agendamentos próprios (tipo ic_inativos) que enviam aos Customer
+ * Success os chamados de IC inativo ainda não enviados no dia, com o CC da rotina.
+ *
  * Aba "Saldo Parcial": envio automático do Saldo Parcial do banco de horas
  * (antiga tela /admin/envio-saldo-parcial, que hoje redireciona para ?aba=saldo-parcial).
  * Visível só com permissão na tela `envio_saldo_parcial`.
@@ -95,9 +98,15 @@ import type { AgendamentoSaldoParcial } from '@/types/envioSaldoParcial';
 
 const SCREEN_KEY = 'sincronizacao_sql_server';
 
-type AbaSincronizacao = 'agendamentos' | 'books' | 'saldo-parcial' | 'historico';
+type AbaSincronizacao = 'agendamentos' | 'books' | 'ic-inativos' | 'saldo-parcial' | 'historico';
 
-const ABAS: AbaSincronizacao[] = ['agendamentos', 'books', 'saldo-parcial', 'historico'];
+const ABAS: AbaSincronizacao[] = [
+  'agendamentos',
+  'books',
+  'ic-inativos',
+  'saldo-parcial',
+  'historico',
+];
 
 const TAB_TRIGGER =
   'data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium';
@@ -119,6 +128,7 @@ const ETAPAS_RESUMO = [
   'ajustesRetroativos',
   'modoSombra',
   'gerarBooks',
+  'icInativos',
 ];
 
 function SincronizacaoSqlServer() {
@@ -143,8 +153,11 @@ function SincronizacaoSqlServer() {
   const executar = useExecutarSyncAgora();
   const gerarBooks = useGerarBooksAgora();
 
-  const agendamentosSync = agendamentos.filter((ag) => ag.tipo !== 'books');
+  const agendamentosSync = agendamentos.filter(
+    (ag) => ag.tipo !== 'books' && ag.tipo !== 'ic_inativos'
+  );
   const agendamentosBooks = agendamentos.filter((ag) => ag.tipo === 'books');
+  const agendamentosIc = agendamentos.filter((ag) => ag.tipo === 'ic_inativos');
 
   // Aba pelo link (?aba=saldo-parcial), ignorando a que não existe ou está sem permissão
   const [searchParams] = useSearchParams();
@@ -380,6 +393,11 @@ function SincronizacaoSqlServer() {
   const tituloEtapa = (k: string, etapa: any): string | undefined => {
     if (etapa.erro) return t('sincronizacaoSql.historico.falhou', { erro: etapa.erro });
     if (k === 'gerarBooks') return textoBooks(etapa);
+    if (k === 'icInativos')
+      return t('sincronizacaoSql.historico.icInativosResumo', {
+        pendentes: etapa.pendentes ?? 0,
+        novos: etapa.enviado ? (etapa.novos ?? 0) : 0,
+      });
     if (k === 'modoSombra')
       return t('sincronizacaoSql.historico.resumoSombra', {
         comparadas: etapa.comparadas ?? 0,
@@ -508,7 +526,21 @@ function SincronizacaoSqlServer() {
     </div>
   );
 
-  const tabelaAgendamentos = (lista: SyncAgendamento[], coluna: 'tabelas' | 'empresas') => (
+  const copiaDoAgendamento = (emails: string[] | undefined) =>
+    emails?.length ? (
+      <div className="flex flex-col gap-0.5 text-sm">
+        {emails.map((e) => (
+          <span key={e}>{e}</span>
+        ))}
+      </div>
+    ) : (
+      <span className="text-gray-400">—</span>
+    );
+
+  const tabelaAgendamentos = (
+    lista: SyncAgendamento[],
+    coluna: 'tabelas' | 'empresas' | 'copia'
+  ) => (
     <Table>
       <TableHeader>
         <TableRow className="bg-gray-50">
@@ -518,7 +550,9 @@ function SincronizacaoSqlServer() {
           <TableHead className="font-semibold text-gray-700">
             {coluna === 'tabelas'
               ? t('sincronizacaoSql.agendamentos.tabelas')
-              : t('sincronizacaoSql.agendamentos.empresas')}
+              : coluna === 'copia'
+                ? t('sincronizacaoSql.agendamentos.copia')
+                : t('sincronizacaoSql.agendamentos.empresas')}
           </TableHead>
           <TableHead className="font-semibold text-gray-700 text-center">
             {t('sincronizacaoSql.agendamentos.proxima')}
@@ -545,7 +579,11 @@ function SincronizacaoSqlServer() {
               <div className="text-xs text-gray-500 mt-1">{descreverRecorrencia(ag, t)}</div>
             </TableCell>
             <TableCell>
-              {coluna === 'tabelas' ? badgesTabelas(ag.tabelas) : badgesEmpresas(ag.empresa_ids)}
+              {coluna === 'tabelas'
+                ? badgesTabelas(ag.tabelas)
+                : coluna === 'copia'
+                  ? copiaDoAgendamento(ag.emails_cc)
+                  : badgesEmpresas(ag.empresa_ids)}
             </TableCell>
             <TableCell className="text-center text-sm">
               {!ag.ativo ? (
@@ -612,7 +650,7 @@ function SincronizacaoSqlServer() {
 
   const conteudoAgendamentos = (
     lista: SyncAgendamento[],
-    coluna: 'tabelas' | 'empresas',
+    coluna: 'tabelas' | 'empresas' | 'copia',
     chaveVazio: string
   ) =>
     carregandoAgendamentos ? (
@@ -665,6 +703,18 @@ function SincronizacaoSqlServer() {
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     {t('envioSaldoParcial.novoAgendamento')}
+                  </Button>
+                </ProtectedAction>
+              )}
+              {aba === 'ic-inativos' && (
+                <ProtectedAction screenKey={SCREEN_KEY} requiredLevel="edit">
+                  <Button
+                    size="sm"
+                    className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                    onClick={() => abrirNovo('ic_inativos')}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t('sincronizacaoSql.icInativos.novoAgendamento')}
                   </Button>
                 </ProtectedAction>
               )}
@@ -751,6 +801,9 @@ function SincronizacaoSqlServer() {
               <TabsTrigger value="books" className={TAB_TRIGGER}>
                 {t('sincronizacaoSql.tabs.books')}
               </TabsTrigger>
+              <TabsTrigger value="ic-inativos" className={TAB_TRIGGER}>
+                {t('sincronizacaoSql.tabs.icInativos')}
+              </TabsTrigger>
               {podeVerSaldoParcial && (
                 <TabsTrigger value="saldo-parcial" className={TAB_TRIGGER}>
                   {t('sincronizacaoSql.tabs.saldoParcial')}
@@ -793,6 +846,27 @@ function SincronizacaoSqlServer() {
                     agendamentosBooks,
                     'empresas',
                     'sincronizacaoSql.books.vazio'
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* IC Inativos: e-mail aos Customer Success */}
+            <TabsContent value="ic-inativos" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    {t('sincronizacaoSql.icInativos.titulo', { count: agendamentosIc.length })}
+                  </CardTitle>
+                  <p className="text-sm text-gray-500">
+                    {t('sincronizacaoSql.icInativos.descricao')}
+                  </p>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  {conteudoAgendamentos(
+                    agendamentosIc,
+                    'copia',
+                    'sincronizacaoSql.icInativos.vazio'
                   )}
                 </CardContent>
               </Card>

@@ -393,6 +393,73 @@ describe('orquestradorSync', () => {
     });
   });
 
+  describe('envio de IC inativos (tipo ic_inativos)', () => {
+    function criarComIc(enviarIcInativos: any) {
+      const etapas = criarEtapas();
+      const abrirPool = vi.fn(async () => ({ pool: {} as any, fechar }));
+      const orq = criarOrquestradorSync({
+        supabase: fake.cliente,
+        abrirPool,
+        etapas,
+        enviarIcInativos,
+        intervaloGravacaoLogsMs: 0,
+      });
+      return { orq, etapas, abrirPool };
+    }
+
+    const ultimoUpdate = () => {
+      const updates = chamadasDe(fake.consultas, 'sync_execucoes', 'update').map(([u]) => u);
+      return updates[updates.length - 1];
+    };
+
+    it('roda só o envio, sem abrir o SQL Server, com o CC, e registra o tipo e o resumo', async () => {
+      const enviarIcInativos = vi.fn(async () => ({ pendentes: 3, novos: 2, enviado: true, destinatarios: 5 }));
+      const { orq, etapas, abrirPool } = criarComIc(enviarIcInativos);
+
+      const inicio = await orq.iniciar({
+        tipo: 'ic_inativos',
+        tabelas: {},
+        origem: 'agendado',
+        agendamentoId: 'ag-1',
+        emailsCc: ['cc@sonda.com'],
+      });
+      if (inicio.status !== 'iniciada') throw new Error('não iniciou');
+      expect(await inicio.conclusao).toBe('sucesso');
+
+      expect(abrirPool).not.toHaveBeenCalled();
+      expect(etapas.tickets).not.toHaveBeenCalled();
+      expect(enviarIcInativos).toHaveBeenCalledWith(expect.objectContaining({ emailsCc: ['cc@sonda.com'] }));
+      const insert = chamadasDe(fake.consultas, 'sync_execucoes', 'insert')[0][0];
+      expect(insert).toMatchObject({ tipo: 'ic_inativos', origem: 'agendado', status: 'executando' });
+      expect(ultimoUpdate()).toMatchObject({
+        status: 'sucesso',
+        resultado: { icInativos: { pendentes: 3, novos: 2, enviado: true, destinatarios: 5, sucesso: true } },
+      });
+    });
+
+    it('sem chamado novo também é sucesso', async () => {
+      const { orq } = criarComIc(vi.fn(async () => ({ pendentes: 2, novos: 0, enviado: false, destinatarios: 0 })));
+      const inicio = await orq.iniciar({ tipo: 'ic_inativos', tabelas: {}, origem: 'agendado' });
+      if (inicio.status !== 'iniciada') throw new Error('não iniciou');
+      expect(await inicio.conclusao).toBe('sucesso');
+    });
+
+    it('falha no envio vira erro com a mensagem', async () => {
+      const { orq } = criarComIc(vi.fn(async () => { throw new Error('webhook 500'); }));
+      const inicio = await orq.iniciar({ tipo: 'ic_inativos', tabelas: {}, origem: 'agendado' });
+      if (inicio.status !== 'iniciada') throw new Error('não iniciou');
+      expect(await inicio.conclusao).toBe('erro');
+      expect(ultimoUpdate().resultado.icInativos).toMatchObject({ sucesso: false, erro: 'webhook 500' });
+    });
+
+    it('sem o envio configurado no servidor, erro', async () => {
+      const { orq } = criarComIc(undefined);
+      const inicio = await orq.iniciar({ tipo: 'ic_inativos', tabelas: {}, origem: 'agendado' });
+      if (inicio.status !== 'iniciada') throw new Error('não iniciou');
+      expect(await inicio.conclusao).toBe('erro');
+    });
+  });
+
   describe('geração de books (tipo books)', () => {
     const resumo = (extra: any = {}) => ({
       mes: 9,

@@ -8,13 +8,13 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (chave: string) =>
 import MonitoramentoChamados from '../MonitoramentoChamados';
 
 describe('MonitoramentoChamados', () => {
-  it('abre a tela de inconsistências só com a troca de código de resolução', () => {
+  it('abre a tela de inconsistências com a troca de código de resolução e o IC inativo', () => {
     render(<MonitoramentoChamados />);
 
     expect(telaMock).toHaveBeenCalledWith({
-      tipos: ['troca_codigo_resolucao'],
+      tipos: ['troca_codigo_resolucao', 'ic_inativo'],
       titulo: 'nav.ticketMonitoring',
-      subtitulo: 'inconsistencias.resolutionCodeChangeSubtitle',
+      subtitulo: 'inconsistencias.monitoringSubtitle',
     });
   });
 });

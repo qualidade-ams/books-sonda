@@ -318,3 +318,86 @@ describe('empresas da geração de books', () => {
     });
   });
 });
+
+describe('rotina de IC inativos (tipo ic_inativos)', () => {
+  const ic = (extra: Partial<AgendamentoFormValues> = {}): AgendamentoFormValues => ({
+    ...valoresIniciaisAgendamento('ic_inativos'),
+    nome: 'IC Inativos',
+    ...extra,
+  });
+
+  it('começa de 2 em 2 horas, das 09:00 às 17:00, todo dia, sem CC', () => {
+    expect(valoresIniciaisAgendamento('ic_inativos')).toMatchObject({
+      tipo: 'ic_inativos',
+      frequencia: 'diario',
+      modo_horario: 'intervalo',
+      intervalo_horas: 2,
+      hora_inicio: '09:00',
+      hora_fim: '17:00',
+      emails_cc_texto: '',
+    });
+  });
+
+  it('não exige tabela e valida os e-mails do CC', () => {
+    expect(
+      mensagens(
+        ic({
+          tabelas: {
+            ...ic().tabelas,
+            pesquisas: false,
+            especialistas: false,
+            apontamentos: false,
+            tickets: false,
+            codigoResolucao: false,
+          },
+        })
+      )
+    ).toEqual([]);
+    expect(mensagens(ic({ emails_cc_texto: 'aline.baboim@sonda.com; nao-e-email' }))).toContain(
+      'sincronizacaoSql.validacao.emailCcInvalido'
+    );
+  });
+
+  it('grava o tipo, sem tabelas nem empresas, e o CC sem repetir', () => {
+    const input = formParaAgendamentoInput(
+      ic({ emails_cc_texto: 'aline.baboim@sonda.com; qualidade@sonda.com, aline.baboim@sonda.com' })
+    );
+    expect(input).toMatchObject({
+      tipo: 'ic_inativos',
+      tabelas: {},
+      empresa_ids: [],
+      emails_cc: ['aline.baboim@sonda.com', 'qualidade@sonda.com'],
+    });
+  });
+
+  it('os outros tipos não gravam CC', () => {
+    expect(formParaAgendamentoInput(validos({ emails_cc_texto: 'x@sonda.com' })).emails_cc).toEqual(
+      []
+    );
+  });
+
+  it('edição preserva o tipo e preenche o CC', () => {
+    const ag = {
+      id: 'a1',
+      tipo: 'ic_inativos',
+      nome: 'IC',
+      ativo: true,
+      tabelas: {},
+      empresa_ids: [],
+      emails_cc: ['aline.baboim@sonda.com', 'qualidade@sonda.com'],
+      frequencia: 'diario',
+      dias_semana: [],
+      dias_mes: [],
+      ultimo_dia_mes: false,
+      modo_horario: 'intervalo',
+      horarios: [],
+      intervalo_horas: 2,
+      hora_inicio: '09:00:00',
+      hora_fim: '17:00:00',
+    } as unknown as SyncAgendamento;
+    expect(agendamentoParaForm(ag)).toMatchObject({
+      tipo: 'ic_inativos',
+      emails_cc_texto: 'aline.baboim@sonda.com; qualidade@sonda.com',
+    });
+  });
+});

@@ -83,7 +83,7 @@ export function criarAgendador(deps: DependenciasAgendador) {
     console.log(`[AGENDADOR] Disparando agendamento ${ag.id}`);
 
     try {
-      const tipo = ag.tipo === 'books' ? 'books' : 'sincronizacao';
+      const tipo = ag.tipo === 'books' || ag.tipo === 'ic_inativos' ? ag.tipo : 'sincronizacao';
       const inicio = await deps.orquestrador.iniciar({
         tipo,
         tabelas: ag.tabelas || {},
@@ -91,6 +91,8 @@ export function criarAgendador(deps: DependenciasAgendador) {
         agendamentoId: ag.id,
         // Books agendados ficam como "enviado por" quem criou o agendamento
         ...(tipo === 'books' ? { responsavelId: ag.created_by ?? null, empresaIds: ag.empresa_ids ?? [] } : {}),
+        // IC inativos: o CC configurado na rotina
+        ...(tipo === 'ic_inativos' ? { emailsCc: ag.emails_cc ?? [] } : {}),
       });
 
       if (inicio.status === 'iniciada') {

@@ -27815,6 +27815,8 @@ var ptBR = {
     noUpdate16Days: "Sem Atualiza\xE7\xE3o 16+ dias",
     resolutionCodeChange: "Troca de c\xF3digo de resolu\xE7\xE3o",
     solutionFieldValidation: "Valida\xE7\xE3o campo Solu\xE7\xE3o",
+    icInactive: "IC Inativos",
+    monitoringSubtitle: "Trocas de c\xF3digo de resolu\xE7\xE3o que mudaram a cobran\xE7a do banco de horas e chamados com IC inativo",
     resolutionCodeChangeSubtitle: "Trocas de c\xF3digo de resolu\xE7\xE3o que mudaram a cobran\xE7a do banco de horas",
     // Tabs
     tabDetected: "Inconsist\xEAncias Detectadas",
@@ -28112,6 +28114,7 @@ var ptBR = {
     tabs: {
       agendamentos: "Sincroniza\xE7\xE3o Aranda",
       books: "Gera\xE7\xE3o de Books",
+      icInativos: "IC Inativos",
       saldoParcial: "Saldo Parcial",
       historico: "Hist\xF3rico de execu\xE7\xF5es"
     },
@@ -28122,6 +28125,7 @@ var ptBR = {
       recorrencia: "Recorr\xEAncia",
       tabelas: "Tabelas",
       empresas: "Empresas",
+      copia: "Com c\xF3pia",
       proxima: "Pr\xF3xima execu\xE7\xE3o",
       ultima: "\xDAltima execu\xE7\xE3o",
       status: "Status",
@@ -28155,6 +28159,7 @@ var ptBR = {
       resumoSombra: "{{comparadas}} empresa(s) comparada(s), {{fechamentos}} fechamento(s) em sombra, {{erros}} erro(s)",
       booksResumo: "Refer\xEAncia {{mes}}/{{ano}}: {{gerados}} gerados e enviados \xB7 {{erros}} com erro \xB7 {{pulados}} pulados",
       booksSelecionadas: "Somente {{count}} empresa(s) selecionada(s)",
+      icInativosResumo: "{{pendentes}} chamado(s) pendente(s) \xB7 {{novos}} enviado(s) agora",
       comparacao: {
         titulo: "Compara\xE7\xE3o SQL Server x Supabase",
         sqlServer: "SQL Server",
@@ -28183,6 +28188,12 @@ var ptBR = {
       confirmarDescricao: "Os books liberados e ainda n\xE3o enviados do per\xEDodo de refer\xEAncia ser\xE3o gerados e enviados para a Qualidade. O andamento aparece no hist\xF3rico de execu\xE7\xF5es.",
       confirmarGerar: "Gerar e enviar"
     },
+    icInativos: {
+      titulo: "Agendamentos de IC Inativos ({{count}})",
+      descricao: "Envia aos Customer Success de todas as empresas ativas os chamados com IC 999999 ou na fila AMS APL - FISCAL - ICS INATIVOS. Cada chamado vai no m\xE1ximo uma vez por dia: as execu\xE7\xF5es seguintes do dia levam s\xF3 os que entraram depois, e sem chamado novo nada \xE9 enviado. O que n\xE3o for ajustado volta no dia seguinte.",
+      vazio: "Nenhum agendamento de IC Inativos",
+      novoAgendamento: "Novo agendamento de IC Inativos"
+    },
     empresas: {
       titulo: "Empresas",
       todas: "Todas as empresas liberadas e ainda n\xE3o enviadas",
@@ -28204,7 +28215,8 @@ var ptBR = {
       inconsistencias: "Inconsist\xEAncias",
       ajustesRetroativos: "Ajustes retroativos",
       modoSombra: "Modo sombra (Compara\xE7\xE3o Legado x Novo)",
-      gerarBooks: "Gera\xE7\xE3o de books"
+      gerarBooks: "Gera\xE7\xE3o de books",
+      icInativos: "IC Inativos"
     },
     form: {
       tituloNovo: "Novo agendamento",
@@ -28215,6 +28227,12 @@ var ptBR = {
       descricao: "Os hor\xE1rios seguem o fuso de S\xE3o Paulo.",
       nome: "Nome",
       nomePlaceholder: "Ex.: Pesquisas a cada 2 horas",
+      tituloNovoIc: "Novo agendamento de IC Inativos",
+      tituloEditarIc: "Editar agendamento de IC Inativos",
+      descricaoIc: "Envia aos Customer Success os chamados de IC inativo ainda n\xE3o enviados no dia. Os hor\xE1rios seguem o fuso de S\xE3o Paulo.",
+      copia: "Com c\xF3pia",
+      copiaPlaceholder: "e-mails separados por ;",
+      copiaAjuda: "Al\xE9m de todos os Customer Success das empresas ativas, que sempre recebem.",
       tabelas: "Tabelas",
       posProcessamento: "P\xF3s-processamento",
       ajustesRetroativosAjuda: "Roda junto com Apontamentos",
@@ -28246,6 +28264,7 @@ var ptBR = {
     },
     validacao: {
       empresaObrigatoria: "Selecione ao menos uma empresa",
+      emailCcInvalido: "H\xE1 e-mail inv\xE1lido na c\xF3pia",
       nomeObrigatorio: "Informe o nome",
       tabelaObrigatoria: "Selecione ao menos uma tabela",
       diaSemanaObrigatorio: "Selecione ao menos um dia da semana",
@@ -30292,6 +30311,8 @@ var en = {
     noUpdate16Days: "No Update 16+ days",
     resolutionCodeChange: "Resolution code change",
     solutionFieldValidation: "Solution field validation",
+    icInactive: "Inactive CIs",
+    monitoringSubtitle: "Resolution code changes that changed the hours bank charge and tickets with an inactive CI",
     resolutionCodeChangeSubtitle: "Resolution code changes that changed the hours bank charge",
     // Tabs
     tabDetected: "Detected Inconsistencies",
@@ -30589,6 +30610,7 @@ var en = {
     tabs: {
       agendamentos: "Aranda sync",
       books: "Book generation",
+      icInativos: "Inactive CIs",
       saldoParcial: "Partial balance",
       historico: "Run history"
     },
@@ -30599,6 +30621,7 @@ var en = {
       recorrencia: "Recurrence",
       tabelas: "Tables",
       empresas: "Companies",
+      copia: "CC",
       proxima: "Next run",
       ultima: "Last run",
       status: "Status",
@@ -30632,6 +30655,7 @@ var en = {
       resumoSombra: "{{comparadas}} company(ies) compared, {{fechamentos}} shadow closing(s), {{erros}} error(s)",
       booksResumo: "Reference {{mes}}/{{ano}}: {{gerados}} generated and sent \xB7 {{erros}} with errors \xB7 {{pulados}} skipped",
       booksSelecionadas: "Only {{count}} selected company(ies)",
+      icInativosResumo: "{{pendentes}} pending ticket(s) \xB7 {{novos}} sent now",
       comparacao: {
         titulo: "SQL Server x Supabase comparison",
         sqlServer: "SQL Server",
@@ -30660,6 +30684,12 @@ var en = {
       confirmarDescricao: "The released books not yet sent for the reference period will be generated and sent to Quality. Progress is shown in the run history.",
       confirmarGerar: "Generate and send"
     },
+    icInativos: {
+      titulo: "Inactive CI schedules ({{count}})",
+      descricao: "Sends the Customer Success of every active company the tickets with CI 999999 or in the AMS APL - FISCAL - ICS INATIVOS queue. Each ticket is sent at most once a day: later runs that day carry only the ones that came in afterwards, and nothing is sent when there is nothing new. Whatever is not fixed comes back the next day.",
+      vazio: "No Inactive CI schedule",
+      novoAgendamento: "New Inactive CI schedule"
+    },
     empresas: {
       titulo: "Companies",
       todas: "All released companies not yet sent",
@@ -30681,7 +30711,8 @@ var en = {
       inconsistencias: "Inconsistencies",
       ajustesRetroativos: "Retroactive adjustments",
       modoSombra: "Shadow mode (Legacy x New Comparison)",
-      gerarBooks: "Book generation"
+      gerarBooks: "Book generation",
+      icInativos: "Inactive CIs"
     },
     form: {
       tituloNovo: "New schedule",
@@ -30692,6 +30723,12 @@ var en = {
       descricao: "Times use the S\xE3o Paulo time zone.",
       nome: "Name",
       nomePlaceholder: "E.g.: Surveys every 2 hours",
+      tituloNovoIc: "New Inactive CI schedule",
+      tituloEditarIc: "Edit Inactive CI schedule",
+      descricaoIc: "Sends the Customer Success the inactive CI tickets not yet sent today. Times follow the S\xE3o Paulo time zone.",
+      copia: "CC",
+      copiaPlaceholder: "e-mails separated by ;",
+      copiaAjuda: "In addition to every Customer Success of the active companies, who always receive it.",
       tabelas: "Tables",
       posProcessamento: "Post-processing",
       ajustesRetroativosAjuda: "Runs together with Time entries",
@@ -30723,6 +30760,7 @@ var en = {
     },
     validacao: {
       empresaObrigatoria: "Select at least one company",
+      emailCcInvalido: "There is an invalid e-mail in the CC",
       nomeObrigatorio: "Enter the name",
       tabelaObrigatoria: "Select at least one table",
       diaSemanaObrigatorio: "Select at least one day of the week",
@@ -32769,6 +32807,8 @@ var es = {
     noUpdate16Days: "Sin Actualizaci\xF3n 16+ d\xEDas",
     resolutionCodeChange: "Cambio de c\xF3digo de resoluci\xF3n",
     solutionFieldValidation: "Validaci\xF3n campo Soluci\xF3n",
+    icInactive: "IC Inactivos",
+    monitoringSubtitle: "Cambios de c\xF3digo de resoluci\xF3n que modificaron el cobro del banco de horas y tickets con IC inactivo",
     resolutionCodeChangeSubtitle: "Cambios de c\xF3digo de resoluci\xF3n que modificaron el cobro del banco de horas",
     // Pestañas
     tabDetected: "Inconsistencias Detectadas",
@@ -33066,6 +33106,7 @@ var es = {
     tabs: {
       agendamentos: "Sincronizaci\xF3n Aranda",
       books: "Generaci\xF3n de Books",
+      icInativos: "IC Inactivos",
       saldoParcial: "Saldo Parcial",
       historico: "Historial de ejecuciones"
     },
@@ -33076,6 +33117,7 @@ var es = {
       recorrencia: "Recurrencia",
       tabelas: "Tablas",
       empresas: "Empresas",
+      copia: "Con copia",
       proxima: "Pr\xF3xima ejecuci\xF3n",
       ultima: "\xDAltima ejecuci\xF3n",
       status: "Estado",
@@ -33109,6 +33151,7 @@ var es = {
       resumoSombra: "{{comparadas}} empresa(s) comparada(s), {{fechamentos}} cierre(s) en sombra, {{erros}} error(es)",
       booksResumo: "Referencia {{mes}}/{{ano}}: {{gerados}} generados y enviados \xB7 {{erros}} con error \xB7 {{pulados}} omitidos",
       booksSelecionadas: "Solo {{count}} empresa(s) seleccionada(s)",
+      icInativosResumo: "{{pendentes}} ticket(s) pendiente(s) \xB7 {{novos}} enviado(s) ahora",
       comparacao: {
         titulo: "Comparaci\xF3n SQL Server x Supabase",
         sqlServer: "SQL Server",
@@ -33137,6 +33180,12 @@ var es = {
       confirmarDescricao: "Los books liberados y a\xFAn no enviados del per\xEDodo de referencia se generar\xE1n y enviar\xE1n a Calidad. El progreso aparece en el historial de ejecuciones.",
       confirmarGerar: "Generar y enviar"
     },
+    icInativos: {
+      titulo: "Programaciones de IC Inactivos ({{count}})",
+      descricao: "Env\xEDa a los Customer Success de todas las empresas activas los tickets con IC 999999 o en la cola AMS APL - FISCAL - ICS INATIVOS. Cada ticket se env\xEDa como m\xE1ximo una vez al d\xEDa: las ejecuciones siguientes del d\xEDa llevan solo los que entraron despu\xE9s y, sin tickets nuevos, no se env\xEDa nada. Lo que no se corrija vuelve al d\xEDa siguiente.",
+      vazio: "Ninguna programaci\xF3n de IC Inactivos",
+      novoAgendamento: "Nueva programaci\xF3n de IC Inactivos"
+    },
     empresas: {
       titulo: "Empresas",
       todas: "Todas las empresas liberadas y a\xFAn no enviadas",
@@ -33158,7 +33207,8 @@ var es = {
       inconsistencias: "Inconsistencias",
       ajustesRetroativos: "Ajustes retroactivos",
       modoSombra: "Modo sombra (Comparaci\xF3n Legado x Nuevo)",
-      gerarBooks: "Generaci\xF3n de books"
+      gerarBooks: "Generaci\xF3n de books",
+      icInativos: "IC Inactivos"
     },
     form: {
       tituloNovo: "Nueva programaci\xF3n",
@@ -33169,6 +33219,12 @@ var es = {
       descricao: "Los horarios siguen la zona horaria de S\xE3o Paulo.",
       nome: "Nombre",
       nomePlaceholder: "Ej.: Encuestas cada 2 horas",
+      tituloNovoIc: "Nueva programaci\xF3n de IC Inactivos",
+      tituloEditarIc: "Editar programaci\xF3n de IC Inactivos",
+      descricaoIc: "Env\xEDa a los Customer Success los tickets de IC inactivo a\xFAn no enviados en el d\xEDa. Los horarios siguen el huso de S\xE3o Paulo.",
+      copia: "Con copia",
+      copiaPlaceholder: "correos separados por ;",
+      copiaAjuda: "Adem\xE1s de todos los Customer Success de las empresas activas, que siempre lo reciben.",
       tabelas: "Tablas",
       posProcessamento: "Posprocesamiento",
       ajustesRetroativosAjuda: "Se ejecuta junto con Registros de horas",
@@ -33200,6 +33256,7 @@ var es = {
     },
     validacao: {
       empresaObrigatoria: "Seleccione al menos una empresa",
+      emailCcInvalido: "Hay un correo inv\xE1lido en la copia",
       nomeObrigatorio: "Ingrese el nombre",
       tabelaObrigatoria: "Seleccione al menos una tabla",
       diaSemanaObrigatorio: "Seleccione al menos un d\xEDa de la semana",

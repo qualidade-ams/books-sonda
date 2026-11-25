@@ -5884,6 +5884,7 @@ export type Database = {
           created_by: string | null
           dias_mes: number[]
           dias_semana: number[]
+          emails_cc: string[]
           empresa_ids: string[]
           frequencia: string
           hora_fim: string | null
@@ -5907,6 +5908,7 @@ export type Database = {
           created_by?: string | null
           dias_mes?: number[]
           dias_semana?: number[]
+          emails_cc?: string[]
           empresa_ids?: string[]
           frequencia: string
           hora_fim?: string | null
@@ -5930,6 +5932,7 @@ export type Database = {
           created_by?: string | null
           dias_mes?: number[]
           dias_semana?: number[]
+          emails_cc?: string[]
           empresa_ids?: string[]
           frequencia?: string
           hora_fim?: string | null

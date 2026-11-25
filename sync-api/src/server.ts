@@ -31,6 +31,7 @@ import { criarRotasComparacao } from './scheduler/rotasComparacao';
 import { criarExecutorGeracaoBooks, criarGeradorPdfBook } from './services/geracaoBooksService';
 import { criarRenderizadorImagem } from './services/renderImagemService';
 import { criarEnviadorWebhook } from './services/webhookEmailService';
+import { criarEnvioIcInativos } from './services/envioIcInativosService';
 import { criarVerificadorReplica } from './services/verificacaoReplicaService';
 import { hostDeEscuta } from './utils/rede';
 import { criarSqlConfig } from './config/sqlConfig';
@@ -4086,9 +4087,13 @@ try {
   console.error('[COMPARACAO] Pacote vendor/comparacao.cjs não carregou:', e instanceof Error ? e.message : e);
 }
 
+// E-mail diário dos chamados de IC inativo aos Customer Success (agendamentos do tipo "ic_inativos")
+const envioIcInativos = criarEnvioIcInativos({ supabase, enviador: criarEnviadorWebhook({ supabase, fetch }) });
+
 const orquestradorSync = criarOrquestradorSync({
   supabase,
   gerarBooks,
+  enviarIcInativos: (contexto) => envioIcInativos.executar(contexto),
   verificarReplica: criarVerificadorReplica({ supabase }),
   // Pool próprio: os handlers antigos fecham o pool global do mssql
   abrirPool: async () => {

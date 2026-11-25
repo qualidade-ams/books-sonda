@@ -1,5 +1,6 @@
 /**
- * Modal de criação/edição de agendamento de sincronização SQL Server.
+ * Modal de criação/edição de agendamento de sincronização SQL Server, geração de books
+ * ou envio de IC inativos (este com o campo de cópia do e-mail).
  * Mostra a previsão das próximas execuções calculada pelo sync-api.
  */
 
@@ -59,11 +60,13 @@ export function AgendamentoFormModal({
 }: AgendamentoFormModalProps) {
   const { t } = useTranslation();
   const tipo: TipoAgendamentoSync = agendamento
-    ? agendamento.tipo === 'books'
-      ? 'books'
+    ? agendamento.tipo === 'books' || agendamento.tipo === 'ic_inativos'
+      ? agendamento.tipo
       : 'sincronizacao'
     : tipoNovo;
   const ehBooks = tipo === 'books';
+  const ehIc = tipo === 'ic_inativos';
+  const sufixo = ehBooks ? 'Books' : ehIc ? 'Ic' : '';
 
   const form = useForm<AgendamentoFormValues>({
     resolver: zodResolver(agendamentoFormSchema),
@@ -126,18 +129,12 @@ export function AgendamentoFormModal({
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue">
-            {ehBooks
-              ? agendamento
-                ? t('sincronizacaoSql.form.tituloEditarBooks')
-                : t('sincronizacaoSql.form.tituloNovoBooks')
-              : agendamento
-                ? t('sincronizacaoSql.form.tituloEditar')
-                : t('sincronizacaoSql.form.tituloNovo')}
+            {agendamento
+              ? t(`sincronizacaoSql.form.tituloEditar${sufixo}`)
+              : t(`sincronizacaoSql.form.tituloNovo${sufixo}`)}
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            {ehBooks
-              ? t('sincronizacaoSql.form.descricaoBooks')
-              : t('sincronizacaoSql.form.descricao')}
+            {t(`sincronizacaoSql.form.descricao${sufixo}`)}
           </DialogDescription>
         </DialogHeader>
 
@@ -169,7 +166,7 @@ export function AgendamentoFormModal({
           </div>
 
           {/* Tabelas (só sincronização) */}
-          {!ehBooks && (
+          {!ehBooks && !ehIc && (
             <div className="space-y-3">
               <Label>{t('sincronizacaoSql.form.tabelas')}</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -241,6 +238,25 @@ export function AgendamentoFormModal({
               }
               erro={errors.empresa_ids?.message}
             />
+          )}
+
+          {/* Cópia do e-mail (só IC inativos) */}
+          {ehIc && (
+            <div className="space-y-2">
+              <Label htmlFor="agendamento-copia">{t('sincronizacaoSql.form.copia')}</Label>
+              <Input
+                id="agendamento-copia"
+                placeholder={t('sincronizacaoSql.form.copiaPlaceholder')}
+                className={
+                  errors.emails_cc_texto
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                }
+                {...register('emails_cc_texto')}
+              />
+              <p className="text-xs text-gray-500">{t('sincronizacaoSql.form.copiaAjuda')}</p>
+              {erro(errors.emails_cc_texto?.message)}
+            </div>
           )}
 
           <CamposRegraRecorrencia

@@ -25,7 +25,7 @@ function criarItem(overrides: Partial<InconsistenciaChamado> = {}): Inconsistenc
 }
 
 const titulos = (tipo: Parameters<typeof colunasEmailPorTipo>[0]) =>
-  colunasEmailPorTipo(tipo).map(c => c.titulo);
+  colunasEmailPorTipo(tipo).map((c) => c.titulo);
 
 describe('colunasEmailPorTipo', () => {
   it('Sem Atualização 16+ dias não tem coluna Tarefa', () => {
@@ -36,20 +36,50 @@ describe('colunasEmailPorTipo', () => {
     expect(titulos('ic_999999')).toEqual(['Empresa', 'Chamado', 'Analista']);
   });
 
+  it('IC inativo: empresa, chamado e analista', () => {
+    expect(titulos('ic_inativo')).toEqual(['Empresa', 'Chamado', 'Analista']);
+  });
+
   it('Tempo Excessivo tem coluna Tempo', () => {
-    expect(titulos('tempo_excessivo')).toEqual(['Empresa', 'Chamado', 'Tarefa', 'Tempo', 'Analista']);
+    expect(titulos('tempo_excessivo')).toEqual([
+      'Empresa',
+      'Chamado',
+      'Tarefa',
+      'Tempo',
+      'Analista',
+    ]);
   });
 
   it('Mês Diferente tem colunas Data Atividade e Data Sistema', () => {
-    expect(titulos('mes_diferente')).toEqual(['Empresa', 'Chamado', 'Tarefa', 'Data Atividade', 'Data Sistema', 'Analista']);
+    expect(titulos('mes_diferente')).toEqual([
+      'Empresa',
+      'Chamado',
+      'Tarefa',
+      'Data Atividade',
+      'Data Sistema',
+      'Analista',
+    ]);
   });
 
   it('Troca de código de resolução tem código anterior, código atual, data da troca e tempo afetado', () => {
-    expect(titulos('troca_codigo_resolucao')).toEqual(['Empresa', 'Chamado', 'Código Anterior', 'Código Atual', 'Data da Troca', 'Tempo', 'Analista']);
+    expect(titulos('troca_codigo_resolucao')).toEqual([
+      'Empresa',
+      'Chamado',
+      'Código Anterior',
+      'Código Atual',
+      'Data da Troca',
+      'Tempo',
+      'Analista',
+    ]);
   });
 
   it('Validação campo Solução tem coluna com as palavras faltantes', () => {
-    expect(titulos('validacao_solucao')).toEqual(['Empresa', 'Chamado', 'Palavras Faltantes', 'Analista']);
+    expect(titulos('validacao_solucao')).toEqual([
+      'Empresa',
+      'Chamado',
+      'Palavras Faltantes',
+      'Analista',
+    ]);
   });
 });
 
@@ -70,14 +100,22 @@ describe('valorColunaEmail', () => {
   });
 
   it('formata as datas como dd/MM/yyyy no horário de Brasília', () => {
-    const item = criarItem({ data_atividade: '2026-09-01T02:00:00Z', data_sistema: '2026-09-02T15:00:00Z' });
+    const item = criarItem({
+      data_atividade: '2026-09-01T02:00:00Z',
+      data_sistema: '2026-09-02T15:00:00Z',
+    });
     // 02:00 UTC de 01/09 ainda é 31/08 em Brasília
     expect(valorColunaEmail('data_atividade', item, ctx)).toBe('31/08/2026');
     expect(valorColunaEmail('data_sistema', item, ctx)).toBe('02/09/2026');
   });
 
   it('usa "-" quando o valor está vazio', () => {
-    const item = criarItem({ nro_tarefa: null, tempo_gasto_horas: null, data_atividade: null, data_sistema: null });
+    const item = criarItem({
+      nro_tarefa: null,
+      tempo_gasto_horas: null,
+      data_atividade: null,
+      data_sistema: null,
+    });
     expect(valorColunaEmail('tarefa', item, ctx)).toBe('-');
     expect(valorColunaEmail('tempo', item, ctx)).toBe('-');
     expect(valorColunaEmail('data_atividade', item, ctx)).toBe('-');
@@ -91,8 +129,12 @@ describe('valorColunaEmail', () => {
       cod_resolucao: 'Parametrização / Funcionalidade (Banco=S |SLA=N)',
       data_atividade: '2026-09-22T20:49:28Z',
     });
-    expect(valorColunaEmail('cod_anterior', item, ctx)).toBe('Manutenção de Específico (Banco=N |SLA=N)');
-    expect(valorColunaEmail('cod_atual', item, ctx)).toBe('Parametrização / Funcionalidade (Banco=S |SLA=N)');
+    expect(valorColunaEmail('cod_anterior', item, ctx)).toBe(
+      'Manutenção de Específico (Banco=N |SLA=N)'
+    );
+    expect(valorColunaEmail('cod_atual', item, ctx)).toBe(
+      'Parametrização / Funcionalidade (Banco=S |SLA=N)'
+    );
     expect(valorColunaEmail('data_troca', item, ctx)).toBe('22/09/2026');
   });
 
@@ -105,12 +147,20 @@ describe('valorColunaEmail', () => {
   });
 
   it('usa "-" quando a descrição não traz as palavras faltantes', () => {
-    expect(valorColunaEmail('palavras_faltantes', criarItem({ descricao_inconsistencia: '' }), ctx)).toBe('-');
-    expect(valorColunaEmail('palavras_faltantes', criarItem({ descricao_inconsistencia: null }), ctx)).toBe('-');
+    expect(
+      valorColunaEmail('palavras_faltantes', criarItem({ descricao_inconsistencia: '' }), ctx)
+    ).toBe('-');
+    expect(
+      valorColunaEmail('palavras_faltantes', criarItem({ descricao_inconsistencia: null }), ctx)
+    ).toBe('-');
   });
 
   it('usa "-" quando os códigos da troca estão vazios', () => {
-    const item = criarItem({ cod_resolucao_anterior: null, cod_resolucao: null, data_atividade: null });
+    const item = criarItem({
+      cod_resolucao_anterior: null,
+      cod_resolucao: null,
+      data_atividade: null,
+    });
     expect(valorColunaEmail('cod_anterior', item, ctx)).toBe('-');
     expect(valorColunaEmail('cod_atual', item, ctx)).toBe('-');
     expect(valorColunaEmail('data_troca', item, ctx)).toBe('-');
